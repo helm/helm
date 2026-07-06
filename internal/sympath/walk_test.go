@@ -90,7 +90,7 @@ func makeTree(t *testing.T) {
 				fd.Close()
 			}
 		} else {
-			require.NoError(t, os.Mkdir(path, 0770), "makeTree")
+			require.NoError(t, os.Mkdir(path, 0o770), "makeTree")
 		}
 	})
 }

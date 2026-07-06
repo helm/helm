@@ -105,7 +105,7 @@ func TestDiskCache_PutAndGet(t *testing.T) {
 	t.Run("GetDirectory", func(t *testing.T) {
 		dirKey := sha256.Sum256([]byte("i am a directory"))
 		dirPath := cache.fileName(dirKey, CacheChart)
-		err := os.MkdirAll(dirPath, 0755)
+		err := os.MkdirAll(dirPath, 0o755)
 		require.NoError(t, err)
 
 		_, err = cache.Get(dirKey, CacheChart)

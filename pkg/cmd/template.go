@@ -239,7 +239,7 @@ func isTestHook(h *release.Hook) bool {
 // this duplicate code should be removed. It is added here so that the API
 // surface area is as minimally impacted as possible in fixing the issue.
 func writeToFile(outputDir string, name string, data string, appendData bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+	outfileName := outputDir + string(filepath.Separator) + name
 
 	err := ensureDirectoryForFile(outfileName)
 	if err != nil {
@@ -265,7 +265,7 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 	if appendData {
-		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o600)
 	}
 	return os.Create(filename)
 }
@@ -277,5 +277,5 @@ func ensureDirectoryForFile(file string) error {
 		return err
 	}
 
-	return os.MkdirAll(baseDir, 0755)
+	return os.MkdirAll(baseDir, 0o755)
 }

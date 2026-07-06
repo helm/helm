@@ -16,6 +16,7 @@ limitations under the License.
 package strvals
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -298,7 +299,7 @@ func TestParseLiteral(t *testing.T) {
 			require.NoError(t, err, "Error serializing parsed value")
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}
@@ -409,7 +410,7 @@ func TestParseLiteralInto(t *testing.T) {
 			require.NoError(t, err, "Error serializing parsed value")
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			assert.Equal(t, string(y1), string(y2), tt.input)
 		}
 	}
@@ -471,7 +472,7 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 			require.NoError(t, err, "Error serializing parsed value")
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}

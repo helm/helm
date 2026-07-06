@@ -86,7 +86,7 @@ func (o *docsOptions) run(_ io.Writer) error {
 				base := filepath.Base(filename)
 				name := strings.TrimSuffix(base, path.Ext(base))
 				title := cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(name, "_", " "))
-				return fmt.Sprintf("---\ntitle: \"%s\"\n---\n\n", title)
+				return fmt.Sprintf("---\ntitle: %q\n---\n\n", title)
 			}
 
 			return doc.GenMarkdownTreeCustom(o.topCmd, o.dest, hdrFunc, standardLinks)

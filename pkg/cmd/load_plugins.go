@@ -220,8 +220,7 @@ type pluginCommand struct {
 // and add the dynamic completion hook to call the optional plugin.complete
 func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin) {
 	// Parse the yaml file providing the plugin's sub-commands and flags
-	cmds, err := loadFile(strings.Join(
-		[]string{plug.Dir(), pluginStaticCompletionFile}, string(filepath.Separator)))
+	cmds, err := loadFile(plug.Dir() + string(filepath.Separator) + pluginStaticCompletionFile)
 
 	if err != nil {
 		// The file could be missing or invalid.  No static completion for this plugin.
@@ -351,7 +350,7 @@ func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, to
 	}
 
 	// We will call the dynamic completion script of the plugin
-	main := strings.Join([]string{plug.Dir(), pluginDynamicCompletionExecutable}, string(filepath.Separator))
+	main := plug.Dir() + string(filepath.Separator) + pluginDynamicCompletionExecutable
 
 	// We must include all sub-commands passed on the command-line.
 	// To do that, we pass-in the entire CommandPath, except the first two elements

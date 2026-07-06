@@ -226,7 +226,7 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 				// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
 				var jsonval any
 				dec := json.NewDecoder(strings.NewReader(t.sc.String()))
-				if err = dec.Decode(&jsonval); err != nil {
+				if err := dec.Decode(&jsonval); err != nil {
 					return err
 				}
 				set(data, string(k), jsonval)
@@ -358,7 +358,7 @@ func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 			// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
 			var jsonval any
 			dec := json.NewDecoder(strings.NewReader(t.sc.String()))
-			if err = dec.Decode(&jsonval); err != nil {
+			if err := dec.Decode(&jsonval); err != nil {
 				return list, err
 			}
 			if list, err = setIndex(list, i, jsonval); err != nil {

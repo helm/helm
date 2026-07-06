@@ -229,7 +229,7 @@ func TestPullCmd(t *testing.T) {
 			// Create file or Dir before helm pull --untar, see: https://github.com/helm/helm/issues/7182
 			if tt.existFile != "" {
 				file := filepath.Join(outdir, tt.existFile)
-				if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
 					t.Fatal(err)
 				}
 				_, err := os.Create(file)
@@ -239,7 +239,7 @@ func TestPullCmd(t *testing.T) {
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.MkdirAll(file, 0755)
+				err := os.MkdirAll(file, 0o755)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -306,7 +306,7 @@ func runPullTests(t *testing.T, tests []struct {
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.MkdirAll(file, 0755)
+				err := os.MkdirAll(file, 0o755)
 				if err != nil {
 					t.Fatal(err)
 				}

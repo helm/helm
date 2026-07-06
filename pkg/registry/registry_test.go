@@ -36,7 +36,6 @@ import (
 	_ "github.com/distribution/distribution/v3/registry/auth/token"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -75,9 +74,9 @@ type TestRegistry struct {
 func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	suite.WorkspaceDir = testWorkspaceDir
 	err := os.RemoveAll(suite.WorkspaceDir)
-	require.NoError(suite.T(), err, "no error removing test workspace dir")
-	err = os.Mkdir(suite.WorkspaceDir, 0700)
-	require.NoError(suite.T(), err, "no error creating test workspace dir")
+	suite.Require().NoError(err, "no error removing test workspace dir")
+	err = os.Mkdir(suite.WorkspaceDir, 0o700)
+	suite.Require().NoError(err, "no error creating test workspace dir")
 
 	var out bytes.Buffer
 
@@ -123,7 +122,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Require().NoError(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0644)
+	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644)
 	suite.Require().NoError(err, "no error creating test htpasswd file")
 
 	// Registry config

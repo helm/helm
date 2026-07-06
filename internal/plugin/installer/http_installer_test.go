@@ -85,7 +85,7 @@ func TestHTTPInstaller(t *testing.T) {
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
-	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0o755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
@@ -132,7 +132,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
-	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0o755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
@@ -164,7 +164,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 	ensure.HelmHome(t)
 
-	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0o755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
@@ -219,8 +219,8 @@ func TestExtract(t *testing.T) {
 		Name, Body string
 		Mode       int64
 	}{
-		{"plugin.yaml", "plugin metadata", 0600},
-		{"README.md", "some text", 0777},
+		{"plugin.yaml", "plugin metadata", 0o600},
+		{"README.md", "some text", 0o777},
 	}
 	for _, file := range files {
 		hdr := &tar.Header{
@@ -271,8 +271,8 @@ func TestExtract(t *testing.T) {
 	}
 
 	// Calculate expected permissions after umask is applied
-	expectedPluginYAMLPerm := os.FileMode(0600 &^ currentUmask)
-	expectedReadmePerm := os.FileMode(0777 &^ currentUmask)
+	expectedPluginYAMLPerm := os.FileMode(0o600 &^ currentUmask)
+	expectedReadmePerm := os.FileMode(0o777 &^ currentUmask)
 
 	pluginYAMLFullPath := filepath.Join(tempDir, "plugin.yaml")
 	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
@@ -361,13 +361,13 @@ func TestExtractWithNestedDirectories(t *testing.T) {
 		Mode     int64
 		TypeFlag byte
 	}{
-		{"plugin.yaml", "plugin metadata", 0600, tar.TypeReg},
-		{"bin/", "", 0755, tar.TypeDir},
-		{"bin/plugin", "#!/usr/bin/env sh\necho plugin", 0755, tar.TypeReg},
-		{"docs/", "", 0755, tar.TypeDir},
-		{"docs/README.md", "readme content", 0644, tar.TypeReg},
-		{"docs/examples/", "", 0755, tar.TypeDir},
-		{"docs/examples/example1.yaml", "example content", 0644, tar.TypeReg},
+		{"plugin.yaml", "plugin metadata", 0o600, tar.TypeReg},
+		{"bin/", "", 0o755, tar.TypeDir},
+		{"bin/plugin", "#!/usr/bin/env sh\necho plugin", 0o755, tar.TypeReg},
+		{"docs/", "", 0o755, tar.TypeDir},
+		{"docs/README.md", "readme content", 0o644, tar.TypeReg},
+		{"docs/examples/", "", 0o755, tar.TypeDir},
+		{"docs/examples/example1.yaml", "example content", 0o644, tar.TypeReg},
 	}
 
 	for _, file := range files {
@@ -434,13 +434,13 @@ func TestExtractWithExistingDirectory(t *testing.T) {
 
 	// Pre-create the cache directory structure
 	cacheDir := filepath.Join(tempDir, "cache")
-	if err := os.MkdirAll(filepath.Join(cacheDir, "existing", "dir"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(cacheDir, "existing", "dir"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a file in the existing directory
 	existingFile := filepath.Join(cacheDir, "existing", "file.txt")
-	if err := os.WriteFile(existingFile, []byte("existing content"), 0644); err != nil {
+	if err := os.WriteFile(existingFile, []byte("existing content"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -453,10 +453,10 @@ func TestExtractWithExistingDirectory(t *testing.T) {
 		Mode     int64
 		TypeFlag byte
 	}{
-		{"plugin.yaml", "plugin metadata", 0600, tar.TypeReg},
-		{"existing/", "", 0755, tar.TypeDir},
-		{"existing/dir/", "", 0755, tar.TypeDir},
-		{"existing/dir/newfile.txt", "new content", 0644, tar.TypeReg},
+		{"plugin.yaml", "plugin metadata", 0o600, tar.TypeReg},
+		{"existing/", "", 0o755, tar.TypeDir},
+		{"existing/dir/", "", 0o755, tar.TypeDir},
+		{"existing/dir/newfile.txt", "new content", 0o644, tar.TypeReg},
 	}
 
 	for _, file := range files {
@@ -523,10 +523,10 @@ func TestExtractPluginInSubdirectory(t *testing.T) {
 		Mode     int64
 		TypeFlag byte
 	}{
-		{"my-plugin/", "", 0755, tar.TypeDir},
-		{"my-plugin/plugin.yaml", "name: my-plugin\nversion: 1.0.0\nusage: test\ndescription: test plugin\ncommand: $HELM_PLUGIN_DIR/bin/my-plugin", 0644, tar.TypeReg},
-		{"my-plugin/bin/", "", 0755, tar.TypeDir},
-		{"my-plugin/bin/my-plugin", "#!/usr/bin/env sh\necho test", 0755, tar.TypeReg},
+		{"my-plugin/", "", 0o755, tar.TypeDir},
+		{"my-plugin/plugin.yaml", "name: my-plugin\nversion: 1.0.0\nusage: test\ndescription: test plugin\ncommand: $HELM_PLUGIN_DIR/bin/my-plugin", 0o644, tar.TypeReg},
+		{"my-plugin/bin/", "", 0o755, tar.TypeDir},
+		{"my-plugin/bin/my-plugin", "#!/usr/bin/env sh\necho test", 0o755, tar.TypeReg},
 	}
 
 	for _, file := range files {

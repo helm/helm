@@ -35,7 +35,7 @@ func TestAtomicWriteFile(t *testing.T) {
 	testpath := filepath.Join(dir, "test")
 	stringContent := "Test content"
 	reader := bytes.NewReader([]byte(stringContent))
-	mode := os.FileMode(0644)
+	mode := os.FileMode(0o644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
 	assert.NoError(t, err)
@@ -56,7 +56,7 @@ func TestAtomicWriteFile_CreateTempError(t *testing.T) {
 	invalidPath := "/invalid/path/that/does/not/exist/testfile"
 
 	reader := bytes.NewReader([]byte("test content"))
-	mode := os.FileMode(0644)
+	mode := os.FileMode(0o644)
 
 	err := AtomicWriteFile(invalidPath, reader, mode)
 	assert.Error(t, err, "Expected error when CreateTemp fails")
@@ -68,7 +68,7 @@ func TestAtomicWriteFile_EmptyContent(t *testing.T) {
 	testpath := filepath.Join(dir, "empty_helm")
 
 	reader := bytes.NewReader([]byte(""))
-	mode := os.FileMode(0644)
+	mode := os.FileMode(0o644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
 	assert.NoError(t, err, "AtomicWriteFile error with empty content")
@@ -87,7 +87,7 @@ func TestAtomicWriteFile_LargeContent(t *testing.T) {
 	// Create a large content string
 	largeContent := strings.Repeat("HELM", 1024*1024)
 	reader := bytes.NewReader([]byte(largeContent))
-	mode := os.FileMode(0644)
+	mode := os.FileMode(0o644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
 	assert.NoError(t, err, "AtomicWriteFile error with large content")
@@ -105,10 +105,10 @@ func TestPlatformAtomicWriteFile_OverwritesExisting(t *testing.T) {
 	path := filepath.Join(dir, "overwrite_test")
 
 	first := bytes.NewReader([]byte("first"))
-	require.NoError(t, PlatformAtomicWriteFile(path, first, 0644), "first write failed")
+	require.NoError(t, PlatformAtomicWriteFile(path, first, 0o644), "first write failed")
 
 	second := bytes.NewReader([]byte("second"))
-	require.NoError(t, PlatformAtomicWriteFile(path, second, 0644), "second write failed")
+	require.NoError(t, PlatformAtomicWriteFile(path, second, 0o644), "second write failed")
 
 	contents, err := os.ReadFile(path)
 	require.NoError(t, err, "failed reading result")

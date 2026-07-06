@@ -49,7 +49,7 @@ func encodeRelease(rls *rspb.Release) (string, error) {
 		w.Close()
 		return "", err
 	}
-	if err = w.Close(); err != nil {
+	if err := w.Close(); err != nil {
 		return "", err
 	}
 
