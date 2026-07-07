@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -147,9 +148,7 @@ func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
 func TestDefaultKeyring(t *testing.T) {
 	touch := func(t *testing.T, path string) {
 		t.Helper()
-		if err := os.WriteFile(path, []byte("test"), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, os.WriteFile(path, []byte("test"), 0o644))
 	}
 
 	tests := []struct {
@@ -169,30 +168,44 @@ func TestDefaultKeyring(t *testing.T) {
 			for _, f := range tt.files {
 				touch(t, filepath.Join(dir, f))
 			}
-			if got, want := defaultKeyring(), filepath.Join(dir, tt.want); got != want {
-				t.Errorf("expected %q, got %q", want, got)
-			}
+			assert.Equal(t, filepath.Join(dir, tt.want), defaultKeyring())
 		})
 	}
+
+	t.Run("stat error other than not-exist keeps the legacy path", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("directory permissions are not enforced on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses directory permissions")
+		}
+
+		parent := t.TempDir()
+		dir := filepath.Join(parent, ".gnupg")
+		require.NoError(t, os.MkdirAll(dir, 0o700))
+		touch(t, filepath.Join(dir, "pubring.kbx"))
+		t.Setenv("GNUPGHOME", dir)
+
+		// Make the directory unsearchable so stat on both keyrings fails
+		// with a permission error rather than "not exist".
+		require.NoError(t, os.Chmod(dir, 0o000))
+		t.Cleanup(func() { require.NoError(t, os.Chmod(dir, 0o700)) })
+
+		assert.Equal(t, filepath.Join(dir, "pubring.gpg"), defaultKeyring())
+	})
 
 	t.Run("no GNUPGHOME falls back to the home directory", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 		t.Setenv("GNUPGHOME", home) // register restoration before unsetting
-		os.Unsetenv("GNUPGHOME")
+		require.NoError(t, os.Unsetenv("GNUPGHOME"))
 
 		gnupgDir := filepath.Join(home, ".gnupg")
-		if err := os.MkdirAll(gnupgDir, 0o700); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, os.MkdirAll(gnupgDir, 0o700))
 
-		if got, want := defaultKeyring(), filepath.Join(gnupgDir, "pubring.gpg"); got != want {
-			t.Errorf("expected %q, got %q", want, got)
-		}
+		assert.Equal(t, filepath.Join(gnupgDir, "pubring.gpg"), defaultKeyring())
 
 		touch(t, filepath.Join(gnupgDir, "pubring.kbx"))
-		if got, want := defaultKeyring(), filepath.Join(gnupgDir, "pubring.kbx"); got != want {
-			t.Errorf("expected %q, got %q", want, got)
-		}
+		assert.Equal(t, filepath.Join(gnupgDir, "pubring.kbx"), defaultKeyring())
 	})
 }
