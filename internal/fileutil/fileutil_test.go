@@ -38,7 +38,7 @@ func TestAtomicWriteFile(t *testing.T) {
 	mode := os.FileMode(0o644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	got, err := os.ReadFile(testpath)
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestAtomicWriteFile_EmptyContent(t *testing.T) {
 	mode := os.FileMode(0o644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
-	assert.NoError(t, err, "AtomicWriteFile error with empty content")
+	require.NoError(t, err, "AtomicWriteFile error with empty content")
 
 	got, err := os.ReadFile(testpath)
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ func TestAtomicWriteFile_LargeContent(t *testing.T) {
 	mode := os.FileMode(0o644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
-	assert.NoError(t, err, "AtomicWriteFile error with large content")
+	require.NoError(t, err, "AtomicWriteFile error with large content")
 
 	got, err := os.ReadFile(testpath)
 	require.NoError(t, err)

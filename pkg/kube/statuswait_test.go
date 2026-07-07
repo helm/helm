@@ -273,7 +273,7 @@ func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Obje
 	for _, manifest := range manifests {
 		m := make(map[string]any)
 		err := yaml.Unmarshal([]byte(manifest), &m)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		resource := &unstructured.Unstructured{Object: m}
 		objects = append(objects, resource)
 	}
@@ -285,7 +285,7 @@ func getResourceListFromRuntimeObjs(t *testing.T, c *Client, objs []runtime.Obje
 	resourceList := ResourceList{}
 	for _, obj := range objs {
 		list, err := c.Build(objBody(obj), false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		resourceList = append(resourceList, list...)
 	}
 	return resourceList
@@ -333,7 +333,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 				u := objToCreate.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			objsToDelete := getRuntimeObjFromManifests(t, tt.manifestsToDelete)
 			for _, objToDelete := range objsToDelete {
@@ -350,7 +350,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -434,14 +434,14 @@ func TestStatusWait(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -491,14 +491,14 @@ func TestWaitForJobComplete(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -554,14 +554,14 @@ func TestWatchForReady(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -658,7 +658,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			if strings.Contains(tt.name, "delete") {
@@ -679,7 +679,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -840,7 +840,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			if strings.Contains(tt.name, "delet") {
@@ -861,11 +861,11 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErr.Error())
+					require.ErrorContains(t, err, expectedErr.Error())
 				}
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.False(t, restrictedConfig.clusterScopedListAttempted)
 		})
 	}
@@ -948,7 +948,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			if strings.Contains(tt.name, "delet") {
@@ -969,11 +969,11 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErr.Error())
+					require.ErrorContains(t, err, expectedErr.Error())
 				}
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.False(t, restrictedConfig.clusterScopedListAttempted)
 		})
 	}
@@ -1068,14 +1068,14 @@ func TestStatusWaitWithCustomReaders(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -1140,7 +1140,7 @@ func TestStatusWaitWithJobsAndCustomReaders(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
@@ -1239,14 +1239,14 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := tt.testFunc(&sw, resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -1328,8 +1328,7 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 
 		err := sw.WatchUntilReady(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("Wait uses method-specific context", func(t *testing.T) {
@@ -1362,8 +1361,7 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 
 		err := sw.Wait(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("WaitWithJobs uses method-specific context", func(t *testing.T) {
@@ -1396,8 +1394,7 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 
 		err := sw.WaitWithJobs(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("WaitForDelete uses method-specific context", func(t *testing.T) {
@@ -1430,8 +1427,7 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 
 		err := sw.WaitForDelete(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 }
 
@@ -1468,8 +1464,7 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 
 		err := sw.WatchUntilReady(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("Wait falls back to general context when method context is nil", func(t *testing.T) {
@@ -1502,8 +1497,7 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 
 		err := sw.Wait(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("WaitWithJobs falls back to general context when method context is nil", func(t *testing.T) {
@@ -1536,8 +1530,7 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 
 		err := sw.WaitWithJobs(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("WaitForDelete falls back to general context when method context is nil", func(t *testing.T) {
@@ -1570,8 +1563,7 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 
 		err := sw.WaitForDelete(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 }
 
@@ -1788,14 +1780,14 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}

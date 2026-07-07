@@ -92,11 +92,7 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 	valfile := filepath.Join(tmpdir, "values.yaml")
 
 	err := validateValuesFile(valfile, map[string]any{}, false)
-	if err == nil {
-		t.Fatal("expected values file to fail parsing")
-	}
-
-	assert.Contains(t, err.Error(), "- at '/username': got number, want string")
+	assert.ErrorContains(t, err, "- at '/username': got number, want string")
 }
 
 func TestValidateValuesFileSchemaFailureButWithSkipSchemaValidation(t *testing.T) {
@@ -167,7 +163,7 @@ func TestValidateValuesFile(t *testing.T) {
 			case err == nil && tt.errorMessage != "":
 				t.Error("expected values file to fail parsing")
 			case err != nil && tt.errorMessage != "":
-				assert.Contains(t, err.Error(), tt.errorMessage, "Failed with unexpected error")
+				assert.ErrorContains(t, err, tt.errorMessage, "Failed with unexpected error")
 			}
 		})
 	}

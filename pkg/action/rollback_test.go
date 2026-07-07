@@ -49,6 +49,7 @@ func TestRollbackRun_UnreachableKubeClient(t *testing.T) {
 
 func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	config := actionConfigFixture(t)
 
 	// Create a deployed release and a second version to roll back to
@@ -78,7 +79,7 @@ func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
 	failer := config.KubeClient.(*kubefake.FailingKubeClient)
 
 	err := client.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")

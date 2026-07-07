@@ -71,7 +71,7 @@ func TestRuntimeExtismV1InvokePlugin(t *testing.T) {
 
 	p, err := r.CreatePlugin(pr.Dir, &pr.Metadata)
 
-	assert.NoError(t, err, "expected no error creating plugin")
+	require.NoError(t, err, "expected no error creating plugin")
 	assert.NotNil(t, p, "expected plugin to be created")
 
 	output, err := p.Invoke(t.Context(), &Input{
