@@ -194,8 +194,7 @@ func printSequencingDAG(chrt *chart.Chart, manifest string, out io.Writer) error
 
 		printChild := func(name string) {
 			if slices.Contains(level.Unresolved, name) {
-				fmt.Fprintf(out, "%s    (subchart %q not found in chart dependencies)\n", indent, name)
-				return
+				fmt.Fprintf(out, "%s    (subchart %q metadata unavailable; sequenced structurally from manifests)\n", indent, name)
 			}
 			if child := levelByPath[level.Path+"/charts/"+name]; child != nil {
 				printLevel(child)

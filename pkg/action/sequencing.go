@@ -201,6 +201,7 @@ func (s *sequencedDeployment) applyBatch(ctx context.Context, batch sequence.Bat
 // resources before they are applied to Kubernetes. This prevents K8s API
 // validation errors for annotation keys that are not valid K8s label keys.
 func stripSequencingAnnotations(resources kube.ResourceList) error {
+	sequencingKeys := releaseutil.HelmInternalSequencingAnnotations()
 	return resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -214,7 +215,7 @@ func stripSequencingAnnotations(resources kube.ResourceList) error {
 			return nil
 		}
 		changed := false
-		for _, key := range releaseutil.HelmInternalSequencingAnnotations() {
+		for _, key := range sequencingKeys {
 			if _, exists := annotations[key]; exists {
 				delete(annotations, key)
 				changed = true
