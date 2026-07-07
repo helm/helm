@@ -62,12 +62,18 @@ func TestEnvOutputDefault(t *testing.T) {
 	}
 
 	// Single-variable mode without --output keeps printing the bare value.
+	// Pin BurstLimit so the expected value cannot drift with the ambient
+	// HELM_BURST_LIMIT of the test process.
+	oldBurstLimit := settings.BurstLimit
+	settings.BurstLimit = 150
+	t.Cleanup(func() { settings.BurstLimit = oldBurstLimit })
+
 	_, out, err = executeActionCommand("env HELM_BURST_LIMIT")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != "100\n" {
-		t.Errorf("expected %q, got %q", "100\n", out)
+	if out != "150\n" {
+		t.Errorf("expected %q, got %q", "150\n", out)
 	}
 }
 
