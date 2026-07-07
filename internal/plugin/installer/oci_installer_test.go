@@ -33,6 +33,8 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
@@ -415,16 +417,11 @@ func TestOCIInstaller_Install_WithGetterOptions(t *testing.T) {
 			// Install the plugin
 			err = Install(installer)
 			if tc.wantErr {
-				if err == nil {
-					t.Error("Expected installation to fail, but it succeeded")
-				}
+				require.Error(t, err, "Expected installation to fail, but it succeeded")
 			} else {
-				if err != nil {
-					t.Errorf("Expected installation to succeed, got error: %v", err)
-					// Verify plugin was installed to the actual path
-				} else if !isPlugin(actualPath) {
-					t.Errorf("Expected plugin directory %s to contain plugin.yaml", actualPath)
-				}
+				require.NoError(t, err, "Expected installation to succeed, got error: %v", err)
+				// Verify plugin was installed to the actual path
+				assert.True(t, isPlugin(actualPath), "Expected plugin directory %s to contain plugin.yaml", actualPath)
 			}
 		})
 	}

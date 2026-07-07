@@ -20,6 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -348,11 +351,8 @@ func TestReleaseListWriter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			writer := newReleaseListWriter(tt.releases, tt.timeFormat, tt.noHeaders, tt.noColor)
 
-			if writer == nil {
-				t.Error("Expected writer to be non-nil")
-			} else if len(writer.releases) != len(tt.releases) {
-				t.Errorf("Expected %d releases, got %d", len(tt.releases), len(writer.releases))
-			}
+			require.NotNil(t, writer, "Expected writer to be non-nil")
+			assert.Len(t, writer.releases, len(tt.releases), "Expected %d releases, got %d", len(tt.releases), len(writer.releases))
 		})
 	}
 }
