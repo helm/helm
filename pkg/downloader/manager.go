@@ -441,21 +441,22 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	fmt.Fprintln(m.Out, "Deleting outdated charts")
 	// find all files that exist in dest that do not exist in source; delete them (outdated dependencies)
 	for _, file := range destFiles {
-		if !file.IsDir() && !existsInSourceDirectory[file.Name()] {
-			fname := filepath.Join(dest, file.Name())
-			ch, err := loader.LoadFile(fname)
-			if err != nil {
-				fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
-				continue
-			}
-			// local dependency - skip
-			if isLocalDependency[ch.Name()] {
-				continue
-			}
-			if err := os.Remove(fname); err != nil {
-				fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
-				continue
-			}
+		if file.IsDir() || existsInSourceDirectory[file.Name()] {
+			continue
+		}
+		fname := filepath.Join(dest, file.Name())
+		ch, err := loader.LoadFile(fname)
+		if err != nil {
+			fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
+			continue
+		}
+		// local dependency - skip
+		if isLocalDependency[ch.Name()] {
+			continue
+		}
+		if err := os.Remove(fname); err != nil {
+			fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
+			continue
 		}
 	}
 
@@ -728,37 +729,38 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	for _, cr := range repos {
-		if urlutil.Equal(repoURL, cr.Config.URL) {
-			var entry repo.ChartVersions
-			entry, err = findEntryByName(name, cr)
-			if err != nil {
-				// TODO: Where linting is skipped in this function we should
-				// refactor to remove naked returns while ensuring the same
-				// behavior
-				//nolint:nakedret
-				return
-			}
-			var ve *repo.ChartVersion
-			ve, err = findVersionedEntry(version, entry)
-			if err != nil {
-				//nolint:nakedret
-				return
-			}
-			url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
-			if err != nil {
-				//nolint:nakedret
-				return
-			}
-			username = cr.Config.Username
-			password = cr.Config.Password
-			passCredentialsAll = cr.Config.PassCredentialsAll
-			insecureSkipTLSVerify = cr.Config.InsecureSkipTLSVerify
-			caFile = cr.Config.CAFile
-			certFile = cr.Config.CertFile
-			keyFile = cr.Config.KeyFile
+		if !urlutil.Equal(repoURL, cr.Config.URL) {
+			continue
+		}
+		var entry repo.ChartVersions
+		entry, err = findEntryByName(name, cr)
+		if err != nil {
+			// TODO: Where linting is skipped in this function we should
+			// refactor to remove naked returns while ensuring the same
+			// behavior
 			//nolint:nakedret
 			return
 		}
+		var ve *repo.ChartVersion
+		ve, err = findVersionedEntry(version, entry)
+		if err != nil {
+			//nolint:nakedret
+			return
+		}
+		url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
+		if err != nil {
+			//nolint:nakedret
+			return
+		}
+		username = cr.Config.Username
+		password = cr.Config.Password
+		passCredentialsAll = cr.Config.PassCredentialsAll
+		insecureSkipTLSVerify = cr.Config.InsecureSkipTLSVerify
+		caFile = cr.Config.CAFile
+		certFile = cr.Config.CertFile
+		keyFile = cr.Config.KeyFile
+		//nolint:nakedret
+		return
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {

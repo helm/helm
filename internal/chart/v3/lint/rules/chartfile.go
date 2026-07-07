@@ -205,7 +205,7 @@ func validateChartDependencies(cf *chart.Metadata) error {
 }
 
 func validateChartType(cf *chart.Metadata) error {
-	if len(cf.Type) > 0 && cf.APIVersion != chart.APIVersionV3 {
+	if cf.Type != "" && cf.APIVersion != chart.APIVersionV3 {
 		return fmt.Errorf("chart type is not valid in apiVersion '%s'. It is valid in apiVersion '%s'", cf.APIVersion, chart.APIVersionV3)
 	}
 	return nil

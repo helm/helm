@@ -214,7 +214,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 	}
 
 	// when customer inputs specific version, check whether there's an exact match first
-	if len(version) != 0 {
+	if version != "" {
 		for _, ver := range vs {
 			if version == ver.Version {
 				return ver, nil
@@ -229,9 +229,9 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 		}
 
 		if constraint.Check(test) {
-			if len(version) != 0 && !isVersionRange(version) {
+			if version != "" && !isVersionRange(version) {
 				slog.Warn("unable to find exact version requested; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
-			} else if len(version) != 0 && isVersionRange(version) {
+			} else if version != "" && isVersionRange(version) {
 				slog.Debug("selected version matching constraint", "chart", name, "constraint", version, "selected", ver.Version)
 			}
 			return ver, nil

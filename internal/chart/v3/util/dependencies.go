@@ -43,7 +43,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 	}
 	for _, r := range reqs {
 		for c := range strings.SplitSeq(strings.TrimSpace(r.Condition), ",") {
-			if len(c) > 0 {
+			if c != "" {
 				// retrieve value
 				vv, err := cvals.PathValue(cpath + c)
 				var errNoValue common.ErrNoValue

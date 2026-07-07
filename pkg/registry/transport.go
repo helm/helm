@@ -130,7 +130,7 @@ func logResponseBody(resp *http.Response) string {
 	}
 
 	readBody := buf.String()
-	if len(readBody) == 0 {
+	if readBody == "" {
 		return "   Response body is empty"
 	}
 	if containsCredentials(readBody) {

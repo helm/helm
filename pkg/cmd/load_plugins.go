@@ -242,7 +242,7 @@ func addPluginCommands(plug plugin.Plugin, baseCmd *cobra.Command, cmds *pluginC
 		return
 	}
 
-	if len(cmds.Name) == 0 {
+	if cmds.Name == "" {
 		slog.Debug("sub-command name field missing", slog.String("commandPath", baseCmd.CommandPath()))
 		return
 	}
@@ -380,7 +380,7 @@ func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, to
 	var completions []string
 	for comp := range strings.SplitSeq(buf.String(), "\n") {
 		// Remove any empty lines
-		if len(comp) > 0 {
+		if comp != "" {
 			completions = append(completions, comp)
 		}
 	}

@@ -558,7 +558,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		}
 	}
 
-	if len(i.Description) > 0 {
+	if i.Description != "" {
 		rel.SetStatus(rcommon.StatusDeployed, i.Description)
 	} else {
 		rel.SetStatus(rcommon.StatusDeployed, "Install complete")

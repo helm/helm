@@ -382,7 +382,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		return "", u, err
 	}
 
-	if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
+	if u.IsAbs() && u.Host != "" && u.Path != "" {
 		// In this case, we have to find the parent repo that contains this chart
 		// URL. And this is an unfortunate problem, as it requires actually going
 		// through each repo cache file and finding a matching URL. But basically

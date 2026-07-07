@@ -121,7 +121,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	// Acquire a file lock for process synchronization
 	repoFileExt := filepath.Ext(o.repoFile)
 	var lockPath string
-	if len(repoFileExt) > 0 && len(repoFileExt) < len(o.repoFile) {
+	if repoFileExt != "" && len(repoFileExt) < len(o.repoFile) {
 		lockPath = strings.TrimSuffix(o.repoFile, repoFileExt) + ".lock"
 	} else {
 		lockPath = o.repoFile + ".lock"

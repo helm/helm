@@ -290,7 +290,7 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 
 func set(data map[string]any, key string, val any) {
 	// If key is empty, don't set it.
-	if len(key) == 0 {
+	if key == "" {
 		return
 	}
 	data[key] = val
@@ -549,7 +549,7 @@ func typedVal(v []rune, st bool) any {
 	}
 
 	// If this value does not start with zero, try parsing it to an int
-	if len(val) != 0 && val[0] != '0' {
+	if val != "" && val[0] != '0' {
 		if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return iv
 		}
