@@ -104,13 +104,72 @@ func NewIndexFile() *IndexFile {
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
 func LoadIndexFile(path string) (*IndexFile, error) {
+	i, err := LoadIndexFileForEntries(path, nil)
+	if err != nil {
+		var perr *os.PathError
+		if errors.As(err, &perr) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("error loading %s: %w", path, err)
+	}
+	return i, nil
+}
+// LoadIndexFileForEntries loads an index file but only retains entries
+// matching the provided chart names. Unmatched entries are discarded
+// immediately after unmarshalling and before validation, reducing heap
+// usage when filtering to a small subset of charts in a large repository.
+// If names is nil or empty, all entries are loaded (equivalent to LoadIndexFile).
+func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	i, err := loadIndex(b, path)
-	if err != nil {
-		return nil, fmt.Errorf("error loading %s: %w", path, err)
+	if len(names) == 0 {
+		i, err := loadIndex(b, path)
+		if err != nil {
+			return nil, err
+		}
+		return i, nil
+	}
+	i := &IndexFile{}
+	if len(b) == 0 {
+		return nil, ErrEmptyIndexYaml
+	}
+	if err := jsonOrYamlUnmarshal(b, i); err != nil {
+		return nil, err
+	}
+	// Build a new map containing only the requested entries to reduce heap usage.
+	retained := make(map[string]ChartVersions, len(names))
+	for _, n := range names {
+		if cvs, ok := i.Entries[n]; ok {
+			retained[n] = cvs
+		}
+	}
+	i.Entries = retained
+	// Validate and sort only the retained entries.
+	for name, cvs := range i.Entries {
+		for idx, v := range slices.Backward(cvs) {
+			if v == nil {
+				slog.Warn("skipping loading invalid entry for chart: empty entry", "name", name, "source", path)
+				cvs = append(cvs[:idx], cvs[idx+1:]...)
+				continue
+			}
+			if v.Metadata == nil {
+				v.Metadata = &chart.Metadata{}
+			}
+			if v.APIVersion == "" {
+				v.APIVersion = chart.APIVersionV1
+			}
+			if err := v.Validate(); ignoreSkippableChartValidationError(err) != nil {
+				slog.Warn("skipping loading invalid entry for chart", "name", name, "version", v.Version, "source", path, "error", err)
+				cvs = append(cvs[:idx], cvs[idx+1:]...)
+			}
+		}
+		i.Entries[name] = cvs
+	}
+	i.SortEntries()
+	if i.APIVersion == "" {
+		return nil, ErrNoAPIVersion
 	}
 	return i, nil
 }
@@ -395,7 +454,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
-		return i, ErrNoAPIVersion
+		return nil, ErrNoAPIVersion
 	}
 	return i, nil
 }
