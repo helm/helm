@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -193,6 +194,34 @@ func TestDefaultKeyring(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("stat error other than not-exist keeps the legacy path", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("directory permissions are not enforced on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses directory permissions")
+		}
+
+		parent := t.TempDir()
+		dir := filepath.Join(parent, ".gnupg")
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		touch(t, filepath.Join(dir, "pubring.kbx"))
+		t.Setenv("GNUPGHOME", dir)
+
+		// Make the directory unsearchable so stat on both keyrings fails
+		// with a permission error rather than "not exist".
+		if err := os.Chmod(dir, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.Chmod(dir, 0o700) })
+
+		if got, want := defaultKeyring(), filepath.Join(dir, "pubring.gpg"); got != want {
+			t.Errorf("expected %q, got %q", want, got)
+		}
+	})
 
 	t.Run("no GNUPGHOME falls back to the home directory", func(t *testing.T) {
 		home := t.TempDir()
