@@ -21,7 +21,6 @@ import (
 	"io"
 	"testing"
 
-	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,9 +28,7 @@ import (
 )
 
 func TestNewClientResolverNotSupported(t *testing.T) {
-	var r remotes.Resolver
-
-	client, err := NewClient(ClientOptResolver(r))
+	client, err := NewClient(ClientOptResolver(nil))
 	require.Equal(t, err, errDeprecatedRemote)
 	assert.Nil(t, client)
 }
