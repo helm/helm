@@ -124,10 +124,11 @@ func cleanJoin(root, dest string) (string, error) {
 }
 
 // sanitizeArchiveMode normalizes a file mode taken from an untrusted plugin
-// archive header into a safe permission set. Plugin files are extracted and
-// then executed, so setuid/setgid/sticky and group/other write bits are always
-// dropped (regardless of the process umask) while the owner execute bit is
-// preserved, mirroring how Helm expands charts (pkg/chart/v2/util/expand.go).
+// archive header into a safe permission set: setuid/setgid/sticky and
+// group/other write bits are always dropped (regardless of the process umask)
+// while the owner execute bit is preserved. Chart expansion avoids the problem
+// by writing fixed modes (pkg/chart/v2/util/expand.go); plugin files need to
+// stay executable, so the header mode is masked instead of replaced.
 func sanitizeArchiveMode(mode int64) os.FileMode {
 	return os.FileMode(mode).Perm() & 0o755
 }
@@ -170,7 +171,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 				return err
 			}
-			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, sanitizeArchiveMode(header.Mode))
+			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_TRUNC, sanitizeArchiveMode(header.Mode))
 			if err != nil {
 				return err
 			}
