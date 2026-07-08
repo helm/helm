@@ -30,6 +30,6 @@ jobs:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
       - name: govulncheck
-        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # pin@1.0.4
+        uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # pin@032d455 (from main 2026-07-06)
         with:
           go-package: ./...
