@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -267,7 +268,11 @@ func TestValidateAgainstSingleSchema_ExternalRefDenied(t *testing.T) {
 		secret := filepath.Join(t.TempDir(), "secret.txt")
 		require.NoError(t, os.WriteFile(secret, []byte("TOP-SECRET"), 0o600))
 
-		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, "file:///"+filepath.ToSlash(secret)))
+		refPath := filepath.ToSlash(secret)
+		if !strings.HasPrefix(refPath, "/") {
+			refPath = "/" + refPath // Windows: C:/... -> /C:/...
+		}
+		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, "file://"+refPath))
 		err := ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema)
 		require.Error(t, err, "expected validation to fail closed on an external file $ref")
 		assert.NotContains(t, err.Error(), "TOP-SECRET", "local file content leaked through schema validation")
