@@ -332,7 +332,11 @@ func TestValidateAgainstSingleSchema_ExternalRefDenied(t *testing.T) {
 		if err := os.WriteFile(secret, []byte("TOP-SECRET"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, "file:///"+filepath.ToSlash(secret)))
+		refPath := filepath.ToSlash(secret)
+		if !strings.HasPrefix(refPath, "/") {
+			refPath = "/" + refPath // Windows: C:/... -> /C:/...
+		}
+		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, "file://"+refPath))
 		err := ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema)
 		if err == nil {
 			t.Fatal("expected validation to fail closed on an external file $ref")
