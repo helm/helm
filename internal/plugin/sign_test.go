@@ -18,8 +18,10 @@ package plugin
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/provenance"
 )
@@ -28,9 +30,7 @@ func TestSignPlugin(t *testing.T) {
 	// Create a test plugin directory
 	tempDir := t.TempDir()
 	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 
 	// Create a plugin.yaml file
 	pluginYAML := `apiVersion: v1
@@ -41,16 +41,12 @@ version: 1.0.0
 runtimeConfig:
   platformCommand:
     - command: echo`
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0o644))
 
 	// Create a tarball
 	tarballPath := filepath.Join(tempDir, "test-plugin.tgz")
 	tarFile, err := os.Create(tarballPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := CreatePluginTarball(pluginDir, "test-plugin", tarFile); err != nil {
 		tarFile.Close()
 		t.Fatal(err)
@@ -60,39 +56,25 @@ runtimeConfig:
 	// Create a test key for signing
 	keyring := "../../pkg/cmd/testdata/helm-test-key.secret"
 	signer, err := provenance.NewFromKeyring(keyring, "helm-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := signer.DecryptKey(func(_ string) ([]byte, error) {
+	require.NoError(t, err)
+	require.NoError(t, signer.DecryptKey(func(_ string) ([]byte, error) {
 		return []byte(""), nil
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// Read the tarball data
 	tarballData, err := os.ReadFile(tarballPath)
-	if err != nil {
-		t.Fatalf("failed to read tarball: %v", err)
-	}
+	require.NoError(t, err, "failed to read tarball")
 
 	// Sign the plugin tarball
 	sig, err := SignPlugin(tarballData, filepath.Base(tarballPath), signer)
-	if err != nil {
-		t.Fatalf("failed to sign plugin: %v", err)
-	}
+	require.NoError(t, err, "failed to sign plugin")
 
 	// Verify the signature contains the expected content
-	if !strings.Contains(sig, "-----BEGIN PGP SIGNED MESSAGE-----") {
-		t.Error("signature does not contain PGP header")
-	}
+	assert.Contains(t, sig, "-----BEGIN PGP SIGNED MESSAGE-----", "signature does not contain PGP header")
 
 	// Verify the tarball hash is in the signature
 	expectedHash, err := provenance.DigestFile(tarballPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// The signature should contain the tarball hash
-	if !strings.Contains(sig, "sha256:"+expectedHash) {
-		t.Errorf("signature does not contain expected tarball hash: sha256:%s", expectedHash)
-	}
+	assert.Contains(t, sig, "sha256:"+expectedHash, "signature does not contain expected tarball hash: sha256:%s", expectedHash)
 }
