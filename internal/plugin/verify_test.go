@@ -20,6 +20,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/provenance"
 )
 
@@ -41,20 +44,16 @@ func TestVerifyPlugin(t *testing.T) {
 
 	// Create plugin directory
 	pluginDir := filepath.Join(tempDir, "verify-test-plugin")
-	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	err := os.MkdirAll(pluginDir, 0o755)
+	require.NoError(t, err)
 
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	err = os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644)
+	require.NoError(t, err)
 
 	// Create tarball
 	tarballPath := filepath.Join(tempDir, "verify-test-plugin.tar.gz")
 	tarFile, err := os.Create(tarballPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := CreatePluginTarball(pluginDir, "test-plugin", tarFile); err != nil {
 		tarFile.Close()
@@ -64,61 +63,41 @@ func TestVerifyPlugin(t *testing.T) {
 
 	// Sign the plugin with source directory
 	signer, err := provenance.NewFromKeyring(testKeyFile, "helm-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := signer.DecryptKey(func(_ string) ([]byte, error) {
+	require.NoError(t, err)
+	err = signer.DecryptKey(func(_ string) ([]byte, error) {
 		return []byte(""), nil
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	// Read the tarball data
 	tarballData, err := os.ReadFile(tarballPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sig, err := SignPlugin(tarballData, filepath.Base(tarballPath), signer)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write the signature to .prov file
 	provFile := tarballPath + ".prov"
-	if err := os.WriteFile(provFile, []byte(sig), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	err = os.WriteFile(provFile, []byte(sig), 0o644)
+	require.NoError(t, err)
 
 	// Read the files for verification
 	archiveData, err := os.ReadFile(tarballPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	provData, err := os.ReadFile(provFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Now verify the plugin
 	verification, err := VerifyPlugin(archiveData, provData, filepath.Base(tarballPath), testPubFile)
-	if err != nil {
-		t.Fatalf("Failed to verify plugin: %v", err)
-	}
+	require.NoError(t, err, "Failed to verify plugin")
 
 	// Check verification results
-	if verification.SignedBy == nil {
-		t.Error("SignedBy is nil")
-	}
+	assert.NotNil(t, verification.SignedBy, "SignedBy is nil")
 
-	if verification.FileName != "verify-test-plugin.tar.gz" {
-		t.Errorf("Expected filename 'verify-test-plugin.tar.gz', got %s", verification.FileName)
-	}
+	assert.Equal(t, "verify-test-plugin.tar.gz", verification.FileName, "Expected filename 'verify-test-plugin.tar.gz', got %s", verification.FileName)
 
-	if verification.FileHash == "" {
-		t.Error("FileHash is empty")
-	}
+	assert.NotEmpty(t, verification.FileHash, "FileHash is empty")
 }
 
 func TestVerifyPluginBadSignature(t *testing.T) {
@@ -126,19 +105,15 @@ func TestVerifyPluginBadSignature(t *testing.T) {
 
 	// Create a plugin tarball
 	pluginDir := filepath.Join(tempDir, "bad-plugin")
-	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	err := os.MkdirAll(pluginDir, 0o755)
+	require.NoError(t, err)
 
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	err = os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644)
+	require.NoError(t, err)
 
 	tarballPath := filepath.Join(tempDir, "bad-plugin.tar.gz")
 	tarFile, err := os.Create(tarballPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := CreatePluginTarball(pluginDir, "test-plugin", tarFile); err != nil {
 		tarFile.Close()
@@ -158,26 +133,19 @@ InvalidSignatureData
 -----END PGP SIGNATURE-----`
 
 	provFile := tarballPath + ".prov"
-	if err := os.WriteFile(provFile, []byte(badSig), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	err = os.WriteFile(provFile, []byte(badSig), 0o644)
+	require.NoError(t, err)
 
 	// Read the files
 	archiveData, err := os.ReadFile(tarballPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	provData, err := os.ReadFile(provFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Try to verify - should fail
 	_, err = VerifyPlugin(archiveData, provData, filepath.Base(tarballPath), testPubFile)
-	if err == nil {
-		t.Error("Expected verification to fail with bad signature")
-	}
+	assert.Error(t, err, "Expected verification to fail with bad signature")
 }
 
 func TestVerifyPluginMissingProvenance(t *testing.T) {
@@ -185,21 +153,16 @@ func TestVerifyPluginMissingProvenance(t *testing.T) {
 	tarballPath := filepath.Join(tempDir, "no-prov.tar.gz")
 
 	// Create a minimal tarball
-	if err := os.WriteFile(tarballPath, []byte("dummy"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	err := os.WriteFile(tarballPath, []byte("dummy"), 0o644)
+	require.NoError(t, err)
 
 	// Read the tarball data
 	archiveData, err := os.ReadFile(tarballPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Try to verify with empty provenance data
 	_, err = VerifyPlugin(archiveData, nil, filepath.Base(tarballPath), testPubFile)
-	if err == nil {
-		t.Error("Expected verification to fail with empty provenance data")
-	}
+	assert.Error(t, err, "Expected verification to fail with empty provenance data")
 }
 
 func TestVerifyPluginMalformedData(t *testing.T) {
@@ -208,7 +171,5 @@ func TestVerifyPluginMalformedData(t *testing.T) {
 	provData := []byte("fake provenance")
 
 	_, err := VerifyPlugin(malformedData, provData, "malformed.tar.gz", testPubFile)
-	if err == nil {
-		t.Error("Expected malformed data verification to fail, but it succeeded")
-	}
+	assert.Error(t, err, "Expected malformed data verification to fail, but it succeeded")
 }
