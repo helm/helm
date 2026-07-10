@@ -118,12 +118,12 @@ It is also worth asking on the Slack channels.
 
 We use milestones to track progress of specific planned releases.
 
-For example, if the latest currently-released version is `3.2.1`, an issue/PR which pertains to a
+For example, if the latest currently-released version is `4.0.0`, an issue/PR which pertains to a
 specific upcoming bugfix or feature release could fall into one of two different active milestones:
-`3.2.2` or `3.3.0`.
+`4.0.1` or `4.1.0`.
 
 Issues and PRs which are deemed backwards-incompatible may be added to the discussion items for
-Helm 4 with [label:v4.x](https://github.com/helm/helm/labels/v4.x). An issue or PR that we are not
+Helm 5 with [label:v5.x](https://github.com/helm/helm/labels/v5.x). An issue or PR that we are not
 sure if we will be addressing will not be added to any milestone.
 
 A milestone (and hence release) can be closed when all outstanding issues/PRs have been closed
@@ -139,11 +139,11 @@ We also remain committed to not changing publicly accessible Go library definiti
 
 For more details on Helm’s minor and patch release backwards-compatibility rules, please read [HIP-0004](https://github.com/helm/community/blob/main/hips/hip-0004.md).
 
-For a quick summary of our backward compatibility guidelines for releases between 3.0 and 4.0:
+For a quick summary of our backward compatibility guidelines for releases between 4.0 and 5.0:
 
 - Command line commands, flags, and arguments MUST be backward compatible
 - File formats (such as Chart.yaml) MUST be backward compatible
-- Any chart that worked on a previous version of Helm 3 MUST work on a new version of Helm 3
+- Any chart that worked on a previous version of Helm 4 MUST work on a new version of Helm 4
   (barring the cases where (a) Kubernetes itself changed, and (b) the chart worked because it
   exploited a bug)
 - Chart repository functionality MUST be backward compatible
