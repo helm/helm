@@ -551,12 +551,11 @@ func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 	// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
-		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
-			cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
-		} else {
+		if !discovery.IsGroupDiscoveryFailedError(err) {
 			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
+		cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
+		cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
 	}
 
 	cfg.Capabilities = &common.Capabilities{

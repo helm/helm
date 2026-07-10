@@ -118,16 +118,15 @@ func (m *Manager) Build() error {
 	}
 
 	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
+		if c.Metadata.APIVersion != chart.APIVersionV1 {
+			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies with 'helm dependency update'")
+		}
 		// If lock digest differs and chart is apiVersion v1, it maybe because the lock was built
 		// with Helm 2 and therefore should be checked with Helm v2 hash
 		// Fix for: https://github.com/helm/helm/issues/7233
-		if c.Metadata.APIVersion == chart.APIVersionV1 {
-			log.Println("warning: a valid Helm v3 hash was not found. Checking against Helm v2 hash...")
-			if v2Sum != lock.Digest {
-				return errors.New("the lock file (requirements.lock) is out of sync with the dependencies file (requirements.yaml). Please update the dependencies")
-			}
-		} else {
-			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies with 'helm dependency update'")
+		log.Println("warning: a valid Helm v3 hash was not found. Checking against Helm v2 hash...")
+		if v2Sum != lock.Digest {
+			return errors.New("the lock file (requirements.lock) is out of sync with the dependencies file (requirements.yaml). Please update the dependencies")
 		}
 	}
 
@@ -365,16 +364,12 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
-	if saveError == nil {
-		// now we can move all downloaded charts to destPath and delete outdated dependencies
-		if err := m.safeMoveDeps(deps, tmpPath, destPath); err != nil {
-			return err
-		}
-	} else {
+	if saveError != nil {
 		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
 		return saveError
 	}
-	return nil
+	// now we can move all downloaded charts to destPath and delete outdated dependencies
+	return m.safeMoveDeps(deps, tmpPath, destPath)
 }
 
 func parseOCIRef(chartRef string) (string, string, error) {

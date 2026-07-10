@@ -484,12 +484,11 @@ func (c *Client) processChartPull(genericResult *GenericPullResult, operation *p
 
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
-		if operation.ignoreMissingProv {
-			provMissing = true
-		} else {
+		if !operation.ignoreMissingProv {
 			return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
 				ProvLayerMediaType)
 		}
+		provMissing = true
 	}
 
 	// Build chart-specific result
