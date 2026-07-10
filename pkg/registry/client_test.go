@@ -199,6 +199,14 @@ func TestPushConcurrent(t *testing.T) {
 			w.WriteHeader(http.StatusCreated)
 
 		case r.Method == http.MethodPut && strings.Contains(r.URL.Path, "/manifests/"):
+			// The optimization pushes the manifest exactly once, by tag. A PUT to a
+			// digest reference (/manifests/sha256:...) means the manifest is being
+			// uploaded a second time by digest, which this test guards against.
+			if strings.Contains(r.URL.Path, "/manifests/sha256:") {
+				t.Errorf("unexpected manifest push by digest %q; manifest should be pushed once by tag", r.URL.Path)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 			// Manifest push - compute actual sha256 digest of the body
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
