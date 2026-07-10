@@ -868,21 +868,21 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 		t.Fatalf("Failed install: %s", err)
 	}
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/goodbye"))
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "goodbye"))
 	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/hello"))
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "hello"))
 	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/with-partials"))
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "with-partials"))
 	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/rbac"))
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "rbac"))
 	req.NoError(err)
 
-	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
+	test.AssertGoldenFile(t, filepath.Join(dir, "hello", "templates", "rbac"), "rbac.txt")
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "empty"))
 	is.ErrorIs(err, fs.ErrNotExist)
 }
 
@@ -905,21 +905,21 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 		t.Fatalf("Failed install: %s", err)
 	}
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/goodbye"))
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "goodbye"))
 	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/hello"))
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "hello"))
 	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/with-partials"))
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "with-partials"))
 	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/rbac"))
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "rbac"))
 	req.NoError(err)
 
-	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
+	test.AssertGoldenFile(t, filepath.Join(newDir, "hello", "templates", "rbac"), "rbac.txt")
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "empty"))
 	is.ErrorIs(err, fs.ErrNotExist)
 }
 

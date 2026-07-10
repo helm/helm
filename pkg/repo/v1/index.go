@@ -318,7 +318,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	moreArchives, err := filepath.Glob(filepath.Join(dir, "**/*.tgz"))
+	moreArchives, err := filepath.Glob(filepath.Join(dir, "**", "*.tgz"))
 	if err != nil {
 		return nil, err
 	}

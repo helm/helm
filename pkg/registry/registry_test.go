@@ -150,7 +150,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 		suite.Require().NoError(err, "no error finding free port for test auth server")
 		defer ln.Close()
 
-		//set test auth server host
+		// set test auth server host
 		suite.AuthServerHost = ln.Addr().String()
 
 		config.Auth = configuration.Auth{

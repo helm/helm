@@ -213,7 +213,7 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name: "IsReady Deployments", //TODO fix this one
+			name: "IsReady Deployments", // TODO fix this one
 			fields: fields{
 				client:        fake.NewClientset(),
 				checkJobs:     true,

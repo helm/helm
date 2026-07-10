@@ -764,7 +764,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
-		return url, username, password, false, false, "", "", "", err
+		return url, username, password, false, false, "", "", "", nil
 	}
 	err = fmt.Errorf("chart %s not found in %s: %w", name, repoURL, err)
 	return url, username, password, false, false, "", "", "", err

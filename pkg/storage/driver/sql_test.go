@@ -112,12 +112,14 @@ func TestSQLGet(t *testing.T) {
 
 func TestSQLList(t *testing.T) {
 	releases := []*rspb.Release{}
-	releases = append(releases, releaseStub("key-1", 1, "default", common.StatusUninstalled))
-	releases = append(releases, releaseStub("key-2", 1, "default", common.StatusUninstalled))
-	releases = append(releases, releaseStub("key-3", 1, "default", common.StatusDeployed))
-	releases = append(releases, releaseStub("key-4", 1, "default", common.StatusDeployed))
-	releases = append(releases, releaseStub("key-5", 1, "default", common.StatusSuperseded))
-	releases = append(releases, releaseStub("key-6", 1, "default", common.StatusSuperseded))
+	releases = append(releases,
+		releaseStub("key-1", 1, "default", common.StatusUninstalled),
+		releaseStub("key-2", 1, "default", common.StatusUninstalled),
+		releaseStub("key-3", 1, "default", common.StatusDeployed),
+		releaseStub("key-4", 1, "default", common.StatusDeployed),
+		releaseStub("key-5", 1, "default", common.StatusSuperseded),
+		releaseStub("key-6", 1, "default", common.StatusSuperseded),
+	)
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 

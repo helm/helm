@@ -278,7 +278,7 @@ func TestDownloadTo_TLS(t *testing.T) {
 			getter.WithTLSClientConfig(
 				"",
 				"",
-				filepath.Join("../../testdata/rootca.crt"),
+				filepath.FromSlash("../../testdata/rootca.crt"),
 			),
 		},
 	}
