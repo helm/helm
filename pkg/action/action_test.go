@@ -1229,7 +1229,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1269,7 +1269,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1310,7 +1310,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1473,7 +1473,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1513,8 +1513,9 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |+
     hello
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -1554,8 +1555,10 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |+
     hello
+
+
 ---
 apiVersion: v1
 kind: ConfigMap
