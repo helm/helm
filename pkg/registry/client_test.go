@@ -186,7 +186,11 @@ func TestPushConcurrent(t *testing.T) {
 
 		case r.Method == http.MethodPut && strings.Contains(r.URL.Path, "/blobs/uploads/"):
 			// Complete upload - extract digest from query param
-			body, _ := io.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 			digest := r.URL.Query().Get("digest")
 			mu.Lock()
 			uploads[r.URL.Path] = body
@@ -196,7 +200,11 @@ func TestPushConcurrent(t *testing.T) {
 
 		case r.Method == http.MethodPut && strings.Contains(r.URL.Path, "/manifests/"):
 			// Manifest push - compute actual sha256 digest of the body
-			body, _ := io.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 			hash := sha256.Sum256(body)
 			digest := fmt.Sprintf("sha256:%x", hash)
 			w.Header().Set("Docker-Content-Digest", digest)
