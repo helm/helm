@@ -1198,9 +1198,9 @@ data:
 `,
 		},
 
-		// Multi-doc tests: block scalar doc is NOT the last document.
-		// SplitManifests' regex consumes \s*\n before ---, so trailing
-		// newlines from non-last docs are always stripped.
+		// Multi-doc block scalar tests where the block scalar document is NOT the last:
+		// the separator regex does not consume trailing newlines, so YAML chomping
+		// indicators (|, |+, |-) are respected.
 
 		// | (clip) in multi-doc (first doc)
 		{
