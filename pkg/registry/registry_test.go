@@ -146,12 +146,12 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
 
 	if auth == "token" {
-		ln, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
+		authLn, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
 		suite.Require().NoError(err, "no error finding free port for test auth server")
-		defer ln.Close()
+		defer func() { _ = authLn.Close() }()
 
-		//set test auth server host
-		suite.AuthServerHost = ln.Addr().String()
+		// set test auth server host
+		suite.AuthServerHost = authLn.Addr().String()
 
 		config.Auth = configuration.Auth{
 			"token": configuration.Parameters{
