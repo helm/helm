@@ -663,6 +663,22 @@ func TestUpdateOwnershipCheck(t *testing.T) {
 	}
 }
 
+func TestClientUpdateOptionOwnershipValidation(t *testing.T) {
+	// An empty releaseName must be rejected so callers cannot silently disable
+	// the ownership check by passing a zero-value string.
+	opt := ClientUpdateOptionOwnership("", "some-ns")
+	var o clientUpdateOptions
+	err := opt(&o)
+	assert.ErrorContains(t, err, "releaseName must not be empty")
+
+	// Non-empty releaseName with empty namespace is allowed (cluster-scoped resources).
+	opt2 := ClientUpdateOptionOwnership("my-release", "")
+	err = opt2(&o)
+	assert.NoError(t, err)
+	assert.Equal(t, "my-release", o.releaseName)
+	assert.Equal(t, "", o.releaseNamespace)
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string

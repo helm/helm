@@ -812,6 +812,9 @@ func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManag
 // release. Resources annotated as belonging to a different release will be skipped.
 func ClientUpdateOptionOwnership(releaseName, releaseNamespace string) ClientUpdateOption {
 	return func(o *clientUpdateOptions) error {
+		if releaseName == "" {
+			return errors.New("releaseName must not be empty for ownership check")
+		}
 		o.releaseName = releaseName
 		o.releaseNamespace = releaseNamespace
 

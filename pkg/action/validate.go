@@ -32,10 +32,8 @@ import (
 var accessor = meta.NewAccessor()
 
 const (
-	appManagedByLabel              = "app.kubernetes.io/managed-by"
-	appManagedByHelm               = "Helm"
-	helmReleaseNameAnnotation      = "meta.helm.sh/release-name"
-	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
+	appManagedByLabel = "app.kubernetes.io/managed-by"
+	appManagedByHelm  = "Helm"
 )
 
 // requireAdoption returns the subset of resources that already exist in the cluster.
@@ -181,10 +179,10 @@ func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) er
 	if err := requireValue(lbls, appManagedByLabel, appManagedByHelm); err != nil {
 		errs = append(errs, fmt.Errorf("label validation error: %w", err))
 	}
-	if err := requireValue(annos, helmReleaseNameAnnotation, releaseName); err != nil {
+	if err := requireValue(annos, kube.ReleaseNameAnnotation, releaseName); err != nil {
 		errs = append(errs, fmt.Errorf("annotation validation error: %w", err))
 	}
-	if err := requireValue(annos, helmReleaseNamespaceAnnotation, releaseNamespace); err != nil {
+	if err := requireValue(annos, kube.ReleaseNamespaceAnnotation, releaseNamespace); err != nil {
 		errs = append(errs, fmt.Errorf("annotation validation error: %w", err))
 	}
 
@@ -231,8 +229,8 @@ func setMetadataVisitor(releaseName, releaseNamespace string, forceOwnership boo
 		}
 
 		if err := mergeAnnotations(info.Object, map[string]string{
-			helmReleaseNameAnnotation:      releaseName,
-			helmReleaseNamespaceAnnotation: releaseNamespace,
+			kube.ReleaseNameAnnotation:      releaseName,
+			kube.ReleaseNamespaceAnnotation: releaseNamespace,
 		}); err != nil {
 			return fmt.Errorf(
 				"%s annotations could not be updated: %w",
