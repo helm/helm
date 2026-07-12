@@ -20,15 +20,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/collector"
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/engine"
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/event"
 	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	"github.com/fluxcd/cli-utils/pkg/testutil"
 	"github.com/stretchr/testify/assert"
@@ -38,11 +43,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/kubectl/pkg/scheme"
@@ -362,7 +369,10 @@ func TestStatusWaitForDelete(t *testing.T) {
 func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	t.Parallel()
 	c := newTestClient(t)
-	timeout := time.Second
+	// timeout is a deadlock guard: if a never-created resource were (wrongly) waited
+	// on, WaitForDelete would block until this deadline and return a deadline error,
+	// which require.NoError below would catch. A correct wait returns in well under it.
+	timeout := 2 * time.Second
 	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 	fakeMapper := testutil.NewFakeRESTMapper(
 		v1.SchemeGroupVersion.WithKind("Pod"),
@@ -372,11 +382,1072 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 		client:     fakeClient,
 	}
 	statusWaiter.SetLogger(slog.Default().Handler())
-	// Don't create the object to test that the wait for delete works when the object doesn't exist
+	// Regression guard for #32214: a never-created resource must be confirmed gone by
+	// the reconcile LIST and return, not hang until the timeout.
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
 	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
 	err := statusWaiter.WaitForDelete(resourceList, timeout)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+}
+
+// TestDeleteReconcilerUnknownIsNotComplete proves the anti-flake invariant on the
+// delete path: while any target is still Unknown (as every target briefly is during
+// informer sync), the reconciler does not report completion, so the observer will
+// not cancel the watch and report a premature success. This is the delete-path
+// replacement for the old observer-level check, since waitForDelete no longer routes
+// through statusObserver. See https://github.com/helm/helm/issues/32261.
+func TestDeleteReconcilerUnknownIsNotComplete(t *testing.T) {
+	t.Parallel()
+	a := object.ObjMetadata{GroupKind: schema.GroupKind{Kind: "Pod"}, Namespace: "ns", Name: "first"}
+	b := object.ObjMetadata{GroupKind: schema.GroupKind{Kind: "Pod"}, Namespace: "ns", Name: "second"}
+	w := &statusWaiter{}
+	w.SetLogger(slog.Default().Handler())
+	rec := newDeleteReconciler(w, []object.ObjMetadata{a, b}, func() {})
+
+	// Both targets Unknown (informer still syncing): not complete.
+	sc := collector.NewResourceStatusCollector(object.ObjMetadataSet{a, b})
+	require.False(t, rec.observe(sc), "all-Unknown targets must not be reported complete")
+
+	// One resolves to NotFound, the other stays Unknown: still not complete.
+	sc.ResourceStatuses[a] = &event.ResourceStatus{Identifier: a, Status: status.NotFoundStatus}
+	require.False(t, rec.observe(sc), "a still-Unknown target must keep the wait open")
+}
+
+func TestStatusWaitForDeleteAlreadyDeleted(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 2 * time.Second
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	statusWaiter := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	statusWaiter.SetLogger(slog.Default().Handler())
+	// A before-hook-creation hook is deleted by Helm and only then waited on, so it is
+	// already gone here; the reconcile LIST must confirm it gone and return, not hang
+	// until the timeout (#32214). timeout is only the deadlock guard: a hang would
+	// surface as a deadline error caught by require.NoError.
+	objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		require.NoError(t, fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+	err := statusWaiter.WaitForDelete(resourceList, timeout)
+	require.NoError(t, err)
+}
+
+// TestResourceGone covers the LIST-based existence check on the cases a unit test
+// can decide unambiguously with the dynamic fake. The fake filters List by label
+// only and ignores the field selector, so the "present" case keeps a single object
+// in the namespace; the decoy case exploits that same blindness to drive the
+// defensive "server did not honor the field selector" branch. A conforming API
+// server's field-selector behaviour cannot be reproduced by the fake and is not
+// unit-tested here; it was verified manually against a real cluster (see the PR).
+func TestResourceGone(t *testing.T) {
+	t.Parallel()
+	podGVK := v1.SchemeGroupVersion.WithKind("Pod")
+	id := object.ObjMetadata{GroupKind: podGVK.GroupKind(), Namespace: "ns", Name: "current-pod"}
+	podsGVR := v1.SchemeGroupVersion.WithResource("pods")
+	tests := []struct {
+		name     string
+		setup    func(*dynamicfake.FakeDynamicClient)
+		wantGone bool
+		wantErr  bool
+	}{
+		{
+			name:     "empty list means gone",
+			setup:    func(*dynamicfake.FakeDynamicClient) {},
+			wantGone: true,
+		},
+		{
+			name: "the named object present means not gone",
+			setup: func(c *dynamicfake.FakeDynamicClient) {
+				pod := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+				require.NoError(t, c.Tracker().Create(podsGVR, pod, "ns"))
+			},
+			wantGone: false,
+		},
+		{
+			// The fake ignores the field selector, so a decoy of the same GVR is
+			// returned for a target that does not exist. resourceGone must detect the
+			// name mismatch and surface it rather than misread the decoy as the target.
+			name: "a different-named object surfaces a field-selector error",
+			setup: func(c *dynamicfake.FakeDynamicClient) {
+				decoy := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured).DeepCopy()
+				decoy.SetName("decoy-pod")
+				require.NoError(t, c.Tracker().Create(podsGVR, decoy, "ns"))
+			},
+			wantGone: false,
+			wantErr:  true,
+		},
+		{
+			// A non-empty LIST error must be surfaced, not swallowed, so the caller
+			// can classify it as transient (retry) or permanent (abort).
+			name: "list error is surfaced",
+			setup: func(c *dynamicfake.FakeDynamicClient) {
+				c.PrependReactor("list", "pods", func(clienttesting.Action) (bool, runtime.Object, error) {
+					return true, nil, apierrors.NewServiceUnavailable("boom")
+				})
+			},
+			wantGone: false,
+			wantErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			tt.setup(fakeClient)
+			sw := statusWaiter{
+				restMapper: testutil.NewFakeRESTMapper(podGVK),
+				client:     fakeClient,
+			}
+			sw.SetLogger(slog.Default().Handler())
+			gone, err := sw.resourceGone(context.Background(), id)
+			assert.Equal(t, tt.wantGone, gone)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestRetriableReconcileError locks the transient-error allowlist: throttling,
+// API/server timeouts, service unavailability and recognized transport failures are
+// retried, while permanent request errors, a 500, and unrecognized errors are not.
+func TestRetriableReconcileError(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil is not retriable", nil, false},
+		{"too many requests", apierrors.NewTooManyRequests("slow down", 1), true},
+		{"server timeout", apierrors.NewServerTimeout(schema.GroupResource{Resource: "pods"}, "list", 1), true},
+		{"service unavailable", apierrors.NewServiceUnavailable("try later"), true},
+		{"api timeout", &apierrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonTimeout}}, true},
+		{"http2 connection lost", errors.New("http2: client connection lost"), true},
+		{"probable EOF", io.ErrUnexpectedEOF, true},
+		{"net-level timeout", &net.DNSError{IsTimeout: true}, true},
+		{"forbidden is permanent", apierrors.NewForbidden(schema.GroupResource{Resource: "pods"}, "p", errors.New("nope")), false},
+		{"bad request is permanent", apierrors.NewBadRequest("malformed"), false},
+		{"invalid is permanent", apierrors.NewInvalid(schema.GroupKind{Kind: "Pod"}, "p", nil), false},
+		{"internal 500 is not retried", apierrors.NewInternalError(errors.New("boom")), false},
+		{"not found is not retriable", apierrors.NewNotFound(schema.GroupResource{Resource: "pods"}, "p"), false},
+		{"method not supported is permanent", apierrors.NewMethodNotSupported(schema.GroupResource{Resource: "pods"}, "list"), false},
+		{"plain error is not retriable", errors.New("some other failure"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, retriableReconcileError(tt.err))
+		})
+	}
+}
+
+// TestServerSuggestedDelay verifies that a server-requested Retry-After is read from
+// a retriable error (a 429 or ServerTimeout carrying retryAfterSeconds) and that
+// errors without such a hint yield no delay.
+func TestServerSuggestedDelay(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		err  error
+		want time.Duration
+	}{
+		{"nil has no delay", nil, 0},
+		{"429 with retry-after", apierrors.NewTooManyRequests("slow down", 3), 3 * time.Second},
+		{"429 without retry-after", apierrors.NewTooManyRequests("slow down", 0), 0},
+		{"server timeout with retry-after", apierrors.NewServerTimeout(schema.GroupResource{Resource: "pods"}, "list", 2), 2 * time.Second},
+		{"service unavailable carries no hint", apierrors.NewServiceUnavailable("try later"), 0},
+		{"non-status error carries no hint", errors.New("boom"), 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, serverSuggestedDelay(tt.err))
+		})
+	}
+}
+
+// TestReconcileWait verifies the between-rounds wait: the capped exponential backoff
+// wins when no (or a smaller) server hint is present, a larger server hint is
+// honored, and a pathological hint is clamped so it cannot consume the wait budget.
+func TestReconcileWait(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		backoff     time.Duration
+		serverDelay time.Duration
+		want        time.Duration
+	}{
+		{"no server hint uses backoff", 40 * time.Millisecond, 0, 40 * time.Millisecond},
+		{"server hint larger than backoff wins", 40 * time.Millisecond, 1 * time.Second, 1 * time.Second},
+		{"backoff larger than hint wins", 500 * time.Millisecond, 100 * time.Millisecond, 500 * time.Millisecond},
+		{"large server hint is clamped to the cap", 40 * time.Millisecond, 60 * time.Second, reconcileMaxServerDelay},
+		{"hint exactly at the cap is honored", 40 * time.Millisecond, reconcileMaxServerDelay, reconcileMaxServerDelay},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, reconcileWait(tt.backoff, tt.serverDelay))
+		})
+	}
+}
+
+// deleteBeforeSyncWatcher is a fake watcher.StatusWatcher that reproduces the exact
+// scenario the reconcile fixes: the target is already gone by the time the informer's
+// initial LIST runs, so it is absent from that LIST. It emits a single synthetic
+// SyncEvent and no ResourceUpdateEvent for the target, modelling a kstatus watcher
+// whose initial LIST does not contain the object: the watcher therefore never emits
+// a Deleted/NotFound status for it, and the collector keeps it Unknown. Only the
+// post-sync reconcile LIST can confirm such a target gone.
+//
+// The fake runs in its own goroutine and never fails the test directly; it
+// reports through channels observed by the main test goroutine, which provides
+// positive proof that the intended interleaving actually occurred (so a green
+// result cannot be a false positive from a mis-wired harness).
+type deleteBeforeSyncWatcher struct {
+	// del removes the target from the cluster. It is called at the start of the Watch
+	// goroutine (as the informer would be running its initial LIST) and strictly
+	// before the SyncEvent, so the target is already absent when sync is observed.
+	del func() error
+
+	watchInvoked   chan struct{} // closed when Watch is called
+	deleteErr      chan error    // receives the result of del()
+	syncReceived   chan struct{} // closed once the unbuffered SyncEvent send returns (collector consumed it)
+	updatesEmitted atomic.Int64  // number of ResourceUpdateEvents fed to the collector; must stay 0
+}
+
+var _ watcher.StatusWatcher = (*deleteBeforeSyncWatcher)(nil)
+
+func newDeleteBeforeSyncWatcher(del func() error) *deleteBeforeSyncWatcher {
+	return &deleteBeforeSyncWatcher{
+		del:          del,
+		watchInvoked: make(chan struct{}),
+		deleteErr:    make(chan error, 1),
+		syncReceived: make(chan struct{}),
+	}
+}
+
+func (w *deleteBeforeSyncWatcher) Watch(ctx context.Context, _ object.ObjMetadataSet, _ watcher.Options) <-chan event.Event {
+	close(w.watchInvoked)
+	eventCh := make(chan event.Event)
+	go func() {
+		defer close(eventCh)
+		// Ordering is explicit, not timing-based: delete strictly before SyncEvent.
+		w.deleteErr <- w.del()
+		// Emit only SyncEvent -- never a ResourceUpdateEvent, so a post-fix green
+		// result can only come from production reconciliation, not from a status
+		// supplied here. The send is unbuffered: it returns once the collector has
+		// consumed the SyncEvent, i.e. sync is observed with the target Unknown.
+		if !w.emit(ctx, eventCh, event.Event{Type: event.SyncEvent}) {
+			return
+		}
+		close(w.syncReceived)
+		// A real informer keeps watching but delivers nothing further for a target
+		// absent from the initial LIST. Stay alive until the context is cancelled.
+		<-ctx.Done()
+	}()
+	return eventCh
+}
+
+func (w *deleteBeforeSyncWatcher) emit(ctx context.Context, eventCh chan event.Event, ev event.Event) bool {
+	if ev.Type == event.ResourceUpdateEvent {
+		w.updatesEmitted.Add(1)
+	}
+	select {
+	case eventCh <- ev:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+// TestStatusWaitForDeleteRaceDeletedBeforeInitialList proves the reconcile handles a
+// target absent from the watcher's initial LIST: an object gone before the informer
+// syncs is never reported NotFound (no delete event is generated for an object absent
+// from the initial cache), so it stays Unknown for the life of the watch. Because
+// waitForDelete no longer treats Unknown as deleted, only the post-sync reconcile LIST
+// can confirm it gone; without that, the wait would run to the deadline.
+//
+// The interleaving enforced here is exactly:
+//
+//	target deleted  ->  informer initial LIST misses it  ->  target stays Unknown
+//	                    (SyncEvent, no ResourceUpdateEvent)
+//
+// The only result assertion is the desired external behavior (no hang). The channel
+// checks are positive proof that the interleaving occurred; they do not encode the
+// result, so the test is a genuine reproduction of the reconcile's job.
+func TestStatusWaitForDeleteRaceDeletedBeforeInitialList(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	// Deadlock guard only. It does not create the ordering (enforced by control
+	// flow and the fake's explicit event sequence); it just bounds the hang so the
+	// test fails fast instead of blocking forever.
+	timeout := 2 * time.Second
+
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("Pod"))
+
+	// The target exists when the wait begins; the fake deletes it before the SyncEvent.
+	u := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+	gvr := getGVR(t, fakeMapper, u)
+	require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+	statusWaiter := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	sw := newDeleteBeforeSyncWatcher(func() error { return fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()) })
+
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{u})
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// Run waitForDelete concurrently so the main goroutine can observe the
+	// interleaving as it happens. The fake is injected directly; the public
+	// WaitForDelete runs this same path after building a real watcher.
+	resultCh := make(chan error, 1)
+	go func() {
+		resultCh <- statusWaiter.waitForDelete(ctx, resourceList, sw)
+	}()
+
+	// Positive proof the intended interleaving occurred (all checked in the main
+	// goroutine; the fake reports through channels and never fails the test itself).
+	<-sw.watchInvoked
+	require.NoError(t, <-sw.deleteErr, "fake failed to delete the target before SyncEvent")
+	<-sw.syncReceived
+
+	err := <-resultCh
+	require.Zero(t, sw.updatesEmitted.Load(), "fake must not emit any ResourceUpdateEvent for the target")
+
+	// The single result assertion: the desired external behavior. Without the post-sync
+	// reconcile this would hang to the deadline; with it, the still-Unknown target is
+	// confirmed gone and the wait returns.
+	require.NoError(t, err,
+		"a target absent from the watcher's initial LIST must be confirmed gone by the reconcile, not hang WaitForDelete")
+}
+
+// TestDeleteReconcilerConfirmedGoneWinsOverLateStatus is the direct state-machine
+// proof for the stale-event concern: once a live LIST has confirmed a target gone
+// (markGone), a later, stale watcher status for that same target -- e.g. a delayed
+// initial Current from the informer -- must not resurrect it. confirmedGone is
+// terminal and takes precedence over the collector's status in both completion and
+// the assembled result.
+//
+// This is tested at the reconciler directly rather than through a fake watcher: with
+// a single target the wait cancels the instant markGone completes, so a fake could
+// not reliably deliver a post-confirmation status through the collector at all. Here
+// a second, unresolved target keeps the state machine live while the stale Current
+// for the first target is applied, and the invariant is asserted deterministically.
+func TestDeleteReconcilerConfirmedGoneWinsOverLateStatus(t *testing.T) {
+	t.Parallel()
+	a := object.ObjMetadata{GroupKind: schema.GroupKind{Kind: "Pod"}, Namespace: "ns", Name: "a"}
+	b := object.ObjMetadata{GroupKind: schema.GroupKind{Kind: "Pod"}, Namespace: "ns", Name: "b"}
+	w := &statusWaiter{}
+	w.SetLogger(slog.Default().Handler())
+	var cancelled atomic.Bool
+	rec := newDeleteReconciler(w, []object.ObjMetadata{a, b}, func() { cancelled.Store(true) })
+
+	// A live LIST confirms A gone; B is not yet resolved, so the wait stays open.
+	rec.markGone(a)
+
+	sc := collector.NewResourceStatusCollector(object.ObjMetadataSet{a, b})
+	// A stale, late Current for A arrives after it was confirmed gone; B still Unknown.
+	sc.ResourceStatuses[a] = &event.ResourceStatus{Identifier: a, Status: status.CurrentStatus}
+	require.False(t, rec.observe(sc), "A is gone but B is unresolved, so the wait must stay open")
+
+	// B is then observed deleted. With A confirmed gone (despite its stale Current)
+	// and B NotFound, every target is terminal.
+	sc.ResourceStatuses[b] = &event.ResourceStatus{Identifier: b, Status: status.NotFoundStatus}
+	require.True(t, rec.observe(sc), "confirmedGone A + NotFound B must complete despite the stale Current for A")
+
+	// The assembled result is success: A is skipped via confirmedGone (not reported as
+	// still-existing from its stale Current), B was observed NotFound.
+	require.NoError(t, rec.result(context.Background(), sc),
+		"a live-confirmed deletion must not be overridden by a delayed Current event")
+}
+
+// TestDeleteReconcilerResultSuccessBeatsExpiredContext proves that a fully confirmed
+// deletion is reported as success even if the parent context expired at the moment
+// the last confirmation landed: a completed deletion must not be turned into a
+// context-error failure.
+func TestDeleteReconcilerResultSuccessBeatsExpiredContext(t *testing.T) {
+	t.Parallel()
+	a := object.ObjMetadata{GroupKind: schema.GroupKind{Kind: "Pod"}, Namespace: "ns", Name: "a"}
+	b := object.ObjMetadata{GroupKind: schema.GroupKind{Kind: "Pod"}, Namespace: "ns", Name: "b"}
+	w := &statusWaiter{}
+	w.SetLogger(slog.Default().Handler())
+	rec := newDeleteReconciler(w, []object.ObjMetadata{a, b}, func() {})
+
+	// A confirmed gone by a live LIST; B observed NotFound by the watcher.
+	rec.markGone(a)
+	sc := collector.NewResourceStatusCollector(object.ObjMetadataSet{a, b})
+	sc.ResourceStatuses[b] = &event.ResourceStatus{Identifier: b, Status: status.NotFoundStatus}
+
+	// The parent context has already expired when result runs.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	require.NoError(t, rec.result(ctx, sc),
+		"a deletion fully confirmed must report success even if the context expired as the last confirmation landed")
+}
+
+// TestStatusWaitForDeleteReconcileRetriesTransientError: the first reconciliation
+// LIST fails with a retriable error and a later retry returns an empty list (gone).
+// WaitForDelete must retry (bounded by context) and succeed rather than treat the
+// transient error as fatal and hang.
+func TestStatusWaitForDeleteReconcileRetriesTransientError(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 2 * time.Second
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("Pod"))
+	u := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+	gvr := getGVR(t, fakeMapper, u)
+	require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+	// The first reconciliation LIST fails with a retriable (allowlisted) error that
+	// carries no Retry-After hint, so it is retried on the fast backoff; later LISTs
+	// fall through to the tracker, which returns an empty list once the target has
+	// been deleted. (Retry-After honoring is covered deterministically by
+	// TestServerSuggestedDelay, not by wall-clock timing here.)
+	var lists atomic.Int64
+	fakeClient.PrependReactor("list", "pods", func(clienttesting.Action) (bool, runtime.Object, error) {
+		if lists.Add(1) == 1 {
+			return true, nil, apierrors.NewServiceUnavailable("slow down")
+		}
+		return false, nil, nil
+	})
+
+	statusWaiter := statusWaiter{restMapper: fakeMapper, client: fakeClient}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	sw := newDeleteBeforeSyncWatcher(func() error { return fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()) })
+
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{u})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resultCh := make(chan error, 1)
+	go func() { resultCh <- statusWaiter.waitForDelete(ctx, resourceList, sw) }()
+	<-sw.watchInvoked
+	require.NoError(t, <-sw.deleteErr, "fake failed to delete the target before SyncEvent")
+	<-sw.syncReceived
+
+	err := <-resultCh
+	require.NoError(t, err,
+		"a transient reconciliation error must be retried until the target is confirmed gone, not hang WaitForDelete")
+}
+
+// closeAfterSyncWatcher emits a single SyncEvent and then closes its event
+// channel immediately, modelling a watch that ends (stream closed / restart)
+// before any target's deletion has been observed. It uses a buffered channel and
+// no goroutine, so it cannot itself leak.
+type closeAfterSyncWatcher struct {
+	watchInvoked chan struct{}
+}
+
+var _ watcher.StatusWatcher = (*closeAfterSyncWatcher)(nil)
+
+func (w *closeAfterSyncWatcher) Watch(_ context.Context, _ object.ObjMetadataSet, _ watcher.Options) <-chan event.Event {
+	close(w.watchInvoked)
+	ch := make(chan event.Event, 1)
+	ch <- event.Event{Type: event.SyncEvent}
+	close(ch)
+	return ch
+}
+
+// TestStatusWaitForDeleteWatcherClosesWithUnknownTarget: the watch closes right after
+// sync while the target still exists, so its deletion is never observed and never
+// confirmed by a live check. The defined result is a non-success (deletion could not
+// be confirmed), returned promptly rather than as a timeout, and with no leaked
+// goroutine -- the wait must not silently report success for an unconfirmed target.
+func TestStatusWaitForDeleteWatcherClosesWithUnknownTarget(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 2 * time.Second // deadlock guard only
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("Pod"))
+
+	// The target genuinely still exists: a live existence check finds it present,
+	// so it cannot be marked confirmedGone and remains Unknown when the watch ends.
+	u := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+	gvr := getGVR(t, fakeMapper, u)
+	require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+	statusWaiter := statusWaiter{restMapper: fakeMapper, client: fakeClient}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	sw := &closeAfterSyncWatcher{watchInvoked: make(chan struct{})}
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{u})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resultCh := make(chan error, 1)
+	go func() { resultCh <- statusWaiter.waitForDelete(ctx, resourceList, sw) }()
+	<-sw.watchInvoked
+
+	var err error
+	select {
+	case err = <-resultCh:
+	case <-time.After(timeout):
+		t.Fatal("waitForDelete did not return after the watch closed (hang / goroutine leak)")
+	}
+	require.Error(t, err,
+		"when the watch closes with a target still unconfirmed, WaitForDelete must not report success")
+	require.ErrorIs(t, err, errWatchEndedBeforeConfirmation,
+		"the failure must be the explicit watch-ended-before-confirmation error")
+	require.NotErrorIs(t, err, context.DeadlineExceeded,
+		"the watch closed while the parent context was active, so this must not be a timeout")
+	require.NotErrorIs(t, err, context.Canceled,
+		"the watch closed while the parent context was active, so this must not be a cancellation")
+}
+
+// syncThenBlockWatcher emits a SyncEvent and then blocks until its context is
+// cancelled. It records watchDone so a test can prove the watcher goroutine
+// terminated (no leak).
+type syncThenBlockWatcher struct {
+	watchInvoked chan struct{}
+	syncReceived chan struct{}
+	watchDone    chan struct{}
+}
+
+var _ watcher.StatusWatcher = (*syncThenBlockWatcher)(nil)
+
+func (w *syncThenBlockWatcher) Watch(ctx context.Context, _ object.ObjMetadataSet, _ watcher.Options) <-chan event.Event {
+	close(w.watchInvoked)
+	ch := make(chan event.Event)
+	go func() {
+		defer close(w.watchDone)
+		defer close(ch)
+		select {
+		case ch <- event.Event{Type: event.SyncEvent}:
+		case <-ctx.Done():
+			return
+		}
+		close(w.syncReceived)
+		<-ctx.Done()
+	}()
+	return ch
+}
+
+// blockingListClient wraps a dynamic.Interface so every List blocks until the
+// call's context is cancelled and then returns ctx.Err(), modelling an in-flight
+// API request interrupted by cancellation (a real client-go REST client cancels
+// the underlying request when its context ends). It closes entered exactly once,
+// when the first List begins to block.
+type blockingListClient struct {
+	dynamic.Interface
+	entered chan struct{}
+	once    sync.Once
+}
+
+func (c *blockingListClient) Resource(gvr schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
+	return &blockingListNamespaceable{c.Interface.Resource(gvr), c}
+}
+
+type blockingListNamespaceable struct {
+	dynamic.NamespaceableResourceInterface
+	c *blockingListClient
+}
+
+func (n *blockingListNamespaceable) Namespace(ns string) dynamic.ResourceInterface {
+	return &blockingListResource{n.NamespaceableResourceInterface.Namespace(ns), n.c}
+}
+
+func (n *blockingListNamespaceable) List(ctx context.Context, _ metav1.ListOptions) (*unstructured.UnstructuredList, error) {
+	return n.c.block(ctx)
+}
+
+type blockingListResource struct {
+	dynamic.ResourceInterface
+	c *blockingListClient
+}
+
+func (r *blockingListResource) List(ctx context.Context, _ metav1.ListOptions) (*unstructured.UnstructuredList, error) {
+	return r.c.block(ctx)
+}
+
+func (c *blockingListClient) block(ctx context.Context) (*unstructured.UnstructuredList, error) {
+	c.once.Do(func() { close(c.entered) })
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+// TestStatusWaitForDeleteContextCancelledDuringReconcile: the context is cancelled
+// while a reconciliation LIST is blocked in-flight. Both the waiter and its reconcile
+// goroutine must unwind deterministically -- no hang, no leak -- and the wait must
+// return an error carrying context.Canceled.
+func TestStatusWaitForDeleteContextCancelledDuringReconcile(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 5 * time.Second // deadlock guard only
+	blocking := &blockingListClient{
+		Interface: dynamicfake.NewSimpleDynamicClient(scheme.Scheme),
+		entered:   make(chan struct{}),
+	}
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("Pod"))
+	u := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+
+	statusWaiter := statusWaiter{restMapper: fakeMapper, client: blocking}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	sw := &syncThenBlockWatcher{
+		watchInvoked: make(chan struct{}),
+		syncReceived: make(chan struct{}),
+		watchDone:    make(chan struct{}),
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{u})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	waitClosed := func(ch <-chan struct{}, msg string) {
+		t.Helper()
+		select {
+		case <-ch:
+		case <-time.After(timeout):
+			t.Fatal(msg)
+		}
+	}
+
+	resultCh := make(chan error, 1)
+	go func() { resultCh <- statusWaiter.waitForDelete(ctx, resourceList, sw) }()
+
+	waitClosed(sw.watchInvoked, "watcher was never invoked")
+	waitClosed(sw.syncReceived, "SyncEvent was never observed")
+	waitClosed(blocking.entered, "the reconciliation LIST never started (nothing to interrupt)")
+
+	// Cancel while the LIST is blocked in-flight.
+	cancel()
+
+	var err error
+	select {
+	case err = <-resultCh:
+	case <-time.After(timeout):
+		t.Fatal("waitForDelete did not return after cancellation during a blocked reconcile LIST")
+	}
+	waitClosed(sw.watchDone, "watcher goroutine did not terminate after cancellation")
+	require.Error(t, err, "a cancelled delete wait must return an error, not success")
+	require.ErrorIs(t, err, context.Canceled,
+		"caller cancellation must be preserved as context.Canceled")
+	require.NotErrorIs(t, err, errWatchEndedBeforeConfirmation,
+		"a context error must take precedence over and not be joined with the watch-ended error")
+}
+
+// TestStatusWaitForDeleteReconcileOutageLongerThanRetryWindow is the extended
+// outage test: the reconciliation existence check fails for many consecutive
+// attempts -- deliberately more than any small fixed retry cap -- before the API
+// recovers and reports the target gone. A robust waiter must ride the outage out
+// (within its timeout) rather than give up after a fixed number of attempts and
+// hang. The outage length is expressed as a failure count that is not tied to the
+// implementation's backoff constants; the test asserts only eventual success.
+func TestStatusWaitForDeleteReconcileOutageLongerThanRetryWindow(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 5 * time.Second // deadlock guard only
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("Pod"))
+	u := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+	gvr := getGVR(t, fakeMapper, u)
+	require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+	const outageLists = 6 // > any small fixed retry cap, without referencing its value
+	var lists atomic.Int64
+	fakeClient.PrependReactor("list", "pods", func(clienttesting.Action) (bool, runtime.Object, error) {
+		if lists.Add(1) <= outageLists {
+			// retryAfterSeconds 0: exercise the retry loop on the fast backoff without
+			// a server-suggested delay stretching the outage past the deadlock guard.
+			return true, nil, apierrors.NewServerTimeout(schema.GroupResource{Resource: "pods"}, "list", 0)
+		}
+		return false, nil, nil // pass through: tracker returns an empty list for the deleted target
+	})
+
+	statusWaiter := statusWaiter{restMapper: fakeMapper, client: fakeClient}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	sw := newDeleteBeforeSyncWatcher(func() error { return fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()) })
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{u})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resultCh := make(chan error, 1)
+	go func() { resultCh <- statusWaiter.waitForDelete(ctx, resourceList, sw) }()
+	<-sw.watchInvoked
+	require.NoError(t, <-sw.deleteErr, "fake failed to delete the target before SyncEvent")
+	<-sw.syncReceived
+
+	err := <-resultCh
+	require.NoError(t, err,
+		"an API outage longer than a fixed retry window must be ridden out until the target is confirmed gone")
+}
+
+// TestStatusWaitForDeleteParentDeadlinePropagates is a context-semantic test: when
+// the parent context's deadline expires while a target is still present, the
+// returned error must carry context.DeadlineExceeded -- the unconfirmed-deletion
+// error must not replace it.
+func TestStatusWaitForDeleteParentDeadlinePropagates(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 300 * time.Millisecond
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("Pod"))
+	// The target stays present, so no live check can confirm its deletion and the
+	// wait can only end at the parent deadline.
+	u := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+	gvr := getGVR(t, fakeMapper, u)
+	require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+	statusWaiter := statusWaiter{restMapper: fakeMapper, client: fakeClient}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	sw := &syncThenBlockWatcher{
+		watchInvoked: make(chan struct{}),
+		syncReceived: make(chan struct{}),
+		watchDone:    make(chan struct{}),
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{u})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	err := statusWaiter.waitForDelete(ctx, resourceList, sw)
+	require.Error(t, err)
+	require.ErrorIs(t, err, context.DeadlineExceeded,
+		"a parent deadline must be preserved as context.DeadlineExceeded")
+	require.NotErrorIs(t, err, errWatchEndedBeforeConfirmation,
+		"a context error must take precedence over and not be joined with the watch-ended error")
+	<-sw.watchDone // the watcher goroutine terminated (no leak)
+}
+
+// TestStatusWaitForDeleteReconcileDoesNotStarveOtherTargets proves round-based
+// reconciliation across two different GVRs: target A's existence LIST always fails
+// with a retriable error, target B is absent and its LIST succeeds. B must be
+// checked and confirmed gone despite A continuing to fail -- a per-target
+// retry-until-context loop would let A (listed first) starve B forever. The overall
+// wait still fails because A is never confirmed. Ordering is enforced by channels,
+// not timing.
+func TestStatusWaitForDeleteReconcileDoesNotStarveOtherTargets(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 400 * time.Millisecond // deadlock guard; also bounds A's retry rounds
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+		v1.SchemeGroupVersion.WithKind("ConfigMap"),
+	)
+
+	// Target A (a pod) always fails its existence LIST with a retriable error.
+	podA := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+	// Target B (a configmap) is absent, so its LIST returns an empty list -> gone.
+	cmB := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": "ConfigMap",
+		"metadata": map[string]any{"name": "b", "namespace": "ns"},
+	}}
+
+	var aLists, bLists atomic.Int64
+	var bOnce sync.Once
+	bQueried := make(chan struct{})
+	fakeClient.PrependReactor("list", "pods", func(clienttesting.Action) (bool, runtime.Object, error) {
+		aLists.Add(1)
+		return true, nil, apierrors.NewServiceUnavailable("target A is unavailable")
+	})
+	fakeClient.PrependReactor("list", "configmaps", func(clienttesting.Action) (bool, runtime.Object, error) {
+		bLists.Add(1)
+		bOnce.Do(func() { close(bQueried) })
+		return false, nil, nil // pass through: B is absent -> empty list -> gone
+	})
+
+	statusWaiter := statusWaiter{restMapper: fakeMapper, client: fakeClient}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	sw := &syncThenBlockWatcher{
+		watchInvoked: make(chan struct{}),
+		syncReceived: make(chan struct{}),
+		watchDone:    make(chan struct{}),
+	}
+	// A is listed before B, so a sequential reconcile that retries A until the
+	// context ends would never reach B.
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{podA, cmB})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resultCh := make(chan error, 1)
+	go func() { resultCh <- statusWaiter.waitForDelete(ctx, resourceList, sw) }()
+
+	<-sw.watchInvoked
+	<-sw.syncReceived
+	select {
+	case <-bQueried:
+	case <-time.After(timeout):
+		t.Fatal("target B was never queried: a failing target starved the reconciliation")
+	}
+
+	err := <-resultCh
+	require.Error(t, err, "the overall wait must still fail because A was never confirmed gone")
+	assert.Equal(t, int64(1), bLists.Load(),
+		"B must be checked exactly once (confirmed gone in round one, then not re-polled)")
+	assert.GreaterOrEqual(t, aLists.Load(), int64(2),
+		"A must be retried across rounds, proving it did not monopolize the reconcile goroutine")
+}
+
+// syncThenNotFoundWatcher emits a SyncEvent, then -- once the test closes release --
+// emits a NotFound status for a single target, modelling the watcher observing that
+// target's deletion. It stays alive until its context is cancelled.
+type syncThenNotFoundWatcher struct {
+	id           object.ObjMetadata
+	release      chan struct{}
+	watchInvoked chan struct{}
+	syncReceived chan struct{}
+	watchDone    chan struct{}
+}
+
+var _ watcher.StatusWatcher = (*syncThenNotFoundWatcher)(nil)
+
+func (w *syncThenNotFoundWatcher) Watch(ctx context.Context, _ object.ObjMetadataSet, _ watcher.Options) <-chan event.Event {
+	close(w.watchInvoked)
+	ch := make(chan event.Event)
+	go func() {
+		defer close(w.watchDone)
+		defer close(ch)
+		select {
+		case ch <- event.Event{Type: event.SyncEvent}:
+		case <-ctx.Done():
+			return
+		}
+		close(w.syncReceived)
+		select {
+		case <-w.release:
+		case <-ctx.Done():
+			return
+		}
+		select {
+		case ch <- event.Event{Type: event.ResourceUpdateEvent, Resource: &event.ResourceStatus{Identifier: w.id, Status: status.NotFoundStatus}}:
+		case <-ctx.Done():
+			return
+		}
+		<-ctx.Done()
+	}()
+	return ch
+}
+
+// blockOneGVRClient wraps a dynamic.Interface so that List on exactly one GVR blocks
+// until the call's context is cancelled (signalling entry once via entered), while
+// List on every other GVR passes through to the wrapped client. It models one target
+// whose existence LIST is slow/stuck while another target's LIST returns promptly.
+type blockOneGVRClient struct {
+	dynamic.Interface
+	blockGVR schema.GroupVersionResource
+	entered  chan struct{}
+	once     sync.Once
+}
+
+func (c *blockOneGVRClient) Resource(gvr schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
+	inner := c.Interface.Resource(gvr)
+	if gvr == c.blockGVR {
+		return &blockOneGVRNamespaceable{inner, c}
+	}
+	return inner
+}
+
+type blockOneGVRNamespaceable struct {
+	dynamic.NamespaceableResourceInterface
+	c *blockOneGVRClient
+}
+
+func (n *blockOneGVRNamespaceable) Namespace(ns string) dynamic.ResourceInterface {
+	return &blockOneGVRResource{n.NamespaceableResourceInterface.Namespace(ns), n.c}
+}
+
+func (n *blockOneGVRNamespaceable) List(ctx context.Context, _ metav1.ListOptions) (*unstructured.UnstructuredList, error) {
+	return n.c.block(ctx)
+}
+
+type blockOneGVRResource struct {
+	dynamic.ResourceInterface
+	c *blockOneGVRClient
+}
+
+func (r *blockOneGVRResource) List(ctx context.Context, _ metav1.ListOptions) (*unstructured.UnstructuredList, error) {
+	return r.c.block(ctx)
+}
+
+func (c *blockOneGVRClient) block(ctx context.Context) (*unstructured.UnstructuredList, error) {
+	c.once.Do(func() { close(c.entered) })
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+// TestStatusWaitForDeleteInflightListDoesNotBlockOtherTargets is a failure-isolation
+// test: one target's existence LIST is stuck in flight while a second target is
+// already absent. The second target must be confirmed gone concurrently -- a single
+// in-flight LIST must not block every later target -- and once the watcher reports the
+// stuck target deleted, the wait must succeed without hitting the deadline.
+//
+// RED against a sequential reconcile: the one goroutine blocks inside target A's LIST
+// and never reaches target B, even after the watcher makes A terminal.
+func TestStatusWaitForDeleteInflightListDoesNotBlockOtherTargets(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 3 * time.Second   // deadlock guard only
+	hardStop := 30 * time.Second // harness safety net, well above the guard
+	base := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+		v1.SchemeGroupVersion.WithKind("ConfigMap"),
+	)
+	podsGVR := v1.SchemeGroupVersion.WithResource("pods")
+
+	// A = pod: its existence LIST blocks until cancelled. B = configmap: absent, so its
+	// LIST returns empty (gone) immediately.
+	podA := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+	cmB := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": "ConfigMap",
+		"metadata": map[string]any{"name": "b", "namespace": "ns"},
+	}}
+	idA, err := object.RuntimeToObjMeta(podA)
+	require.NoError(t, err)
+
+	blocking := &blockOneGVRClient{Interface: base, blockGVR: podsGVR, entered: make(chan struct{})}
+	sw := &syncThenNotFoundWatcher{
+		id:           idA,
+		release:      make(chan struct{}),
+		watchInvoked: make(chan struct{}),
+		syncReceived: make(chan struct{}),
+		watchDone:    make(chan struct{}),
+	}
+
+	statusWaiter := statusWaiter{restMapper: fakeMapper, client: blocking}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	// A before B, so a sequential reconcile checks (and blocks on) A first.
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{podA, cmB})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resultCh := make(chan error, 1)
+	go func() { resultCh <- statusWaiter.waitForDelete(ctx, resourceList, sw) }()
+
+	<-sw.watchInvoked
+	<-sw.syncReceived
+	select {
+	case <-blocking.entered:
+	case <-time.After(hardStop):
+		t.Fatal("target A's existence LIST never entered")
+	}
+	// A's LIST is stuck. Make A terminal via the watcher; B must still be confirmed.
+	close(sw.release)
+
+	var werr error
+	select {
+	case werr = <-resultCh:
+	case <-time.After(hardStop):
+		t.Fatal("WaitForDelete hung: a stuck in-flight LIST blocked confirmation of other targets")
+	}
+	<-sw.watchDone
+	require.NoError(t, werr,
+		"B must be confirmed gone while A's LIST is stuck, and the wait must succeed without waiting for the deadline")
+}
+
+// TestStatusWaitForDeletePerTargetRetryAfterIsolation is a failure-isolation test for
+// retry timing: one target returns 429 with a long Retry-After (and is then resolved
+// by the watcher), while a second target returns a transient transport error once and
+// would succeed on its own short-backoff retry. The long Retry-After of the first
+// target must not delay the second target's retry.
+//
+// The deadlock guard is deliberately below the (capped) server delay a whole-round
+// coupled reconcile would impose and far above the few milliseconds an isolated
+// reconcile needs, so a coupled implementation fails to confirm B within the guard.
+//
+// RED against a reconcile that applies one server delay to the whole round.
+func TestStatusWaitForDeletePerTargetRetryAfterIsolation(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 3 * time.Second // deadlock guard; see the doc comment above for why this value
+	hardStop := 30 * time.Second
+	base := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+		v1.SchemeGroupVersion.WithKind("ConfigMap"),
+	)
+
+	podA := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+	cmB := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": "ConfigMap",
+		"metadata": map[string]any{"name": "b", "namespace": "ns"},
+	}}
+	idA, err := object.RuntimeToObjMeta(podA)
+	require.NoError(t, err)
+
+	// A's LIST always fails with 429 carrying a long Retry-After; A is resolved by the
+	// watcher, not by its LIST.
+	var aOnce sync.Once
+	aQueried := make(chan struct{})
+	base.PrependReactor("list", "pods", func(clienttesting.Action) (bool, runtime.Object, error) {
+		aOnce.Do(func() { close(aQueried) })
+		return true, nil, apierrors.NewTooManyRequests("A is throttled", 100)
+	})
+	// B's LIST fails once with a transient transport error, then passes through (absent
+	// -> empty -> gone) on its next retry.
+	var bCalls atomic.Int64
+	base.PrependReactor("list", "configmaps", func(clienttesting.Action) (bool, runtime.Object, error) {
+		if bCalls.Add(1) == 1 {
+			return true, nil, io.ErrUnexpectedEOF
+		}
+		return false, nil, nil
+	})
+
+	sw := &syncThenNotFoundWatcher{
+		id:           idA,
+		release:      make(chan struct{}),
+		watchInvoked: make(chan struct{}),
+		syncReceived: make(chan struct{}),
+		watchDone:    make(chan struct{}),
+	}
+
+	statusWaiter := statusWaiter{restMapper: fakeMapper, client: base}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	resourceList := getResourceListFromRuntimeObjs(t, c, []runtime.Object{podA, cmB})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resultCh := make(chan error, 1)
+	go func() { resultCh <- statusWaiter.waitForDelete(ctx, resourceList, sw) }()
+
+	<-sw.watchInvoked
+	<-sw.syncReceived
+	select {
+	case <-aQueried:
+	case <-time.After(hardStop):
+		t.Fatal("target A was never queried")
+	}
+	// A has been throttled with a long Retry-After. Make A terminal via the watcher.
+	close(sw.release)
+
+	var werr error
+	select {
+	case werr = <-resultCh:
+	case <-time.After(hardStop):
+		t.Fatal("WaitForDelete hung")
+	}
+	<-sw.watchDone
+	require.NoError(t, werr,
+		"B must be retried on its own short backoff and confirmed gone; A's long Retry-After must not delay it")
+	require.GreaterOrEqual(t, bCalls.Load(), int64(2),
+		"B must have been retried (its second LIST confirms it gone) rather than waiting behind A's Retry-After")
 }
 
 func TestStatusWait(t *testing.T) {
