@@ -27,7 +27,7 @@ func verify(t *testing.T, actual reference, registry, repository, tag, digest st
 	t.Helper()
 	assert.Equal(t, registry, actual.orasReference.Registry, "Oras reference registry")
 	assert.Equal(t, repository, actual.orasReference.Repository, "Oras reference repository")
-	assert.Equal(t, tag, actual.orasReference.Reference, "Oras reference reference")
+	assert.Equal(t, tag, actual.orasReference.Tag, "Oras reference tag")
 	assert.Equal(t, registry, actual.Registry, "Registry")
 	assert.Equal(t, repository, actual.Repository, "Repository")
 	assert.Equal(t, tag, actual.Tag, "Tag")
