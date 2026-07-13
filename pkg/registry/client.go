@@ -57,14 +57,6 @@ storing semantic versions, Helm adopts the convention of changing plus (+) to
 an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
 
-// ConfigOptions specifies override paths for container ecosystem config files.
-type ConfigOptions struct {
-	RegistriesConfigPath string
-	PolicyConfigPath     string
-	CertsDirPaths        []string
-	ContainersAuthPath   string
-}
-
 type (
 	// RemoteClient shadows the ORAS remote.Client interface
 	// (hiding the ORAS type from Helm client visibility)
@@ -92,7 +84,9 @@ type (
 		builder               *remote.ClientBuilder
 		policyEvaluator       *policy.Evaluator
 		signatureVerification bool
-		configOptions         ConfigOptions
+		// registriesConfigPath overrides the registries.conf path; empty means
+		// the container ecosystem default search locations are used. Test-only.
+		registriesConfigPath string
 		insecure              bool
 		certFile              string
 		keyFile               string
@@ -137,11 +131,10 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	// Load the full container ecosystem config stack: Docker config.json,
 	// containers auth.json, registries.conf, policy.json, certs.d, registries.d.
 	// Missing files are silently skipped.
+	// Only registries.conf is overridable (empty means default search); all
+	// other config files always resolve to their default locations.
 	loaderOpts := remoteconfig.LoadConfigsOptions{
-		RegistriesConfigPath: client.configOptions.RegistriesConfigPath,
-		PolicyConfigPath:     client.configOptions.PolicyConfigPath,
-		CertsDirPaths:        client.configOptions.CertsDirPaths,
-		ContainersAuthPath:   client.configOptions.ContainersAuthPath,
+		RegistriesConfigPath: client.registriesConfigPath,
 	}
 	configs, err := remoteconfig.LoadConfigsWithOptions(loaderOpts)
 	if err != nil {
@@ -415,10 +408,12 @@ func ClientOptSignatureVerification(enabled bool) ClientOption {
 	}
 }
 
-// ClientOptConfigOptions returns a function that overrides default config file paths.
-func ClientOptConfigOptions(o ConfigOptions) ClientOption {
+// withRegistriesConfigPath overrides the registries.conf path. It is unexported
+// because the only consumer is hermetic tests; production always uses the
+// container ecosystem default search locations.
+func withRegistriesConfigPath(path string) ClientOption {
 	return func(c *Client) {
-		c.configOptions = o
+		c.registriesConfigPath = path
 	}
 }
 
