@@ -87,11 +87,11 @@ type (
 		// registriesConfigPath overrides the registries.conf path; empty means
 		// the container ecosystem default search locations are used. Test-only.
 		registriesConfigPath string
-		insecure              bool
-		certFile              string
-		keyFile               string
-		caFile                string
-		customHTTPClient      bool // true when ClientOptHTTPClient or ClientOptAuthorizer was used
+		insecure             bool
+		certFile             string
+		keyFile              string
+		caFile               string
+		customHTTPClient     bool // true when ClientOptHTTPClient or ClientOptAuthorizer was used
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
