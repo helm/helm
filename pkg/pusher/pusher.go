@@ -74,7 +74,7 @@ func WithPlainHTTP(plainHTTP bool) Option {
 // canonical semver representation of the chart version rather than the raw
 // version string. Note this is unrelated to the registry client's "strict
 // mode" (registry.PushOptStrictMode); enabling it may in fact require that
-// strict mode to be relaxed, since the canonical tag can differ from the raw
+// strict mode be relaxed, since the canonical tag can differ from the raw
 // chart version.
 func WithOCINormalizeVersion(ociNormalizeVersion bool) Option {
 	return func(opts *options) {
