@@ -10,6 +10,6 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # pin@v5.0.0
+      - uses: actions/labeler@b8dd2d9be0f68b860e7dae5dae7d772984eacd6d # pin@v6.2.0
         with:
           sync-labels: true
