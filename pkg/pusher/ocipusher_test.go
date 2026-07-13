@@ -393,6 +393,102 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 	}
 }
 
+func TestWithOCIStrictVersion(t *testing.T) {
+	p, err := NewOCIPusher(WithOCIStrictVersion(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	op, ok := p.(*OCIPusher)
+	if !ok {
+		t.Fatal("Expected NewOCIPusher to produce an *OCIPusher")
+	}
+
+	if !op.opts.ociStrictVersion {
+		t.Error("Expected WithOCIStrictVersion(true) to set ociStrictVersion")
+	}
+
+	// Defaults to false when the option is not supplied.
+	p, err = NewOCIPusher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.(*OCIPusher).opts.ociStrictVersion {
+		t.Error("Expected ociStrictVersion to default to false")
+	}
+}
+
+func TestResolveOCITagVersion(t *testing.T) {
+	tests := []struct {
+		name             string
+		rawVersion       string
+		ociStrictVersion bool
+		want             string
+		expectError      bool
+	}{
+		{
+			name:             "strict disabled returns raw version unchanged",
+			rawVersion:       "v1.2.3",
+			ociStrictVersion: false,
+			want:             "v1.2.3",
+		},
+		{
+			name:             "strict disabled does not validate version",
+			rawVersion:       "not-a-semver",
+			ociStrictVersion: false,
+			want:             "not-a-semver",
+		},
+		{
+			name:             "strict strips leading v",
+			rawVersion:       "v1.2.3",
+			ociStrictVersion: true,
+			want:             "1.2.3",
+		},
+		{
+			name:             "strict leaves canonical version unchanged",
+			rawVersion:       "1.2.3",
+			ociStrictVersion: true,
+			want:             "1.2.3",
+		},
+		{
+			name:             "strict preserves prerelease",
+			rawVersion:       "1.2.3-alpha.1",
+			ociStrictVersion: true,
+			want:             "1.2.3-alpha.1",
+		},
+		{
+			name:             "strict preserves build metadata (sanitized to underscore later)",
+			rawVersion:       "1.2.3+build.5",
+			ociStrictVersion: true,
+			want:             "1.2.3+build.5",
+		},
+		{
+			name:             "strict errors on non-semver version",
+			rawVersion:       "not-a-semver",
+			ociStrictVersion: true,
+			expectError:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveOCITagVersion(tt.rawVersion, tt.ociStrictVersion)
+			if tt.expectError {
+				if err == nil {
+					t.Fatalf("Expected error for version %q but got none", tt.rawVersion)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("resolveOCITagVersion(%q, %t) = %q, want %q", tt.rawVersion, tt.ociStrictVersion, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestOCIPusher_Push_MultipleOptions(t *testing.T) {
 	chartPath := "../../pkg/cmd/testdata/testcharts/compressedchart-0.1.0.tgz"
 

@@ -37,6 +37,7 @@ type Push struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
+	ociStrictVersion      bool
 	out                   io.Writer
 }
 
@@ -73,6 +74,14 @@ func WithPlainHTTP(plainHTTP bool) PushOpt {
 	}
 }
 
+// WithOCIStrictVersion configures whether the OCI tag is derived from the
+// parsed/sanitized semver representation of the chart version.
+func WithOCIStrictVersion(ociStrictVersion bool) PushOpt {
+	return func(p *Push) {
+		p.ociStrictVersion = ociStrictVersion
+	}
+}
+
 // WithPushOptWriter sets the registryOut field on the push configuration object.
 func WithPushOptWriter(out io.Writer) PushOpt {
 	return func(p *Push) {
@@ -100,6 +109,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
 			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSVerify),
 			pusher.WithPlainHTTP(p.plainHTTP),
+			pusher.WithOCIStrictVersion(p.ociStrictVersion),
 		},
 	}
 

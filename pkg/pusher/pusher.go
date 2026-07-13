@@ -34,6 +34,7 @@ type options struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
+	ociStrictVersion      bool
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -66,6 +67,15 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 func WithPlainHTTP(plainHTTP bool) Option {
 	return func(opts *options) {
 		opts.plainHTTP = plainHTTP
+	}
+}
+
+// WithOCIStrictVersion determines whether the OCI tag is derived from the
+// parsed/sanitized semver representation of the chart version rather than the
+// raw version string.
+func WithOCIStrictVersion(ociStrictVersion bool) Option {
+	return func(opts *options) {
+		opts.ociStrictVersion = ociStrictVersion
 	}
 }
 

@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
+
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/registry"
@@ -85,9 +87,26 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		pushOpts = append(pushOpts, registry.PushOptProvData(provBytes))
 	}
 
+	// Resolve the version used as the base of the OCI tag. With strict
+	// versioning enabled this is the sanitized semver form of the chart
+	// version; otherwise it is the raw chart version. The registry client
+	// still applies its usual tag transformations (e.g. replacing plus (+)
+	// signs with underscores) afterwards.
+	version, err := resolveOCITagVersion(meta.Metadata.Version, pusher.opts.ociStrictVersion)
+	if err != nil {
+		return err
+	}
+
+	// The sanitized version may differ from the raw chart version, so relax
+	// the registry client's strict-mode assertion (which requires the tag to
+	// equal the raw chart version) when it does.
+	if version != meta.Metadata.Version {
+		pushOpts = append(pushOpts, registry.PushOptStrictMode(false))
+	}
+
 	ref := fmt.Sprintf("%s:%s",
 		path.Join(strings.TrimPrefix(href, registry.OCIScheme+"://"), meta.Metadata.Name),
-		meta.Metadata.Version)
+		version)
 
 	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)
 	chartArchiveFileCreatedTime := stat.ModTime()
@@ -95,6 +114,24 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
+}
+
+// resolveOCITagVersion returns the version string to use as the base of the OCI
+// tag for a chart. When ociStrictVersion is false the raw chart version is
+// returned unchanged. When it is true the version is parsed with semver and its
+// sanitized string representation is returned, so that a canonical semver tag is
+// produced regardless of how the version was written in Chart.yaml.
+func resolveOCITagVersion(rawVersion string, ociStrictVersion bool) (string, error) {
+	if !ociStrictVersion {
+		return rawVersion, nil
+	}
+
+	parsedVersion, err := semver.NewVersion(rawVersion)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse chart version %q as semver: %w", rawVersion, err)
+	}
+
+	return parsedVersion.String(), nil
 }
 
 // NewOCIPusher constructs a valid OCI client as a Pusher
