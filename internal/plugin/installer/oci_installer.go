@@ -216,7 +216,7 @@ func extractFile(path string, mode int64, src io.Reader) error {
 		return err
 	}
 
-	outFile, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(mode))
+	outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(mode))
 	if err != nil {
 		return err
 	}
