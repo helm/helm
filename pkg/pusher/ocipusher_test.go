@@ -393,8 +393,8 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 	}
 }
 
-func TestWithOCIStrictVersion(t *testing.T) {
-	p, err := NewOCIPusher(WithOCIStrictVersion(true))
+func TestWithOCINormalizeVersion(t *testing.T) {
+	p, err := NewOCIPusher(WithOCINormalizeVersion(true))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -404,8 +404,8 @@ func TestWithOCIStrictVersion(t *testing.T) {
 		t.Fatal("Expected NewOCIPusher to produce an *OCIPusher")
 	}
 
-	if !op.opts.ociStrictVersion {
-		t.Error("Expected WithOCIStrictVersion(true) to set ociStrictVersion")
+	if !op.opts.ociNormalizeVersion {
+		t.Error("Expected WithOCINormalizeVersion(true) to set ociNormalizeVersion")
 	}
 
 	// Defaults to false when the option is not supplied.
@@ -413,66 +413,66 @@ func TestWithOCIStrictVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.(*OCIPusher).opts.ociStrictVersion {
-		t.Error("Expected ociStrictVersion to default to false")
+	if p.(*OCIPusher).opts.ociNormalizeVersion {
+		t.Error("Expected ociNormalizeVersion to default to false")
 	}
 }
 
 func TestResolveOCITagVersion(t *testing.T) {
 	tests := []struct {
-		name             string
-		rawVersion       string
-		ociStrictVersion bool
-		want             string
-		expectError      bool
+		name                string
+		rawVersion          string
+		ociNormalizeVersion bool
+		want                string
+		expectError         bool
 	}{
 		{
-			name:             "strict disabled returns raw version unchanged",
-			rawVersion:       "v1.2.3",
-			ociStrictVersion: false,
-			want:             "v1.2.3",
+			name:                "strict disabled returns raw version unchanged",
+			rawVersion:          "v1.2.3",
+			ociNormalizeVersion: false,
+			want:                "v1.2.3",
 		},
 		{
-			name:             "strict disabled does not validate version",
-			rawVersion:       "not-a-semver",
-			ociStrictVersion: false,
-			want:             "not-a-semver",
+			name:                "strict disabled does not validate version",
+			rawVersion:          "not-a-semver",
+			ociNormalizeVersion: false,
+			want:                "not-a-semver",
 		},
 		{
-			name:             "strict strips leading v",
-			rawVersion:       "v1.2.3",
-			ociStrictVersion: true,
-			want:             "1.2.3",
+			name:                "strict strips leading v",
+			rawVersion:          "v1.2.3",
+			ociNormalizeVersion: true,
+			want:                "1.2.3",
 		},
 		{
-			name:             "strict leaves canonical version unchanged",
-			rawVersion:       "1.2.3",
-			ociStrictVersion: true,
-			want:             "1.2.3",
+			name:                "strict leaves canonical version unchanged",
+			rawVersion:          "1.2.3",
+			ociNormalizeVersion: true,
+			want:                "1.2.3",
 		},
 		{
-			name:             "strict preserves prerelease",
-			rawVersion:       "1.2.3-alpha.1",
-			ociStrictVersion: true,
-			want:             "1.2.3-alpha.1",
+			name:                "strict preserves prerelease",
+			rawVersion:          "1.2.3-alpha.1",
+			ociNormalizeVersion: true,
+			want:                "1.2.3-alpha.1",
 		},
 		{
-			name:             "strict preserves build metadata (sanitized to underscore later)",
-			rawVersion:       "1.2.3+build.5",
-			ociStrictVersion: true,
-			want:             "1.2.3+build.5",
+			name:                "strict preserves build metadata (sanitized to underscore later)",
+			rawVersion:          "1.2.3+build.5",
+			ociNormalizeVersion: true,
+			want:                "1.2.3+build.5",
 		},
 		{
-			name:             "strict errors on non-semver version",
-			rawVersion:       "not-a-semver",
-			ociStrictVersion: true,
-			expectError:      true,
+			name:                "strict errors on non-semver version",
+			rawVersion:          "not-a-semver",
+			ociNormalizeVersion: true,
+			expectError:         true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := resolveOCITagVersion(tt.rawVersion, tt.ociStrictVersion)
+			got, err := resolveOCITagVersion(tt.rawVersion, tt.ociNormalizeVersion)
 			if tt.expectError {
 				if err == nil {
 					t.Fatalf("Expected error for version %q but got none", tt.rawVersion)
@@ -483,7 +483,104 @@ func TestResolveOCITagVersion(t *testing.T) {
 				t.Fatalf("Unexpected error: %v", err)
 			}
 			if got != tt.want {
-				t.Errorf("resolveOCITagVersion(%q, %t) = %q, want %q", tt.rawVersion, tt.ociStrictVersion, got, tt.want)
+				t.Errorf("resolveOCITagVersion(%q, %t) = %q, want %q", tt.rawVersion, tt.ociNormalizeVersion, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildOCIReference(t *testing.T) {
+	tests := []struct {
+		name                string
+		href                string
+		chartName           string
+		rawVersion          string
+		ociNormalizeVersion bool
+		wantRef             string
+		wantRelax           bool
+		expectError         bool
+	}{
+		{
+			name:                "normalize disabled uses raw version and keeps strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "v1.2.3",
+			ociNormalizeVersion: false,
+			wantRef:             "localhost:5000/charts/mychart:v1.2.3",
+			wantRelax:           false,
+		},
+		{
+			name:                "normalize canonicalizes v-prefixed version and relaxes strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "v1.2.3",
+			ociNormalizeVersion: true,
+			wantRef:             "localhost:5000/charts/mychart:1.2.3",
+			wantRelax:           true,
+		},
+		{
+			name:                "normalize leaves canonical version and keeps strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "1.2.3",
+			ociNormalizeVersion: true,
+			wantRef:             "localhost:5000/charts/mychart:1.2.3",
+			wantRelax:           false,
+		},
+		{
+			name:                "normalize completes short version and relaxes strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "1.2",
+			ociNormalizeVersion: true,
+			wantRef:             "localhost:5000/charts/mychart:1.2.0",
+			wantRelax:           true,
+		},
+		{
+			name:                "normalize with build metadata keeps strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "1.2.3+build.5",
+			ociNormalizeVersion: true,
+			wantRef:             "localhost:5000/charts/mychart:1.2.3+build.5",
+			wantRelax:           false,
+		},
+		{
+			name:                "oci scheme prefix is trimmed from href",
+			href:                "oci://registry.example.com/team/charts",
+			chartName:           "mychart",
+			rawVersion:          "1.2.3",
+			ociNormalizeVersion: false,
+			wantRef:             "registry.example.com/team/charts/mychart:1.2.3",
+			wantRelax:           false,
+		},
+		{
+			name:                "normalize errors on non-semver version",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "not-a-semver",
+			ociNormalizeVersion: true,
+			expectError:         true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ref, relax, err := buildOCIReference(tt.href, tt.chartName, tt.rawVersion, tt.ociNormalizeVersion)
+			if tt.expectError {
+				if err == nil {
+					t.Fatalf("Expected error for version %q but got none", tt.rawVersion)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			if ref != tt.wantRef {
+				t.Errorf("buildOCIReference ref = %q, want %q", ref, tt.wantRef)
+			}
+			if relax != tt.wantRelax {
+				t.Errorf("buildOCIReference relaxStrictMode = %t, want %t", relax, tt.wantRelax)
 			}
 		})
 	}

@@ -37,7 +37,7 @@ type Push struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
-	ociStrictVersion      bool
+	ociNormalizeVersion   bool
 	out                   io.Writer
 }
 
@@ -74,11 +74,11 @@ func WithPlainHTTP(plainHTTP bool) PushOpt {
 	}
 }
 
-// WithOCIStrictVersion configures whether the OCI tag is derived from the
-// parsed/sanitized semver representation of the chart version.
-func WithOCIStrictVersion(ociStrictVersion bool) PushOpt {
+// WithOCINormalizeVersion configures whether the OCI tag is derived from the
+// canonical semver representation of the chart version.
+func WithOCINormalizeVersion(ociNormalizeVersion bool) PushOpt {
 	return func(p *Push) {
-		p.ociStrictVersion = ociStrictVersion
+		p.ociNormalizeVersion = ociNormalizeVersion
 	}
 }
 
@@ -109,7 +109,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
 			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSVerify),
 			pusher.WithPlainHTTP(p.plainHTTP),
-			pusher.WithOCIStrictVersion(p.ociStrictVersion),
+			pusher.WithOCINormalizeVersion(p.ociNormalizeVersion),
 		},
 	}
 

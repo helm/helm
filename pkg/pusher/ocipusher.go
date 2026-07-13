@@ -87,26 +87,23 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		pushOpts = append(pushOpts, registry.PushOptProvData(provBytes))
 	}
 
-	// Resolve the version used as the base of the OCI tag. With strict
-	// versioning enabled this is the sanitized semver form of the chart
-	// version; otherwise it is the raw chart version. The registry client
-	// still applies its usual tag transformations (e.g. replacing plus (+)
-	// signs with underscores) afterwards.
-	version, err := resolveOCITagVersion(meta.Metadata.Version, pusher.opts.ociStrictVersion)
+	// Build the OCI reference for the chart. When --oci-normalize-version is
+	// set (pusher.opts.ociNormalizeVersion) the tag is the canonical semver
+	// form of the chart version; otherwise it is the raw chart version. This
+	// flag is a separate concept from the registry client's own "strict mode"
+	// (relaxed below).
+	ref, relaxStrictMode, err := buildOCIReference(href, meta.Metadata.Name, meta.Metadata.Version, pusher.opts.ociNormalizeVersion)
 	if err != nil {
 		return err
 	}
 
-	// The sanitized version may differ from the raw chart version, so relax
-	// the registry client's strict-mode assertion (which requires the tag to
-	// equal the raw chart version) when it does.
-	if version != meta.Metadata.Version {
+	// The registry client's strict mode asserts that the tag equals the raw
+	// chart version. Once the version has been canonicalized the tag no longer
+	// matches, so that assertion must be disabled. (This is unrelated to the
+	// --oci-normalize-version flag despite the similar "strict" wording.)
+	if relaxStrictMode {
 		pushOpts = append(pushOpts, registry.PushOptStrictMode(false))
 	}
-
-	ref := fmt.Sprintf("%s:%s",
-		path.Join(strings.TrimPrefix(href, registry.OCIScheme+"://"), meta.Metadata.Name),
-		version)
 
 	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)
 	chartArchiveFileCreatedTime := stat.ModTime()
@@ -116,18 +113,46 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	return err
 }
 
+// buildOCIReference constructs the OCI reference used to push a chart and
+// reports whether the registry client's strict mode must be relaxed for it.
+//
+// When ociNormalizeVersion is true the tag is the canonical semver form of the
+// chart version (e.g. "v1.2.3" -> "1.2.3"); otherwise the raw chart version is
+// used unchanged. The registry client still applies its usual tag
+// transformations afterwards (e.g. replacing plus (+) signs with underscores).
+//
+// relaxStrictMode is true when the resulting tag differs from the raw chart
+// version. The registry client's strict mode (registry.PushOptStrictMode)
+// asserts the tag equals the raw chart version, so it must be disabled once the
+// version has been canonicalized. This is separate from the option that drives
+// ociNormalizeVersion despite the shared "strict" terminology.
+func buildOCIReference(href, chartName, rawVersion string, ociNormalizeVersion bool) (ref string, relaxStrictMode bool, err error) {
+	version, err := resolveOCITagVersion(rawVersion, ociNormalizeVersion)
+	if err != nil {
+		return "", false, err
+	}
+
+	ref = fmt.Sprintf("%s:%s",
+		path.Join(strings.TrimPrefix(href, registry.OCIScheme+"://"), chartName),
+		version)
+
+	return ref, version != rawVersion, nil
+}
+
 // resolveOCITagVersion returns the version string to use as the base of the OCI
-// tag for a chart. When ociStrictVersion is false the raw chart version is
+// tag for a chart. When ociNormalizeVersion is false the raw chart version is
 // returned unchanged. When it is true the version is parsed with semver and its
-// sanitized string representation is returned, so that a canonical semver tag is
+// canonical string representation is returned, so that a canonical semver tag is
 // produced regardless of how the version was written in Chart.yaml.
-func resolveOCITagVersion(rawVersion string, ociStrictVersion bool) (string, error) {
-	if !ociStrictVersion {
+func resolveOCITagVersion(rawVersion string, ociNormalizeVersion bool) (string, error) {
+	if !ociNormalizeVersion {
 		return rawVersion, nil
 	}
 
 	parsedVersion, err := semver.NewVersion(rawVersion)
 	if err != nil {
+		// Defensive: the chart loader validates the version as semver before a
+		// push reaches this point, so a valid chart should never hit this path.
 		return "", fmt.Errorf("failed to parse chart version %q as semver: %w", rawVersion, err)
 	}
 
