@@ -89,9 +89,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 
 	// Build the OCI reference for the chart. When --oci-normalize-version is
 	// set (pusher.opts.ociNormalizeVersion) the tag is the canonical semver
-	// form of the chart version; otherwise it is the raw chart version. This
-	// flag is a separate concept from the registry client's own "strict mode"
-	// (relaxed below).
+	// form of the chart version; otherwise it is the raw chart version.
 	ref, relaxStrictMode, err := buildOCIReference(href, meta.Metadata.Name, meta.Metadata.Version, pusher.opts.ociNormalizeVersion)
 	if err != nil {
 		return err
@@ -99,8 +97,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 
 	// The registry client's strict mode asserts that the tag equals the raw
 	// chart version. Once the version has been canonicalized the tag no longer
-	// matches, so that assertion must be disabled. (This is unrelated to the
-	// --oci-normalize-version flag despite the similar "strict" wording.)
+	// matches, so that assertion must be disabled.
 	if relaxStrictMode {
 		pushOpts = append(pushOpts, registry.PushOptStrictMode(false))
 	}
