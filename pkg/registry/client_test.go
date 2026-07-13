@@ -230,16 +230,14 @@ func TestNewClient_WithDenyAllPolicy(t *testing.T) {
 	require.Same(t, evaluator, c.policyEvaluator)
 }
 
-func TestNewClient_WithConfigOptions(t *testing.T) {
+func TestNewClient_WithRegistriesConfigPath(t *testing.T) {
 	t.Parallel()
 
 	credFile := filepath.Join(t.TempDir(), "config.json")
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(credFile),
-		ClientOptConfigOptions(ConfigOptions{
-			RegistriesConfigPath: "/nonexistent/registries.conf",
-		}),
+		withRegistriesConfigPath("/nonexistent/registries.conf"),
 	)
 	require.NoError(t, err) // nonexistent paths are silently skipped
 	require.NotNil(t, c)
@@ -271,7 +269,7 @@ func TestLogin_LocationRewrite(t *testing.T) {
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(credFile),
-		ClientOptConfigOptions(ConfigOptions{RegistriesConfigPath: registriesConf}),
+		withRegistriesConfigPath(registriesConf),
 	)
 	require.NoError(t, err)
 
