@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build unix
 
 /*
 Copyright The Helm Authors.

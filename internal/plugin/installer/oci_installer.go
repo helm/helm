@@ -222,7 +222,9 @@ func extractFile(path string, mode int64, src io.Reader) error {
 	}
 
 	if _, err := io.Copy(outFile, src); err != nil {
-		outFile.Close()
+		if cErr := outFile.Close(); cErr != nil {
+			return fmt.Errorf("%w (also failed to close: %v)", err, cErr)
+		}
 		return err
 	}
 
