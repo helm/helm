@@ -427,43 +427,43 @@ func TestResolveOCITagVersion(t *testing.T) {
 		expectError         bool
 	}{
 		{
-			name:                "strict disabled returns raw version unchanged",
+			name:                "normalize disabled returns raw version unchanged",
 			rawVersion:          "v1.2.3",
 			ociNormalizeVersion: false,
 			want:                "v1.2.3",
 		},
 		{
-			name:                "strict disabled does not validate version",
+			name:                "normalize disabled does not validate version",
 			rawVersion:          "not-a-semver",
 			ociNormalizeVersion: false,
 			want:                "not-a-semver",
 		},
 		{
-			name:                "strict strips leading v",
+			name:                "normalize strips leading v",
 			rawVersion:          "v1.2.3",
 			ociNormalizeVersion: true,
 			want:                "1.2.3",
 		},
 		{
-			name:                "strict leaves canonical version unchanged",
+			name:                "normalize leaves canonical version unchanged",
 			rawVersion:          "1.2.3",
 			ociNormalizeVersion: true,
 			want:                "1.2.3",
 		},
 		{
-			name:                "strict preserves prerelease",
+			name:                "normalize preserves prerelease",
 			rawVersion:          "1.2.3-alpha.1",
 			ociNormalizeVersion: true,
 			want:                "1.2.3-alpha.1",
 		},
 		{
-			name:                "strict preserves build metadata (sanitized to underscore later)",
+			name:                "normalize preserves build metadata (sanitized to underscore later)",
 			rawVersion:          "1.2.3+build.5",
 			ociNormalizeVersion: true,
 			want:                "1.2.3+build.5",
 		},
 		{
-			name:                "strict errors on non-semver version",
+			name:                "normalize errors on non-semver version",
 			rawVersion:          "not-a-semver",
 			ociNormalizeVersion: true,
 			expectError:         true,
