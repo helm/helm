@@ -56,7 +56,7 @@ func TestExtractTarFileDescriptorLeak(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		hdr := &tar.Header{
 			Name:     fmt.Sprintf("file_%d.txt", i),
-			Mode:     0600,
+			Mode:     0o600,
 			Size:     0,
 			Typeflag: tar.TypeReg,
 		}

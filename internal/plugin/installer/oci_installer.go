@@ -209,24 +209,24 @@ func extractTarGz(r io.Reader, targetDir string) error {
 	return extractTar(gzr, targetDir)
 }
 
-// extractFile creates a single file from the tar archive
+// extractFile creates a single file from the tar archive.
 func extractFile(path string, mode int64, src io.Reader) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
-	outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(mode))
+	outFile, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(mode))
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
 
 	if _, err := io.Copy(outFile, src); err != nil {
+		outFile.Close()
 		return err
 	}
 
-	return nil
+	return outFile.Close()
 }
 
 // extractTar extracts a tar archive to a directory
