@@ -118,9 +118,9 @@ It is also worth asking on the Slack channels.
 
 We use milestones to track progress of specific planned releases.
 
-For example, if the latest currently-released version is `4.0.0`, an issue/PR which pertains to a
+For example, if the latest currently-released version is `4.2.3`, an issue/PR which pertains to a
 specific upcoming bugfix or feature release could fall into one of two different active milestones:
-`4.0.1` or `4.1.0`.
+`4.2.4` or `4.3.0`.
 
 Issues and PRs which are deemed backwards-incompatible may be added to the discussion items for
 Helm 5 with [label:v5.x](https://github.com/helm/helm/labels/v5.x). An issue or PR that we are not
