@@ -34,10 +34,10 @@ func TestExtractTarFileDescriptorLeak(t *testing.T) {
 
 	// Lower the limit to 50
 	oldLimit := rLimit
-	rLimit.Cur = 50
 	if rLimit.Max < 50 {
-		rLimit.Max = 50
+		t.Skipf("Skipping test because Max limit (%d) is too low", rLimit.Max)
 	}
+	rLimit.Cur = 50
 
 	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rLimit)
 	if err != nil {
