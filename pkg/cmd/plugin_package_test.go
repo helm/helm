@@ -43,12 +43,12 @@ func TestPluginPackageWithoutSigning(t *testing.T) {
 	// Create a test plugin directory
 	tempDir := t.TempDir()
 	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a plugin.yaml file
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -94,12 +94,12 @@ func TestPluginPackageDefaultRequiresSigning(t *testing.T) {
 	// Create a test plugin directory
 	tempDir := t.TempDir()
 	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a plugin.yaml file
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,12 +131,12 @@ func TestPluginPackageSigningFailure(t *testing.T) {
 	// Create a test plugin directory
 	tempDir := t.TempDir()
 	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a plugin.yaml file
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

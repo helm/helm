@@ -24,7 +24,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
@@ -113,7 +113,7 @@ func TestStorageDelete(t *testing.T) {
 	}
 
 	rhist, err := releaseListToV1List(hist)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We have now deleted one of the two records.
 	if len(rhist) != 1 {
@@ -204,7 +204,7 @@ func TestStorageDeployed(t *testing.T) {
 	}
 
 	rel, err := releaserToV1Release(rls)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	switch {
 	case rls == nil:
@@ -247,7 +247,7 @@ func TestStorageDeployedWithCorruption(t *testing.T) {
 	}
 
 	rel, err := releaserToV1Release(rls)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	switch {
 	case rls == nil:
@@ -387,12 +387,10 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 
 	// On inserting the 5th record, we expect two records to be pruned from history.
 	hist, err := storage.History(name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rhist, err := releaseListToV1List(hist)
-	assert.NoError(t, err)
-	if err != nil {
-		t.Fatal(err)
-	} else if len(rhist) != storage.MaxHistory {
+	require.NoError(t, err)
+	if len(rhist) != storage.MaxHistory {
 		for _, item := range rhist {
 			t.Logf("%s %v", item.Name, item.Version)
 		}
@@ -440,7 +438,7 @@ func TestStorageDoNotDeleteDeployed(t *testing.T) {
 		t.Fatal(err)
 	} else if len(hist) != storage.MaxHistory {
 		rhist, err := releaseListToV1List(hist)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		for _, item := range rhist {
 			t.Logf("%s %v", item.Name, item.Version)
 		}
@@ -454,7 +452,7 @@ func TestStorageDoNotDeleteDeployed(t *testing.T) {
 	}
 
 	rhist, err := releaseListToV1List(hist)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for _, item := range rhist {
 		if !expectedVersions[item.Version] {
 			t.Errorf("Release version %d, found when not expected", item.Version)
@@ -490,7 +488,7 @@ func TestStorageLast(t *testing.T) {
 	}
 
 	rel, err := releaserToV1Release(h)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	if rel.Version != 4 {
 		t.Errorf("Expected revision 4, got %d", rel.Version)
@@ -544,7 +542,7 @@ func TestUpgradeInitiallyFailedReleaseWithHistoryLimit(t *testing.T) {
 	}
 
 	rhist, err := releaseListToV1List(hist)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for i, rel := range rhist {
 		wantVersion := i + 2
 		if rel.Version != wantVersion {

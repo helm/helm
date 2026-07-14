@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -734,6 +735,7 @@ func TestConcatPrefix(t *testing.T) {
 // from issue #31643 where chart has data: {} and user provides data: {foo: bar, baz: ~}
 func TestCoalesceValuesEmptyMapWithNils(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "test"},
@@ -750,7 +752,7 @@ func TestCoalesceValuesEmptyMapWithNils(t *testing.T) {
 	}
 
 	v, err := CoalesceValues(c, vals)
-	is.NoError(err)
+	req.NoError(err)
 
 	data, ok := v["data"].(map[string]any)
 	is.True(ok, "data is not a map")
@@ -769,6 +771,7 @@ func TestCoalesceValuesEmptyMapWithNils(t *testing.T) {
 // Regression test for issue #31919.
 func TestCoalesceValuesSubchartDefaultNilsCleaned(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Subchart has a default with nil values (e.g. keyMapping: {password: null})
 	subchart := &chart.Chart{
@@ -789,7 +792,7 @@ func TestCoalesceValuesSubchartDefaultNilsCleaned(t *testing.T) {
 	vals := map[string]any{}
 
 	v, err := CoalesceValues(parent, vals)
-	is.NoError(err)
+	req.NoError(err)
 
 	childVals, ok := v["child"].(map[string]any)
 	is.True(ok, "child values should be a map")
@@ -807,6 +810,7 @@ func TestCoalesceValuesSubchartDefaultNilsCleaned(t *testing.T) {
 // Regression test for issue #31919.
 func TestCoalesceValuesUserNullErasesSubchartDefault(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	subchart := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "child"},
@@ -828,7 +832,7 @@ func TestCoalesceValuesUserNullErasesSubchartDefault(t *testing.T) {
 	}
 
 	v, err := CoalesceValues(parent, vals)
-	is.NoError(err)
+	req.NoError(err)
 
 	childVals, ok := v["child"].(map[string]any)
 	is.True(ok, "child values should be a map")
@@ -843,6 +847,7 @@ func TestCoalesceValuesUserNullErasesSubchartDefault(t *testing.T) {
 // Regression test for issue #31971.
 func TestCoalesceValuesSubchartNilDoesNotShadowGlobal(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	subchart := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "child"},
@@ -868,7 +873,7 @@ func TestCoalesceValuesSubchartNilDoesNotShadowGlobal(t *testing.T) {
 	}
 
 	v, err := CoalesceValues(parent, vals)
-	is.NoError(err)
+	req.NoError(err)
 
 	childVals, ok := v["child"].(map[string]any)
 	is.True(ok, "child values should be a map")
@@ -887,6 +892,7 @@ func TestCoalesceValuesSubchartNilDoesNotShadowGlobal(t *testing.T) {
 // the same map. Regression test for the coalesceTablesFullKey merge path.
 func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	subchart := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "child"},
@@ -913,7 +919,7 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 	}
 
 	v, err := CoalesceValues(parent, vals)
-	is.NoError(err)
+	req.NoError(err)
 
 	childVals, ok := v["child"].(map[string]any)
 	is.True(ok, "child values should be a map")

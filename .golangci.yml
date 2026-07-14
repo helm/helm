@@ -47,7 +47,7 @@ linters:
     - whitespace
 
   exclusions:
-  
+
     generated: lax
 
     presets:
@@ -91,35 +91,19 @@ linters:
         - commentFormatting
         - deferInLoop
         - elseif
-        - emptyStringTest
         - exposedSyncMutex
         - filepathJoin
-        - httpNoBody
         - hugeParam
         - ifElseChain
         - importShadow
-        - nestingReduce
         - nilValReturn
-        - octalLiteral
         - paramTypeCombine
-        - preferStringWriter
         - ptrToRefParam
         - rangeValCopy
-        - regexpSimplify
-        - singleCaseSwitch
-        - sloppyReassign
-        - sloppyLen
-        - sprintfQuotedString
-        - stringConcatSimplify
-        - stringsCompare
-        - stringXbytes
         - todoCommentWithoutDetail
         - tooManyResultsChecker
-        - typeAssertChain
         - uncheckedInlineErr
         - unnamedResult
-        - unnecessaryDefer
-        - unslice
         - whyNoLint
       enable-all: true
 
@@ -152,16 +136,6 @@ linters:
                   - models
 
     testifylint:
-      disable:
-        - encoded-compare
-        - equal-values
-        - expected-actual
-        - float-compare
-        - go-require
-        - nil-compare
-        - require-error
-        - suite-dont-use-pkg
-        - suite-extra-assert-call
       # Intentionally enable all testifylint rules so new checks are adopted automatically.
       enable-all: true
 

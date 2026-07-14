@@ -91,7 +91,7 @@ func TestReadFile(t *testing.T) {
 				tmpDir := t.TempDir()
 				filePath := filepath.Join(tmpDir, "test.txt")
 				content := []byte("local file content")
-				require.NoError(t, os.WriteFile(filePath, content, 0644))
+				require.NoError(t, os.WriteFile(filePath, content, 0o644))
 				return filePath, func() {} // cleanup handled by t.TempDir()
 			},
 			expectError:  false,
@@ -152,7 +152,7 @@ func TestReadFile(t *testing.T) {
 				fileName := "ftp_file.txt" // Valid filename for filesystem
 				filePath := filepath.Join(tmpDir, fileName)
 				content := []byte("local fallback content")
-				require.NoError(t, os.WriteFile(filePath, content, 0644))
+				require.NoError(t, os.WriteFile(filePath, content, 0o644))
 				return filePath, func() {}
 			},
 			expectError:  false,
@@ -224,7 +224,7 @@ func TestReadFile(t *testing.T) {
 				assert.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			if tt.expectedData != nil {
 				assert.Equal(t, tt.expectedData, got)
@@ -258,8 +258,7 @@ func TestReadFileErrorMessages(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := readFile(tt.filePath, tt.providers)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
+			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }

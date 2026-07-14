@@ -19,6 +19,7 @@ package registry
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,15 +62,14 @@ func TestGetTagMatchingVersionOrConstraint_InvalidConstraint(t *testing.T) {
 func TestGetTagMatchingVersionOrConstraint_NoMatches(t *testing.T) {
 	tags := []string{"0.1.0", "0.2.0"}
 	_, err := GetTagMatchingVersionOrConstraint(tags, ">=1.0.0")
-	require.Error(t, err, "expected error when no tags match")
-	require.Contains(t, err.Error(), ">=1.0.0", "expected error to contain version string")
+	assert.ErrorContains(t, err, ">=1.0.0", "expected error to contain version string")
 }
 
 func TestGetTagMatchingVersionOrConstraint_SkipsNonSemverTags(t *testing.T) {
 	tags := []string{"alpha", "1.0.0", "beta", "1.1.0"}
 	got, err := GetTagMatchingVersionOrConstraint(tags, ">=1.0.0 <2.0.0")
 	require.NoError(t, err)
-	require.Equal(t, "1.0.0", got)
+	assert.Equal(t, "1.0.0", got)
 }
 
 func TestGetTagMatchingVersionOrConstraint_OrderMatters_FirstMatchReturned(t *testing.T) {
@@ -77,7 +77,7 @@ func TestGetTagMatchingVersionOrConstraint_OrderMatters_FirstMatchReturned(t *te
 	tags := []string{"1.3.0", "1.2.0"}
 	got, err := GetTagMatchingVersionOrConstraint(tags, ">=1.2.0 <2.0.0")
 	require.NoError(t, err)
-	require.Equal(t, "1.3.0", got, "first satisfying tag")
+	assert.Equal(t, "1.3.0", got, "first satisfying tag")
 }
 
 func TestGetTagMatchingVersionOrConstraint_ExactMatchHasPrecedence(t *testing.T) {
@@ -85,5 +85,5 @@ func TestGetTagMatchingVersionOrConstraint_ExactMatchHasPrecedence(t *testing.T)
 	tags := []string{"1.3.0", "1.2.3"}
 	got, err := GetTagMatchingVersionOrConstraint(tags, "1.2.3")
 	require.NoError(t, err)
-	require.Equal(t, "1.2.3", got, "expected exact match")
+	assert.Equal(t, "1.2.3", got, "expected exact match")
 }

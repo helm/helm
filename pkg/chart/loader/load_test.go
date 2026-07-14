@@ -55,7 +55,7 @@ description: A test chart
 	for name, data := range files {
 		header := &tar.Header{
 			Name:    filepath.Join(chartName, name),
-			Mode:    0644,
+			Mode:    0o644,
 			Size:    int64(len(data)),
 			ModTime: time.Now(),
 		}

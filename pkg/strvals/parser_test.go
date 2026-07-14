@@ -16,6 +16,7 @@ limitations under the License.
 package strvals
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -400,7 +401,7 @@ func TestParseSet(t *testing.T) {
 			require.NoError(t, err, "Error serializing parsed value")
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}
@@ -423,7 +424,7 @@ func TestParseSet(t *testing.T) {
 			require.NoError(t, err, "Error serializing parsed value")
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}
@@ -534,7 +535,7 @@ func TestParseInto(t *testing.T) {
 			require.NoError(t, err, "Error serializing parsed value")
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			assert.Equal(t, string(y1), string(y2), tt.input)
 		}
 	}
@@ -567,7 +568,7 @@ func TestParseIntoString(t *testing.T) {
 		require.NoError(t, err, "Error serializing parsed value")
 	}
 
-	if string(y1) != string(y2) {
+	if !bytes.Equal(y1, y2) {
 		assert.Equal(t, string(y1), string(y2), input)
 	}
 }
@@ -667,7 +668,7 @@ func TestParseJSON(t *testing.T) {
 			require.NoError(t, err, "Error serializing parsed value")
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			assert.Equal(t, string(y1), string(y2), tt.input)
 		}
 	}
@@ -697,7 +698,7 @@ func TestParseFile(t *testing.T) {
 		require.NoError(t, err, "Error serializing parsed value")
 	}
 
-	if string(y1) != string(y2) {
+	if !bytes.Equal(y1, y2) {
 		assert.Equal(t, string(y1), string(y2), input)
 	}
 }
@@ -728,7 +729,7 @@ func TestParseIntoFile(t *testing.T) {
 		require.NoError(t, err, "Error serializing parsed value")
 	}
 
-	if string(y1) != string(y2) {
+	if !bytes.Equal(y1, y2) {
 		assert.Equal(t, string(y1), string(y2), input)
 	}
 }
@@ -778,9 +779,7 @@ func TestParseSetNestedLevels(t *testing.T) {
 		if err != nil {
 			if tt.err {
 				if tt.errStr != "" {
-					if err.Error() != tt.errStr {
-						assert.Equal(t, tt.errStr, err.Error())
-					}
+					require.EqualError(t, err, tt.errStr)
 				}
 				continue
 			}
@@ -793,11 +792,9 @@ func TestParseSetNestedLevels(t *testing.T) {
 		y1, err := yaml.Marshal(tt.expect)
 		require.NoError(t, err)
 		y2, err := yaml.Marshal(got)
-		if err != nil {
-			require.NoError(t, err, "Error serializing parsed value")
-		}
+		require.NoError(t, err, "Error serializing parsed value")
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}

@@ -58,7 +58,7 @@ command: "$HELM_PLUGIN_DIR/bin/%s"
 `, pluginName, pluginName)
 	header := &tar.Header{
 		Name:     "plugin.yaml",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     int64(len(pluginYAML)),
 		Typeflag: tar.TypeReg,
 	}
@@ -72,7 +72,7 @@ command: "$HELM_PLUGIN_DIR/bin/%s"
 	// Add bin directory
 	dirHeader := &tar.Header{
 		Name:     "bin/",
-		Mode:     0755,
+		Mode:     0o755,
 		Typeflag: tar.TypeDir,
 	}
 	if err := tarWriter.WriteHeader(dirHeader); err != nil {
@@ -83,7 +83,7 @@ command: "$HELM_PLUGIN_DIR/bin/%s"
 	execContent := fmt.Sprintf("#!/bin/sh\necho '%s test plugin'", pluginName)
 	execHeader := &tar.Header{
 		Name:     "bin/" + pluginName,
-		Mode:     0755,
+		Mode:     0o755,
 		Size:     int64(len(execContent)),
 		Typeflag: tar.TypeReg,
 	}
@@ -539,7 +539,7 @@ func TestOCIInstaller_Install_ComponentExtraction(t *testing.T) {
 	execPath := filepath.Join(tempDir, "bin", pluginName)
 	if info, err := os.Stat(execPath); err != nil {
 		t.Errorf("executable not found: %v", err)
-	} else if info.Mode()&0111 == 0 {
+	} else if info.Mode()&0o111 == 0 {
 		t.Error("file is not executable")
 	}
 
@@ -561,7 +561,7 @@ func TestExtractTarGz(t *testing.T) {
 	testContent := "test content"
 	header := &tar.Header{
 		Name:     "test-file.txt",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     int64(len(testContent)),
 		Typeflag: tar.TypeReg,
 	}
@@ -577,7 +577,7 @@ func TestExtractTarGz(t *testing.T) {
 	// Add a test directory
 	dirHeader := &tar.Header{
 		Name:     "test-dir/",
-		Mode:     0755,
+		Mode:     0o755,
 		Typeflag: tar.TypeDir,
 	}
 
@@ -634,7 +634,7 @@ func TestExtractTar_UnknownFileType(t *testing.T) {
 	testContent := "test content"
 	header := &tar.Header{
 		Name:     "test-file.txt",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     int64(len(testContent)),
 		Typeflag: tar.TypeReg,
 	}
@@ -650,7 +650,7 @@ func TestExtractTar_UnknownFileType(t *testing.T) {
 	// Test unknown file type
 	unknownHeader := &tar.Header{
 		Name:     "unknown-type",
-		Mode:     0644,
+		Mode:     0o644,
 		Typeflag: tar.TypeSymlink, // Use a type that's not handled
 	}
 
@@ -686,7 +686,7 @@ func TestExtractTar_SuccessfulExtraction(t *testing.T) {
 	testContent := "test content"
 	header := &tar.Header{
 		Name:     "test-file.txt",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     int64(len(testContent)),
 		Typeflag: tar.TypeReg,
 	}

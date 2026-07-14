@@ -226,7 +226,7 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 				// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
 				var jsonval any
 				dec := json.NewDecoder(strings.NewReader(t.sc.String()))
-				if err = dec.Decode(&jsonval); err != nil {
+				if err := dec.Decode(&jsonval); err != nil {
 					return err
 				}
 				set(data, string(k), jsonval)
@@ -290,7 +290,7 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 
 func set(data map[string]any, key string, val any) {
 	// If key is empty, don't set it.
-	if len(key) == 0 {
+	if key == "" {
 		return
 	}
 	data[key] = val
@@ -358,7 +358,7 @@ func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 			// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
 			var jsonval any
 			dec := json.NewDecoder(strings.NewReader(t.sc.String()))
-			if err = dec.Decode(&jsonval); err != nil {
+			if err := dec.Decode(&jsonval); err != nil {
 				return list, err
 			}
 			if list, err = setIndex(list, i, jsonval); err != nil {
@@ -549,7 +549,7 @@ func typedVal(v []rune, st bool) any {
 	}
 
 	// If this value does not start with zero, try parsing it to an int
-	if len(val) != 0 && val[0] != '0' {
+	if val != "" && val[0] != '0' {
 		if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return iv
 		}

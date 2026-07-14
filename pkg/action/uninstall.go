@@ -234,7 +234,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 	}
 
 	rel.Info.Status = common.StatusUninstalled
-	if len(u.Description) > 0 {
+	if u.Description != "" {
 		rel.Info.Description = u.Description
 	} else {
 		rel.Info.Description = "Uninstallation complete"

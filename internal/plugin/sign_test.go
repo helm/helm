@@ -28,7 +28,7 @@ func TestSignPlugin(t *testing.T) {
 	// Create a test plugin directory
 	tempDir := t.TempDir()
 	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -41,7 +41,7 @@ version: 1.0.0
 runtimeConfig:
   platformCommand:
     - command: echo`
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

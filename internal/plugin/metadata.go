@@ -165,7 +165,7 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 	}
 
 	platformCommand := m.PlatformCommand
-	if len(platformCommand) == 0 && len(m.Command) > 0 {
+	if len(platformCommand) == 0 && m.Command != "" {
 		platformCommand = []PlatformCommand{{Command: m.Command}}
 	}
 

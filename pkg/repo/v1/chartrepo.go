@@ -109,14 +109,14 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		fmt.Fprintln(&charts, name)
 	}
 	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
-	os.MkdirAll(filepath.Dir(chartsFile), 0755)
+	os.MkdirAll(filepath.Dir(chartsFile), 0o755)
 
-	fileutil.AtomicWriteFile(chartsFile, bytes.NewReader([]byte(charts.String())), 0644)
+	fileutil.AtomicWriteFile(chartsFile, bytes.NewReader([]byte(charts.String())), 0o644)
 
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
-	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, fileutil.AtomicWriteFile(fname, bytes.NewReader(index), 0644)
+	os.MkdirAll(filepath.Dir(fname), 0o755)
+	return fname, fileutil.AtomicWriteFile(fname, bytes.NewReader(index), 0o644)
 }
 
 type findChartInRepoURLOptions struct {

@@ -286,9 +286,9 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, tc.IsTemplate)
 			if tc.ExpectedError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tc.ExpectedStrategy, dryRunStrategy)
 			}
 

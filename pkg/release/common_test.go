@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v2release "helm.sh/helm/v4/internal/release/v2"
 	"helm.sh/helm/v4/pkg/release/common"
@@ -31,6 +32,7 @@ func TestNewDefaultAccessor(t *testing.T) {
 	// Testing the default implementation rather than NewAccessor which can be
 	// overridden by developers.
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Create release
 	info := &rspb.Info{Status: common.StatusDeployed, LastDeployed: time.Now().Add(1000)}
@@ -55,7 +57,7 @@ func TestNewDefaultAccessor(t *testing.T) {
 	// can't be used with interfaces. The accessors enable access to the underlying data
 	// in a manner that works with Go interfaces.
 	accessor, err := newDefaultAccessor(rel)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Verify information
 	is.Equal(rel.Name, accessor.Name())
@@ -68,6 +70,7 @@ func TestNewDefaultAccessor(t *testing.T) {
 func TestNewDefaultAccessorV2(t *testing.T) {
 	// Testing the default implementation for v2 releases (charts/v3)
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Create v2 release
 	info := &v2release.Info{Status: common.StatusDeployed, LastDeployed: time.Now().Add(1000), Notes: "test notes"}
@@ -93,7 +96,7 @@ func TestNewDefaultAccessorV2(t *testing.T) {
 
 	// Test accessor creation
 	accessor, err := newDefaultAccessor(rel)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Verify all accessor methods return correct values
 	is.Equal(rel.Name, accessor.Name())
@@ -112,7 +115,7 @@ func TestNewDefaultAccessorV2(t *testing.T) {
 
 	// Test hook accessor
 	hookAccessor, err := newDefaultHookAccessor(hooks[0])
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("templates/hook.yaml", hookAccessor.Path())
 	is.Equal("hook manifest", hookAccessor.Manifest())
 }
@@ -120,6 +123,7 @@ func TestNewDefaultAccessorV2(t *testing.T) {
 func TestNewDefaultAccessorV2ByValue(t *testing.T) {
 	// Test that passing v2 release by value also works
 	is := assert.New(t)
+	req := require.New(t)
 
 	info := &v2release.Info{Status: common.StatusDeployed, LastDeployed: time.Now()}
 	rel := v2release.Release{
@@ -130,6 +134,6 @@ func TestNewDefaultAccessorV2ByValue(t *testing.T) {
 	}
 
 	accessor, err := newDefaultAccessor(rel)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("test-release", accessor.Name())
 }

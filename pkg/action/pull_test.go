@@ -71,8 +71,8 @@ func startLocalServerForTests(t *testing.T, handler http.Handler) (*httptest.Ser
 			return nil, err
 		}
 		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			_, err = w.Write(fileBytes)
-			require.NoError(t, err)
+			_, err := w.Write(fileBytes)
+			assert.NoError(t, err)
 		})
 	}
 

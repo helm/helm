@@ -335,7 +335,7 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
 	}
 
-	if len(notesTxt) > 0 {
+	if notesTxt != "" {
 		upgradedRelease.Info.Notes = notesTxt
 	}
 	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
@@ -398,7 +398,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 
 	if isDryRun(u.DryRunStrategy) {
 		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)
-		if len(u.Description) > 0 {
+		if u.Description != "" {
 			upgradedRelease.Info.Description = u.Description
 		} else {
 			upgradedRelease.Info.Description = "Dry run complete"
@@ -516,7 +516,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	u.cfg.recordRelease(originalRelease)
 
 	upgradedRelease.Info.Status = rcommon.StatusDeployed
-	if len(u.Description) > 0 {
+	if u.Description != "" {
 		upgradedRelease.Info.Description = u.Description
 	} else {
 		upgradedRelease.Info.Description = "Upgrade complete"

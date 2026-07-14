@@ -33,9 +33,9 @@ import (
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
+	_ "github.com/distribution/distribution/v3/registry/auth/token"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -55,6 +55,8 @@ var (
 	testHtpasswdFileBasename = "authtest.htpasswd"
 	testUsername             = "myuser"
 	testPassword             = "mypass"
+	testIssuer               = "testissuer"
+	testService              = "testservice"
 )
 
 type TestRegistry struct {
@@ -62,18 +64,19 @@ type TestRegistry struct {
 	Out                     io.Writer
 	FakeRegistryHost        string
 	DockerRegistryHost      string
+	AuthServerHost          string
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
 	dockerRegistry          *registry.Registry
 }
 
-func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
+func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	suite.WorkspaceDir = testWorkspaceDir
 	err := os.RemoveAll(suite.WorkspaceDir)
-	require.NoError(suite.T(), err, "no error removing test workspace dir")
-	err = os.Mkdir(suite.WorkspaceDir, 0700)
-	require.NoError(suite.T(), err, "no error creating test workspace dir")
+	suite.Require().NoError(err, "no error removing test workspace dir")
+	err = os.Mkdir(suite.WorkspaceDir, 0o700)
+	suite.Require().NoError(err, "no error creating test workspace dir")
 
 	var out bytes.Buffer
 
@@ -119,7 +122,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Require().NoError(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0644)
+	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644)
 	suite.Require().NoError(err, "no error creating test htpasswd file")
 
 	// Registry config
@@ -129,21 +132,42 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 	suite.Require().NoError(err, "no error finding free port for test registry")
 	defer func() { _ = ln.Close() }()
 
-	// Change the registry host to another host which is not localhost.
-	// This is required because Docker enforces HTTP if the registry
-	// host is localhost/127.0.0.1.
+	// Use localhost for HTTP tests and helm-test-registry for TLS tests.
+	// TLS tests need a different hostname to match the certificate.
 	port := ln.Addr().(*net.TCPAddr).Port
-	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+	if tlsEnabled {
+		suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+	} else {
+		suite.DockerRegistryHost = fmt.Sprintf("127.0.0.1:%d", port)
+	}
 
 	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
 
-	config.Auth = configuration.Auth{
-		"htpasswd": configuration.Parameters{
-			"realm": "localhost",
-			"path":  htpasswdPath,
-		},
+	if auth == "token" {
+		ln, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
+		suite.Require().NoError(err, "no error finding free port for test auth server")
+		defer ln.Close()
+
+		//set test auth server host
+		suite.AuthServerHost = ln.Addr().String()
+
+		config.Auth = configuration.Auth{
+			"token": configuration.Parameters{
+				"realm":          "http://" + suite.AuthServerHost + "/auth",
+				"service":        testService,
+				"issuer":         testIssuer,
+				"rootcertbundle": tlsServerCert,
+			},
+		}
+	} else {
+		config.Auth = configuration.Auth{
+			"htpasswd": configuration.Parameters{
+				"realm": "localhost",
+				"path":  htpasswdPath,
+			},
+		}
 	}
 
 	// config tls
@@ -536,9 +560,9 @@ func testPull(suite *TestRegistry) {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
-	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
+	suite.JSONEq("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
 		string(result.Manifest.Data))
-	suite.Equal("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
+	suite.JSONEq("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
 		string(result.Config.Data))
 	suite.Equal(chartData, result.Chart.Data)
 	suite.Equal(provData, result.Prov.Data)

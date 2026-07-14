@@ -270,7 +270,7 @@ func TestRepoAddWithPasswordFromStdin(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	if !strings.Contains(result, fmt.Sprintf("\"%s\" has been added to your repositories", testName)) {
+	if !strings.Contains(result, fmt.Sprintf("%q has been added to your repositories", testName)) {
 		t.Errorf("Repo was not successfully added. Output: %s", result)
 	}
 }

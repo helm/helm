@@ -48,12 +48,12 @@ func getPlatformCommand(cmds []PlatformCommand) ([]string, []string) {
 			return strings.Split(c.Command, " "), c.Args
 		}
 
-		if (len(c.OperatingSystem) > 0 && !eq(c.OperatingSystem, runtime.GOOS)) || len(c.Architecture) > 0 {
+		if (c.OperatingSystem != "" && !eq(c.OperatingSystem, runtime.GOOS)) || c.Architecture != "" {
 			// Skip if OS is not empty and doesn't match or if arch is set as a set arch requires an OS match
 			continue
 		}
 
-		if !foundOs && len(c.OperatingSystem) > 0 && eq(c.OperatingSystem, runtime.GOOS) {
+		if !foundOs && c.OperatingSystem != "" && eq(c.OperatingSystem, runtime.GOOS) {
 			// First OS match with empty arch, can only be overridden by a direct match
 			command = strings.Split(c.Command, " ")
 			args = c.Args

@@ -167,7 +167,7 @@ func TestVerifyChart(t *testing.T) {
 	}
 	// The verification is tested at length in the provenance package. Here,
 	// we just want a quick sanity check that the v is not empty.
-	if len(v.FileHash) == 0 {
+	if v.FileHash == "" {
 		t.Error("Digest missing")
 	}
 }
@@ -417,7 +417,7 @@ func TestDownloadToCache(t *testing.T) {
 	t.Run("download and cache chart", func(t *testing.T) {
 		// Clear cache for this test
 		os.RemoveAll(contentCache)
-		os.MkdirAll(contentCache, 0755)
+		os.MkdirAll(contentCache, 0o755)
 		c.Cache = &DiskCache{Root: contentCache}
 
 		pth, v, err := c.DownloadToCache("test/signtest", "0.1.0")
@@ -459,7 +459,7 @@ func TestDownloadToCache(t *testing.T) {
 	t.Run("download and verify", func(t *testing.T) {
 		// Clear cache
 		os.RemoveAll(contentCache)
-		os.MkdirAll(contentCache, 0755)
+		os.MkdirAll(contentCache, 0o755)
 		c.Cache = &DiskCache{Root: contentCache}
 		c.Verify = VerifyAlways
 		c.Keyring = "testdata/helm-test-key.pub"

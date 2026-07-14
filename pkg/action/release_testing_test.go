@@ -147,6 +147,7 @@ func TestReleaseTestingGetPodLogs_SkipNonPodHooks(t *testing.T) {
 
 func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	config := actionConfigFixture(t)
 
 	// Create a release with a test hook
@@ -165,7 +166,7 @@ func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
 	failer := config.KubeClient.(*kubefake.FailingKubeClient)
 
 	_, _, err := client.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
@@ -230,8 +231,7 @@ func TestGetContainerLogs_PodNotFound(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := rt.getContainerLogs(&buf, client, "nonexistent-pod")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unable to get pod nonexistent-pod")
+	assert.ErrorContains(t, err, "unable to get pod nonexistent-pod")
 }
 
 func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {

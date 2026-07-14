@@ -41,11 +41,11 @@ func TestVerifyPlugin(t *testing.T) {
 
 	// Create plugin directory
 	pluginDir := filepath.Join(tempDir, "verify-test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -86,7 +86,7 @@ func TestVerifyPlugin(t *testing.T) {
 
 	// Write the signature to .prov file
 	provFile := tarballPath + ".prov"
-	if err := os.WriteFile(provFile, []byte(sig), 0644); err != nil {
+	if err := os.WriteFile(provFile, []byte(sig), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -126,11 +126,11 @@ func TestVerifyPluginBadSignature(t *testing.T) {
 
 	// Create a plugin tarball
 	pluginDir := filepath.Join(tempDir, "bad-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -158,7 +158,7 @@ InvalidSignatureData
 -----END PGP SIGNATURE-----`
 
 	provFile := tarballPath + ".prov"
-	if err := os.WriteFile(provFile, []byte(badSig), 0644); err != nil {
+	if err := os.WriteFile(provFile, []byte(badSig), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -185,7 +185,7 @@ func TestVerifyPluginMissingProvenance(t *testing.T) {
 	tarballPath := filepath.Join(tempDir, "no-prov.tar.gz")
 
 	// Create a minimal tarball
-	if err := os.WriteFile(tarballPath, []byte("dummy"), 0644); err != nil {
+	if err := os.WriteFile(tarballPath, []byte("dummy"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

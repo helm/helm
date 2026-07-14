@@ -430,7 +430,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 
 		h := &tar.Header{
 			Name:    internalPath,
-			Mode:    0755,
+			Mode:    0o755,
 			Size:    int64(len(body)),
 			ModTime: time.Now(),
 		}

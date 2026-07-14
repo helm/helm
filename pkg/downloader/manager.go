@@ -257,7 +257,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			return fmt.Errorf("%q is not a directory", destPath)
 		}
 	} else if errors.Is(err, stdfs.ErrNotExist) {
-		if err := os.MkdirAll(destPath, 0755); err != nil {
+		if err := os.MkdirAll(destPath, 0o755); err != nil {
 			return err
 		}
 	} else {
@@ -265,7 +265,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	// Prepare tmpPath
-	if err := os.MkdirAll(tmpPath, 0755); err != nil {
+	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpPath)
@@ -378,7 +378,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 }
 
 func parseOCIRef(chartRef string) (string, string, error) {
-	refTagRegexp := regexp.MustCompile(`^(oci://[^:]+(:[0-9]{1,5})?[^:]+):(.*)$`)
+	refTagRegexp := regexp.MustCompile(`^(oci://[^:]+(:\d{1,5})?[^:]+):(.*)$`)
 	caps := refTagRegexp.FindStringSubmatch(chartRef)
 	if len(caps) != 4 {
 		return "", "", fmt.Errorf("improperly formatted oci chart reference: %s", chartRef)
@@ -441,21 +441,22 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	fmt.Fprintln(m.Out, "Deleting outdated charts")
 	// find all files that exist in dest that do not exist in source; delete them (outdated dependencies)
 	for _, file := range destFiles {
-		if !file.IsDir() && !existsInSourceDirectory[file.Name()] {
-			fname := filepath.Join(dest, file.Name())
-			ch, err := loader.LoadFile(fname)
-			if err != nil {
-				fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
-				continue
-			}
-			// local dependency - skip
-			if isLocalDependency[ch.Name()] {
-				continue
-			}
-			if err := os.Remove(fname); err != nil {
-				fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
-				continue
-			}
+		if file.IsDir() || existsInSourceDirectory[file.Name()] {
+			continue
+		}
+		fname := filepath.Join(dest, file.Name())
+		ch, err := loader.LoadFile(fname)
+		if err != nil {
+			fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
+			continue
+		}
+		// local dependency - skip
+		if isLocalDependency[ch.Name()] {
+			continue
+		}
+		if err := os.Remove(fname); err != nil {
+			fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
+			continue
 		}
 	}
 
@@ -728,37 +729,38 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	for _, cr := range repos {
-		if urlutil.Equal(repoURL, cr.Config.URL) {
-			var entry repo.ChartVersions
-			entry, err = findEntryByName(name, cr)
-			if err != nil {
-				// TODO: Where linting is skipped in this function we should
-				// refactor to remove naked returns while ensuring the same
-				// behavior
-				//nolint:nakedret
-				return
-			}
-			var ve *repo.ChartVersion
-			ve, err = findVersionedEntry(version, entry)
-			if err != nil {
-				//nolint:nakedret
-				return
-			}
-			url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
-			if err != nil {
-				//nolint:nakedret
-				return
-			}
-			username = cr.Config.Username
-			password = cr.Config.Password
-			passCredentialsAll = cr.Config.PassCredentialsAll
-			insecureSkipTLSVerify = cr.Config.InsecureSkipTLSVerify
-			caFile = cr.Config.CAFile
-			certFile = cr.Config.CertFile
-			keyFile = cr.Config.KeyFile
+		if !urlutil.Equal(repoURL, cr.Config.URL) {
+			continue
+		}
+		var entry repo.ChartVersions
+		entry, err = findEntryByName(name, cr)
+		if err != nil {
+			// TODO: Where linting is skipped in this function we should
+			// refactor to remove naked returns while ensuring the same
+			// behavior
 			//nolint:nakedret
 			return
 		}
+		var ve *repo.ChartVersion
+		ve, err = findVersionedEntry(version, entry)
+		if err != nil {
+			//nolint:nakedret
+			return
+		}
+		url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
+		if err != nil {
+			//nolint:nakedret
+			return
+		}
+		username = cr.Config.Username
+		password = cr.Config.Password
+		passCredentialsAll = cr.Config.PassCredentialsAll
+		insecureSkipTLSVerify = cr.Config.InsecureSkipTLSVerify
+		caFile = cr.Config.CAFile
+		certFile = cr.Config.CertFile
+		keyFile = cr.Config.KeyFile
+		//nolint:nakedret
+		return
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
@@ -866,7 +868,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 		}
 	}
 
-	return os.WriteFile(dest, data, 0644)
+	return os.WriteFile(dest, data, 0o644)
 }
 
 // archive a dep chart from local directory and save it into destPath

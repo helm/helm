@@ -94,7 +94,7 @@ func TestDiskCache_PutAndGet(t *testing.T) {
 
 		// Get should return ErrNotExist for empty files
 		_, err = cache.Get(emptyKey, CacheChart)
-		assert.ErrorIs(t, err, os.ErrNotExist, "Get for an empty file should return os.ErrNotExist")
+		require.ErrorIs(t, err, os.ErrNotExist, "Get for an empty file should return os.ErrNotExist")
 
 		// But the file should exist
 		_, err = os.Stat(path)
@@ -105,7 +105,7 @@ func TestDiskCache_PutAndGet(t *testing.T) {
 	t.Run("GetDirectory", func(t *testing.T) {
 		dirKey := sha256.Sum256([]byte("i am a directory"))
 		dirPath := cache.fileName(dirKey, CacheChart)
-		err := os.MkdirAll(dirPath, 0755)
+		err := os.MkdirAll(dirPath, 0o755)
 		require.NoError(t, err)
 
 		_, err = cache.Get(dirKey, CacheChart)

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -130,7 +131,7 @@ func TestBadCrdFile(t *testing.T) {
 	var values map[string]any
 	m := RunAll(badCrdFileDir, values, namespace).Messages
 	assert.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
-	assert.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
+	require.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
 	assert.ErrorContains(t, m[1].Err, "object kind is not 'CustomResourceDefinition'")
 }
 
