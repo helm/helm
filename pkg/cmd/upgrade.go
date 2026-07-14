@@ -210,28 +210,27 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				if err := action.CheckDependencies(ch, req); err != nil {
 					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run 'helm dependency build' to fetch missing dependencies: %w", err)
-					if client.DependencyUpdate {
-						man := &downloader.Manager{
-							Out:              out,
-							ChartPath:        chartPath,
-							Keyring:          client.Keyring,
-							SkipUpdate:       false,
-							Getters:          p,
-							RepositoryConfig: settings.RepositoryConfig,
-							RepositoryCache:  settings.RepositoryCache,
-							ContentCache:     settings.ContentCache,
-							Debug:            settings.Debug,
-							SourceDateEpoch:  sourceDateEpoch,
-						}
-						if err := man.Update(); err != nil {
-							return err
-						}
-						// Reload the chart with the updated Chart.lock file.
-						if ch, err = loader.Load(chartPath); err != nil {
-							return fmt.Errorf("failed reloading chart after repo update: %w", err)
-						}
-					} else {
+					if !client.DependencyUpdate {
 						return err
+					}
+					man := &downloader.Manager{
+						Out:              out,
+						ChartPath:        chartPath,
+						Keyring:          client.Keyring,
+						SkipUpdate:       false,
+						Getters:          p,
+						RepositoryConfig: settings.RepositoryConfig,
+						RepositoryCache:  settings.RepositoryCache,
+						ContentCache:     settings.ContentCache,
+						Debug:            settings.Debug,
+						SourceDateEpoch:  sourceDateEpoch,
+					}
+					if err := man.Update(); err != nil {
+						return err
+					}
+					// Reload the chart with the updated Chart.lock file.
+					if ch, err = loader.Load(chartPath); err != nil {
+						return fmt.Errorf("failed reloading chart after repo update: %w", err)
 					}
 				}
 			}

@@ -305,29 +305,28 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
-			if client.DependencyUpdate {
-				man := &downloader.Manager{
-					Out:              out,
-					ChartPath:        cp,
-					Keyring:          client.Keyring,
-					SkipUpdate:       false,
-					Getters:          p,
-					RepositoryConfig: settings.RepositoryConfig,
-					RepositoryCache:  settings.RepositoryCache,
-					ContentCache:     settings.ContentCache,
-					Debug:            settings.Debug,
-					RegistryClient:   client.GetRegistryClient(),
-					SourceDateEpoch:  sourceDateEpoch,
-				}
-				if err := man.Update(); err != nil {
-					return nil, err
-				}
-				// Reload the chart with the updated Chart.lock file.
-				if chartRequested, err = loader.Load(cp); err != nil {
-					return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
-				}
-			} else {
+			if !client.DependencyUpdate {
 				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run 'helm dependency build' to fetch missing dependencies: %w", err)
+			}
+			man := &downloader.Manager{
+				Out:              out,
+				ChartPath:        cp,
+				Keyring:          client.Keyring,
+				SkipUpdate:       false,
+				Getters:          p,
+				RepositoryConfig: settings.RepositoryConfig,
+				RepositoryCache:  settings.RepositoryCache,
+				ContentCache:     settings.ContentCache,
+				Debug:            settings.Debug,
+				RegistryClient:   client.GetRegistryClient(),
+				SourceDateEpoch:  sourceDateEpoch,
+			}
+			if err := man.Update(); err != nil {
+				return nil, err
+			}
+			// Reload the chart with the updated Chart.lock file.
+			if chartRequested, err = loader.Load(cp); err != nil {
+				return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
 			}
 		}
 	}
