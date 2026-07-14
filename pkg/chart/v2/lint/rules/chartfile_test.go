@@ -61,6 +61,8 @@ func TestValidateChartName(t *testing.T) {
 	// empty name (badChart has name: "")
 	require.Error(t, validateChartName(badChart), "validateChartName to return a linter error, got no error")
 
+	assert.Error(t, validateChartName(badChartName), "expected validateChartName to return a linter error for an invalid name, got no error")
+
 	invalidNames := []struct {
 		name   string
 		reason string

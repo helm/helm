@@ -21,9 +21,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
+	"k8s.io/apimachinery/pkg/api/validation"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -124,8 +126,8 @@ func validateChartName(cf *chart.Metadata) error {
 	// Chart names must also be valid Kubernetes metadata names so they can be
 	// used safely as resource name prefixes (lowercase, alphanumeric, hyphens
 	// and dots only; must start and end with an alphanumeric character).
-	if err := chartutil.ValidateMetadataName(cf.Name); err != nil {
-		return fmt.Errorf("chart name %q is not a valid Kubernetes name: use lowercase letters, digits, hyphens, and dots only (e.g. my-chart, my.chart)", cf.Name)
+	if errs := validation.NameIsDNSSubdomain(cf.Name, false); len(errs) > 0 {
+		return fmt.Errorf("chart name %q is not a valid Kubernetes name: %s", cf.Name, strings.Join(errs, ", "))
 	}
 	return nil
 }
