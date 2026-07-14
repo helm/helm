@@ -38,7 +38,7 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 //
 // This function is considered deprecated, and will be renamed in Helm 4. It will no
 // longer be a public function.
-func NewLookupFunction(config *rest.Config) lookupFunc {
+func NewLookupFunction(config *rest.Config) lookupFunc { //nolint:revive
 	return newLookupFunction(clientProviderFromConfig{config: config})
 }
 

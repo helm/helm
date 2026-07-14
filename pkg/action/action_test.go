@@ -352,7 +352,7 @@ func TestConfiguration_Init(t *testing.T) {
 }
 
 func TestGetVersionSet(t *testing.T) {
-	client := fakeclientset.NewSimpleClientset()
+	client := fakeclientset.NewClientset()
 
 	vs, err := GetVersionSet(client.Discovery())
 	if err != nil {

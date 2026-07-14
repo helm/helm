@@ -26,6 +26,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
@@ -249,7 +250,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 
 	deployed, err := r.cfg.Releases.DeployedAll(currentRelease.Name)
-	if err != nil && !strings.Contains(err.Error(), "has no deployed releases") {
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
 		return nil, err
 	}
 	// Supersede all previous deployments, see issue #2941.

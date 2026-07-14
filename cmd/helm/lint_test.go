@@ -84,7 +84,7 @@ func TestLintCmdWithKubeVersionFlag(t *testing.T) {
 		wantError: false,
 	}, {
 		name:      "lint chart with deprecated api version with older kube version",
-		cmd:       fmt.Sprintf("lint --kube-version 1.21.0 --strict %s", testChart),
+		cmd:       fmt.Sprintf("lint --kube-version 1.20.0 --strict %s", testChart),
 		golden:    "output/lint-chart-with-deprecated-api-old-k8s.txt",
 		wantError: false,
 	}}

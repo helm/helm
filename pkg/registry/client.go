@@ -31,7 +31,6 @@ import (
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/containerd/containerd/remotes"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -56,7 +55,7 @@ storing semantic versions, Helm adopts the convention of changing plus (+) to
 an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
 
-var errDeprecatedRemote = errors.New("providing github.com/containerd/containerd/remotes.Resolver via ClientOptResolver is no longer suported")
+var errDeprecatedRemote = errors.New("providing github.com/containerd/containerd/remotes.Resolver via ClientOptResolver is no longer supported")
 
 type (
 	// RemoteClient shadows the ORAS remote.Client interface
@@ -150,7 +149,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		authorizer.SetUserAgent(version.GetUserAgent())
 
-		authorizer.Credential = credentials.Credential(client.credentialsStore)
+		if client.username != "" && client.password != "" {
+			authorizer.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
+				return auth.Credential{Username: client.username, Password: client.password}, nil
+			}
+		} else {
+			authorizer.Credential = credentials.Credential(client.credentialsStore)
+		}
 
 		if client.enableCache {
 			authorizer.Cache = auth.NewCache()
@@ -231,7 +236,7 @@ func ClientOptPlainHTTP() ClientOption {
 	}
 }
 
-func ClientOptResolver(_ remotes.Resolver) ClientOption {
+func ClientOptResolver(_ any) ClientOption {
 	return func(c *Client) {
 		c.err = errDeprecatedRemote
 	}
@@ -290,15 +295,22 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	}
 	reg.PlainHTTP = c.plainHTTP
 	cred := auth.Credential{Username: c.username, Password: c.password}
-	c.authorizer.ForceAttemptOAuth2 = true
 	reg.Client = c.authorizer
 
 	ctx := context.Background()
-	if err := reg.Ping(ctx); err != nil {
-		c.authorizer.ForceAttemptOAuth2 = false
-		if err := reg.Ping(ctx); err != nil {
-			return fmt.Errorf("authenticating to %q: %w", host, err)
-		}
+	err = c.ping(ctx, reg)
+	if err != nil && !reg.PlainHTTP && c.forcedHTTP() {
+		// The registry is plain HTTP: the fallback transport downgraded the
+		// connection from https to http. ORAS v2.6.1+ refuses to forward
+		// credentials across that implicit scheme change (GHSA-vh4v-2xq2-g5cg),
+		// so the credentialed ping above fails. Now that the fallback has been
+		// detected, set PlainHTTP explicitly and retry so requests are built as
+		// http from the start and the scheme no longer changes mid-request.
+		reg.PlainHTTP = true
+		err = c.ping(ctx, reg)
+	}
+	if err != nil {
+		return fmt.Errorf("authenticating to %q: %w", host, err)
 	}
 
 	// The credentialsStore loader does not handle empty files. So, there is a workaround.
@@ -333,6 +345,30 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 
 	fmt.Fprintln(c.out, "Login Succeeded")
 	return nil
+}
+
+// ping authenticates against the registry, first attempting the OAuth2 token
+// flow and falling back to the basic/refresh token flow on failure.
+func (c *Client) ping(ctx context.Context, reg *remote.Registry) error {
+	c.authorizer.ForceAttemptOAuth2 = true
+	err := reg.Ping(ctx)
+	if err != nil {
+		c.authorizer.ForceAttemptOAuth2 = false
+		err = reg.Ping(ctx)
+	}
+	return err
+}
+
+// forcedHTTP reports whether the client's transport has fallen back to plain
+// HTTP after a failed HTTPS attempt, indicating the registry is plain HTTP.
+func (c *Client) forcedHTTP() bool {
+	if c.httpClient == nil {
+		return false
+	}
+	if ft, ok := c.httpClient.Transport.(*fallbackTransport); ok {
+		return ft.forcedHTTP()
+	}
+	return false
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
@@ -504,6 +540,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	memoryStore := memory.New()
 	allowedMediaTypes := []string{
+		ocispec.MediaTypeImageIndex,
 		ocispec.MediaTypeImageManifest,
 		ConfigMediaType,
 	}
@@ -887,6 +924,7 @@ func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
 		return desc, err
 	}
 	remoteRepository.PlainHTTP = c.plainHTTP
+	remoteRepository.Client = c.authorizer
 
 	parsedReference, err := newReference(ref)
 	if err != nil {

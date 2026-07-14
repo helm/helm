@@ -114,7 +114,7 @@ verifySupported() {
 checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
     # Get tag from release URL
-    local latest_release_url="https://get.helm.sh/helm-latest-version"
+    local latest_release_url="https://get.helm.sh/helm3-latest-version"
     local latest_release_response=""
     if [ "${HAS_CURL}" == "true" ]; then
       latest_release_response=$( curl -L --silent --show-error --fail "$latest_release_url" 2>&1 || true )

@@ -31,6 +31,7 @@ jobs:
         uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # pin@5.1.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
 
       - name: Run unit tests
         run: make test-coverage
@@ -49,9 +50,12 @@ jobs:
           mkdir -p _dist_versions
 
           # Push the latest semver tag, excluding prerelease tags
-          LATEST_VERSION="$(git tag | sort -r --version-sort | grep '^v[0-9]' | grep -v '-' | head -n1)"
+          LATEST_VERSION="$(git tag | sort -r --version-sort | grep '^v3.' | grep -v '-' | head -n1)"
           echo "LATEST_VERSION=${LATEST_VERSION}"
-          echo "${LATEST_VERSION}" > _dist_versions/helm-latest-version
+          if [[ "${LATEST_VERSION}" != v3.* ]]; then
+            echo "Error: Latest version ${LATEST_VERSION} is not a v3 release"
+            exit 1
+          fi
           echo "${LATEST_VERSION}" > _dist_versions/helm3-latest-version
 
       - name: Upload Binaries
