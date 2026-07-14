@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/lint/support"
@@ -36,16 +38,12 @@ func TestValidateAllowedExtension(t *testing.T) {
 	var failTest = []string{"/foo", "/test.toml"}
 	for _, test := range failTest {
 		err := validateAllowedExtension(test)
-		if err == nil || !strings.Contains(err.Error(), "Valid extensions are .yaml, .yml, .tpl, or .txt") {
-			t.Errorf("validateAllowedExtension('%s') to return \"Valid extensions are .yaml, .yml, .tpl, or .txt\", got no error", test)
-		}
+		require.ErrorContains(t, err, "Valid extensions are .yaml, .yml, .tpl, or .txt", "validateAllowedExtension('%s') to return \"Valid extensions are .yaml, .yml, .tpl, or .txt\", got no error", test)
 	}
 	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml", "NOTES.txt"}
 	for _, test := range successTest {
 		err := validateAllowedExtension(test)
-		if err != nil {
-			t.Errorf("validateAllowedExtension('%s') to return no error but got \"%s\"", test, err.Error())
-		}
+		assert.NoError(t, err, "validateAllowedExtension('%s') to return no error", test)
 	}
 }
 
@@ -59,13 +57,9 @@ func TestTemplateParsing(t *testing.T) {
 	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
 
-	if len(res) != 1 {
-		t.Fatalf("Expected one error, got %d, %v", len(res), res)
-	}
+	require.Len(t, res, 1, "Expected one error, got %d, %v", len(res), res)
 
-	if !strings.Contains(res[0].Err.Error(), "deliberateSyntaxError") {
-		t.Errorf("Unexpected error: %s", res[0])
-	}
+	assert.ErrorContains(t, res[0].Err, "deliberateSyntaxError", "Unexpected error: %s", res[0])
 }
 
 var wrongTemplatePath = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
@@ -82,9 +76,7 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
 
-	if len(res) != 0 {
-		t.Fatalf("Expected no error, got %d, %v", len(res), res)
-	}
+	require.Empty(t, res, "Expected no error, got %d, %v", len(res), res)
 }
 
 func TestMultiTemplateFail(t *testing.T) {
@@ -92,13 +84,9 @@ func TestMultiTemplateFail(t *testing.T) {
 	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
 
-	if len(res) != 1 {
-		t.Fatalf("Expected 1 error, got %d, %v", len(res), res)
-	}
+	require.Len(t, res, 1, "Expected 1 error, got %d, %v", len(res), res)
 
-	if !strings.Contains(res[0].Err.Error(), "object name does not conform to Kubernetes naming requirements") {
-		t.Errorf("Unexpected error: %s", res[0].Err)
-	}
+	assert.ErrorContains(t, res[0].Err, "object name does not conform to Kubernetes naming requirements", "Unexpected error: %s", res[0].Err)
 }
 
 func TestValidateMetadataName(t *testing.T) {
@@ -176,8 +164,11 @@ func TestValidateMetadataName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s/%s", tt.obj.Kind, tt.obj.Metadata.Name), func(t *testing.T) {
-			if err := validateMetadataName(tt.obj); (err != nil) != tt.wantErr {
-				t.Errorf("validateMetadataName() error = %v, wantErr %v", err, tt.wantErr)
+			err := validateMetadataName(tt.obj)
+			if tt.wantErr {
+				require.Error(t, err, "validateMetadataName()")
+			} else {
+				require.NoError(t, err, "validateMetadataName()")
 			}
 		})
 	}
@@ -207,9 +198,7 @@ func TestDeprecatedAPIFails(t *testing.T) {
 	}
 	tmpdir := t.TempDir()
 
-	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(&mychart, tmpdir))
 
 	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
 	Templates(&linter, values, namespace, strict)
@@ -220,10 +209,9 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		t.Fatalf("Expected 1 lint error, got %d", l)
 	}
 
-	err := linter.Messages[0].Err.(deprecatedAPIError)
-	if err.Deprecated != "apps/v1beta1 Deployment" {
-		t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
-	}
+	var err deprecatedAPIError
+	require.ErrorAs(t, linter.Messages[0].Err, &err, "Expected error to be of type deprecatedAPIError")
+	assert.Equal(t, "apps/v1beta1 Deployment", err.Deprecated, "Surprised to learn that %q is deprecated", err.Deprecated)
 }
 
 const manifest = `apiVersion: v1
@@ -262,9 +250,7 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 		},
 	}
 	dir := t.TempDir()
-	if err := chartutil.SaveDir(&ch, dir); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(&ch, dir))
 	linter := &support.Linter{
 		ChartDir: filepath.Join(dir, ch.Metadata.Name),
 	}
@@ -306,9 +292,8 @@ spec:
       - name: nginx
         image: nginx:1.14.2
 	`
-	if err := validateMatchSelector(md, manifest); err != nil {
-		t.Error(err)
-	}
+	err := validateMatchSelector(md, manifest)
+	require.NoError(t, err)
 	manifest = `
 	apiVersion: apps/v1
 kind: Deployment
@@ -330,9 +315,8 @@ spec:
       - name: nginx
         image: nginx:1.14.2
 	`
-	if err := validateMatchSelector(md, manifest); err != nil {
-		t.Error(err)
-	}
+	err = validateMatchSelector(md, manifest)
+	require.NoError(t, err)
 	manifest = `
 	apiVersion: apps/v1
 kind: Deployment
@@ -351,9 +335,8 @@ spec:
       - name: nginx
         image: nginx:1.14.2
 	`
-	if err := validateMatchSelector(md, manifest); err == nil {
-		t.Error("expected Deployment with no selector to fail")
-	}
+	err = validateMatchSelector(md, manifest)
+	assert.Error(t, err, "expected Deployment with no selector to fail")
 }
 
 func TestValidateTopIndentLevel(t *testing.T) {
@@ -392,9 +375,7 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 	}
 	tmpdir := t.TempDir()
 
-	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(&mychart, tmpdir))
 
 	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
 	Templates(&linter, values, namespace, strict)
@@ -424,9 +405,7 @@ items:
         helm.sh/resource-policy: keep
 `
 
-	if err := validateListAnnotations(md, manifest); err == nil {
-		t.Fatal("expected list with nested keep annotations to fail")
-	}
+	require.Error(t, validateListAnnotations(md, manifest), "expected list with nested keep annotations to fail")
 
 	manifest = `
 apiVersion: v1
@@ -439,9 +418,7 @@ items:
     kind: ConfigMap
 `
 
-	if err := validateListAnnotations(md, manifest); err != nil {
-		t.Fatalf("List objects keep annotations should pass. got: %s", err)
-	}
+	require.NoError(t, validateListAnnotations(md, manifest), "List objects keep annotations should pass")
 }
 
 func TestIsYamlFileExtension(t *testing.T) {
@@ -457,8 +434,6 @@ func TestIsYamlFileExtension(t *testing.T) {
 
 	for _, test := range tests {
 		result := isYamlFileExtension(test.filename)
-		if result != test.expected {
-			t.Errorf("isYamlFileExtension(%s) = %v; want %v", test.filename, result, test.expected)
-		}
+		assert.Equal(t, test.expected, result, "isYamlFileExtension(%s) = %v; want %v", test.filename, result, test.expected)
 	}
 }
