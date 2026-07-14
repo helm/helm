@@ -125,11 +125,7 @@ func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env 
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
-		return err
-	}
-
-	return nil
+	return executeCmd(cmd, r.metadata.Name)
 }
 
 func (r *SubprocessPluginRuntime) InvokeHook(event string) error {

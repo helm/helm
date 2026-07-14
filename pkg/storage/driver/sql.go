@@ -404,12 +404,12 @@ func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		if _, ok := labelMap[key]; ok {
-			sb = sb.Where(sq.Eq{key: labels[key]})
-		} else {
+		_, ok := labelMap[key]
+		if !ok {
 			s.Logger().Debug("unknown label", "key", key)
 			return nil, fmt.Errorf("unknown label %s", key)
 		}
+		sb = sb.Where(sq.Eq{key: labels[key]})
 	}
 
 	// If a namespace was specified, we only list releases from that namespace

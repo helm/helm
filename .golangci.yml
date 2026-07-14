@@ -116,6 +116,16 @@ linters:
       enable-default-rules: true
       max-open-files: 2048
       rules:
+        - name: early-return
+          arguments:
+            - "preserve-scope"
+        - name: if-return
+        - name: indent-error-flow
+          arguments:
+            - "preserve-scope"
+        - name: superfluous-else
+          arguments:
+            - "preserve-scope"
         - name: unnecessary-format
         - name: var-naming
           arguments:

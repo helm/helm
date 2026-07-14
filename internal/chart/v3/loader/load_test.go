@@ -31,6 +31,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
@@ -100,41 +102,30 @@ func TestBomTestData(t *testing.T) {
 	}
 
 	archive, err := os.ReadFile("testdata/frobnitz_with_bom.tgz")
-	if err != nil {
-		t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-	}
+	require.NoErrorf(t, err, "Error reading archive frobnitz_with_bom.tgz")
 	unzipped, err := gzip.NewReader(bytes.NewReader(archive))
-	if err != nil {
-		t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-	}
+	require.NoErrorf(t, err, "Error reading archive frobnitz_with_bom.tgz")
 	defer unzipped.Close()
 	for _, testFile := range testFiles {
 		data := make([]byte, 3)
 		err := unzipped.Reset(bytes.NewReader(archive))
-		if err != nil {
-			t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-		}
+		require.NoErrorf(t, err, "Error reading archive frobnitz_with_bom.tgz")
 		tr := tar.NewReader(unzipped)
 		for {
 			file, err := tr.Next()
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			if err != nil {
-				t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-			}
+			require.NoErrorf(t, err, "Error reading archive frobnitz_with_bom.tgz")
 			if file != nil && strings.EqualFold(file.Name, testFile) {
 				_, err := tr.Read(data)
-				if err != nil {
-					t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-				} else {
+				if err == nil {
 					break
 				}
+				t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
 			}
 		}
-		if !bytes.Equal(data, utf8bom) {
-			t.Fatalf("Test file has no BOM or is invalid: frobnitz_with_bom.tgz/%s", testFile)
-		}
+		require.Truef(t, bytes.Equal(data, utf8bom), "Test file has no BOM or is invalid: frobnitz_with_bom.tgz/%s", testFile)
 	}
 }
 

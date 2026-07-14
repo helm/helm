@@ -114,12 +114,11 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 	filename = filepath.Join(outDir, filename)
 	dir := filepath.Dir(filename)
 	if stat, err := os.Stat(dir); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			if err2 := os.MkdirAll(dir, 0o755); err2 != nil {
-				return "", err2
-			}
-		} else {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return "", fmt.Errorf("stat %s: %w", dir, err)
+		}
+		if err2 := os.MkdirAll(dir, 0o755); err2 != nil {
+			return "", err2
 		}
 	} else if !stat.IsDir() {
 		return "", fmt.Errorf("is not a directory: %s", dir)
