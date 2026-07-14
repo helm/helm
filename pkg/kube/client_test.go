@@ -1400,18 +1400,9 @@ func TestIsReachable(t *testing.T) {
 			err := client.IsReachable()
 
 			if tt.expectError {
-				if err == nil {
-					t.Error("expected error but got nil")
-					return
-				}
-
-				if !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("expected error message to contain '%s', got: %v", tt.errorContains, err)
-				}
+				require.ErrorContains(t, err, tt.errorContains)
 			} else {
-				if err != nil {
-					t.Errorf("expected no error but got: %v", err)
-				}
+				require.NoError(t, err)
 			}
 		})
 	}

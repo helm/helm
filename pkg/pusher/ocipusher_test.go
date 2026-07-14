@@ -24,6 +24,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/registry"
 )
 
@@ -378,16 +380,12 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 			err = pusher.Push(chartRef, tt.href)
 
 			if tt.expectError {
-				if err == nil {
-					t.Fatal("Expected error but got none")
-				}
-				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("Expected error containing %q, got %q", tt.errorContains, err.Error())
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.ErrorContains(t, err, tt.errorContains)
 				}
 			} else {
-				if err != nil {
-					t.Fatalf("Unexpected error: %v", err)
-				}
+				require.NoError(t, err)
 			}
 		})
 	}

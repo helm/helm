@@ -362,41 +362,28 @@ func TestClearSignError(t *testing.T) {
 
 func TestVerify(t *testing.T) {
 	signer, err := NewFromFiles(testKeyfile, testPubfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the chart file data
 	archiveData, err := os.ReadFile(testChartfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the signature file data
 	sigData, err := os.ReadFile(testSigBlock)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if ver, err := signer.Verify(archiveData, sigData, filepath.Base(testChartfile)); err != nil {
-		t.Errorf("Failed to pass verify. Err: %s", err)
-	} else if ver.FileHash == "" {
-		t.Error("Verification is missing hash.")
-	} else if ver.SignedBy == nil {
-		t.Error("No SignedBy field")
-	} else if ver.FileName != filepath.Base(testChartfile) {
-		t.Errorf("FileName is unexpectedly %q", ver.FileName)
-	}
+	ver, err := signer.Verify(archiveData, sigData, filepath.Base(testChartfile))
+	require.NoError(t, err, "Failed to pass verify")
+	assert.NotEmpty(t, ver.FileHash, "Verification is missing hash.")
+	assert.NotNil(t, ver.SignedBy, "No SignedBy field")
+	assert.Equalf(t, filepath.Base(testChartfile), ver.FileName, "FileName is unexpectedly %q", ver.FileName)
 
 	// Read the tampered signature file data
 	tamperedSigData, err := os.ReadFile(testTamperedSigBlock)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if _, err = signer.Verify(archiveData, tamperedSigData, filepath.Base(testChartfile)); err == nil {
-		t.Errorf("Expected %s to fail.", testTamperedSigBlock)
-	}
+	_, err = signer.Verify(archiveData, tamperedSigData, filepath.Base(testChartfile))
+	require.Errorf(t, err, "Expected %s to fail.", testTamperedSigBlock)
 
 	switch err.(type) {
 	case pgperrors.SignatureError:
