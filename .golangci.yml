@@ -27,7 +27,7 @@ linters:
     - exhaustive
     - fatcontext
     - gocritic
-    - gomodguard
+    - gomodguard_v2
     - govet
     - ineffassign
     - misspell
@@ -102,12 +102,11 @@ linters:
         - whyNoLint
       enable-all: true
 
-    gomodguard:
+    gomodguard_v2:
       blocked:
-        modules:
-          - github.com/evanphx/json-patch:
-              recommendations:
-                - github.com/evanphx/json-patch/v5
+        - module: github.com/evanphx/json-patch
+          recommendations:
+            - github.com/evanphx/json-patch/v5
 
     nolintlint:
       require-specific: true
