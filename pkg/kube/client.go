@@ -249,7 +249,7 @@ func (c *Client) getKubeClient() (kubernetes.Interface, error) {
 // IsReachable tests connectivity to the cluster.
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
-	if err == genericclioptions.ErrEmptyConfig {
+	if errors.Is(err, genericclioptions.ErrEmptyConfig) {
 		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
 		return errors.New("kubernetes cluster unreachable")
@@ -949,11 +949,12 @@ func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagatio
 func isIncompatibleServerError(err error) bool {
 	// 415: Unsupported media type means we're talking to a server which doesn't
 	// support server-side apply.
-	if _, ok := err.(*apierrors.StatusError); !ok {
+	var sErr *apierrors.StatusError
+	if !errors.As(err, &sErr) {
 		// Non-StatusError means the error isn't because the server is incompatible.
 		return false
 	}
-	return err.(*apierrors.StatusError).Status().Code == http.StatusUnsupportedMediaType
+	return sErr.Status().Code == http.StatusUnsupportedMediaType
 }
 
 // isServerSideRetryable checks if an error encountered during server-side apply

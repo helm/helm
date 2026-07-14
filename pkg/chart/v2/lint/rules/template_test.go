@@ -24,6 +24,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
@@ -235,10 +238,9 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		t.Fatalf("Expected 1 lint error, got %d", l)
 	}
 
-	err := linter.Messages[0].Err.(deprecatedAPIError)
-	if err.Deprecated != "apps/v1beta1 Deployment" {
-		t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
-	}
+	var depErr deprecatedAPIError
+	require.ErrorAs(t, linter.Messages[0].Err, &depErr)
+	assert.Equalf(t, "apps/v1beta1 Deployment", depErr.Deprecated, "Surprised to learn that %q is deprecated", depErr.Deprecated)
 }
 
 const manifest = `apiVersion: v1
