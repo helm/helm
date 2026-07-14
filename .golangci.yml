@@ -84,19 +84,14 @@ linters:
     gocritic:
       disabled-checks:
         - appendAssign
-        - appendCombine
-        - assignOp
         - badCall
         - commentedOutCode
-        - commentFormatting
         - deferInLoop
         - elseif
         - exposedSyncMutex
-        - filepathJoin
         - hugeParam
         - ifElseChain
         - importShadow
-        - nilValReturn
         - paramTypeCombine
         - ptrToRefParam
         - rangeValCopy

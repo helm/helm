@@ -64,7 +64,7 @@ func SplitManifests(bigFile string) map[string]string {
 
 		d = strings.TrimLeftFunc(d, unicode.IsSpace)
 		res[fmt.Sprintf(tpl, count)] = d
-		count = count + 1
+		count++
 	}
 	return res
 }

@@ -225,7 +225,7 @@ func TestDownload(t *testing.T) {
 	// A different host is provided for the WithURL from the one used for Get
 	u2, _ := url.ParseRequestURI(crossAuthSrv.URL)
 	host := strings.Split(u2.Host, ":")
-	host[0] = host[0] + "a"
+	host[0] += "a"
 	u2.Host = strings.Join(host, ":")
 	httpgetter, err = NewHTTPGetter(
 		WithURL(u2.String()),
@@ -260,7 +260,7 @@ func TestDownload(t *testing.T) {
 	// A different host is provided for the WithURL from the one used for Get
 	u2, _ = url.ParseRequestURI(crossAuthSrv.URL)
 	host = strings.Split(u2.Host, ":")
-	host[0] = host[0] + "a"
+	host[0] += "a"
 	u2.Host = strings.Join(host, ":")
 	httpgetter, err = NewHTTPGetter(
 		WithURL(u2.String()),

@@ -117,6 +117,6 @@ func TestDiskCache_fileName(t *testing.T) {
 	cache := &DiskCache{Root: "/tmp/cache"}
 	key := sha256.Sum256([]byte("some data"))
 
-	assert.Equal(t, filepath.Join("/tmp/cache", "13", "1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee.chart"), cache.fileName(key, CacheChart))
-	assert.Equal(t, filepath.Join("/tmp/cache", "13", "1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee.prov"), cache.fileName(key, CacheProv))
+	assert.Equal(t, filepath.FromSlash("/tmp/cache/13/1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee.chart"), cache.fileName(key, CacheChart))
+	assert.Equal(t, filepath.FromSlash("/tmp/cache/13/1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee.prov"), cache.fileName(key, CacheProv))
 }

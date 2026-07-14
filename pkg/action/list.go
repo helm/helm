@@ -178,7 +178,7 @@ func (l *List) Run() ([]ri.Releaser, error) {
 	}
 
 	if results == nil {
-		return results, nil
+		return nil, nil
 	}
 
 	rresults, err := releaseListToV1List(results)

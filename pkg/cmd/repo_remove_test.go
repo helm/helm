@@ -171,7 +171,7 @@ func TestRepoRemoveCompletion(t *testing.T) {
 
 	rootDir := t.TempDir()
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
-	repoCache := filepath.Join(rootDir, "cache/")
+	repoCache := filepath.Join(rootDir, "cache")
 
 	var testRepoNames = []string{"foo", "bar", "baz"}
 

@@ -190,8 +190,6 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 				return err
 			}
 			return fmt.Errorf("key %q has no value", string(k))
-			//set(data, string(k), "")
-			//return err
 		case last == '[':
 			// We are in a list index context, so we need to set an index.
 			i, err := t.keyIndex()
