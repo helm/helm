@@ -21,6 +21,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/loader"
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -29,9 +32,7 @@ import (
 func loadChart(t *testing.T, path string) *chart.Chart {
 	t.Helper()
 	c, err := loader.Load(path)
-	if err != nil {
-		t.Fatalf("failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "failed to load testdata")
 	return c
 }
 
@@ -42,19 +43,11 @@ func TestLoadDependency(t *testing.T) {
 	}
 
 	check := func(deps []*chart.Dependency) {
-		if len(deps) != 2 {
-			t.Errorf("expected 2 dependencies, got %d", len(deps))
-		}
+		require.Len(t, deps, 2, "expected 2 dependencies")
 		for i, tt := range tests {
-			if deps[i].Name != tt.Name {
-				t.Errorf("expected dependency named %q, got %q", tt.Name, deps[i].Name)
-			}
-			if deps[i].Version != tt.Version {
-				t.Errorf("expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, deps[i].Version)
-			}
-			if deps[i].Repository != tt.Repository {
-				t.Errorf("expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, deps[i].Repository)
-			}
+			assert.Equal(t, tt.Name, deps[i].Name, "expected dependency named %q, got %q", tt.Name, deps[i].Name)
+			assert.Equal(t, tt.Version, deps[i].Version, "expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, deps[i].Version)
+			assert.Equal(t, tt.Repository, deps[i].Repository, "expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, deps[i].Repository)
 		}
 	}
 	c := loadChart(t, "testdata/frobnitz")
@@ -117,18 +110,12 @@ func TestDependencyEnabled(t *testing.T) {
 	for _, tc := range tests {
 		c := loadChart(t, "testdata/subpop")
 		t.Run(tc.name, func(t *testing.T) {
-			if err := processDependencyEnabled(c, tc.v, ""); err != nil {
-				t.Fatalf("error processing enabled dependencies %v", err)
-			}
+			require.NoErrorf(t, processDependencyEnabled(c, tc.v, ""), "error processing enabled dependencies")
 
 			names := extractChartNames(c)
-			if len(names) != len(tc.e) {
-				t.Fatalf("slice lengths do not match got %v, expected %v", len(names), len(tc.e))
-			}
+			require.Len(t, names, len(tc.e), "slice lengths do not match got %v, expected %v", len(names), len(tc.e))
 			for i := range names {
-				if names[i] != tc.e[i] {
-					t.Fatalf("slice values do not match got %v, expected %v", names, tc.e)
-				}
+				require.Equal(t, tc.e[i], names[i], "slice values do not match got %v, expected %v", names, tc.e)
 			}
 		})
 	}
@@ -219,68 +206,44 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	if err := processDependencyImportValues(c, false); err != nil {
-		t.Fatalf("processing import values dependencies %v", err)
-	}
+	require.NoError(t, processDependencyImportValues(c, false), "processing import values dependencies")
 	cc := common.Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
-		if err != nil {
-			t.Fatalf("retrieving import values table %v %v", kk, err)
-		}
+		require.NoError(t, err, "retrieving import values table %v", kk)
 
 		switch pv := pv.(type) {
 		case float64:
-			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
-				t.Errorf("failed to match imported float value %v with expected %v for key %q", s, vv, kk)
-			}
+			s := strconv.FormatFloat(pv, 'f', -1, 64)
+			assert.Equalf(t, vv, s, "failed to match imported float value %v with expected %v for key %q", s, vv, kk)
 		case bool:
-			if b := strconv.FormatBool(pv); b != vv {
-				t.Errorf("failed to match imported bool value %v with expected %v for key %q", b, vv, kk)
-			}
+			b := strconv.FormatBool(pv)
+			assert.Equalf(t, vv, b, "failed to match imported bool value %v with expected %v for key %q", b, vv, kk)
 		default:
-			if pv != vv {
-				t.Errorf("failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
-			}
+			assert.Equalf(t, vv, pv, "failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
 		}
 	}
 
 	// Since this was processed with coalescing there should be no null values.
 	// Here we verify that.
 	_, err := cc.PathValue("ensurenull")
-	if err == nil {
-		t.Error("expect nil value not found but found it")
-	}
-	switch xerr := err.(type) {
-	case common.ErrNoValue:
-		// We found what we expected
-	default:
-		t.Errorf("expected an ErrNoValue but got %q instead", xerr)
-	}
+	require.Error(t, err, "expect nil value not found but found it")
+	var xerr common.ErrNoValue
+	require.ErrorAs(t, err, &xerr, "expected an ErrNoValue")
 
 	c = loadChart(t, "testdata/subpop")
-	if err := processDependencyImportValues(c, true); err != nil {
-		t.Fatalf("processing import values dependencies %v", err)
-	}
+	require.NoError(t, processDependencyImportValues(c, true), "processing import values dependencies")
 	cc = common.Values(c.Values)
 	val, err := cc.PathValue("ensurenull")
-	if err != nil {
-		t.Error("expect value but ensurenull was not found")
-	}
-	if val != nil {
-		t.Errorf("expect nil value but got %q instead", val)
-	}
+	require.NoError(t, err, "expect value but ensurenull was not found")
+	assert.Nil(t, val, "expect nil value but got %v instead", val)
 }
 
 func TestProcessDependencyImportValuesFromSharedDependencyToAliases(t *testing.T) {
 	c := loadChart(t, "testdata/chart-with-import-from-aliased-dependencies")
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
-		t.Fatalf("expected no errors but got %q", err)
-	}
-	if err := processDependencyImportValues(c, true); err != nil {
-		t.Fatalf("processing import values dependencies %v", err)
-	}
+	require.NoError(t, processDependencyEnabled(c, c.Values, ""), "expected no errors")
+	require.NoError(t, processDependencyImportValues(c, true), "processing import values dependencies")
 	e := make(map[string]string)
 
 	e["foo-defaults.defaultValue"] = "42"
@@ -295,12 +258,8 @@ func TestProcessDependencyImportValuesFromSharedDependencyToAliases(t *testing.T
 	cValues := common.Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cValues.PathValue(kk)
-		if err != nil {
-			t.Fatalf("retrieving import values table %v %v", kk, err)
-		}
-		if pv != vv {
-			t.Errorf("failed to match imported value %v with expected %v", pv, vv)
-		}
+		require.NoError(t, err, "retrieving import values table %v", kk)
+		assert.Equal(t, vv, pv, "failed to match imported value %v with expected %v", pv, vv)
 	}
 }
 
@@ -327,25 +286,18 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	e["app2.service.port"] = "8080"
 	e["app3.service.port"] = "9090"
 	e["app4.service.port"] = "1234"
-	if err := processDependencyImportValues(c, true); err != nil {
-		t.Fatalf("processing import values dependencies %v", err)
-	}
+	require.NoError(t, processDependencyImportValues(c, true), "processing import values dependencies")
 	cc := common.Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
-		if err != nil {
-			t.Fatalf("retrieving import values table %v %v", kk, err)
-		}
+		require.NoError(t, err, "retrieving import values table %v", kk)
 
 		switch pv := pv.(type) {
 		case float64:
-			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
-				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
-			}
+			s := strconv.FormatFloat(pv, 'f', -1, 64)
+			assert.Equalf(t, vv, s, "failed to match imported float value %v with expected %v", s, vv)
 		default:
-			if pv != vv {
-				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
-			}
+			assert.Equalf(t, vv, pv, "failed to match imported string value %q with expected %q", pv, vv)
 		}
 	}
 }
@@ -354,127 +306,72 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c, true); err != nil {
-		t.Fatalf("processing import values dependencies %v", err)
-	}
-
-	if len(c.Dependencies()) != 2 {
-		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
-	}
-
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
-		t.Fatalf("expected no errors but got %q", err)
-	}
-
-	if len(c.Dependencies()) != 1 {
-		t.Fatal("expected no changes in dependencies")
-	}
-
-	if len(c.Metadata.Dependencies) != 1 {
-		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
-	}
+	require.NoError(t, processDependencyImportValues(c, true), "processing import values dependencies")
+	require.Len(t, c.Dependencies(), 2, "expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
+	require.NoError(t, processDependencyEnabled(c, c.Values, ""), "expected no errors")
+	require.Len(t, c.Dependencies(), 1, "expected no changes in dependencies")
+	require.Len(t, c.Metadata.Dependencies, 1, "expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 
 	prodDependencyValues := c.Dependencies()[0].Values
-	if prodDependencyValues["nameOverride"] != nameOverride {
-		t.Fatalf("dependency chart name should be %s but got %s", nameOverride, prodDependencyValues["nameOverride"])
-	}
+	require.Equal(t, nameOverride, prodDependencyValues["nameOverride"], "dependency chart name should be %s but got %s", nameOverride, prodDependencyValues["nameOverride"])
 }
 
 func TestGetAliasDependency(t *testing.T) {
 	c := loadChart(t, "testdata/frobnitz")
 	req := c.Metadata.Dependencies
 
-	if len(req) == 0 {
-		t.Fatal("there are no dependencies to test")
-	}
+	require.NotEmpty(t, req, "there are no dependencies to test")
 
 	// Success case
 	aliasChart := getAliasDependency(c.Dependencies(), req[0])
-	if aliasChart == nil {
-		t.Fatalf("failed to get dependency chart for alias %s", req[0].Name)
-	}
+	require.NotNil(t, aliasChart, "failed to get dependency chart for alias %s", req[0].Name)
 	if req[0].Alias != "" {
-		if aliasChart.Name() != req[0].Alias {
-			t.Fatalf("dependency chart name should be %s but got %s", req[0].Alias, aliasChart.Name())
-		}
-	} else if aliasChart.Name() != req[0].Name {
-		t.Fatalf("dependency chart name should be %s but got %s", req[0].Name, aliasChart.Name())
+		require.Equal(t, req[0].Alias, aliasChart.Name(), "dependency chart name should be %s but got %s", req[0].Alias, aliasChart.Name())
+	} else {
+		require.Equal(t, req[0].Name, aliasChart.Name(), "dependency chart name should be %s but got %s", req[0].Name, aliasChart.Name())
 	}
-
 	if req[0].Version != "" {
-		if !IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
-			t.Fatal("dependency chart version is not in the compatible range")
-		}
+		require.True(t, IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version), "dependency chart version is not in the compatible range")
 	}
 
 	// Failure case
 	req[0].Name = "something-else"
-	if aliasChart := getAliasDependency(c.Dependencies(), req[0]); aliasChart != nil {
-		t.Fatalf("expected no chart but got %s", aliasChart.Name())
-	}
+	require.Nil(t, getAliasDependency(c.Dependencies(), req[0]), "expected no chart")
 
 	req[0].Version = "something else which is not in the compatible range"
-	if IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
-		t.Fatal("dependency chart version outside the compatible range should not be considered compatible")
-	}
+	require.False(t, IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version), "dependency chart version outside the compatible range should not be considered compatible")
 }
 
 func TestDependentChartAliases(t *testing.T) {
 	c := loadChart(t, "testdata/dependent-chart-alias")
 	req := c.Metadata.Dependencies
 
-	if len(c.Dependencies()) != 2 {
-		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
-	}
-
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
-		t.Fatalf("expected no errors but got %q", err)
-	}
-
-	if len(c.Dependencies()) != 3 {
-		t.Fatal("expected alias dependencies to be added")
-	}
-
-	if len(c.Dependencies()) != len(c.Metadata.Dependencies) {
-		t.Fatalf("expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
-	}
+	require.Len(t, c.Dependencies(), 2, "expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
+	require.NoError(t, processDependencyEnabled(c, c.Values, ""), "expected no errors")
+	require.Len(t, c.Dependencies(), 3, "expected alias dependencies to be added")
+	require.Len(t, c.Dependencies(), len(c.Metadata.Dependencies), "expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 
 	aliasChart := getAliasDependency(c.Dependencies(), req[2])
 
-	if aliasChart == nil {
-		t.Fatalf("failed to get dependency chart for alias %s", req[2].Name)
-	}
-	if aliasChart.Parent() != c {
-		t.Fatalf("dependency chart has wrong parent, expected %s but got %s", c.Name(), aliasChart.Parent().Name())
-	}
+	require.NotNil(t, aliasChart, "failed to get dependency chart for alias %s", req[2].Name)
+	require.Equal(t, c, aliasChart.Parent(), "dependency chart has wrong parent, expected %s but got %s", c.Name(), aliasChart.Parent().Name())
 	if req[2].Alias != "" {
-		if aliasChart.Name() != req[2].Alias {
-			t.Fatalf("dependency chart name should be %s but got %s", req[2].Alias, aliasChart.Name())
-		}
-	} else if aliasChart.Name() != req[2].Name {
-		t.Fatalf("dependency chart name should be %s but got %s", req[2].Name, aliasChart.Name())
+		require.Equal(t, req[2].Alias, aliasChart.Name(), "dependency chart name should be %s but got %s", req[2].Alias, aliasChart.Name())
+	} else {
+		require.Equal(t, req[2].Name, aliasChart.Name(), "dependency chart name should be %s but got %s", req[2].Name, aliasChart.Name())
 	}
-
 	req[2].Name = "dummy-name"
-	if aliasChart := getAliasDependency(c.Dependencies(), req[2]); aliasChart != nil {
-		t.Fatalf("expected no chart but got %s", aliasChart.Name())
-	}
+	require.Nil(t, getAliasDependency(c.Dependencies(), req[2]), "expected no chart")
 }
 
 func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {
 	c := loadChart(t, "testdata/dependent-chart-no-requirements-yaml")
 
-	if len(c.Dependencies()) != 2 {
-		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
-	}
+	require.Len(t, c.Dependencies(), 2, "expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
-		t.Fatalf("expected no errors but got %q", err)
-	}
-
-	if len(c.Dependencies()) != 2 {
-		t.Fatal("expected no changes in dependencies")
-	}
+	err := processDependencyEnabled(c, c.Values, "")
+	require.NoError(t, err, "expected no errors")
+	require.Len(t, c.Dependencies(), 2, "expected no changes in dependencies")
 }
 
 func TestDependentChartWithSubChartsHelmignore(t *testing.T) {
@@ -484,86 +381,53 @@ func TestDependentChartWithSubChartsHelmignore(t *testing.T) {
 
 func TestDependentChartsWithSubChartsSymlink(t *testing.T) {
 	joonix := filepath.Join("testdata", "joonix")
-	if err := os.Symlink(filepath.Join("..", "..", "frobnitz"), filepath.Join(joonix, "charts", "frobnitz")); err != nil {
-		t.Fatal(err)
-	}
+	err := os.Symlink(filepath.Join("..", "..", "frobnitz"), filepath.Join(joonix, "charts", "frobnitz"))
+	require.NoError(t, err, "failed to create symlink")
 	defer os.RemoveAll(filepath.Join(joonix, "charts", "frobnitz"))
 	c := loadChart(t, joonix)
 
-	if c.Name() != "joonix" {
-		t.Fatalf("unexpected chart name: %s", c.Name())
-	}
-	if n := len(c.Dependencies()); n != 1 {
-		t.Fatalf("expected 1 dependency for this chart, but got %d", n)
-	}
+	require.Equal(t, "joonix", c.Name(), "unexpected chart name: %s", c.Name())
+	require.Len(t, c.Dependencies(), 1, "expected 1 dependency for this chart")
 }
 
 func TestDependentChartsWithSubchartsAllSpecifiedInDependency(t *testing.T) {
 	c := loadChart(t, "testdata/dependent-chart-with-all-in-requirements-yaml")
 
-	if len(c.Dependencies()) != 2 {
-		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
-	}
+	require.Len(t, c.Dependencies(), 2, "expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
-		t.Fatalf("expected no errors but got %q", err)
-	}
+	err := processDependencyEnabled(c, c.Values, "")
+	require.NoError(t, err, "expected no errors")
 
-	if len(c.Dependencies()) != 2 {
-		t.Fatal("expected no changes in dependencies")
-	}
+	require.Len(t, c.Dependencies(), 2, "expected no changes in dependencies")
 
-	if len(c.Dependencies()) != len(c.Metadata.Dependencies) {
-		t.Fatalf("expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
-	}
+	require.Len(t, c.Dependencies(), len(c.Metadata.Dependencies), "expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 }
 
 func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 	c := loadChart(t, "testdata/dependent-chart-with-mixed-requirements-yaml")
 
-	if len(c.Dependencies()) != 2 {
-		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
-	}
-
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
-		t.Fatalf("expected no errors but got %q", err)
-	}
-
-	if len(c.Dependencies()) != 2 {
-		t.Fatal("expected no changes in dependencies")
-	}
-
-	if len(c.Metadata.Dependencies) != 1 {
-		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
-	}
+	require.Len(t, c.Dependencies(), 2, "expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
+	require.NoError(t, processDependencyEnabled(c, c.Values, ""), "expected no errors")
+	require.Len(t, c.Dependencies(), 2, "expected no changes in dependencies")
+	require.Len(t, c.Metadata.Dependencies, 1, "expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 }
 
 func validateDependencyTree(t *testing.T, c *chart.Chart) {
 	t.Helper()
 	for _, dependency := range c.Dependencies() {
-		if dependency.Parent() != c {
-			if dependency.Parent() != c {
-				t.Fatalf("dependency chart %s has wrong parent, expected %s but got %s", dependency.Name(), c.Name(), dependency.Parent().Name())
-			}
-		}
-		// recurse entire tree
-		validateDependencyTree(t, dependency)
+		t.Run(dependency.Name(), func(t *testing.T) {
+			require.Equal(t, c, dependency.Parent(), "dependency chart %s has wrong parent, expected %s but got %s", dependency.Name(), c.Name(), dependency.Parent().Name())
+			// recurse entire tree
+			validateDependencyTree(t, dependency)
+		})
 	}
 }
 
 func TestChartWithDependencyAliasedTwiceAndDoublyReferencedSubDependency(t *testing.T) {
 	c := loadChart(t, "testdata/chart-with-dependency-aliased-twice")
 
-	if len(c.Dependencies()) != 1 {
-		t.Fatalf("expected one dependency for this chart, but got %d", len(c.Dependencies()))
-	}
-
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
-		t.Fatalf("expected no errors but got %q", err)
-	}
-
-	if len(c.Dependencies()) != 2 {
-		t.Fatal("expected two dependencies after processing aliases")
-	}
+	require.Len(t, c.Dependencies(), 1, "expected one dependency for this chart, but got %d", len(c.Dependencies()))
+	require.NoError(t, processDependencyEnabled(c, c.Values, ""), "expected no errors")
+	require.Len(t, c.Dependencies(), 2, "expected two dependencies after processing aliases")
 	validateDependencyTree(t, c)
 }
