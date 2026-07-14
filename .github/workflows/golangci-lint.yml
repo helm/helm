@@ -25,6 +25,6 @@ jobs:
           check-latest: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 #pin@6.1.1
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a #pin@9.3.0
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
