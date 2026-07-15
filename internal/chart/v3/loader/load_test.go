@@ -125,8 +125,8 @@ version: 0.1.0
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := l.Load(); err == nil {
-		t.Fatal("loading chart with broken symlink not in .helmignore should fail")
+	if _, err := l.Load(); err == nil || !os.IsNotExist(err) {
+		t.Fatalf("expected broken symlink error (os.IsNotExist), got: %v", err)
 	}
 }
 
