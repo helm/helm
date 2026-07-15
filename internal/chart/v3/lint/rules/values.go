@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	yamlv2 "go.yaml.in/yaml/v2"
+
 	"helm.sh/helm/v4/internal/chart/v3/lint/support"
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/common/util"
@@ -89,10 +91,16 @@ func validateValuesFile(valuesPath string, overrides map[string]any, skipSchemaV
 	return nil
 }
 
-// isDuplicateKeyError checks if an error is related to duplicate YAML keys
+// isDuplicateKeyError checks if an error is related to duplicate YAML keys.
 func isDuplicateKeyError(err error) bool {
-	errStr := err.Error()
-	return strings.Contains(errStr, "already set in map") ||
-		strings.Contains(errStr, "already defined") ||
-		strings.Contains(errStr, "duplicate")
+	var typeErr *yamlv2.TypeError
+	if !errors.As(err, &typeErr) {
+		return false
+	}
+	for _, e := range typeErr.Errors {
+		if strings.Contains(e, "already set in map") {
+			return true
+		}
+	}
+	return false
 }
