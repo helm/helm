@@ -249,7 +249,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
-	tmpPath := filepath.Join(m.ChartPath, fmt.Sprintf("tmpcharts-%d", os.Getpid()))
 
 	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
@@ -265,8 +264,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	// Prepare tmpPath
-	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
+	tmpPath, err := os.MkdirTemp(m.ChartPath, "tmpcharts-*")
+	if err != nil {
 		return err
+	}
+	// Maintain compatibility with existing permissions
+	if err := os.Chmod(tmpPath, 0o755); err != nil && m.Debug {
+		fmt.Fprintf(m.Out, "warning: failed to set permissions on temporary directory %s: %v\n", tmpPath, err)
 	}
 	defer os.RemoveAll(tmpPath)
 
