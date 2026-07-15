@@ -73,10 +73,11 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		}
 		// This log message is to highlight a symlink that is being used within a chart, symlinks can be used for nefarious reasons.
 		slog.Info("found symbolic link in path. Contents of linked file included and used", "path", path, "resolved", resolved)
+		originalInfo := info
 		if info, err = os.Lstat(resolved); err != nil {
 			// Route through walkFn with the original symlink info so callers
 			// can decide whether to skip it based on .helmignore rules.
-			return walkFn(path, info, err)
+			return walkFn(path, originalInfo, err)
 		}
 		if err := symwalk(path, info, walkFn); err != nil && err != filepath.SkipDir {
 			return err
