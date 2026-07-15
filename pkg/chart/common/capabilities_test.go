@@ -49,6 +49,7 @@ func TestDefaultCapabilities(t *testing.T) {
 	if kv.Version != "v1.20.0" {
 		t.Errorf("Expected default KubeVersion.Version to be v1.20.0, got %q", kv.Version)
 	}
+	//nolint:govet // intentionally exercises the deprecated GitVersion method
 	if kv.GitVersion() != "v1.20.0" {
 		t.Errorf("Expected default KubeVersion.GitVersion() to be v1.20.0, got %q", kv.Version)
 	}

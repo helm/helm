@@ -508,8 +508,8 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 				newDir = filepath.Join(outputDir, releaseName)
 			}
 			// NOTE: We do not have to worry about the post-renderer because
-			// output dir is only used by `helm template`. In the next major
-			// release, we should move this logic to template only as it is not
+			// output dir is only used by `helm template`.
+			// TODO Helm v5: move this logic to template only as it is not
 			// used by install or upgrade
 			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {

@@ -643,7 +643,7 @@ spec:
 
 // Stderr is an io.Writer to which error messages can be written
 //
-// In Helm 4, this will be replaced. It is needed in Helm 3 to preserve API backward
+// TODO Helm v5: replace this. It is needed in Helm 3 to preserve API backward
 // compatibility.
 var Stderr io.Writer = os.Stderr
 

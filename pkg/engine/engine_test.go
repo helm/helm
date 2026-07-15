@@ -172,6 +172,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 	}
 
 	for i := range 100 {
+		//nolint:govet // intentionally exercises the deprecated Engine.Render
 		out, err := Render(parentChart, common.Values{})
 		if err != nil {
 			t.Fatalf("Failed to render templates: %s", err)
@@ -242,6 +243,7 @@ func TestRenderWithDNS(t *testing.T) {
 
 	var e Engine
 	e.EnableDNS = true
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := e.Render(c, v)
 	if err != nil {
 		t.Errorf("Failed to render templates: %s", err)
@@ -613,6 +615,7 @@ func TestChartValuesContainsIsRoot(t *testing.T) {
 	}
 	ch1.AddDependency(dep1)
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(ch1, common.Values{})
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
@@ -645,6 +648,7 @@ func TestRenderDependency(t *testing.T) {
 		},
 	})
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(ch, map[string]any{})
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
@@ -733,6 +737,7 @@ func TestRenderNestedValues(t *testing.T) {
 
 	t.Logf("Calculated values: %v", inject)
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(outer, inject)
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
@@ -797,6 +802,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 
 	t.Logf("Calculated values: %v", outer)
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(outer, inject)
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
@@ -842,6 +848,7 @@ func TestAlterFuncMap_include(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -852,6 +859,7 @@ func TestAlterFuncMap_include(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	_, err = Render(d, v)
 	expectErrName := "nested/templates/quote"
 	if err == nil {
@@ -880,6 +888,7 @@ func TestAlterFuncMap_require(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -907,6 +916,7 @@ func TestAlterFuncMap_require(t *testing.T) {
 	}
 	var e Engine
 	e.LintMode = true
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err = e.Render(c, lintValues)
 	if err != nil {
 		t.Fatal(err)
@@ -940,6 +950,7 @@ func TestAlterFuncMap_tpl(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -969,6 +980,7 @@ func TestAlterFuncMap_tplfunc(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -999,6 +1011,7 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -1030,6 +1043,7 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 	expectErr := "rendering template has a nested reference name: recursion: unable to execute template"
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	_, err := Render(c, v)
 	if err == nil || !strings.HasSuffix(err.Error(), expectErr) {
 		t.Errorf("Expected err with suffix: %s", expectErr)
@@ -1052,6 +1066,7 @@ func TestRenderRecursionLimit(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(d, v)
 	if err != nil {
 		t.Fatal(err)
@@ -1093,6 +1108,7 @@ func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -1121,6 +1137,7 @@ func TestRenderTplEmpty(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -1167,6 +1184,7 @@ func TestRenderTplTemplateNames(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -1231,6 +1249,7 @@ func TestRenderTplRedefines(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -1271,6 +1290,7 @@ func TestRenderTplMissingKey(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -1307,6 +1327,7 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 	e := new(Engine)
 	e.Strict = true
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := e.Render(c, v)
 	if err == nil {
 		t.Errorf("Expected error, got %v", out)
@@ -1351,6 +1372,7 @@ NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
 	vals := map[string]any{
 		"Values": val.AsMap(),
 	}
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	_, err := Render(c, vals)
 
 	require.Error(t, err)
@@ -1385,6 +1407,7 @@ template: no template "nested_helper.name" associated with template "gotpl"`
 	vals := map[string]any{
 		"Values": val.AsMap(),
 	}
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	_, err := Render(c, vals)
 
 	require.Error(t, err)
@@ -1435,6 +1458,7 @@ func TestRenderCustomTemplateFuncs(t *testing.T) {
 	e.CustomTemplateFuncs = customFuncs
 
 	// Render the chart.
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := e.Render(c, v)
 	if err != nil {
 		t.Fatal(err)
@@ -1547,6 +1571,7 @@ func TestRenderSubchartDefaultNilNoStringify(t *testing.T) {
 		},
 	}
 
+	//nolint:govet // intentionally exercises the deprecated Engine.Render
 	out, err := Render(parent, inject)
 	if err != nil {
 		t.Fatalf("Failed to render templates: %s", err)
