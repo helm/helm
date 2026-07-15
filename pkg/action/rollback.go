@@ -241,7 +241,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		targetRelease.Info.Description = msg
 		r.cfg.recordRelease(currentRelease)
 		r.cfg.recordRelease(targetRelease)
-		if r.CleanupOnFail {
+		if r.CleanupOnFail && len(results.Created) > 0 {
 			r.cfg.Logger().Debug("cleanup on fail set, cleaning up resources", "count", len(results.Created))
 			_, errs := r.cfg.KubeClient.Delete(results.Created, metav1.DeletePropagationBackground)
 			if errs != nil {
