@@ -18,6 +18,7 @@ package util
 
 import (
 	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -104,7 +105,8 @@ func TestCreateFrom(t *testing.T) {
 func TestCreate_Overwrite(t *testing.T) {
 	tdir := t.TempDir()
 
-	var errlog bytes.Buffer
+	var logBuf bytes.Buffer
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logBuf, nil)))
 
 	if _, err := Create("foo", tdir); err != nil {
 		t.Fatal(err)
@@ -116,7 +118,6 @@ func TestCreate_Overwrite(t *testing.T) {
 	writeFile(tplname, []byte("FOO"))
 
 	// Now re-run the create
-	Stderr = &errlog
 	if _, err := Create("foo", tdir); err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +127,7 @@ func TestCreate_Overwrite(t *testing.T) {
 
 	require.NotEqual(t, "FOO", string(data), "File that should have been modified was not.")
 
-	assert.NotEqual(t, 0, errlog.Len(), "Expected warnings about overwriting files.")
+	assert.NotEqual(t, 0, logBuf.Len(), "Expected warnings about overwriting files.")
 }
 
 func TestValidateChartName(t *testing.T) {

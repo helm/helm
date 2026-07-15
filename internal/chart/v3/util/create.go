@@ -18,7 +18,7 @@ package util
 
 import (
 	"fmt"
-	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -642,12 +642,6 @@ spec:
   restartPolicy: Never
 `
 
-// Stderr is an io.Writer to which error messages can be written
-//
-// In Helm 4, this will be replaced. It is needed in Helm 3 to preserve API backward
-// compatibility.
-var Stderr io.Writer = os.Stderr
-
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
 func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	schart, err := loader.Load(src)
@@ -795,8 +789,7 @@ func Create(name, dir string) (string, error) {
 
 	for _, file := range files {
 		if _, err := os.Stat(file.path); err == nil {
-			// There is no handle to a preferred output stream here.
-			fmt.Fprintf(Stderr, "WARNING: File %q already exists. Overwriting.\n", file.path)
+			slog.Warn("Overwriting existing file", slog.String("file", file.path))
 		}
 		if err := writeFile(file.path, file.content); err != nil {
 			return cdir, err
