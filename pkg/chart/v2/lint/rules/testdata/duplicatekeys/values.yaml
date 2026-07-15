@@ -1,0 +1,4 @@
+invalid:
+  duplicate: default
+  duplicate: value-i-want
+  duplicate: last-one

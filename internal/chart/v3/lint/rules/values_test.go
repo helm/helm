@@ -17,11 +17,14 @@ limitations under the License.
 package rules
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	yamlv2 "go.yaml.in/yaml/v2"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 )
@@ -176,4 +179,59 @@ func createTestingSchema(t *testing.T, dir string) string {
 		t.Fatalf("Failed to write schema to tmpdir: %s", err)
 	}
 	return schemafile
+}
+
+func TestIsDuplicateKeyError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "duplicate key error",
+			err:      &yamlv2.TypeError{Errors: []string{`line 2: key "key" already set in map`}},
+			expected: true,
+		},
+		{
+			name:     "wrapped duplicate key error",
+			err:      fmt.Errorf("error converting YAML to JSON: %w", &yamlv2.TypeError{Errors: []string{`line 2: key "key" already set in map`}}),
+			expected: true,
+		},
+		{
+			name:     "non-duplicate key error",
+			err:      errors.New("some other error"),
+			expected: false,
+		},
+		{
+			name:     "type error but not duplicate-key related",
+			err:      &yamlv2.TypeError{Errors: []string{"cannot unmarshal !!seq into map[string]interface {}"}},
+			expected: false,
+		},
+		{
+			name:     "nil error",
+			err:      nil,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isDuplicateKeyError(tt.err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestValidateValuesFileDuplicateKeys(t *testing.T) {
+	duplicateYaml := `key: value1
+key: value2
+`
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte(duplicateYaml))
+	valfile := filepath.Join(tmpdir, "values.yaml")
+
+	err := validateValuesFile(valfile, map[string]any{}, false)
+	if err == nil {
+		t.Fatal("expected values file with duplicate keys to fail parsing")
+	}
+	assert.Contains(t, err.Error(), "contains duplicate keys")
 }

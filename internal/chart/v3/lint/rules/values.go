@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	yamlv2 "go.yaml.in/yaml/v2"
 
 	"helm.sh/helm/v4/internal/chart/v3/lint/support"
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -54,9 +57,13 @@ func validateValuesFileExistence(valuesPath string) error {
 }
 
 func validateValuesFile(valuesPath string, overrides map[string]any, skipSchemaValidation bool) error {
-	values, err := common.ReadValuesFile(valuesPath)
-	if err != nil {
-		return fmt.Errorf("unable to parse YAML: %w", err)
+	// Try strict parsing first to detect duplicate keys
+	values, strictErr := common.ReadValuesFileStrict(valuesPath)
+	if strictErr != nil {
+		if isDuplicateKeyError(strictErr) {
+			return fmt.Errorf("%s contains duplicate keys: %w", filepath.Base(valuesPath), strictErr)
+		}
+		return fmt.Errorf("unable to parse YAML: %w", strictErr)
 	}
 
 	// Helm 3.0.0 carried over the values linting from Helm 2.x, which only tests the top
@@ -82,4 +89,18 @@ func validateValuesFile(valuesPath string, overrides map[string]any, skipSchemaV
 	}
 
 	return nil
+}
+
+// isDuplicateKeyError checks if an error is related to duplicate YAML keys.
+func isDuplicateKeyError(err error) bool {
+	var typeErr *yamlv2.TypeError
+	if !errors.As(err, &typeErr) {
+		return false
+	}
+	for _, e := range typeErr.Errors {
+		if strings.Contains(e, "already set in map") {
+			return true
+		}
+	}
+	return false
 }

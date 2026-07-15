@@ -118,6 +118,26 @@ func ReadValuesFile(filename string) (Values, error) {
 	return ReadValues(data)
 }
 
+// ReadValuesFileStrict will parse a YAML file into a map of values using strict unmarshaling.
+// This will detect duplicate keys in the YAML.
+func ReadValuesFileStrict(filename string) (Values, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return map[string]any{}, err
+	}
+	return ReadValuesStrict(data)
+}
+
+// ReadValuesStrict will parse YAML byte data into a Values using strict unmarshaling.
+// This will detect duplicate keys in the YAML.
+func ReadValuesStrict(data []byte) (vals Values, err error) {
+	err = yaml.UnmarshalStrict(data, &vals)
+	if len(vals) == 0 {
+		vals = Values{}
+	}
+	return vals, err
+}
+
 // ReleaseOptions represents the additional release options needed
 // for the composition of the final values struct
 type ReleaseOptions struct {

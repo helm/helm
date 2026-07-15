@@ -19,6 +19,7 @@ package common
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 	"text/template"
 )
@@ -201,5 +202,36 @@ chapter:
 		if v != "Moby Dick" {
 			t.Error("Failed to return values for root key title")
 		}
+	}
+}
+
+func TestReadValuesStrict(t *testing.T) {
+	doc := `# Test YAML parse
+poet: "Coleridge"
+title: "Rime of the Ancient Mariner"
+`
+
+	data, err := ReadValuesStrict([]byte(doc))
+	if err != nil {
+		t.Fatalf("Error parsing bytes: %s", err)
+	}
+	if data["poet"] != "Coleridge" {
+		t.Errorf("Unexpected poet: %v", data["poet"])
+	}
+}
+
+func TestReadValuesStrictDuplicateKeys(t *testing.T) {
+	doc := `invalid:
+  duplicate: default
+  duplicate: value-i-want
+  duplicate: last-one
+`
+
+	_, err := ReadValuesStrict([]byte(doc))
+	if err == nil {
+		t.Fatal("Expected error for duplicate keys, got nil")
+	}
+	if !strings.Contains(err.Error(), "already") && !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("Expected duplicate-key error, got: %s", err)
 	}
 }

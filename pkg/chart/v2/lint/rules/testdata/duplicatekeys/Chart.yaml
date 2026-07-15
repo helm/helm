@@ -1,0 +1,4 @@
+apiVersion: v2
+name: duplicatekeys
+description: testing chart with duplicate keys in values.yaml
+version: 0.1.0

@@ -38,6 +38,7 @@ const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
 const invalidChartFileDir = "rules/testdata/invalidchartfile"
+const duplicateKeysDir = "rules/testdata/duplicatekeys"
 
 func TestBadChartV3(t *testing.T) {
 	var values map[string]any
@@ -217,5 +218,28 @@ func TestMalformedTemplate(t *testing.T) {
 	case <-ch:
 		require.Len(t, m, 1, "All didn't fail with expected errors, got %#v", m)
 		assert.ErrorContains(t, m[0].Err, "invalid character '{'", "All didn't have the error for invalid character '{'")
+	}
+}
+
+// TestDuplicateKeysV3 tests that values.yaml with duplicate keys is detected
+// See https://github.com/helm/helm/issues/31102
+func TestDuplicateKeysV3(t *testing.T) {
+	var values map[string]any
+	m := RunAll(duplicateKeysDir, values, namespace).Messages
+	// Expect at least 1 message (the duplicate keys error)
+	if len(m) < 1 {
+		t.Fatalf("All didn't fail with expected errors, got %#v", m)
+	}
+	// Find the duplicate keys error message
+	found := false
+	for _, msg := range m {
+		if msg.Path == "values.yaml" && msg.Severity == support.ErrorSev &&
+			strings.Contains(msg.Err.Error(), "contains duplicate keys") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("All didn't have the error for duplicate YAML keys in values.yaml: %v", m)
 	}
 }
