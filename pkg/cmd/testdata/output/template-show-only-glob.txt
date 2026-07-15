@@ -8,6 +8,8 @@ rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get","list","watch"]
+
+
 ---
 # Source: subchart/templates/subdir/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -22,3 +24,5 @@ subjects:
 - kind: ServiceAccount
   name: subchart-sa
   namespace: default
+
+
