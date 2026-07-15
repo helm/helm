@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
@@ -690,9 +691,7 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 			if dep.Templates[0].Name != "templates/alpine-pod.yaml" {
 				t.Errorf("Unexpected template: %s", dep.Templates[0].Name)
 			}
-			if len(dep.Templates[0].Data) == 0 {
-				t.Error("No template data.")
-			}
+			assert.NotEmpty(t, dep.Templates[0].Data, "No template data.")
 			if len(dep.Files) != 1 {
 				t.Fatalf("Expected 1 Files, got %d", len(dep.Files))
 			}

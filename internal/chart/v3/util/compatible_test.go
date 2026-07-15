@@ -17,7 +17,11 @@ limitations under the License.
 // Package version represents the current version of the project.
 package util
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestIsCompatibleRange(t *testing.T) {
 	tests := []struct {
@@ -36,8 +40,6 @@ func TestIsCompatibleRange(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if IsCompatibleRange(tt.constraint, tt.ver) != tt.expected {
-			t.Errorf("expected constraint %s to be %v for %s", tt.constraint, tt.expected, tt.ver)
-		}
+		assert.Equalf(t, tt.expected, IsCompatibleRange(tt.constraint, tt.ver), "expected constraint %s to be %v for %s", tt.constraint, tt.expected, tt.ver)
 	}
 }

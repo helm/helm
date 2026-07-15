@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 )
@@ -56,9 +57,7 @@ func TestValidateValuesYamlNotDirectory(t *testing.T) {
 	defer os.Remove(nonExistingValuesFilePath)
 
 	err := validateValuesFileExistence(nonExistingValuesFilePath)
-	if err == nil {
-		t.Error("validateValuesFileExistence to return a linter error, got no error")
-	}
+	assert.Error(t, err, "validateValuesFileExistence to return a linter error, got no error")
 }
 
 func TestValidateValuesFileWellFormed(t *testing.T) {
@@ -67,9 +66,7 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 	`
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(badYaml))
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]any{}, false); err == nil {
-		t.Fatal("expected values file to fail parsing")
-	}
+	require.Error(t, validateValuesFile(valfile, map[string]any{}, false), "expected values file to fail parsing")
 }
 
 func TestValidateValuesFileSchema(t *testing.T) {
@@ -78,9 +75,7 @@ func TestValidateValuesFileSchema(t *testing.T) {
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]any{}, false); err != nil {
-		t.Fatalf("Failed validation with %s", err)
-	}
+	require.NoError(t, validateValuesFile(valfile, map[string]any{}, false), "Failed validation")
 }
 
 func TestValidateValuesFileSchemaFailure(t *testing.T) {
@@ -91,8 +86,7 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
 
-	err := validateValuesFile(valfile, map[string]any{}, false)
-	assert.ErrorContains(t, err, "- at '/username': got number, want string")
+	assert.ErrorContains(t, validateValuesFile(valfile, map[string]any{}, false), "- at '/username': got number, want string")
 }
 
 func TestValidateValuesFileSchemaFailureButWithSkipSchemaValidation(t *testing.T) {
@@ -103,10 +97,7 @@ func TestValidateValuesFileSchemaFailureButWithSkipSchemaValidation(t *testing.T
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
 
-	err := validateValuesFile(valfile, map[string]any{}, true)
-	if err != nil {
-		t.Fatal("expected values file to pass parsing because of skipSchemaValidation")
-	}
+	require.NoError(t, validateValuesFile(valfile, map[string]any{}, true), "expected values file to pass parsing because of skipSchemaValidation")
 }
 
 func TestValidateValuesFileSchemaOverrides(t *testing.T) {
@@ -118,9 +109,7 @@ func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, overrides, false); err != nil {
-		t.Fatalf("Failed validation with %s", err)
-	}
+	require.NoError(t, validateValuesFile(valfile, overrides, false), "Failed validation")
 }
 
 func TestValidateValuesFile(t *testing.T) {
@@ -157,12 +146,10 @@ func TestValidateValuesFile(t *testing.T) {
 
 			err := validateValuesFile(valfile, tt.overrides, false)
 
-			switch {
-			case err != nil && tt.errorMessage == "":
-				t.Errorf("Failed validation with %s", err)
-			case err == nil && tt.errorMessage != "":
-				t.Error("expected values file to fail parsing")
-			case err != nil && tt.errorMessage != "":
+			if tt.errorMessage == "" {
+				require.NoError(t, err, "Failed validation")
+			} else {
+				require.Error(t, err, "expected values file to fail parsing")
 				assert.ErrorContains(t, err, tt.errorMessage, "Failed with unexpected error")
 			}
 		})
@@ -172,8 +159,6 @@ func TestValidateValuesFile(t *testing.T) {
 func createTestingSchema(t *testing.T, dir string) string {
 	t.Helper()
 	schemafile := filepath.Join(dir, "values.schema.json")
-	if err := os.WriteFile(schemafile, []byte(testSchema), 0o700); err != nil {
-		t.Fatalf("Failed to write schema to tmpdir: %s", err)
-	}
+	require.NoError(t, os.WriteFile(schemafile, []byte(testSchema), 0o700), "Failed to write schema to tmpdir")
 	return schemafile
 }
