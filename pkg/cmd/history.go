@@ -218,7 +218,7 @@ func (r releaseHistoryWithRollback) WriteTable(out io.Writer) error {
 		if item.RollbackRevision > 0 {
 			rollback = strconv.Itoa(item.RollbackRevision)
 		}
-		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, rollback, item.Description)
+		tbl.AddRow(item.Revision, item.Updated.In(time.Local).Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, rollback, item.Description)
 	}
 	return output.EncodeTable(out, tbl)
 }
