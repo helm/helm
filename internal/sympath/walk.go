@@ -68,11 +68,10 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		resolved, err := filepath.EvalSymlinks(path)
 		if err != nil {
 			if os.IsNotExist(err) {
-				// If a symlink's target does not exist (broken symlink),
-				// silently skip it. Broken symlinks do not contribute
-				// content and should not cause errors, especially when
-				// they match .helmignore patterns.
-				return nil
+				// Pass the broken symlink error to walkFn so callers
+				// (e.g. chart loaders) can decide whether to skip it
+				// based on .helmignore rules.
+				return walkFn(path, info, err)
 			}
 			return err
 		}

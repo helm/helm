@@ -77,6 +77,10 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		n = filepath.ToSlash(n)
 
 		if err != nil {
+			// For broken symlinks, respect .helmignore before erroring.
+			if os.IsNotExist(err) && fi != nil && rules.Ignore(n, fi) {
+				return nil
+			}
 			return err
 		}
 		if fi.IsDir() {

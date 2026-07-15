@@ -90,6 +90,46 @@ func TestLoadDirWithSymlink(t *testing.T) {
 	verifyDependenciesLock(t, c)
 }
 
+func TestLoadDirWithBrokenSymlinkNotInHelmignore(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require unix")
+	}
+
+	tmpDir := t.TempDir()
+
+	chartYAML := `apiVersion: v2
+name: test
+version: 0.1.0
+`
+	valuesYAML := `{}
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "Chart.yaml"), []byte(chartYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "values.yaml"), []byte(valuesYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a broken symlink NOT listed in .helmignore
+	brokenLink := filepath.Join(tmpDir, "broken")
+	if err := os.Symlink("nonexistent", brokenLink); err != nil {
+		t.Fatal(err)
+	}
+
+	// Empty .helmignore — broken symlink is not ignored
+	if err := os.WriteFile(filepath.Join(tmpDir, ".helmignore"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	l, err := Loader(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.Load(); err == nil {
+		t.Fatal("loading chart with broken symlink not in .helmignore should fail")
+	}
+}
+
 func TestLoadDirWithBrokenSymlinkInHelmignore(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink tests require unix")
