@@ -204,6 +204,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 			if req := ac.MetaDependencies(); len(req) > 0 {
+				sourceDateEpoch, err := sourceDateEpochFromEnv()
+				if err != nil {
+					return err
+				}
 				if err := action.CheckDependencies(ch, req); err != nil {
 					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run 'helm dependency build' to fetch missing dependencies: %w", err)
 					if !client.DependencyUpdate {
@@ -219,6 +223,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						RepositoryCache:  settings.RepositoryCache,
 						ContentCache:     settings.ContentCache,
 						Debug:            settings.Debug,
+						SourceDateEpoch:  sourceDateEpoch,
 					}
 					if err := man.Update(); err != nil {
 						return err
