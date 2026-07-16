@@ -33,7 +33,9 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -136,16 +138,55 @@ func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Dur
 }
 
 func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resources := []object.ObjMetadata{}
 	for _, resource := range resourceList {
+		gvk := resource.Object.GetObjectKind().GroupVersionKind()
+		mapping, err := w.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			return err
+		}
+		var name, namespace string
+		if u, ok := resource.Object.(*unstructured.Unstructured); ok {
+			name = u.GetName()
+			namespace = u.GetNamespace()
+		} else {
+			accessor, err := meta.Accessor(resource.Object)
+			if err != nil {
+				return err
+			}
+			name = accessor.GetName()
+			namespace = accessor.GetNamespace()
+		}
+		var resourceClient dynamic.ResourceInterface
+		if namespace != "" {
+			resourceClient = w.client.Resource(mapping.Resource).Namespace(namespace)
+		} else {
+			resourceClient = w.client.Resource(mapping.Resource)
+		}
+		_, err = resourceClient.Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+
 		obj, err := object.RuntimeToObjMeta(resource.Object)
 		if err != nil {
 			return err
 		}
 		resources = append(resources, obj)
 	}
+
+	if len(resources) == 0 {
+		return nil
+	}
+
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
@@ -239,11 +280,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 		var nonDesiredResources []*event.ResourceStatus
 		for _, rs := range statusCollector.ResourceStatuses {
 			if rs == nil {
-				continue
-			}
-			// If a resource is already deleted before waiting has started, it will show as unknown.
-			// This check ensures we don't wait forever for a resource that is already deleted.
-			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
 				continue
 			}
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
