@@ -145,30 +145,23 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	defer cancel()
 	resources := []object.ObjMetadata{}
 	for _, resource := range resourceList {
-		gvk := resource.Object.GetObjectKind().GroupVersionKind()
-		mapping, err := w.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-		if err != nil {
-			return err
-		}
-		var name, namespace string
-		if u, ok := resource.Object.(*unstructured.Unstructured); ok {
-			name = u.GetName()
-			namespace = u.GetNamespace()
-		} else {
-			accessor, err := meta.Accessor(resource.Object)
+		mapping := resource.Mapping
+		if mapping == nil {
+			gvk := resource.Object.GetObjectKind().GroupVersionKind()
+			var err error
+			mapping, err = w.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
 				return err
 			}
-			name = accessor.GetName()
-			namespace = accessor.GetNamespace()
 		}
+
 		var resourceClient dynamic.ResourceInterface
-		if namespace != "" {
-			resourceClient = w.client.Resource(mapping.Resource).Namespace(namespace)
+		if resource.Namespace != "" {
+			resourceClient = w.client.Resource(mapping.Resource).Namespace(resource.Namespace)
 		} else {
 			resourceClient = w.client.Resource(mapping.Resource)
 		}
-		_, err = resourceClient.Get(ctx, name, metav1.GetOptions{})
+		_, err := resourceClient.Get(ctx, resource.Name, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
