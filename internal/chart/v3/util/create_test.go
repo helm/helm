@@ -105,9 +105,11 @@ func TestCreateFrom(t *testing.T) {
 func TestCreate_Overwrite(t *testing.T) {
 	tdir := t.TempDir()
 
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
 	var logBuf bytes.Buffer
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&logBuf, nil)))
-
 	if _, err := Create("foo", tdir); err != nil {
 		t.Fatal(err)
 	}
