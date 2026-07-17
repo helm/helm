@@ -21,7 +21,6 @@ limitations under the License.
 package sympath
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -68,12 +67,17 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 	if IsSymlink(info) {
 		resolved, err := filepath.EvalSymlinks(path)
 		if err != nil {
-			return fmt.Errorf("error evaluating symlink %s: %w", path, err)
+			// Pass the error to walkFn so callers (e.g. chart loaders)
+			// can decide whether to skip it based on .helmignore rules.
+			return walkFn(path, info, err)
 		}
 		// This log message is to highlight a symlink that is being used within a chart, symlinks can be used for nefarious reasons.
 		slog.Info("found symbolic link in path. Contents of linked file included and used", "path", path, "resolved", resolved)
+		originalInfo := info
 		if info, err = os.Lstat(resolved); err != nil {
-			return err
+			// Route through walkFn with the original symlink info so callers
+			// can decide whether to skip it based on .helmignore rules.
+			return walkFn(path, originalInfo, err)
 		}
 		if err := symwalk(path, info, walkFn); err != nil && err != filepath.SkipDir {
 			return err
