@@ -124,7 +124,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 				execErr := &plugin.InvokeExecError{}
 				if errors.As(err, &execErr) {
 					return CommandError{
-						error:    execErr.Err,
+						error:    execErr,
 						ExitCode: execErr.ExitCode,
 					}
 				}
