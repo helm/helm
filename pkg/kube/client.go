@@ -167,14 +167,15 @@ func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
 		waitContext = c.WaitContext
 	}
 	sw := &statusWaiter{
-		restMapper:         restMapper,
-		client:             dynamicClient,
-		ctx:                waitContext,
-		watchUntilReadyCtx: o.watchUntilReadyCtx,
-		waitCtx:            o.waitCtx,
-		waitWithJobsCtx:    o.waitWithJobsCtx,
-		waitForDeleteCtx:   o.waitForDeleteCtx,
-		readers:            o.statusReaders,
+		restMapper:           restMapper,
+		client:               dynamicClient,
+		ctx:                  waitContext,
+		watchUntilReadyCtx:   o.watchUntilReadyCtx,
+		waitCtx:              o.waitCtx,
+		waitWithJobsCtx:      o.waitWithJobsCtx,
+		waitForDeleteCtx:     o.waitForDeleteCtx,
+		readers:              o.statusReaders,
+		statusComputeWorkers: o.statusComputeWorkers,
 	}
 	sw.SetLogger(c.Logger().Handler())
 	return sw, nil
