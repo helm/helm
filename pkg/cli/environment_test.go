@@ -242,9 +242,7 @@ users:
   user:
     token: test-token
 `
-	if err := os.WriteFile(kubeconfigPath, []byte(kubeconfig), 0o600); err != nil {
-		t.Fatalf("failed to create test kubeconfig: %v", err)
-	}
+	require.NoError(t, os.WriteFile(kubeconfigPath, []byte(kubeconfig), 0o600), "failed to create test kubeconfig")
 	t.Setenv("KUBECONFIG", kubeconfigPath)
 
 	settings := New()
