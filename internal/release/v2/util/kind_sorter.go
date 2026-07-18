@@ -114,10 +114,6 @@ var UninstallOrder KindSortOrder = []string{
 	"PriorityClass",
 }
 
-// sort manifests by kind.
-//
-// Results are sorted by 'ordering', keeping order of items with equal kind/priority
-
 func buildKindOrderMap(o KindSortOrder) map[string]int {
 	ordering := make(map[string]int, len(o))
 	for i, kind := range o {
@@ -126,13 +122,13 @@ func buildKindOrderMap(o KindSortOrder) map[string]int {
 	return ordering
 }
 
+// sort manifests by kind.
+// Results are sorted by 'ordering', keeping order of items with equal kind/priority
 func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
 	orderMap := buildKindOrderMap(ordering)
 
 	sort.SliceStable(manifests, func(i, j int) bool {
 		return lessByKind(
-			manifests[i],
-			manifests[j],
 			manifests[i].Head.Kind,
 			manifests[j].Head.Kind,
 			orderMap,
@@ -151,8 +147,6 @@ func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.H
 	h := hooks
 	sort.SliceStable(h, func(i, j int) bool {
 		return lessByKind(
-			h[i],
-			h[j],
 			h[i].Kind,
 			h[j].Kind,
 			orderMap,
@@ -162,7 +156,11 @@ func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.H
 	return h
 }
 
-func lessByKind(_ any, _ any, kindA string, kindB string, ordering map[string]int) bool {
+func lessByKind(
+	kindA string,
+	kindB string,
+	ordering map[string]int,
+) bool {
 
 	first, aok := ordering[kindA]
 	second, bok := ordering[kindB]
