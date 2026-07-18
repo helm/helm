@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storage // import "helm.sh/helm/v4/pkg/storage"
+package storage
 
 import (
 	"context"

@@ -131,6 +131,7 @@ charts in a repository, use 'helm search'.
 
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
+	client.WaitOptions = append(client.WaitOptions, defaultCLIWaitOptions()...)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 

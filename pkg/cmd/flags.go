@@ -65,6 +65,26 @@ func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
 }
 
+// cliDefaultStatusComputeWorkers is the number of concurrent status-compute
+// workers the Helm CLI enables by default. This prevents the informer
+// notification pipeline from being blocked by slow API calls (e.g. LIST
+// ReplicaSets/Pods for Deployments) when many resources are updated
+// simultaneously. See https://github.com/fluxcd/cli-utils/pull/20.
+//
+// SDK consumers (e.g. helm-controller) inherit the zero value and can opt in
+// via kube.WithStatusComputeWorkers when they want the same behavior.
+const cliDefaultStatusComputeWorkers = 8
+
+// defaultCLIWaitOptions returns the set of WaitOptions the Helm CLI applies
+// by default to every wait-enabled command. Keeping these in one place keeps
+// behavior consistent across install/upgrade/rollback/uninstall and makes the
+// CLI-vs-SDK default asymmetry explicit.
+func defaultCLIWaitOptions() []kube.WaitOption {
+	return []kube.WaitOption{
+		kube.WithStatusComputeWorkers(cliDefaultStatusComputeWorkers),
+	}
+}
+
 type waitValue kube.WaitStrategy
 
 func newWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy) *waitValue {
