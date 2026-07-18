@@ -99,8 +99,8 @@ const (
 // List is the action for listing releases.
 //
 // It provides, for example, the implementation of 'helm list'.
-// It returns no more than one revision of every release in one specific, or in
-// all, namespaces.
+// It returns the latest revision of every release in one specific, or in all,
+// namespaces, unless superseded releases are requested.
 // To list all the revisions of a specific release, see the History action.
 type List struct {
 	cfg *Configuration
@@ -117,7 +117,7 @@ type List struct {
 	ByDate      bool
 	SortReverse bool
 	// StateMask accepts a bitmask of states for items to show.
-	// The default is ListDeployed
+	// The default is ListAll.
 	StateMask ListStates
 	// Limit is the number of items to return per Run()
 	Limit int
@@ -186,10 +186,11 @@ func (l *List) Run() ([]ri.Releaser, error) {
 		return nil, err
 	}
 
-	// by definition, superseded releases are never shown if
-	// only the latest releases are returned. so if requested statemask
-	// is _only_ ListSuperseded, skip the latest release filter
-	if l.StateMask != ListSuperseded {
+	// By definition, superseded releases are never shown if only the latest
+	// releases are returned. Skip the latest release filter whenever the state
+	// mask includes superseded releases, including in combination with other
+	// states.
+	if l.StateMask&ListSuperseded == 0 {
 		rresults = filterLatestReleases(rresults)
 	}
 
