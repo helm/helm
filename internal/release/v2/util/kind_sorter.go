@@ -138,7 +138,7 @@ func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifes
 	return manifests
 }
 
-// sort hooks by kind, using an out-of-place sort to preserve the input parameters.
+// sort hooks by kind.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
 func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
