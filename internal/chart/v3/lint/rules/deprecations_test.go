@@ -29,14 +29,12 @@ func TestValidateNoDeprecations(t *testing.T) {
 		Kind:       "Deployment",
 	}
 	err := validateNoDeprecations(deprecated, nil)
-	var depErr deprecatedAPIError
 	require.Error(t, err, "Expected deprecated extension to be flagged")
+	var depErr deprecatedAPIError
 	require.ErrorAs(t, err, &depErr, "Expected error to be of type deprecatedAPIError")
 	require.NotEmpty(t, depErr.Message, "Expected error message to be non-blank: %v", err)
-
-	err = validateNoDeprecations(&k8sYamlStruct{
+	assert.NoError(t, validateNoDeprecations(&k8sYamlStruct{
 		APIVersion: "v1",
 		Kind:       "Pod",
-	}, nil)
-	assert.NoError(t, err, "Expected a v1 Pod to not be deprecated")
+	}, nil), "Expected a v1 Pod to not be deprecated")
 }

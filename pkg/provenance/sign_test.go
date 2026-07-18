@@ -385,11 +385,9 @@ func TestVerify(t *testing.T) {
 	_, err = signer.Verify(archiveData, tamperedSigData, filepath.Base(testChartfile))
 	require.Errorf(t, err, "Expected %s to fail.", testTamperedSigBlock)
 
-	switch err.(type) {
-	case pgperrors.SignatureError:
-		t.Logf("Tampered sig block error: %s (%T)", err, err)
-	default:
-		t.Errorf("Expected invalid signature error, got %q (%T)", err, err)
+	var sErr pgperrors.SignatureError
+	if assert.ErrorAs(t, err, &sErr, "Expected invalid signature error, got %q (%T)", err, err) {
+		t.Logf("Tampered sig block error: %s (%T)", sErr, sErr)
 	}
 }
 
