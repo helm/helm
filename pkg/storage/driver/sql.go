@@ -231,7 +231,7 @@ func (s *SQL) ensureDBSetup() error {
 				},
 				Down: []string{
 					fmt.Sprintf(`
-						DELETE TABLE %s;
+						DROP TABLE %s;
 					`, sqlCustomLabelsTableName),
 				},
 			},
@@ -569,7 +569,11 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 			return err
 		}
 	}
-	defer transaction.Commit()
+
+	if err := transaction.Commit(); err != nil {
+		s.Logger().Debug("failed to commit release creation", slog.String("key", key), slog.Any("error", err))
+		return fmt.Errorf("failed to commit release creation: %w", err)
+	}
 
 	return nil
 }
@@ -649,7 +653,6 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		transaction.Rollback()
 		return nil, err
 	}
-	defer transaction.Commit()
 
 	deleteQuery, args, err := s.statementBuilder.
 		Delete(sqlReleaseTableName).
@@ -658,12 +661,14 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		ToSql()
 	if err != nil {
 		s.Logger().Debug("failed to build delete query", slog.Any("error", err))
+		transaction.Rollback()
 		return nil, err
 	}
 
 	_, err = transaction.Exec(deleteQuery, args...)
 	if err != nil {
 		s.Logger().Debug("failed perform delete query", slog.Any("error", err))
+		transaction.Rollback()
 		return release, err
 	}
 
@@ -673,6 +678,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 			slog.String("namespace", s.namespace),
 			slog.String("key", key),
 			slog.Any("error", err))
+		transaction.Rollback()
 		return nil, err
 	}
 
@@ -684,10 +690,21 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 
 	if err != nil {
 		s.Logger().Debug("failed to build delete Labels query", slog.Any("error", err))
+		transaction.Rollback()
 		return nil, err
 	}
-	_, err = transaction.Exec(deleteCustomLabelsQuery, args...)
-	return release, err
+
+	if _, err = transaction.Exec(deleteCustomLabelsQuery, args...); err != nil {
+		transaction.Rollback()
+		return release, err
+	}
+
+	if err := transaction.Commit(); err != nil {
+		s.Logger().Debug("failed to commit release deletion", slog.String("key", key), slog.Any("error", err))
+		return nil, fmt.Errorf("failed to commit release deletion: %w", err)
+	}
+
+	return release, nil
 }
 
 // Get release custom labels from database
