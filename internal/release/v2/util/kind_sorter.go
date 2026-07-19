@@ -168,7 +168,7 @@ func lessByKind(
 		if kindA != kindB {
 			return kindA < kindB
 		}
-		return first < second
+		return false
 	}
 	// unknown kind is last
 	if !aok {
