@@ -135,10 +135,6 @@ func (p *Package) Run(path string, _ map[string]any) (string, error) {
 		dest = p.Destination
 	}
 
-	if p.SourceDateEpoch != nil {
-		ch.StampModTimes(*p.SourceDateEpoch)
-	}
-
 	name, err := chartutil.Save(ch, dest)
 	if err != nil {
 		return "", fmt.Errorf("failed to save: %w", err)
