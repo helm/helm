@@ -158,7 +158,6 @@ func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.H
 }
 
 func lessByKind(kindA string, kindB string, ordering map[string]int) bool {
-
 	first, aok := ordering[kindA]
 	second, bok := ordering[kindB]
 

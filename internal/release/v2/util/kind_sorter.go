@@ -161,7 +161,6 @@ func lessByKind(
 	kindB string,
 	ordering map[string]int,
 ) bool {
-
 	first, aok := ordering[kindA]
 	second, bok := ordering[kindB]
 
