@@ -156,9 +156,13 @@ func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.H
 	return hooks
 }
 
-func lessByKind(kindA string, kindB string, ordering map[string]int) bool {
-	first, aok := ordering[kindA]
-	second, bok := ordering[kindB]
+func lessByKind(
+	kindA string,
+	kindB string,
+	orderMap map[string]int,
+) bool {
+	first, aok := orderMap[kindA]
+	second, bok := orderMap[kindB]
 
 	if !aok && !bok {
 		// if both are unknown then sort alphabetically by kind, keep original order if same kind
