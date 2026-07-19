@@ -136,14 +136,17 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 
 // Copied/adapted from https://github.com/oras-project/oras
 func readLine(prompt string, silent bool) (string, error) {
-	fmt.Print(prompt)
-	if silent {
+	// Prompts go to stderr so stdout stays clean for scripting.
+	fmt.Fprint(os.Stderr, prompt)
+	if silent && term.IsTerminal(os.Stdin.Fd()) {
 		fd := os.Stdin.Fd()
 		state, err := term.SaveState(fd)
 		if err != nil {
 			return "", err
 		}
-		term.DisableEcho(fd, state)
+		if err := term.DisableEcho(fd, state); err != nil {
+			return "", fmt.Errorf("failed to disable terminal echo for password input: %w", err)
+		}
 		defer term.RestoreTerminal(fd, state)
 	}
 
@@ -153,7 +156,7 @@ func readLine(prompt string, silent bool) (string, error) {
 		return "", err
 	}
 	if silent {
-		fmt.Println()
+		fmt.Fprintln(os.Stderr)
 	}
 
 	return string(line), nil
