@@ -114,24 +114,24 @@ var UninstallOrder KindSortOrder = []string{
 	"PriorityClass",
 }
 
-func buildKindOrderMap(o KindSortOrder) map[string]int {
-	ordering := make(map[string]int, len(o))
-	for i, kind := range o {
-		ordering[kind] = i
+type KindOrderMap map[string]int
+
+func NewKindOrderMap(ordering KindSortOrder) KindOrderMap {
+	orderMap := make(KindOrderMap, len(ordering))
+	for i, kind := range ordering {
+		orderMap[kind] = i
 	}
-	return ordering
+	return orderMap
 }
 
 // sort manifests by kind.
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
 func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
-	orderMap := buildKindOrderMap(ordering)
-
+	orderMap := NewKindOrderMap(ordering)
 	sort.SliceStable(manifests, func(i, j int) bool {
-		return lessByKind(
+		return orderMap.Less(
 			manifests[i].Head.Kind,
 			manifests[j].Head.Kind,
-			orderMap,
 		)
 	})
 
@@ -142,34 +142,29 @@ func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifes
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
 func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
-	orderMap := buildKindOrderMap(ordering)
-
+	orderMap := NewKindOrderMap(ordering)
 	sort.SliceStable(hooks, func(i, j int) bool {
-		return lessByKind(
+		return orderMap.Less(
 			hooks[i].Kind,
 			hooks[j].Kind,
-			orderMap,
 		)
 	})
 
 	return hooks
 }
 
-func lessByKind(
-	kindA string,
-	kindB string,
-	orderMap map[string]int,
-) bool {
-	first, aok := orderMap[kindA]
-	second, bok := orderMap[kindB]
+func (k KindOrderMap) Less(kindA, kindB string) bool {
+	first, aok := k[kindA]
+	second, bok := k[kindB]
 
 	if !aok && !bok {
 		// if both are unknown then sort alphabetically by kind, keep original order if same kind
 		if kindA != kindB {
 			return kindA < kindB
 		}
-		return first < second
+		return false
 	}
+
 	// unknown kind is last
 	if !aok {
 		return false
@@ -177,6 +172,7 @@ func lessByKind(
 	if !bok {
 		return true
 	}
+
 	// sort different kinds, keep original order if same priority
 	return first < second
 }
