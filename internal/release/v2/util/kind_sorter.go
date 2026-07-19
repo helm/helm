@@ -144,16 +144,15 @@ func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifes
 func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
 	orderMap := buildKindOrderMap(ordering)
 
-	h := hooks
-	sort.SliceStable(h, func(i, j int) bool {
+	sort.SliceStable(hooks, func(i, j int) bool {
 		return lessByKind(
-			h[i].Kind,
-			h[j].Kind,
+			hooks[i].Kind,
+			hooks[j].Kind,
 			orderMap,
 		)
 	})
 
-	return h
+	return hooks
 }
 
 func lessByKind(
