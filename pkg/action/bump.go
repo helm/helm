@@ -17,13 +17,12 @@ limitations under the License.
 package action
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -65,66 +64,45 @@ func (b *Bump) Run(bumpType string, chartpath string) (string, error) {
 	b.bump = bumpType
 
 	currentVersion := strings.TrimSpace(string(cv))
-	if !isValidVersion(currentVersion) {
+	parsedVersion, err := semver.NewVersion(currentVersion)
+	if err != nil {
 		return "", fmt.Errorf("invalid original version: %s", currentVersion)
 	}
 
-	var newVersion string
-	switch b.bump {
-	case "major":
-		newVersion, err = bumpMajor(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump major version: %w", err)
+	var newVersion semver.Version
+
+	version, err := semver.StrictNewVersion(b.bump)
+	if err != nil {
+		switch b.bump {
+		case "major":
+			newVersion = parsedVersion.IncMajor()
+		case "minor":
+			newVersion = parsedVersion.IncMinor()
+		case "patch":
+			newVersion = parsedVersion.IncPatch()
+		case "stable":
+			newVersion, _ = parsedVersion.SetPrerelease("")
+		default:
+			preRelease := parsedVersion.Prerelease()
+
+			var preReleaseVersion int
+
+			parts := strings.Split(preRelease, ".")
+
+			if len(parts) == 1 {
+				preReleaseVersion = 1
+			} else {
+				preReleaseVersion, _ = strconv.Atoi(parts[1])
+				preReleaseVersion++
+			}
+			newPreReleaseString := fmt.Sprintf("%s.%d", bumpType, preReleaseVersion)
+			newVersion, _ = parsedVersion.SetPrerelease(newPreReleaseString)
 		}
-	case "minor":
-		newVersion, err = bumpMinor(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump minor version: %w", err)
-		}
-	case "patch":
-		newVersion, err = bumpPatch(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump patch version: %w", err)
-		}
-	case "stable":
-		newVersion, err = bumpStable(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump stable version: %w", err)
-		}
-	case "alpha":
-		newVersion, err = bumpAlpha(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump alpha version: %w", err)
-		}
-	case "beta":
-		newVersion, err = bumpBeta(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump beta version: %w", err)
-		}
-	case "rc":
-		newVersion, err = bumpRC(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump rc version: %w", err)
-		}
-	case "post":
-		newVersion, err = bumpPost(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump post version: %w", err)
-		}
-	case "dev":
-		newVersion, err = bumpDev(currentVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to bump dev version: %w", err)
-		}
-	default:
-		if !isValidVersion(b.bump) {
-			return "", fmt.Errorf("invalid bump type or version: %s", b.bump)
-		}
-		newVersion = b.bump
+	} else {
+		newVersion = *version
 	}
 
-	// Update the chart metadata with the new version
-	b.chart.Metadata.Version = newVersion
+	b.chart.Metadata.Version = newVersion.String()
 
 	// Save the updated chart to disk (this will update Chart.yaml)
 	if chartpath != "" {
@@ -134,215 +112,5 @@ func (b *Bump) Run(bumpType string, chartpath string) (string, error) {
 		}
 	}
 
-	return newVersion, nil
-}
-
-// bumpMajor increases the major version number (e.g., 1.2.3 -> 2.0.0)
-func bumpMajor(version string) (string, error) {
-	parts := strings.Split(version, ".")
-	if len(parts) < 3 {
-		return "", errors.New("invalid version format for major bump")
-	}
-
-	major, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return "", errors.New("invalid major version number")
-	}
-
-	newMajor := major + 1
-	return fmt.Sprintf("%d.0.0", newMajor), nil
-}
-
-// bumpMinor increases the minor version number (e.g., 1.2.3 -> 1.3.0)
-func bumpMinor(version string) (string, error) {
-	parts := strings.Split(version, ".")
-	if len(parts) < 3 {
-		return "", errors.New("invalid version format for minor bump")
-	}
-
-	major, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return "", errors.New("invalid major version number")
-	}
-
-	minor, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return "", errors.New("invalid minor version number")
-	}
-
-	newMinor := minor + 1
-	return fmt.Sprintf("%d.%d.0", major, newMinor), nil
-}
-
-// bumpPatch increases the patch version number (e.g., 1.2.3 -> 1.2.4)
-func bumpPatch(version string) (string, error) {
-	parts := strings.Split(version, ".")
-	if len(parts) < 3 {
-		return "", errors.New("invalid version format for patch bump")
-	}
-
-	major, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return "", errors.New("invalid major version number")
-	}
-
-	minor, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return "", errors.New("invalid minor version number")
-	}
-
-	patch, err := strconv.Atoi(parts[2])
-	if err != nil {
-		return "", errors.New("invalid patch version number")
-	}
-
-	newPatch := patch + 1
-	return fmt.Sprintf("%d.%d.%d", major, minor, newPatch), nil
-}
-
-// bumpStable removes any pre-release suffix (e.g., 1.2.3-alpha -> 1.2.3)
-func bumpStable(version string) (string, error) {
-	// Remove any pre-release suffixes (like -alpha, -beta, etc.)
-	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)(-.+)?$`)
-	matches := re.FindStringSubmatch(version)
-	if len(matches) < 2 {
-		return "", errors.New("invalid version format for stable bump")
-	}
-	return matches[1], nil
-}
-
-// bumpAlpha increases the pre-release version (e.g., 1.2.3-alpha -> 1.2.3-alpha.1)
-func bumpAlpha(version string) (string, error) {
-	// Check if version has an alpha suffix - simple regex that works with all cases
-	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)(-alpha(?:\.(\d+))?)?$`)
-	matches := re.FindStringSubmatch(version)
-	if len(matches) < 2 {
-		return "", errors.New("invalid version format for alpha bump")
-	}
-
-	baseVersion := matches[1]
-	var preRelease string
-	if len(matches) >= 4 && matches[3] != "" {
-		// Increment the pre-release number
-		num, err := strconv.Atoi(matches[3])
-		if err != nil {
-			return "", errors.New("invalid alpha pre-release number")
-		}
-		preRelease = fmt.Sprintf(".%d", num+1)
-	} else {
-		// Start with .1 if no pre-release number exists
-		preRelease = ".1"
-	}
-
-	return baseVersion + "-alpha" + preRelease, nil
-}
-
-// bumpBeta increases the pre-release version (e.g., 1.2.3-beta -> 1.2.3-beta.1)
-func bumpBeta(version string) (string, error) {
-	// Check if version has a beta suffix - simple regex that works with all cases
-	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)(-beta(?:\.(\d+))?)?$`)
-	matches := re.FindStringSubmatch(version)
-	if len(matches) < 2 {
-		return "", errors.New("invalid version format for beta bump")
-	}
-
-	baseVersion := matches[1]
-	var preRelease string
-	if len(matches) >= 4 && matches[3] != "" {
-		// Increment the pre-release number
-		num, err := strconv.Atoi(matches[3])
-		if err != nil {
-			return "", errors.New("invalid beta pre-release number")
-		}
-		preRelease = fmt.Sprintf(".%d", num+1)
-	} else {
-		// Start with .1 if no pre-release number exists
-		preRelease = ".1"
-	}
-
-	return baseVersion + "-beta" + preRelease, nil
-}
-
-// bumpRC increases the pre-release version (e.g., 1.2.3-rc -> 1.2.3-rc.1)
-func bumpRC(version string) (string, error) {
-	// Check if version has a rc suffix - simple regex that works with all cases
-	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)(-rc(?:\.(\d+))?)?$`)
-	matches := re.FindStringSubmatch(version)
-	if len(matches) < 2 {
-		return "", errors.New("invalid version format for rc bump")
-	}
-
-	baseVersion := matches[1]
-	var preRelease string
-	if len(matches) >= 4 && matches[3] != "" {
-		// Increment the pre-release number
-		num, err := strconv.Atoi(matches[3])
-		if err != nil {
-			return "", errors.New("invalid rc pre-release number")
-		}
-		preRelease = fmt.Sprintf(".%d", num+1)
-	} else {
-		// Start with .1 if no pre-release number exists
-		preRelease = ".1"
-	}
-
-	return baseVersion + "-rc" + preRelease, nil
-}
-
-// bumpPost increases the post-release version (e.g., 1.2.3-post -> 1.2.3-post.1)
-func bumpPost(version string) (string, error) {
-	// Check if version has a post-suffix
-	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)(-post(\.(\d+))?)?$`)
-	matches := re.FindStringSubmatch(version)
-	if len(matches) < 2 {
-		return "", errors.New("invalid version format for post bump")
-	}
-
-	baseVersion := matches[1]
-	var preRelease string
-	if len(matches) >= 4 && matches[4] != "" {
-		// Increment the pre-release number
-		num, err := strconv.Atoi(matches[4])
-		if err != nil {
-			return "", errors.New("invalid post pre-release number")
-		}
-		preRelease = fmt.Sprintf(".%d", num+1)
-	} else {
-		// Start with .1 if no pre-release number exists
-		preRelease = ".1"
-	}
-
-	return baseVersion + "-post" + preRelease, nil
-}
-
-// bumpDev increases the dev version (e.g., 1.2.3-dev -> 1.2.3-dev.1)
-func bumpDev(version string) (string, error) {
-	// Check if version has a dev suffix
-	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)(-dev(\.(\d+))?)?$`)
-	matches := re.FindStringSubmatch(version)
-	if len(matches) < 2 {
-		return "", errors.New("invalid version format for dev bump")
-	}
-
-	baseVersion := matches[1]
-	var preRelease string
-	if len(matches) >= 4 && matches[4] != "" {
-		// Increment the pre-release number
-		num, err := strconv.Atoi(matches[4])
-		if err != nil {
-			return "", errors.New("invalid dev pre-release number")
-		}
-		preRelease = fmt.Sprintf(".%d", num+1)
-	} else {
-		// Start with .1 if no pre-release number exists
-		preRelease = ".1"
-	}
-
-	return baseVersion + "-dev" + preRelease, nil
-}
-
-// isValidVersion checks if a string is a valid semantic version format
-func isValidVersion(version string) bool {
-	re := regexp.MustCompile(`^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+(\.\d+)?)?$`)
-	return re.MatchString(version)
+	return b.chart.Metadata.Version, nil
 }
