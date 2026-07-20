@@ -62,13 +62,9 @@ func TestSave(t *testing.T) {
 			chartWithInvalidJSON := withSchema(*c, []byte("{"))
 
 			where, err := Save(c, dest)
-			require.NoError(t, err, "Failed to save: %s", err)
-			if !strings.HasPrefix(where, dest) {
-				t.Fatalf("Expected %q to start with %q", where, dest)
-			}
-			if !strings.HasSuffix(where, ".tgz") {
-				t.Fatalf("Expected %q to end with .tgz", where)
-			}
+			require.NoError(t, err, "Failed to save")
+			require.Truef(t, strings.HasPrefix(where, dest), "Expected %q to start with %q", where, dest)
+			require.Truef(t, strings.HasSuffix(where, ".tgz"), "Expected %q to end with .tgz", where)
 
 			c2, err := loader.LoadFile(where)
 			require.NoError(t, err)
@@ -83,13 +79,12 @@ func TestSave(t *testing.T) {
 				formattedActual := Indent(indentation, string(c2.Schema))
 				t.Fatalf("Schema data did not match.\nExpected:\n%s\nActual:\n%s", formattedExpected, formattedActual)
 			}
-			if _, err := Save(&chartWithInvalidJSON, dest); err == nil {
-				t.Fatal("Invalid JSON was not caught while saving chart")
-			}
+			_, err = Save(&chartWithInvalidJSON, dest)
+			require.Error(t, err, "Invalid JSON was not caught while saving chart")
 
 			c.Metadata.APIVersion = chart.APIVersionV3
 			where, err = Save(c, dest)
-			require.NoError(t, err, "Failed to save: %s", err)
+			require.NoError(t, err, "Failed to save")
 			c2, err = loader.LoadFile(where)
 			require.NoError(t, err)
 			require.NotNil(t, c2.Lock, "Expected v3 chart archive to contain a Chart.lock file")
@@ -152,16 +147,14 @@ func TestSavePreservesTimestamps(t *testing.T) {
 	}
 
 	where, err := Save(c, tmp)
-	require.NoError(t, err, "Failed to save: %s", err)
+	require.NoError(t, err, "Failed to save")
 
 	allHeaders, err := retrieveAllHeadersFromTar(where)
-	require.NoError(t, err, "Failed to parse tar: %v", err)
+	require.NoError(t, err, "Failed to parse tar")
 
 	roundedTime := initialCreateTime.Round(time.Second)
 	for _, header := range allHeaders {
-		if !header.ModTime.Equal(roundedTime) {
-			t.Fatalf("File timestamp not preserved: %v", header.ModTime)
-		}
+		require.Truef(t, header.ModTime.Equal(roundedTime), "File timestamp not preserved: %v", header.ModTime)
 	}
 }
 
@@ -235,8 +228,7 @@ func TestSaveDir(t *testing.T) {
 	pth := filepath.Join(tmp2, "tmpcharts")
 	require.NoError(t, os.MkdirAll(filepath.Join(pth), 0o755), "Failed to create directory")
 
-	err = SaveDir(c, pth)
-	assert.EqualError(t, err, "\"../ahab\" is not a valid chart name", "Did not get expected error for chart named %q", c.Name())
+	assert.EqualError(t, SaveDir(c, pth), "\"../ahab\" is not a valid chart name", "Did not get expected error for chart named %q", c.Name())
 }
 
 func TestRepeatableSave(t *testing.T) {
@@ -297,10 +289,10 @@ func TestRepeatableSave(t *testing.T) {
 			// create package
 			dest := path.Join(tmp, "newdir")
 			where, err := Save(test.chart, dest)
-			require.NoError(t, err, "Failed to save: %s", err)
+			require.NoError(t, err, "Failed to save")
 			// get shasum for package
 			result, err := sha256Sum(where)
-			require.NoError(t, err, "Failed to check shasum: %s", err)
+			require.NoError(t, err, "Failed to check shasum")
 			// assert that the package SHA is what we wanted.
 			assert.Equal(t, test.want, result, "FormatName() result = %v, want %v", result, test.want)
 		})
