@@ -50,9 +50,11 @@ func newBumpCmd(actionConfig *action.Configuration, out io.Writer) *cobra.Comman
 			if len(args) == 2 {
 				o.bumpType = args[0]
 				o.chart = args[1]
-			} else {
+			} else if len(args) == 1 {
 				o.bumpType = ""
 				o.chart = args[0]
+			} else {
+				return fmt.Errorf("invalid arguments: %v", args)
 			}
 
 			return o.run(actionConfig, out)

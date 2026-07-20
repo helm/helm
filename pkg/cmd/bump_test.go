@@ -47,6 +47,10 @@ func TestBump(t *testing.T) {
 	}
 
 	tests := []cmdTestCase{{
+		name:      "no args",
+		cmd:       "bump",
+		wantError: true,
+	}, {
 		name:   "default",
 		cmd:    "bump " + tempChartDir,
 		golden: "output/bump-default.txt",
