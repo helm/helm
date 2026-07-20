@@ -286,6 +286,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newRollbackCmd(actionConfig, out),
 		newStatusCmd(actionConfig, out),
 		newTemplateCmd(actionConfig, out),
+		newBumpCmd(actionConfig, out),
 		newUninstallCmd(actionConfig, out),
 		newUpgradeCmd(actionConfig, out),
 
