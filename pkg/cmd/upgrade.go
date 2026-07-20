@@ -217,6 +217,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							RepositoryCache:  settings.RepositoryCache,
 							ContentCache:     settings.ContentCache,
 							Debug:            settings.Debug,
+							RegistryClient:   registryClient,
 						}
 						if err := man.Update(); err != nil {
 							return err
