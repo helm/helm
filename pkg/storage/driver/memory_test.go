@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/release"
@@ -29,9 +30,8 @@ import (
 )
 
 func TestMemoryName(t *testing.T) {
-	if mem := NewMemory(); mem.Name() != MemoryDriverName {
-		t.Errorf("Expected name to be %q, got %q", MemoryDriverName, mem.Name())
-	}
+	mem := NewMemory()
+	assert.Equalf(t, MemoryDriverName, mem.Name(), "Expected name to be %q, got %q", MemoryDriverName, mem.Name())
 }
 
 func TestMemoryCreate(t *testing.T) {
@@ -66,13 +66,12 @@ func TestMemoryCreate(t *testing.T) {
 	for _, tt := range tests {
 		key := testKey(tt.rls.Name, tt.rls.Version)
 		rls := tt.rls
+		err := ts.Create(key, rls)
 
-		if err := ts.Create(key, rls); err != nil {
-			if !tt.err {
-				t.Fatalf("failed to create %q: %s", tt.desc, err)
-			}
-		} else if tt.err {
-			t.Fatalf("Did not get expected error for %q\n", tt.desc)
+		if tt.err {
+			require.Error(t, err, "Did not get expected error for %q\n", tt.desc)
+		} else {
+			require.NoError(t, err, "failed to create %q", tt.desc)
 		}
 	}
 }
@@ -93,12 +92,11 @@ func TestMemoryGet(t *testing.T) {
 	ts := tsFixtureMemory(t)
 	for _, tt := range tests {
 		ts.SetNamespace(tt.namespace)
-		if _, err := ts.Get(tt.key); err != nil {
-			if !tt.err {
-				t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
-			}
-		} else if tt.err {
-			t.Fatalf("Did not get expected error for %q '%s'\n", tt.desc, tt.key)
+		_, err := ts.Get(tt.key)
+		if tt.err {
+			require.Error(t, err, "Did not get expected error for %q '%s'\n", tt.desc, tt.key)
+		} else {
+			require.NoError(t, err, "Failed %q to get '%s'", tt.desc, tt.key)
 		}
 	}
 }
@@ -113,12 +111,8 @@ func TestMemoryList(t *testing.T) {
 		return rls.Info.Status == common.StatusDeployed
 	})
 	// check
-	if err != nil {
-		t.Errorf("Failed to list deployed releases: %s", err)
-	}
-	if len(dpl) != 2 {
-		t.Errorf("Expected 2 deployed, got %d", len(dpl))
-	}
+	require.NoError(t, err, "Failed to list deployed releases")
+	assert.Len(t, dpl, 2, "Expected 2 deployed, got %d", len(dpl))
 
 	// list all superseded releases
 	ssd, err := ts.List(func(rel release.Releaser) bool {
@@ -126,12 +120,8 @@ func TestMemoryList(t *testing.T) {
 		return rls.Info.Status == common.StatusSuperseded
 	})
 	// check
-	if err != nil {
-		t.Errorf("Failed to list superseded releases: %s", err)
-	}
-	if len(ssd) != 6 {
-		t.Errorf("Expected 6 superseded, got %d", len(ssd))
-	}
+	require.NoError(t, err, "Failed to list superseded releases")
+	assert.Len(t, ssd, 6, "Expected 6 superseded, got %d", len(ssd))
 
 	// list all deleted releases
 	del, err := ts.List(func(rel release.Releaser) bool {
@@ -139,12 +129,8 @@ func TestMemoryList(t *testing.T) {
 		return rls.Info.Status == common.StatusUninstalled
 	})
 	// check
-	if err != nil {
-		t.Errorf("Failed to list deleted releases: %s", err)
-	}
-	if len(del) != 0 {
-		t.Errorf("Expected 0 deleted, got %d", len(del))
-	}
+	require.NoError(t, err, "Failed to list deleted releases")
+	assert.Empty(t, del, "Expected 0 deleted, got %d", len(del))
 }
 
 func TestMemoryQuery(t *testing.T) {
@@ -172,13 +158,9 @@ func TestMemoryQuery(t *testing.T) {
 	for _, tt := range tests {
 		ts.SetNamespace(tt.namespace)
 		l, err := ts.Query(tt.lbs)
-		if err != nil {
-			t.Fatalf("Failed to query: %s\n", err)
-		}
+		require.NoError(t, err, "Failed to query")
 
-		if tt.xlen != len(l) {
-			t.Fatalf("Expected %d results, actual %d\n", tt.xlen, len(l))
-		}
+		require.Equal(t, len(l), tt.xlen, "Expected %d results, actual %d\n", tt.xlen, len(l))
 	}
 }
 
@@ -217,23 +199,18 @@ func TestMemoryUpdate(t *testing.T) {
 
 	ts := tsFixtureMemory(t)
 	for _, tt := range tests {
-		if err := ts.Update(tt.key, tt.rls); err != nil {
-			if !tt.err {
-				t.Fatalf("Failed %q: %s\n", tt.desc, err)
-			}
-			continue
-		} else if tt.err {
-			t.Fatalf("Did not get expected error for %q '%s'\n", tt.desc, tt.key)
-		}
+		err := ts.Update(tt.key, tt.rls)
 
-		ts.SetNamespace(tt.rls.Namespace)
-		r, err := ts.Get(tt.key)
-		if err != nil {
-			t.Fatalf("Failed to get: %s\n", err)
-		}
+		if tt.err {
+			require.Error(t, err, "Did not get expected error for %q '%s'\n", tt.desc, tt.key)
+		} else {
+			require.NoError(t, err, "Failed %q", tt.desc)
 
-		if !reflect.DeepEqual(r, tt.rls) {
-			t.Fatalf("Expected %v, actual %v\n", tt.rls, r)
+			ts.SetNamespace(tt.rls.Namespace)
+
+			r, err := ts.Get(tt.key)
+			require.NoError(t, err, "Failed to get")
+			require.Truef(t, reflect.DeepEqual(r, tt.rls), "Expected %v, actual %v\n", tt.rls, r)
 		}
 	}
 }
@@ -256,9 +233,7 @@ func TestMemoryDelete(t *testing.T) {
 	ts := tsFixtureMemory(t)
 	ts.SetNamespace("")
 	start, err := ts.Query(map[string]string{"status": "deployed"})
-	if err != nil {
-		t.Errorf("Query failed: %s", err)
-	}
+	require.NoError(t, err, "Query failed")
 	startLen := len(start)
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
@@ -280,9 +255,7 @@ func TestMemoryDelete(t *testing.T) {
 	// Make sure that the deleted records are gone.
 	ts.SetNamespace("")
 	end, err := ts.Query(map[string]string{"status": "deployed"})
-	if err != nil {
-		t.Errorf("Query failed: %s", err)
-	}
+	require.NoError(t, err, "Query failed")
 	endLen := len(end)
 
 	if startLen-2 != endLen {
