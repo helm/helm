@@ -17,7 +17,6 @@ package downloader
 
 import (
 	"bytes"
-	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -50,9 +49,7 @@ func TestVersionEquals(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if versionEquals(tt.v1, tt.v2) != tt.expect {
-			t.Errorf("%s: failed comparison of %q and %q (expect equal: %t)", tt.name, tt.v1, tt.v2, tt.expect)
-		}
+		assert.Equal(t, tt.expect, versionEquals(tt.v1, tt.v2), "%s: failed comparison of %q and %q (expect equal: %t)", tt.name, tt.v1, tt.v2, tt.expect)
 	}
 }
 
@@ -64,84 +61,46 @@ func TestFindChartURL(t *testing.T) {
 		RepositoryCache:  repoCache,
 	}
 	repos, err := m.loadChartRepositories()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	name := "alpine"
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
 	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
-		t.Errorf("Unexpected URL %q", churl)
-	}
-	if username != "" {
-		t.Errorf("Unexpected username %q", username)
-	}
-	if password != "" {
-		t.Errorf("Unexpected password %q", password)
-	}
-	if passcredentialsall != false {
-		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
-	}
-	if insecureSkipTLSVerify {
-		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
-	}
+	assert.Equal(t, "https://charts.helm.sh/stable/alpine-0.1.0.tgz", churl, "Unexpected URL %q", churl)
+	assert.Empty(t, username, "Unexpected username %q", username)
+	assert.Empty(t, password, "Unexpected password %q", password)
+	assert.False(t, passcredentialsall, "Unexpected passcredentialsall %t", passcredentialsall)
+	assert.False(t, insecureSkipTLSVerify, "Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
 
 	name = "tlsfoo"
 	version = "1.2.3"
 	repoURL = "https://example-https-insecureskiptlsverify.com"
 
 	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if !insecureSkipTLSVerify {
-		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
-	}
-	if churl != "https://example.com/tlsfoo-1.2.3.tgz" {
-		t.Errorf("Unexpected URL %q", churl)
-	}
-	if username != "" {
-		t.Errorf("Unexpected username %q", username)
-	}
-	if password != "" {
-		t.Errorf("Unexpected password %q", password)
-	}
-	if passcredentialsall != false {
-		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
-	}
+	assert.True(t, insecureSkipTLSVerify, "Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	assert.Equal(t, "https://example.com/tlsfoo-1.2.3.tgz", churl, "Unexpected URL %q", churl)
+	assert.Empty(t, username, "Unexpected username %q", username)
+	assert.Empty(t, password, "Unexpected password %q", password)
+	assert.False(t, passcredentialsall, "Unexpected passcredentialsall %t", passcredentialsall)
 
 	name = "foo"
 	version = "1.2.3"
 	repoURL = "http://example.com/helm"
 
 	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if churl != "http://example.com/helm/charts/foo-1.2.3.tgz" {
-		t.Errorf("Unexpected URL %q", churl)
-	}
-	if username != "" {
-		t.Errorf("Unexpected username %q", username)
-	}
-	if password != "" {
-		t.Errorf("Unexpected password %q", password)
-	}
-	if passcredentialsall != false {
-		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
-	}
-	if insecureSkipTLSVerify {
-		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
-	}
+	assert.Equal(t, "http://example.com/helm/charts/foo-1.2.3.tgz", churl, "Unexpected URL %q", churl)
+	assert.Empty(t, username, "Unexpected username %q", username)
+	assert.Empty(t, password, "Unexpected password %q", password)
+	assert.False(t, passcredentialsall, "Unexpected passcredentialsall %t", passcredentialsall)
+	assert.False(t, insecureSkipTLSVerify, "Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
 }
 
 func TestGetRepoNames(t *testing.T) {
@@ -217,15 +176,11 @@ func TestGetRepoNames(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if tt.err {
-			t.Fatalf("Expected error in test %q", tt.name)
-		}
+		require.False(t, tt.err, "Expected error in test %q", tt.name)
 
 		// m1 and m2 are the maps we want to compare
 		eq := reflect.DeepEqual(l, tt.expect)
-		if !eq {
-			t.Errorf("%s: expected map %v, got %v", tt.name, l, tt.name)
-		}
+		assert.True(t, eq, "%s: expected map %v, got %v", tt.name, l, tt.name)
 	}
 }
 
@@ -238,20 +193,12 @@ func TestDownloadAll(t *testing.T) {
 		ChartPath:        chartPath,
 	}
 	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := chartutil.SaveDir(signtest, filepath.Join(chartPath, "testdata")); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, chartutil.SaveDir(signtest, filepath.Join(chartPath, "testdata")))
 
 	local, err := loader.LoadDir(filepath.Join("testdata", "local-subchart"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := chartutil.SaveDir(local, filepath.Join(chartPath, "charts")); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, chartutil.SaveDir(local, filepath.Join(chartPath, "charts")))
 
 	signDep := &chart.Dependency{
 		Name:       signtest.Name(),
@@ -265,16 +212,11 @@ func TestDownloadAll(t *testing.T) {
 	}
 
 	// create a 'tmpcharts' directory to test #5567
-	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0o755))
+	require.NoError(t, m.downloadAll([]*chart.Dependency{signDep, localDep}))
 
-	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); errors.Is(err, fs.ErrNotExist) {
-		t.Error(err)
-	}
+	_, err = os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz"))
+	require.NotErrorIs(t, err, fs.ErrNotExist)
 
 	// A chart with a bad name like this cannot be loaded and saved. Handling in
 	// the loading and saving will return an error about the invalid name. In
@@ -283,24 +225,15 @@ func TestDownloadAll(t *testing.T) {
 description: A Helm chart for Kubernetes
 name: ../bad-local-subchart
 version: 0.1.0`
-	if err := os.MkdirAll(filepath.Join(chartPath, "testdata", "bad-local-subchart"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	err = os.WriteFile(filepath.Join(chartPath, "testdata", "bad-local-subchart", "Chart.yaml"), []byte(badchartyaml), 0o644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(filepath.Join(chartPath, "testdata", "bad-local-subchart"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(chartPath, "testdata", "bad-local-subchart", "Chart.yaml"), []byte(badchartyaml), 0o644))
 
 	badLocalDep := &chart.Dependency{
 		Name:       "../bad-local-subchart",
 		Repository: "file://./testdata/bad-local-subchart",
 		Version:    "0.1.0",
 	}
-
-	err = m.downloadAll([]*chart.Dependency{badLocalDep})
-	if err == nil {
-		t.Fatal("Expected error for bad dependency name")
-	}
+	require.Error(t, m.downloadAll([]*chart.Dependency{badLocalDep}), "Expected error for bad dependency name")
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {
@@ -310,9 +243,7 @@ func TestUpdateBeforeBuild(t *testing.T) {
 		repotest.WithChartSourceGlob("testdata/*.tgz*"),
 	)
 	defer srv.Stop()
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 	dir := func(p ...string) string {
 		return filepath.Join(append([]string{srv.Root()}, p...)...)
 	}
@@ -325,9 +256,7 @@ func TestUpdateBeforeBuild(t *testing.T) {
 			APIVersion: "v1",
 		},
 	}
-	if err := chartutil.SaveDir(d, dir()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(d, dir()))
 	// Save a chart
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -341,9 +270,7 @@ func TestUpdateBeforeBuild(t *testing.T) {
 			}},
 		},
 	}
-	if err := chartutil.SaveDir(c, dir()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(c, dir()))
 
 	// Set-up a manager
 	b := bytes.NewBuffer(nil)
@@ -360,13 +287,8 @@ func TestUpdateBeforeBuild(t *testing.T) {
 	}
 
 	// Update before Build. see issue: https://github.com/helm/helm/issues/7101
-	if err := m.Update(); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := m.Build(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, m.Update())
+	require.NoError(t, m.Build())
 }
 
 // TestUpdateWithNoRepo is for the case of a dependency that has no repo listed.
@@ -379,9 +301,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 		repotest.WithChartSourceGlob("testdata/*.tgz*"),
 	)
 	defer srv.Stop()
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 	dir := func(p ...string) string {
 		return filepath.Join(append([]string{srv.Root()}, p...)...)
 	}
@@ -407,16 +327,12 @@ func TestUpdateWithNoRepo(t *testing.T) {
 			}},
 		},
 	}
-	if err := chartutil.SaveDir(c, dir()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(c, dir()))
 
 	// Save dependent chart into the parents charts directory. If the chart is
 	// not in the charts directory Helm will return an error that it is not
 	// found.
-	if err := chartutil.SaveDir(d, dir(c.Metadata.Name, "charts")); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(d, dir(c.Metadata.Name, "charts")))
 
 	// Set-up a manager
 	b := bytes.NewBuffer(nil)
@@ -433,9 +349,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 	}
 
 	// Test the update
-	if err := m.Update(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, m.Update())
 }
 
 // This function is the skeleton test code of failing tests for #6416 and #6871 and bugs due to #5874.
@@ -452,9 +366,7 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 		repotest.WithChartSourceGlob("testdata/*.tgz*"),
 	)
 	defer srv.Stop()
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 	dir := func(p ...string) string {
 		return filepath.Join(append([]string{srv.Root()}, p...)...)
 	}
@@ -479,9 +391,7 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 			Dependencies: []*chart.Dependency{&dep},
 		},
 	}
-	if err := chartutil.SaveDir(c, dir()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(c, dir()))
 
 	// Set-up a manager
 	b := bytes.NewBuffer(nil)
@@ -500,14 +410,10 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 	}
 
 	// First build will update dependencies and create Chart.lock file.
-	if err := m.Build(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, m.Build())
 
 	// Second build should be passed. See PR #6655.
-	if err := m.Build(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, m.Build())
 }
 
 func TestBuild_WithoutOptionalFields(t *testing.T) {
@@ -573,9 +479,8 @@ func TestErrRepoNotFound_Error(t *testing.T) {
 			e := ErrRepoNotFound{
 				Repos: tt.fields.Repos,
 			}
-			if got := e.Error(); got != tt.want {
-				t.Errorf("Error() = %v, want %v", got, tt.want)
-			}
+			got := e.Error()
+			assert.EqualErrorf(t, e, tt.want, "Error() = %v, want %v", got, tt.want)
 		})
 	}
 }
@@ -601,12 +506,8 @@ func TestKey(t *testing.T) {
 
 	for _, tt := range tests {
 		o, err := key(tt.name)
-		if err != nil {
-			t.Fatalf("unable to generate key for %q with error: %s", tt.name, err)
-		}
-		if o != tt.expect {
-			t.Errorf("wrong key name generated for %q, expected %q but got %q", tt.name, tt.expect, o)
-		}
+		require.NoError(t, err, "unable to generate key for %q", tt.name)
+		assert.Equal(t, tt.expect, o, "wrong key name generated for %q, expected %q but got %q", tt.name, tt.expect, o)
 	}
 }
 
@@ -697,8 +598,7 @@ func TestWriteLock(t *testing.T) {
 
 	t.Run("v2 lock file", func(t *testing.T) {
 		dir := t.TempDir()
-		err := writeLock(dir, lock, false)
-		require.NoError(t, err)
+		require.NoError(t, writeLock(dir, lock, false))
 
 		lockfilePath := filepath.Join(dir, "Chart.lock")
 		_, err = os.Stat(lockfilePath)
@@ -716,8 +616,7 @@ func TestWriteLock(t *testing.T) {
 
 	t.Run("v1 lock file", func(t *testing.T) {
 		dir := t.TempDir()
-		err := writeLock(dir, lock, true)
-		require.NoError(t, err)
+		require.NoError(t, writeLock(dir, lock, true))
 
 		lockfilePath := filepath.Join(dir, "requirements.lock")
 		_, err = os.Stat(lockfilePath)
@@ -737,9 +636,7 @@ func TestWriteLock(t *testing.T) {
 		dir := t.TempDir()
 		lockfilePath := filepath.Join(dir, "Chart.lock")
 		require.NoError(t, os.WriteFile(lockfilePath, []byte("old content"), 0o644))
-
-		err = writeLock(dir, lock, false)
-		require.NoError(t, err)
+		require.NoError(t, writeLock(dir, lock, false))
 
 		content, err := os.ReadFile(lockfilePath)
 		require.NoError(t, err)
@@ -753,17 +650,13 @@ func TestWriteLock(t *testing.T) {
 
 		lockfilePath := filepath.Join(dir, "Chart.lock")
 		require.NoError(t, os.Symlink(dummyFile, lockfilePath))
-
-		err = writeLock(dir, lock, false)
-		assert.ErrorContains(t, err, "the Chart.lock file is a symlink to")
+		assert.ErrorContains(t, writeLock(dir, lock, false), "the Chart.lock file is a symlink to")
 	})
 
 	t.Run("chart path is not a directory", func(t *testing.T) {
 		dir := t.TempDir()
 		filePath := filepath.Join(dir, "not-a-dir")
 		require.NoError(t, os.WriteFile(filePath, []byte("file"), 0o644))
-
-		err = writeLock(filePath, lock, false)
-		assert.Error(t, err)
+		assert.Error(t, writeLock(filePath, lock, false))
 	})
 }
