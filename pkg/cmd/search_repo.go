@@ -382,15 +382,15 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 
 	directive := cobra.ShellCompDirectiveDefault
 	if noFile {
-		directive = directive | cobra.ShellCompDirectiveNoFileComp
+		directive |= cobra.ShellCompDirectiveNoFileComp
 	}
 	if noSpace {
-		directive = directive | cobra.ShellCompDirectiveNoSpace
+		directive |= cobra.ShellCompDirectiveNoSpace
 	}
 	if !includeFiles {
 		// If we should not include files in the completions,
 		// we should disable file completion
-		directive = directive | cobra.ShellCompDirectiveNoFileComp
+		directive |= cobra.ShellCompDirectiveNoFileComp
 	}
 	return completions, directive
 }

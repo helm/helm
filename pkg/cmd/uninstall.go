@@ -42,6 +42,7 @@ are fully deleted before the command returns.
 
 func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUninstall(cfg)
+	client.WaitOptions = append(client.WaitOptions, defaultCLIWaitOptions()...)
 
 	cmd := &cobra.Command{
 		Use:        "uninstall RELEASE_NAME [...]",

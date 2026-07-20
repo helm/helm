@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v4/pkg/registry"
+package registry
 
 import (
 	"context"
@@ -484,12 +484,11 @@ func (c *Client) processChartPull(genericResult *GenericPullResult, operation *p
 
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
-		if operation.ignoreMissingProv {
-			provMissing = true
-		} else {
+		if !operation.ignoreMissingProv {
 			return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
 				ProvLayerMediaType)
 		}
+		provMissing = true
 	}
 
 	// Build chart-specific result
@@ -853,10 +852,8 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 	if version == "" {
 		// Use OCI URI tag as default
 		version = registryReference.Tag
-	} else {
-		if registryReference.Tag != "" && registryReference.Tag != version {
-			return "", nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
-		}
+	} else if registryReference.Tag != "" && registryReference.Tag != version {
+		return "", nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
 	}
 
 	if registryReference.Digest != "" {

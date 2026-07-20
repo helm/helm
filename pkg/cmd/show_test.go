@@ -76,7 +76,6 @@ func TestShowPreReleaseChart(t *testing.T) {
 				outdir,
 				contentTmp,
 			)
-			//_, out, err := executeActionCommand(cmd)
 			_, _, err := executeActionCommand(cmd)
 			if err != nil {
 				if tt.fail {

@@ -19,3 +19,4 @@ spec:
     name: nginx
   selector:
     app.kubernetes.io/name: subchart
+

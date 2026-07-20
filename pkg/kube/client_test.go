@@ -53,6 +53,7 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
+	"k8s.io/client-go/util/retry"
 	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
 )
 
@@ -273,8 +274,30 @@ func TestCreate(t *testing.T) {
 			},
 			ExpectedErrorContains: "Operation cannot be fulfilled on resourcequotas \"quota\": the object has been modified; " +
 				"please apply your changes to the latest version and try again",
+			ExpectedActions: func() []string { // expect helm to retry on conflict, workaround for: https://github.com/kubernetes/kubernetes/issues/67761
+				actions := make([]string, retry.DefaultRetry.Steps)
+				for i := range actions {
+					actions[i] = "/namespaces/default/pods/dolphin:PATCH"
+				}
+				return actions
+			}(),
+		},
+		"Create fail: managed fields conflict (server-side apply)": {
+			Pods:            newPodList("seal"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				// Return a generic 409 conflict (not quota-related)
+				// This simulates a managed fields conflict
+				return &http.Response{
+					StatusCode: http.StatusConflict,
+					Request:    req,
+				}, nil
+			},
+			ExpectedErrorContains: "the server reported a conflict",
 			ExpectedActions: []string{
-				"/namespaces/default/pods/dolphin:PATCH",
+				"/namespaces/default/pods/seal:PATCH",
 			},
 		},
 	}
@@ -1400,18 +1423,9 @@ func TestIsReachable(t *testing.T) {
 			err := client.IsReachable()
 
 			if tt.expectError {
-				if err == nil {
-					t.Error("expected error but got nil")
-					return
-				}
-
-				if !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("expected error message to contain '%s', got: %v", tt.errorContains, err)
-				}
+				require.ErrorContains(t, err, tt.errorContains)
 			} else {
-				if err != nil {
-					t.Errorf("expected no error but got: %v", err)
-				}
+				require.NoError(t, err)
 			}
 		})
 	}

@@ -26,7 +26,7 @@ import (
 	"helm.sh/helm/v4/internal/test/ensure"
 )
 
-var nonExistingValuesFilePath = filepath.Join("/fake/dir", "values.yaml")
+var nonExistingValuesFilePath = filepath.FromSlash("/fake/dir/values.yaml")
 
 const testSchema = `
 {

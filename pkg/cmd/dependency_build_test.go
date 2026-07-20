@@ -72,7 +72,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 
 	// Make sure the actual file got downloaded.
-	expect := filepath.Join(rootDir, chartname, "charts/reqtest-0.1.0.tgz")
+	expect := filepath.Join(rootDir, chartname, "charts", "reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}

@@ -261,27 +261,20 @@ func TestMemoryDelete(t *testing.T) {
 	}
 	startLen := len(start)
 	for _, tt := range tests {
-		ts.SetNamespace(tt.namespace)
+		t.Run(tt.desc, func(t *testing.T) {
+			ts.SetNamespace(tt.namespace)
 
-		rel, err := ts.Delete(tt.key)
-		var rls *rspb.Release
-		if err == nil {
-			rls = convertReleaserToV1(t, rel)
-		}
-		if err != nil {
-			if !tt.err {
-				t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
+			rel, err := ts.Delete(tt.key)
+			if tt.err {
+				require.Errorf(t, err, "Did not get expected error for %q '%s'\n", tt.desc, tt.key)
+			} else {
+				require.NoErrorf(t, err, "Failed %q to get '%s'", tt.desc, tt.key)
+				rls := convertReleaserToV1(t, rel)
+				require.Equalf(t, tt.key, fmt.Sprintf("%s.v%d", rls.Name, rls.Version), "Asked for delete on %s, but deleted %d", tt.key, rls.Version)
 			}
-			continue
-		} else if tt.err {
-			t.Fatalf("Did not get expected error for %q '%s'\n", tt.desc, tt.key)
-		} else if fmt.Sprintf("%s.v%d", rls.Name, rls.Version) != tt.key {
-			t.Fatalf("Asked for delete on %s, but deleted %d", tt.key, rls.Version)
-		}
-		_, err = ts.Get(tt.key)
-		if err == nil {
-			t.Error("Expected an error when asking for a deleted key")
-		}
+			_, err = ts.Get(tt.key)
+			require.Error(t, err, "Expected an error when asking for a deleted key")
+		})
 	}
 
 	// Make sure that the deleted records are gone.

@@ -144,16 +144,10 @@ func TestLoadCLIPlugins(t *testing.T) {
 			// tests until this is fixed
 			if runtime.GOOS != "windows" {
 				if err := pluginCmd.RunE(pluginCmd, tt.args); err != nil {
-					if tt.code > 0 {
-						cerr, ok := err.(CommandError)
-						if !ok {
-							t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
-						}
-						if cerr.ExitCode != tt.code {
-							t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, cerr.ExitCode)
-						}
-					} else {
-						t.Errorf("Error running %s: %+v", tt.use, err)
+					if assert.Positive(t, tt.code, "Error running %s: %+v", tt.use, err) {
+						var cerr CommandError
+						require.ErrorAs(t, err, &cerr, "Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
+						assert.Equalf(t, tt.code, cerr.ExitCode, "Expected %s to return %d: got %d", tt.use, tt.code, cerr.ExitCode)
 					}
 				}
 				assert.Equal(t, tt.expect, out.String(), "expected output for %q", tt.use)
@@ -218,16 +212,10 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 		// tests until this is fixed
 		if runtime.GOOS != "windows" {
 			if err := pp.RunE(pp, tt.args); err != nil {
-				if tt.code > 0 {
-					cerr, ok := err.(CommandError)
-					if !ok {
-						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
-					}
-					if cerr.ExitCode != tt.code {
-						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, cerr.ExitCode)
-					}
-				} else {
-					t.Errorf("Error running %s: %+v", tt.use, err)
+				if assert.Positive(t, tt.code, "Error running %s: %+v", tt.use, err) {
+					var cerr CommandError
+					require.ErrorAs(t, err, &cerr, "Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
+					assert.Equalf(t, tt.code, cerr.ExitCode, "Expected %s to return %d: got %d", tt.use, tt.code, cerr.ExitCode)
 				}
 			}
 			assert.Equal(t, tt.expect, out.String(), "expected output for %s", tt.use)

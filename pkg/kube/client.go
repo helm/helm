@@ -167,14 +167,15 @@ func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
 		waitContext = c.WaitContext
 	}
 	sw := &statusWaiter{
-		restMapper:         restMapper,
-		client:             dynamicClient,
-		ctx:                waitContext,
-		watchUntilReadyCtx: o.watchUntilReadyCtx,
-		waitCtx:            o.waitCtx,
-		waitWithJobsCtx:    o.waitWithJobsCtx,
-		waitForDeleteCtx:   o.waitForDeleteCtx,
-		readers:            o.statusReaders,
+		restMapper:           restMapper,
+		client:               dynamicClient,
+		ctx:                  waitContext,
+		watchUntilReadyCtx:   o.watchUntilReadyCtx,
+		waitCtx:              o.waitCtx,
+		waitWithJobsCtx:      o.waitWithJobsCtx,
+		waitForDeleteCtx:     o.waitForDeleteCtx,
+		readers:              o.statusReaders,
+		statusComputeWorkers: o.statusComputeWorkers,
 	}
 	sw.SetLogger(c.Logger().Handler())
 	return sw, nil
@@ -249,7 +250,7 @@ func (c *Client) getKubeClient() (kubernetes.Interface, error) {
 // IsReachable tests connectivity to the cluster.
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
-	if err == genericclioptions.ErrEmptyConfig {
+	if errors.Is(err, genericclioptions.ErrEmptyConfig) {
 		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
 		return errors.New("kubernetes cluster unreachable")
@@ -321,20 +322,24 @@ func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun boo
 			slog.String("fieldValidationDirective", string(fieldValidationDirective)))
 
 		return func(target *resource.Info) error {
-			err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
-
 			logger := c.Logger().With(
 				slog.String("namespace", target.Namespace),
 				slog.String("name", target.Name),
 				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
-			if err != nil {
-				logger.Debug("Error creating resource via patch", slog.Any("error", err))
-				return err
-			}
 
-			logger.Debug("Created resource via patch")
+			return retry.OnError(
+				retry.DefaultRetry,
+				isServerSideRetryable,
+				func() error {
+					err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
+					if err != nil {
+						logger.Debug("Error creating resource via patch", slog.Any("error", err))
+						return err
+					}
 
-			return nil
+					logger.Debug("Created resource via patch")
+					return nil
+				})
 		}
 	}
 
@@ -945,11 +950,38 @@ func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagatio
 func isIncompatibleServerError(err error) bool {
 	// 415: Unsupported media type means we're talking to a server which doesn't
 	// support server-side apply.
-	if _, ok := err.(*apierrors.StatusError); !ok {
+	var sErr *apierrors.StatusError
+	if !errors.As(err, &sErr) {
 		// Non-StatusError means the error isn't because the server is incompatible.
 		return false
 	}
-	return err.(*apierrors.StatusError).Status().Code == http.StatusUnsupportedMediaType
+	return sErr.Status().Code == http.StatusUnsupportedMediaType
+}
+
+// isServerSideRetryable checks if an error encountered during server-side apply
+// should be retried. Currently, only ResourceQuota conflicts are considered retryable.
+func isServerSideRetryable(err error) bool {
+	return isResourceQuotaConflict(err)
+}
+
+// isResourceQuotaConflict checks if the error is a conflict error specifically caused by
+// a ResourceQuota. This is used to determine if a retry should be attempted,
+// since quota conflicts are typically transient and can be resolved by retrying.
+func isResourceQuotaConflict(err error) bool {
+	if !apierrors.IsConflict(err) {
+		return false
+	}
+
+	// Check the error message for the specific ResourceQuota conflict pattern.
+	// The error message from the ResourceQuota admission controller contains:
+	// "Operation cannot be fulfilled on resourcequotas" and "the object has been modified"
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "Operation cannot be fulfilled on resourcequotas") &&
+		strings.Contains(errMsg, "the object has been modified") {
+		return true
+	}
+
+	return false
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.

@@ -750,7 +750,7 @@ func TestParseSetNestedLevels(t *testing.T) {
 	for i := 1; i <= MaxNestedNameLevel+2; i++ {
 		tmpStr := fmt.Sprintf("name%d", i)
 		if i <= MaxNestedNameLevel+1 {
-			tmpStr = tmpStr + "."
+			tmpStr += "."
 		}
 		keyMultipleNestedLevels.WriteString(tmpStr)
 	}

@@ -156,23 +156,22 @@ func CopyFile(src, dst string) (err error) {
 	if sym, err := IsSymlink(src); err != nil {
 		return fmt.Errorf("symlink check failed: %w", err)
 	} else if sym {
-		if err := cloneSymlink(src, dst); err != nil {
-			if runtime.GOOS == "windows" {
-				// If cloning the symlink fails on Windows because the user
-				// does not have the required privileges, ignore the error and
-				// fall back to copying the file contents.
-				//
-				// ERROR_PRIVILEGE_NOT_HELD is 1314 (0x522):
-				// https://msdn.microsoft.com/en-us/library/windows/desktop/ms681385(v=vs.85).aspx
-				lerr := &os.LinkError{}
-				if errors.As(err, &lerr) && !errors.Is(lerr.Err, syscall.Errno(1314)) {
-					return err
-				}
-			} else {
-				return err
-			}
-		} else {
+		err := cloneSymlink(src, dst)
+		if err == nil {
 			return nil
+		}
+		if runtime.GOOS != "windows" {
+			return err
+		}
+		// If cloning the symlink fails on Windows because the user
+		// does not have the required privileges, ignore the error and
+		// fall back to copying the file contents.
+		//
+		// ERROR_PRIVILEGE_NOT_HELD is 1314 (0x522):
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ms681385(v=vs.85).aspx
+		lerr := &os.LinkError{}
+		if errors.As(err, &lerr) && !errors.Is(lerr.Err, syscall.Errno(1314)) {
+			return err
 		}
 	}
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util // import "helm.sh/helm/v4/pkg/release/v1/util"
+package util
 
 import (
 	"testing"
@@ -74,7 +74,7 @@ spec:
 			name:  "whitespace-only doc after separator is skipped",
 			input: "---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n---\n  \n",
 			expected: map[string]string{
-				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1",
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n",
 			},
 		},
 		{
@@ -110,7 +110,8 @@ metadata:
 				"manifest-0": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm1`,
+  name: cm1
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -329,8 +330,8 @@ data:
 			},
 		},
 
-		// Multi-doc with block scalars: the regex consumes \s*\n before ---,
-		// so trailing newlines from non-last docs are stripped.
+		// Multi-doc with block scalars: the separator regex preserves trailing
+		// newlines from non-last documents.
 		{
 			name: "multi-doc block scalar clip (|) before separator",
 			input: `
@@ -354,7 +355,8 @@ metadata:
   name: test
 data:
   key: |
-    hello`,
+    hello
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -387,7 +389,10 @@ metadata:
   name: test
 data:
   key: |+
-    hello`,
+    hello
+
+
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -432,7 +437,8 @@ metadata:
 				"manifest-0": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm1`,
+  name: cm1
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -460,11 +466,13 @@ metadata:
 				"manifest-0": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm1`,
+  name: cm1
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm2`,
+  name: cm2
+`,
 				"manifest-2": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -493,11 +501,13 @@ metadata:
 				"manifest-0": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm1`,
+  name: cm1
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm2`,
+  name: cm2
+`,
 				"manifest-2": `apiVersion: v1
 kind: ConfigMap
 metadata:

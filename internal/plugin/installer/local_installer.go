@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v4/internal/plugin/installer"
+package installer
 
 import (
 	"bytes"
@@ -204,14 +204,13 @@ func (i *LocalInstaller) GetVerificationData() (archiveData, provData []byte, fi
 		provFile := i.Source + ".prov"
 		i.provData, err = os.ReadFile(provFile)
 		if err != nil {
-			if os.IsNotExist(err) {
-				// If provenance file doesn't exist, set provData to nil
-				// The verification logic will handle this gracefully
-				i.provData = nil
-			} else {
+			if !os.IsNotExist(err) {
 				// If file exists but can't be read (permissions, etc), return error
 				return nil, nil, "", fmt.Errorf("failed to access provenance file %s: %w", provFile, err)
 			}
+			// If provenance file doesn't exist, set provData to nil
+			// The verification logic will handle this gracefully
+			i.provData = nil
 		}
 	}
 

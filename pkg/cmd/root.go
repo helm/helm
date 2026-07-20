@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd // import "helm.sh/helm/v4/pkg/cmd"
+package cmd
 
 import (
 	"context"
@@ -84,6 +84,7 @@ Environment variables:
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
 | $HELM_COLOR                        | set color output mode. Allowed values: never, always, auto (default: never)                                |
 | $NO_COLOR                          | set to any non-empty value to disable all colored output (overrides $HELM_COLOR)                           |
+| $SOURCE_DATE_EPOCH                 | set a Unix timestamp for reproducible chart archives                                                       |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 

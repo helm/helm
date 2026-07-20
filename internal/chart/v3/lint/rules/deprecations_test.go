@@ -14,9 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v4/internal/chart/v3/lint/rules"
+package rules
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func TestValidateNoDeprecations(t *testing.T) {
 	deprecated := &k8sYamlStruct{
@@ -24,18 +29,12 @@ func TestValidateNoDeprecations(t *testing.T) {
 		Kind:       "Deployment",
 	}
 	err := validateNoDeprecations(deprecated, nil)
-	if err == nil {
-		t.Fatal("Expected deprecated extension to be flagged")
-	}
-	depErr := err.(deprecatedAPIError)
-	if depErr.Message == "" {
-		t.Fatalf("Expected error message to be non-blank: %v", err)
-	}
-
-	if err := validateNoDeprecations(&k8sYamlStruct{
+	require.Error(t, err, "Expected deprecated extension to be flagged")
+	var depErr deprecatedAPIError
+	require.ErrorAs(t, err, &depErr, "Expected error to be of type deprecatedAPIError")
+	require.NotEmpty(t, depErr.Message, "Expected error message to be non-blank: %v", err)
+	assert.NoError(t, validateNoDeprecations(&k8sYamlStruct{
 		APIVersion: "v1",
 		Kind:       "Pod",
-	}, nil); err != nil {
-		t.Error("Expected a v1 Pod to not be deprecated")
-	}
+	}, nil), "Expected a v1 Pod to not be deprecated")
 }

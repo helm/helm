@@ -358,9 +358,9 @@ func TestCopyFileSymlink(t *testing.T) {
 	tempdir := t.TempDir()
 
 	testcases := map[string]string{
-		filepath.Join("./testdata/symlinks/file-symlink"):         filepath.Join(tempdir, "dst-file"),
-		filepath.Join("./testdata/symlinks/windows-file-symlink"): filepath.Join(tempdir, "windows-dst-file"),
-		filepath.Join("./testdata/symlinks/invalid-symlink"):      filepath.Join(tempdir, "invalid-symlink"),
+		filepath.Join(".", "testdata", "symlinks", "file-symlink"):         filepath.Join(tempdir, "dst-file"),
+		filepath.Join(".", "testdata", "symlinks", "windows-file-symlink"): filepath.Join(tempdir, "windows-dst-file"),
+		filepath.Join(".", "testdata", "symlinks", "invalid-symlink"):      filepath.Join(tempdir, "invalid-symlink"),
 	}
 
 	for symlink, dst := range testcases {

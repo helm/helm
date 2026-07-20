@@ -261,12 +261,11 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 			return nil, nil, false, cerr
 		}
 		if err != nil {
-			if errors.Is(err, driver.ErrNoDeployedReleases) &&
-				(lastRelease.Info.Status == rcommon.StatusFailed || lastRelease.Info.Status == rcommon.StatusSuperseded) {
-				currentRelease = lastRelease
-			} else {
+			if !errors.Is(err, driver.ErrNoDeployedReleases) ||
+				(lastRelease.Info.Status != rcommon.StatusFailed && lastRelease.Info.Status != rcommon.StatusSuperseded) {
 				return nil, nil, false, err
 			}
+			currentRelease = lastRelease
 		}
 	}
 

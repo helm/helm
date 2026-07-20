@@ -22,6 +22,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/loader"
 )
@@ -30,20 +33,14 @@ func TestCreate(t *testing.T) {
 	tdir := t.TempDir()
 
 	c, err := Create("foo", tdir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	dir := filepath.Join(tdir, "foo")
 
 	mychart, err := loader.LoadDir(c)
-	if err != nil {
-		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
-	}
+	require.NoError(t, err, "Failed to load newly created chart %q: %s", c, err)
 
-	if mychart.Name() != "foo" {
-		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
-	}
+	assert.Equal(t, "foo", mychart.Name(), "Expected name to be 'foo', got %q", mychart.Name())
 
 	for _, f := range []string{
 		ChartfileName,
@@ -81,13 +78,9 @@ func TestCreateFrom(t *testing.T) {
 	dir := filepath.Join(tdir, "foo")
 	c := filepath.Join(tdir, cf.Name)
 	mychart, err := loader.LoadDir(c)
-	if err != nil {
-		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
-	}
+	require.NoError(t, err, "Failed to load newly created chart %q: %s", c, err)
 
-	if mychart.Name() != "foo" {
-		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
-	}
+	assert.Equal(t, "foo", mychart.Name(), "Expected name to be 'foo', got %q", mychart.Name())
 
 	for _, f := range []string{
 		ChartfileName,
@@ -100,9 +93,7 @@ func TestCreateFrom(t *testing.T) {
 
 		// Check each file to make sure <CHARTNAME> has been replaced
 		b, err := os.ReadFile(filepath.Join(dir, f))
-		if err != nil {
-			t.Errorf("Unable to read file %s: %s", f, err)
-		}
+		require.NoError(t, err, "Unable to read file %s: %s", f, err)
 		if bytes.Contains(b, []byte("<CHARTNAME>")) {
 			t.Errorf("File %s contains <CHARTNAME>", f)
 		}
@@ -121,7 +112,7 @@ func TestCreate_Overwrite(t *testing.T) {
 
 	dir := filepath.Join(tdir, "foo")
 
-	tplname := filepath.Join(dir, "templates/hpa.yaml")
+	tplname := filepath.Join(dir, "templates", "hpa.yaml")
 	writeFile(tplname, []byte("FOO"))
 
 	// Now re-run the create
@@ -131,17 +122,11 @@ func TestCreate_Overwrite(t *testing.T) {
 	}
 
 	data, err := os.ReadFile(tplname)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if string(data) == "FOO" {
-		t.Fatal("File that should have been modified was not.")
-	}
+	require.NotEqual(t, "FOO", string(data), "File that should have been modified was not.")
 
-	if errlog.Len() == 0 {
-		t.Error("Expected warnings about overwriting files.")
-	}
+	assert.NotEqual(t, 0, errlog.Len(), "Expected warnings about overwriting files.")
 }
 
 func TestValidateChartName(t *testing.T) {
