@@ -64,7 +64,7 @@ func (b *Bump) Run(bumpType string, chartpath string) (string, error) {
 	b.bump = bumpType
 
 	currentVersion := strings.TrimSpace(string(cv))
-	parsedVersion, err := semver.NewVersion(currentVersion)
+	parsedVersion, err := semver.StrictNewVersion(currentVersion)
 	if err != nil {
 		return "", fmt.Errorf("invalid original version: %s", currentVersion)
 	}
