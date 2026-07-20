@@ -132,8 +132,7 @@ func TestWalk(t *testing.T) {
 		return mark(info, err, &errors, true)
 	}
 	// Expect no errors.
-	err := Walk(tree.name, markFn)
-	require.NoError(t, err)
+	require.NoError(t, Walk(tree.name, markFn))
 	require.Empty(t, errors, "unexpected errors")
 	checkMarks(t, true)
 
