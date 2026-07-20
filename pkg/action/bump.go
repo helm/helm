@@ -134,9 +134,11 @@ func (b *Bump) Run(bumpType string, chartpath string) (string, error) {
 	b.chart.Metadata.Version = newVersion
 
 	// Save the updated chart to disk (this will update Chart.yaml)
-	err = util.SaveChartfile(filepath.Join(chartpath, "Chart.yaml"), b.chart.Metadata)
-	if err != nil {
-		return "", fmt.Errorf("failed to save updated chart: %w", err)
+	if chartpath != "" {
+		err = util.SaveChartfile(filepath.Join(chartpath, "Chart.yaml"), b.chart.Metadata)
+		if err != nil {
+			return "", fmt.Errorf("failed to save updated chart: %w", err)
+		}
 	}
 
 	return newVersion, nil
