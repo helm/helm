@@ -42,8 +42,6 @@ type Bump struct {
 	chart *chart.Chart
 }
 
-const defaultBumpType = "patch"
-
 // NewBump creates a new Bump object with the given configuration.
 func NewBump(cfg *Configuration) *Bump {
 	return &Bump{
@@ -64,12 +62,7 @@ func (b *Bump) Run(bumpType string, chartpath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// Determine new version based on bump type or explicit version
 	b.bump = bumpType
-	if b.bump == "" {
-		// Default to "patch" if no version specified
-		b.bump = defaultBumpType
-	}
 
 	currentVersion := strings.TrimSpace(string(cv))
 	if !isValidVersion(currentVersion) {

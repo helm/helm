@@ -414,22 +414,3 @@ func TestBump_IsValidVersion(t *testing.T) {
 		})
 	}
 }
-
-func TestBump_Run_WithDefault(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
-	}
-
-	// Test that it properly handles the default case
-	t.Run("Patch bump with valid version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("patch", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.4", result)
-		require.Equal(t, "patch", client.bump)
-	})
-}

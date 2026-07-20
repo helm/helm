@@ -54,8 +54,8 @@ func TestBump(t *testing.T) {
 		wantError: true,
 	}, {
 		name:   "default",
-		cmd:    "bump " + tempChartDir,
-		golden: "output/bump-default.txt",
+		cmd:    "bump patch " + tempChartDir,
+		golden: "output/bump-patch.txt",
 	}, {
 		name:   "with bump type",
 		cmd:    "bump minor " + tempChartDir,
