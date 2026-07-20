@@ -73,7 +73,7 @@ func (b *Bump) Run(bumpType string, chartpath string) (string, error) {
 
 	currentVersion := strings.TrimSpace(string(cv))
 	if !isValidVersion(currentVersion) {
-		return "", fmt.Errorf("invalid origin version: %s", currentVersion)
+		return "", fmt.Errorf("invalid original version: %s", currentVersion)
 	}
 
 	var newVersion string
