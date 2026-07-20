@@ -16,10 +16,11 @@ package driver
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
 	"helm.sh/helm/v4/pkg/release"
@@ -29,9 +30,7 @@ import (
 
 func TestConfigMapName(t *testing.T) {
 	c := newTestFixtureCfgMaps(t)
-	if c.Name() != ConfigMapsDriverName {
-		t.Errorf("Expected name to be %q, got %q", ConfigMapsDriverName, c.Name())
-	}
+	assert.Equal(t, ConfigMapsDriverName, c.Name(), "Expected name to be %q, got %q", ConfigMapsDriverName, c.Name())
 }
 
 func TestConfigMapGet(t *testing.T) {
@@ -45,13 +44,9 @@ func TestConfigMapGet(t *testing.T) {
 
 	// get release with key
 	got, err := cfgmaps.Get(key)
-	if err != nil {
-		t.Fatalf("Failed to get release: %s", err)
-	}
+	require.NoError(t, err, "Failed to get release")
 	// compare fetched release with original
-	if !reflect.DeepEqual(rel, got) {
-		t.Errorf("Expected {%v}, got {%v}", rel, got)
-	}
+	assert.Truef(t, reflect.DeepEqual(rel, got), "Expected {%v}, got {%v}", rel, got)
 }
 
 func TestUncompressedConfigMapGet(t *testing.T) {
@@ -63,13 +58,9 @@ func TestUncompressedConfigMapGet(t *testing.T) {
 
 	// Create a test fixture which contains an uncompressed release
 	cfgmap, err := newConfigMapsObject(key, rel, nil)
-	if err != nil {
-		t.Fatalf("Failed to create configmap: %s", err)
-	}
+	require.NoError(t, err, "Failed to create configmap")
 	b, err := json.Marshal(rel)
-	if err != nil {
-		t.Fatalf("Failed to marshal release: %s", err)
-	}
+	require.NoError(t, err, "Failed to marshal release")
 	cfgmap.Data["release"] = base64.StdEncoding.EncodeToString(b)
 	var mock MockConfigMapsInterface
 	mock.objects = map[string]*v1.ConfigMap{key: cfgmap}
@@ -77,13 +68,9 @@ func TestUncompressedConfigMapGet(t *testing.T) {
 
 	// get release with key
 	got, err := cfgmaps.Get(key)
-	if err != nil {
-		t.Fatalf("Failed to get release: %s", err)
-	}
+	require.NoError(t, err, "Failed to get release")
 	// compare fetched release with original
-	if !reflect.DeepEqual(rel, got) {
-		t.Errorf("Expected {%v}, got {%v}", rel, got)
-	}
+	assert.Truef(t, reflect.DeepEqual(rel, got), "Expected {%v}, got {%v}", rel, got)
 }
 
 func convertReleaserToV1(t *testing.T, rel release.Releaser) *rspb.Release {
@@ -117,12 +104,8 @@ func TestConfigMapList(t *testing.T) {
 		return rls.Info.Status == common.StatusUninstalled
 	})
 	// check
-	if err != nil {
-		t.Errorf("Failed to list deleted: %s", err)
-	}
-	if len(del) != 2 {
-		t.Errorf("Expected 2 deleted, got %d:\n%v\n", len(del), del)
-	}
+	require.NoError(t, err, "Failed to list deleted")
+	assert.Len(t, del, 2, "Expected 2 deleted, got %d:\n%v\n", len(del), del)
 
 	// list all deployed releases
 	dpl, err := cfgmaps.List(func(rel release.Releaser) bool {
@@ -130,12 +113,8 @@ func TestConfigMapList(t *testing.T) {
 		return rls.Info.Status == common.StatusDeployed
 	})
 	// check
-	if err != nil {
-		t.Errorf("Failed to list deployed: %s", err)
-	}
-	if len(dpl) != 2 {
-		t.Errorf("Expected 2 deployed, got %d", len(dpl))
-	}
+	require.NoError(t, err, "Failed to list deployed")
+	assert.Len(t, dpl, 2, "Expected 2 deployed, got %d", len(dpl))
 
 	// list all superseded releases
 	ssd, err := cfgmaps.List(func(rel release.Releaser) bool {
@@ -143,22 +122,14 @@ func TestConfigMapList(t *testing.T) {
 		return rls.Info.Status == common.StatusSuperseded
 	})
 	// check
-	if err != nil {
-		t.Errorf("Failed to list superseded: %s", err)
-	}
-	if len(ssd) != 2 {
-		t.Errorf("Expected 2 superseded, got %d", len(ssd))
-	}
+	require.NoError(t, err, "Failed to list superseded")
+	assert.Len(t, ssd, 2, "Expected 2 superseded, got %d", len(ssd))
 	// Check if release having both system and custom labels, this is needed to ensure that selector filtering would work.
 	rls := convertReleaserToV1(t, ssd[0])
 	_, ok := rls.Labels["name"]
-	if !ok {
-		t.Fatalf("Expected 'name' label in results, actual %v", rls.Labels)
-	}
+	require.True(t, ok, "Expected 'name' label in results, actual %v", rls.Labels)
 	_, ok = rls.Labels["key1"]
-	if !ok {
-		t.Fatalf("Expected 'key1' label in results, actual %v", rls.Labels)
-	}
+	require.True(t, ok, "Expected 'key1' label in results, actual %v", rls.Labels)
 }
 
 func TestConfigMapQuery(t *testing.T) {
@@ -172,17 +143,11 @@ func TestConfigMapQuery(t *testing.T) {
 	}...)
 
 	rls, err := cfgmaps.Query(map[string]string{"status": "deployed"})
-	if err != nil {
-		t.Errorf("Failed to query: %s", err)
-	}
-	if len(rls) != 2 {
-		t.Errorf("Expected 2 results, got %d", len(rls))
-	}
+	require.NoError(t, err, "Failed to query")
+	assert.Len(t, rls, 2, "Expected 2 results, got %d", len(rls))
 
 	_, err = cfgmaps.Query(map[string]string{"name": "notExist"})
-	if !errors.Is(err, ErrReleaseNotFound) {
-		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
-	}
+	assert.ErrorIs(t, err, ErrReleaseNotFound)
 }
 
 func TestConfigMapCreate(t *testing.T) {
@@ -195,20 +160,14 @@ func TestConfigMapCreate(t *testing.T) {
 	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
 
 	// store the release in a configmap
-	if err := cfgmaps.Create(key, rel); err != nil {
-		t.Fatalf("Failed to create release with key %q: %s", key, err)
-	}
+	require.NoErrorf(t, cfgmaps.Create(key, rel), "Failed to create release with key %q", key)
 
 	// get the release back
 	got, err := cfgmaps.Get(key)
-	if err != nil {
-		t.Fatalf("Failed to get release with key %q: %s", key, err)
-	}
+	require.NoError(t, err, "Failed to get release with key %q", key)
 
 	// compare created release with original
-	if !reflect.DeepEqual(rel, got) {
-		t.Errorf("Expected {%v}, got {%v}", rel, got)
-	}
+	assert.Truef(t, reflect.DeepEqual(rel, got), "Expected {%v}, got {%v}", rel, got)
 }
 
 func TestConfigMapUpdate(t *testing.T) {
@@ -224,21 +183,15 @@ func TestConfigMapUpdate(t *testing.T) {
 	rel.Info.Status = common.StatusSuperseded
 
 	// perform the update
-	if err := cfgmaps.Update(key, rel); err != nil {
-		t.Fatalf("Failed to update release: %s", err)
-	}
+	require.NoErrorf(t, cfgmaps.Update(key, rel), "Failed to update release")
 
 	// fetch the updated release
 	goti, err := cfgmaps.Get(key)
-	if err != nil {
-		t.Fatalf("Failed to get release with key %q: %s", key, err)
-	}
+	require.NoError(t, err, "Failed to get release with key %q", key)
 	got := convertReleaserToV1(t, goti)
 
 	// check release has actually been updated by comparing modified fields
-	if rel.Info.Status != got.Info.Status {
-		t.Errorf("Expected status %s, got status %s", rel.Info.Status.String(), got.Info.Status.String())
-	}
+	assert.Equal(t, got.Info.Status, rel.Info.Status, "Expected status %s, got status %s", rel.Info.Status.String(), got.Info.Status.String())
 }
 
 func TestConfigMapDelete(t *testing.T) {
@@ -252,20 +205,12 @@ func TestConfigMapDelete(t *testing.T) {
 
 	// perform the delete on a non-existent release
 	_, err := cfgmaps.Delete("nonexistent")
-	if !errors.Is(err, ErrReleaseNotFound) {
-		t.Fatalf("Expected ErrReleaseNotFound: got {%v}", err)
-	}
+	require.ErrorIs(t, err, ErrReleaseNotFound)
 
 	// perform the delete
 	rls, err := cfgmaps.Delete(key)
-	if err != nil {
-		t.Fatalf("Failed to delete release with key %q: %s", key, err)
-	}
-	if !reflect.DeepEqual(rel, rls) {
-		t.Errorf("Expected {%v}, got {%v}", rel, rls)
-	}
+	require.NoError(t, err, "Failed to delete release with key %q", key)
+	assert.Truef(t, reflect.DeepEqual(rel, rls), "Expected {%v}, got {%v}", rel, rls)
 	_, err = cfgmaps.Get(key)
-	if !errors.Is(err, ErrReleaseNotFound) {
-		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
-	}
+	assert.ErrorIs(t, err, ErrReleaseNotFound)
 }
