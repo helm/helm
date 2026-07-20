@@ -179,33 +179,33 @@ func (ch *Chart) CRDObjects() []CRD {
 
 // StampModTimes sets timestamps on the chart (and dependencies) to epoch.
 // This is used for reproducible builds via SOURCE_DATE_EPOCH.
-func (ch *Chart) StampModTimes(t time.Time) {
-	t = t.UTC().Truncate(time.Second)
-	ch.ModTime = t
+func (ch *Chart) StampModTimes(epoch time.Time) {
+	epoch = epoch.UTC().Truncate(time.Second)
+	ch.ModTime = epoch
 	if len(ch.Schema) > 0 {
-		ch.SchemaModTime = t
+		ch.SchemaModTime = epoch
 	}
 	if ch.Lock != nil {
-		ch.Lock.Generated = t
+		ch.Lock.Generated = epoch
 	}
 
 	for _, f := range ch.Raw {
 		if f != nil {
-			f.ModTime = t
+			f.ModTime = epoch
 		}
 	}
 	for _, f := range ch.Templates {
 		if f != nil {
-			f.ModTime = t
+			f.ModTime = epoch
 		}
 	}
 	for _, f := range ch.Files {
 		if f != nil {
-			f.ModTime = t
+			f.ModTime = epoch
 		}
 	}
 	for _, dep := range ch.Dependencies() {
-		dep.StampModTimes(t)
+		dep.StampModTimes(epoch)
 	}
 }
 
