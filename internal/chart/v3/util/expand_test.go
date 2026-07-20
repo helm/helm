@@ -47,19 +47,19 @@ func makeTestChartArchive(t *testing.T, chartName, sourceDir string) *bytes.Buff
 		fStat, err := f.Stat()
 		require.NoError(t, err)
 
-		err = tw.WriteHeader(&tar.Header{
+		require.NoError(t, tw.WriteHeader(&tar.Header{
 			Name: filepath.Join(chartName, relPath),
 			Mode: int64(fStat.Mode()),
 			Size: fStat.Size(),
-		})
-		require.NoError(t, err)
+		}))
 
 		data, err := fs.ReadFile(dir, relPath)
 		require.NoError(t, err)
-		tw.Write(data)
+		_, err = tw.Write(data)
+		require.NoError(t, err)
 	}
 
-	err := fs.WalkDir(dir, ".", func(path string, d os.DirEntry, walkErr error) error {
+	require.NoError(t, fs.WalkDir(dir, ".", func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -71,13 +71,10 @@ func makeTestChartArchive(t *testing.T, chartName, sourceDir string) *bytes.Buff
 		writeFile(path)
 
 		return nil
-	})
-	require.NoError(t, err)
+	}))
 
-	err = tw.Close()
-	require.NoError(t, err)
-	err = gw.Close()
-	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gw.Close())
 
 	return &result
 }
@@ -87,20 +84,18 @@ func TestExpand(t *testing.T) {
 
 	reader, err := os.Open("testdata/frobnitz-1.2.3.tgz")
 	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, reader.Close()) })
 
-	if err := Expand(dest, reader); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, Expand(dest, reader))
 
 	expectedChartPath := filepath.Join(dest, "frobnitz")
 	fi, err := os.Stat(expectedChartPath)
 	require.NoError(t, err)
-	if !fi.IsDir() {
-		t.Fatalf("expected a chart directory at %s", expectedChartPath)
-	}
+	require.Truef(t, fi.IsDir(), "expected a chart directory at %s", expectedChartPath)
 
 	dir, err := os.Open(expectedChartPath)
 	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, dir.Close()) })
 
 	fis, err := dir.Readdir(0)
 	require.NoError(t, err)
@@ -137,8 +132,7 @@ func TestExpandError(t *testing.T) {
 			archive := makeTestChartArchive(t, tt.chartName, tt.chartDir)
 
 			dest := t.TempDir()
-			err := Expand(dest, archive)
-			assert.ErrorContains(t, err, tt.wantErr)
+			assert.ErrorContains(t, Expand(dest, archive), tt.wantErr)
 		})
 	}
 }
@@ -146,16 +140,12 @@ func TestExpandError(t *testing.T) {
 func TestExpandFile(t *testing.T) {
 	dest := t.TempDir()
 
-	if err := ExpandFile(dest, "testdata/frobnitz-1.2.3.tgz"); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ExpandFile(dest, "testdata/frobnitz-1.2.3.tgz"))
 
 	expectedChartPath := filepath.Join(dest, "frobnitz")
 	fi, err := os.Stat(expectedChartPath)
 	require.NoError(t, err)
-	if !fi.IsDir() {
-		t.Fatalf("expected a chart directory at %s", expectedChartPath)
-	}
+	require.Truef(t, fi.IsDir(), "expected a chart directory at %s", expectedChartPath)
 
 	dir, err := os.Open(expectedChartPath)
 	require.NoError(t, err)
