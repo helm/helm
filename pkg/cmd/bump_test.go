@@ -39,11 +39,13 @@ func TestBump(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error on creating test file: %v", err)
 	}
-	defer destFileHandle.Close()
 
 	_, err = io.Copy(destFileHandle, srcFile)
 	if err != nil {
 		t.Fatalf("error on copying test file: %v", err)
+	}
+	if err := destFileHandle.Close(); err != nil {
+		t.Fatalf("error on closing test file: %v", err)
 	}
 
 	tests := []cmdTestCase{{
