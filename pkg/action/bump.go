@@ -61,6 +61,9 @@ func (b *Bump) Run(bumpType string, chartpath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if bumpType == "" {
+		bumpType = "patch"
+	}
 	b.bump = bumpType
 
 	currentVersion := strings.TrimSpace(string(cv))
