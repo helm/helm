@@ -23,6 +23,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
@@ -36,9 +39,7 @@ func TestParallelDownloadTo(t *testing.T) {
 	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz"))
 	defer srv.Stop()
 
-	if err := srv.CreateIndex(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.CreateIndex())
 
 	dest := t.TempDir()
 	cacheDir := t.TempDir()
@@ -86,46 +87,38 @@ func TestParallelDownloadTo(t *testing.T) {
 	}
 
 	// With the file locking fix, all parallel downloads should succeed
-	if failedCount > 0 {
-		t.Errorf("Parallel downloads failed: %d out of %d downloads failed due to concurrent file access", failedCount, numDownloads)
-	}
+	assert.Falsef(t, failedCount > 0, "Parallel downloads failed: %d out of %d downloads failed due to concurrent file access", failedCount, numDownloads)
 
 	// Verify the file exists and is valid
 	expectedFile := filepath.Join(dest, "local-subchart-0.1.0.tgz")
 	info, err := os.Stat(expectedFile)
-	if err != nil {
-		t.Errorf("Expected file %s does not exist: %v", expectedFile, err)
-	} else {
-		// Verify the file is not empty
-		if info.Size() == 0 {
-			t.Errorf("Downloaded file %s is empty (0 bytes)", expectedFile)
-		}
+	require.NoError(t, err, "Expected file %s does not exist: %v", expectedFile)
+	// Verify the file is not empty
+	assert.Falsef(t, info.Size() == 0, "Downloaded file %s is empty (0 bytes)", expectedFile)
 
-		// Verify the file has the expected size (should match the source file)
-		sourceFile := "testdata/local-subchart-0.1.0.tgz"
-		sourceInfo, err := os.Stat(sourceFile)
-		if err == nil && info.Size() != sourceInfo.Size() {
-			t.Errorf("Downloaded file size (%d bytes) doesn't match source file size (%d bytes)",
-				info.Size(), sourceInfo.Size())
-		}
+	// Verify the file has the expected size (should match the source file)
+	sourceFile := "testdata/local-subchart-0.1.0.tgz"
+	sourceInfo, err := os.Stat(sourceFile)
+	if err == nil && info.Size() != sourceInfo.Size() {
+		t.Errorf("Downloaded file size (%d bytes) doesn't match source file size (%d bytes)",
+			info.Size(), sourceInfo.Size())
+	}
 
-		// Verify it's a valid tar.gz file by checking the magic bytes
-		file, err := os.Open(expectedFile)
-		if err == nil {
-			defer file.Close()
-			// gzip magic bytes are 0x1f 0x8b
-			magic := make([]byte, 2)
-			if n, err := file.Read(magic); err == nil && n == 2 {
-				if magic[0] != 0x1f || magic[1] != 0x8b {
-					t.Errorf("Downloaded file is not a valid gzip file (magic bytes: %x)", magic)
-				}
+	// Verify it's a valid tar.gz file by checking the magic bytes
+	file, err := os.Open(expectedFile)
+	if err == nil {
+		defer file.Close()
+		// gzip magic bytes are 0x1f 0x8b
+		magic := make([]byte, 2)
+		if n, err := file.Read(magic); err == nil && n == 2 {
+			if magic[0] != 0x1f || magic[1] != 0x8b {
+				t.Errorf("Downloaded file is not a valid gzip file (magic bytes: %x)", magic)
 			}
 		}
-
-		// Verify no lock file was left behind
-		lockFile := expectedFile + ".lock"
-		if _, err := os.Stat(lockFile); err == nil {
-			t.Errorf("Lock file %s was not cleaned up", lockFile)
-		}
 	}
+
+	// Verify no lock file was left behind
+	lockFile := expectedFile + ".lock"
+	_, err = os.Stat(lockFile)
+	assert.Falsef(t, err == nil, "Lock file %s was not cleaned up", lockFile)
 }

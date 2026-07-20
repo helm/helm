@@ -19,64 +19,48 @@ package cmd
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSourceDateEpochFromEnv(t *testing.T) {
 	t.Setenv("SOURCE_DATE_EPOCH", "1609459200")
 
 	got, err := sourceDateEpochFromEnv()
-	if err != nil {
-		t.Fatalf("sourceDateEpochFromEnv() error: %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil epoch")
-	}
+	require.NoError(t, err, "sourceDateEpochFromEnv()")
+	require.NotNil(t, got, "expected non-nil epoch")
 	want := time.Unix(1609459200, 0).UTC()
-	if !got.Equal(want) {
-		t.Fatalf("expected %v, got %v", want, *got)
-	}
+	require.Truef(t, got.Equal(want), "expected %v, got %v", want, *got)
 }
 
 func TestSourceDateEpochFromEnvUnset(t *testing.T) {
 	t.Setenv("SOURCE_DATE_EPOCH", "")
 
 	got, err := sourceDateEpochFromEnv()
-	if err != nil {
-		t.Fatalf("sourceDateEpochFromEnv() error: %v", err)
-	}
-	if got != nil {
-		t.Fatalf("expected nil epoch, got %v", *got)
-	}
+	require.NoError(t, err, "sourceDateEpochFromEnv()")
+	require.Nil(t, got, "expected nil epoch")
 }
 
 func TestSourceDateEpochFromEnvInvalid(t *testing.T) {
 	t.Setenv("SOURCE_DATE_EPOCH", "not-a-number")
 
-	if _, err := sourceDateEpochFromEnv(); err == nil {
-		t.Fatal("expected error for invalid SOURCE_DATE_EPOCH")
-	}
+	_, err := sourceDateEpochFromEnv()
+	require.Error(t, err, "expected error for invalid SOURCE_DATE_EPOCH")
 }
 
 func TestSourceDateEpochFromEnvNegative(t *testing.T) {
 	t.Setenv("SOURCE_DATE_EPOCH", "-1")
 
-	if _, err := sourceDateEpochFromEnv(); err == nil {
-		t.Fatal("expected error for negative SOURCE_DATE_EPOCH")
-	}
+	_, err := sourceDateEpochFromEnv()
+	require.Error(t, err, "expected error for negative SOURCE_DATE_EPOCH")
 }
 
 func TestSourceDateEpochFromEnvZero(t *testing.T) {
 	t.Setenv("SOURCE_DATE_EPOCH", "0")
 
 	got, err := sourceDateEpochFromEnv()
-	if err != nil {
-		t.Fatalf("sourceDateEpochFromEnv() error: %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected non-nil epoch")
-	}
+	require.NoError(t, err, "sourceDateEpochFromEnv() error")
+	require.NotNil(t, got, "expected non-nil epoch")
 	want := time.Unix(0, 0).UTC()
-	if !got.Equal(want) {
-		t.Fatalf("expected %v, got %v", want, *got)
-	}
+	require.Truef(t, got.Equal(want), "expected %v, got %v", want, *got)
 }
