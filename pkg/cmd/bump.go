@@ -47,13 +47,14 @@ func newBumpCmd(actionConfig *action.Configuration, out io.Writer) *cobra.Comman
 		Args:              require.MaximumNArgs(2),
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(_ *cobra.Command, args []string) error {
-			if len(args) == 2 {
+			switch {
+			case len(args) == 2:
 				o.bumpType = args[0]
 				o.chart = args[1]
-			} else if len(args) == 1 {
+			case len(args) == 1:
 				o.bumpType = ""
 				o.chart = args[0]
-			} else {
+			default:
 				return fmt.Errorf("invalid arguments: %v", args)
 			}
 
