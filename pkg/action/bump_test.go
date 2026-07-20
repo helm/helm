@@ -380,8 +380,6 @@ func TestBump_Run_InvalidVersion(t *testing.T) {
 		Metadata: &chart.Metadata{Name: "test"},
 	}
 
-	// We cannot test actual bumping since chart loading is not implemented,
-	// but we can test error handling for invalid bump types
 	t.Run("Invalid bump type", func(t *testing.T) {
 		client.chart.Metadata.Version = "1.2.3"
 		result, err := client.Run("invalid", "")
