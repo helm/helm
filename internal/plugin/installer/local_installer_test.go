@@ -19,10 +19,11 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -34,40 +35,23 @@ func TestLocalInstaller(t *testing.T) {
 	ensure.HelmHome(t)
 	// Make a temp dir
 	tdir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0o644))
 
 	source := "../testdata/plugdir/good/echo-v1"
 	i, err := NewForSource(source, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
-	if err := Install(i); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, Install(i))
 
-	if i.Path() != helmpath.DataPath("plugins", "echo-v1") {
-		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
-	}
+	require.Equal(t, helmpath.DataPath("plugins", "echo-v1"), i.Path(), "expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
 	os.RemoveAll(filepath.Dir(helmpath.DataPath())) // helmpath.DataPath is like /tmp/helm013130971/helm
 }
 
 func TestLocalInstallerNotAFolder(t *testing.T) {
 	source := "../testdata/plugdir/good/echo-v1/plugin.yaml"
 	i, err := NewForSource(source, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
-
-	err = Install(i)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if !errors.Is(err, ErrPluginNotADirectory) {
-		t.Fatalf("expected error to equal: %q", err)
-	}
+	require.NoError(t, err)
+	require.ErrorIs(t, Install(i), ErrPluginNotADirectory)
 }
 
 func TestLocalInstallerTarball(t *testing.T) {
@@ -97,53 +81,31 @@ func TestLocalInstallerTarball(t *testing.T) {
 			Mode: file.Mode,
 			Size: int64(len(file.Body)),
 		}
-		if err := tw.WriteHeader(hdr); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := tw.Write([]byte(file.Body)); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, tw.WriteHeader(hdr))
+		_, err := tw.Write([]byte(file.Body))
+		require.NoError(t, err)
 	}
 
-	if err := tw.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := gw.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tw.Close())
+	require.NoError(t, gw.Close())
 
 	// Write tarball to file
-	if err := os.WriteFile(tarballPath, buf.Bytes(), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(tarballPath, buf.Bytes(), 0o644))
 
 	// Test installation
 	i, err := NewForSource(tarballPath, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Verify it's detected as LocalInstaller
 	localInstaller, ok := i.(*LocalInstaller)
-	if !ok {
-		t.Fatal("expected LocalInstaller")
-	}
-
-	if !localInstaller.isArchive {
-		t.Fatal("expected isArchive to be true")
-	}
-
-	if err := Install(i); err != nil {
-		t.Fatal(err)
-	}
+	require.True(t, ok, "expected LocalInstaller")
+	require.True(t, localInstaller.isArchive, "expected isArchive to be true")
+	require.NoError(t, Install(i))
 
 	expectedPath := helmpath.DataPath("plugins", "test-plugin")
-	if i.Path() != expectedPath {
-		t.Fatalf("expected path %q, got %q", expectedPath, i.Path())
-	}
+	require.Equal(t, expectedPath, i.Path(), "expected path %q, got %q", expectedPath, i.Path())
 
 	// Verify plugin was installed
-	if _, err := os.Stat(i.Path()); err != nil {
-		t.Fatalf("plugin not found at %s: %v", i.Path(), err)
-	}
+	_, err = os.Stat(i.Path())
+	require.NoErrorf(t, err, "plugin not found at %s", i.Path())
 }
