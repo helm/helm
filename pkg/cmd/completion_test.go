@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -44,9 +46,7 @@ func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 
 	testcmd := fmt.Sprintf("__complete %s ''", cmdName)
 	_, out, err := executeActionCommandC(storage, testcmd)
-	if err != nil {
-		t.Errorf("unexpected error, %s", err)
-	}
+	require.NoError(t, err)
 	if !strings.Contains(out, "ShellCompDirectiveNoFileComp") != shouldBePerformed {
 		if shouldBePerformed {
 			t.Errorf("Unexpected directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName)
