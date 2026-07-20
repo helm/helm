@@ -17,10 +17,18 @@ limitations under the License.
 package action
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"errors"
+	"io"
 	"os"
 	"path"
+	"strings"
 	"testing"
+	"time"
+
+	"sigs.k8s.io/yaml"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
@@ -169,4 +177,70 @@ func TestRun(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "empty-0.1.0.tgz", filename)
 	require.NoError(t, os.Remove(filename))
+}
+
+func TestRunWithSourceDateEpochAndLock(t *testing.T) {
+	tmp := t.TempDir()
+	epoch := time.Unix(1609459200, 0).UTC()
+
+	// Build twice with the same SourceDateEpoch and assert byte-identical output.
+	var first []byte
+	for i := range 2 {
+		client := NewPackage()
+		client.Destination = tmp
+		client.SourceDateEpoch = &epoch
+
+		dest, err := client.Run("testdata/charts/chart-with-lock", nil)
+		require.NoError(t, err)
+
+		data, err := os.ReadFile(dest)
+		require.NoError(t, err)
+
+		if i == 0 {
+			first = data
+		} else {
+			require.Equal(t, first, data, "two builds with the same SourceDateEpoch must be byte-identical")
+		}
+		require.NoError(t, os.Remove(dest))
+	}
+
+	// Open the archive and inspect Chart.lock content.
+	gz, err := gzip.NewReader(bytes.NewReader(first))
+	require.NoError(t, err)
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	var lockData []byte
+	var lockHdr *tar.Header
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		require.NoError(t, err)
+		if strings.HasSuffix(hdr.Name, "Chart.lock") {
+			lockHdr = hdr
+			var buf bytes.Buffer
+			_, err := io.Copy(&buf, tr)
+			require.NoError(t, err)
+			lockData = buf.Bytes()
+			break
+		}
+	}
+	require.NotNil(t, lockHdr, "Chart.lock not found in archive")
+	require.NotNil(t, lockData)
+
+	// Validate the generated field in the YAML is the epoch (not the fixture's original timestamp).
+	var lock struct {
+		Generated string `yaml:"generated"`
+	}
+	err = yaml.Unmarshal(lockData, &lock)
+	require.NoError(t, err)
+	require.Equal(t, "2021-01-01T00:00:00Z", lock.Generated,
+		"Chart.lock generated field must match SourceDateEpoch")
+
+	// Tar header ModTime must also match.
+	require.True(t, lockHdr.ModTime.Equal(epoch),
+		"Chart.lock tar header ModTime must match SourceDateEpoch: got %v, want %v",
+		lockHdr.ModTime, epoch)
 }

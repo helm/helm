@@ -1,0 +1,4 @@
+apiVersion: v2
+name: chart-with-lock
+description: Test chart with Chart.lock for reproducibility testing
+version: 0.1.0
