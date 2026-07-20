@@ -33,340 +33,183 @@ func TestNewBump(t *testing.T) {
 	require.Equal(t, cfg, client.cfg)
 }
 
-func TestBump_Run_Major(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
+func TestBump_Run(t *testing.T) {
+	type variant struct {
+		name        string
+		bumpType    string
+		wantVersion string
 	}
+	tests := []struct {
+		originVersion string
+		variant       []variant
+		wantErr       bool
+	}{
+		{
+			originVersion: "1.2.3",
+			variant: []variant{
+				{name: "Major bump with valid version", bumpType: "major", wantVersion: "2.0.0"},
+				{name: "Minor bump with valid version", bumpType: "minor", wantVersion: "1.3.0"},
+				{name: "Patch bump with valid version", bumpType: "patch", wantVersion: "1.2.4"},
+				{name: "Dev bump with valid version", bumpType: "dev", wantVersion: "1.2.3-dev.1"},
+				{name: "RC bump with valid version", bumpType: "rc", wantVersion: "1.2.3-rc.1"},
+				{name: "Alpha bump with valid version", bumpType: "alpha", wantVersion: "1.2.3-alpha.1"},
+				{name: "Post bump with valid version", bumpType: "post", wantVersion: "1.2.3-post.1"},
+				{name: "Explicit version", bumpType: "2.0.1", wantVersion: "2.0.1"},
+				{name: "Explicit version", bumpType: "1.8.9-post.1", wantVersion: "1.8.9-post.1"},
+			},
+			wantErr: false,
+		},
+		{
+			originVersion: "1.2",
+			variant: []variant{
+				{name: "Major bump with invalid version", bumpType: "major", wantVersion: ""},
+				{name: "Minor bump with invalid version", bumpType: "minor", wantVersion: ""},
+				{name: "Patch bump with invalid version", bumpType: "patch", wantVersion: ""},
+				{name: "Dev bump with invalid version", bumpType: "dev", wantVersion: ""},
+				{name: "Beta bump with invalid version", bumpType: "beta", wantVersion: ""},
+				{name: "RC bump with invalid version", bumpType: "rc", wantVersion: ""},
+				{name: "Post bump with invalid version", bumpType: "post", wantVersion: ""},
+			},
+			wantErr: true,
+		},
+		{
+			originVersion: "1.2.a",
+			variant: []variant{
+				{name: "Major bump with invalid version", bumpType: "major", wantVersion: ""},
+				{name: "Minor bump with invalid version", bumpType: "minor", wantVersion: ""},
+				{name: "Patch bump with invalid version", bumpType: "patch", wantVersion: ""},
+				{name: "Dev bump with invalid version", bumpType: "dev", wantVersion: ""},
+				{name: "Beta bump with invalid version", bumpType: "beta", wantVersion: ""},
+				{name: "RC bump with invalid version", bumpType: "rc", wantVersion: ""},
+				{name: "Post bump with invalid version", bumpType: "post", wantVersion: ""},
+			},
+			wantErr: true,
+		},
+		{
+			originVersion: "1.a.3",
+			variant: []variant{
+				{name: "Major bump with invalid version", bumpType: "major", wantVersion: ""},
+				{name: "Minor bump with invalid version", bumpType: "minor", wantVersion: ""},
+				{name: "Patch bump with invalid version", bumpType: "patch", wantVersion: ""},
+				{name: "Dev bump with invalid version", bumpType: "dev", wantVersion: ""},
+				{name: "Beta bump with invalid version", bumpType: "beta", wantVersion: ""},
+				{name: "RC bump with invalid version", bumpType: "rc", wantVersion: ""},
+				{name: "Post bump with invalid version", bumpType: "post", wantVersion: ""},
+				{name: "Explicit version", bumpType: "2.0.1", wantVersion: ""},
+				{name: "Explicit version", bumpType: "1.8.9-post.1", wantVersion: ""},
+			},
+			wantErr: true,
+		},
+		{
+			originVersion: "1.2.3-alpha",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "Alpha bump with pre-release version", bumpType: "alpha", wantVersion: "1.2.3-alpha.1"},
+			},
+			wantErr: false,
+		},
+		{
+			originVersion: "1.2.3-alpha.1",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "Alpha bump with pre-release version", bumpType: "alpha", wantVersion: "1.2.3-alpha.2"},
+				{name: "Explicit version", bumpType: "2.0.1", wantVersion: "2.0.1"},
+				{name: "Explicit version", bumpType: "1.8.9-post.1", wantVersion: "1.8.9-post.1"},
+			},
+			wantErr: false,
+		},
+		{
 
-	t.Run("Major bump with valid version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("major", "")
-		require.NoError(t, err)
-		require.Equal(t, "2.0.0", result)
-	})
+			originVersion: "1.2.3-beta",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "Beta bump with pre-release version", bumpType: "beta", wantVersion: "1.2.3-beta.1"},
+			},
+			wantErr: false,
+		},
+		{
+			originVersion: "1.2.3-beta.1",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "Beta bump with pre-release version", bumpType: "beta", wantVersion: "1.2.3-beta.2"},
+				{name: "Explicit version", bumpType: "2.0.1", wantVersion: "2.0.1"},
+			},
+			wantErr: false,
+		},
+		{
+			originVersion: "1.2.3-rc",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "RC bump with pre-release version", bumpType: "rc", wantVersion: "1.2.3-rc.1"},
+			},
+			wantErr: false,
+		},
+		{
+			originVersion: "1.2.3-rc.1",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "Rc bump with pre-release version", bumpType: "rc", wantVersion: "1.2.3-rc.2"},
+				{name: "Explicit version", bumpType: "1.8.9-post.1", wantVersion: "1.8.9-post.1"},
+			},
+			wantErr: false,
+		},
+		{
+			originVersion: "1.2.3-post",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "Post bump with pre-release version", bumpType: "post", wantVersion: "1.2.3-post.1"},
+			},
+			wantErr: false,
+		},
+		{
 
-	t.Run("Major bump with invalid version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("major", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
+			originVersion: "1.2.3-post.1",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "RC bump with pre-release version", bumpType: "post", wantVersion: "1.2.3-post.2"},
+				{name: "Explicit version", bumpType: "2.0.1", wantVersion: "2.0.1"},
+			},
+			wantErr: false,
+		},
+		{
+			originVersion: "1.2.3-dev",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "Dev bump with pre-release version", bumpType: "dev", wantVersion: "1.2.3-dev.1"},
+				{name: "Explicit version", bumpType: "2.0.1", wantVersion: "2.0.1"},
+			},
+			wantErr: false,
+		},
+		{
 
-	t.Run("Major bump with invalid major version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.a"
-		result, err := client.Run("major", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_Minor(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
+			originVersion: "1.2.3-dev.1",
+			variant: []variant{
+				{name: "Stable bump with pre-release version", bumpType: "stable", wantVersion: "1.2.3"},
+				{name: "Dev bump with pre-release version", bumpType: "dev", wantVersion: "1.2.3-dev.2"},
+				{name: "Explicit version", bumpType: "2.0.1", wantVersion: "2.0.1"},
+				{name: "Explicit version", bumpType: "1.8.9-post.1", wantVersion: "1.8.9-post.1"},
+			},
+			wantErr: false,
+		},
 	}
+	for _, tt := range tests {
+		for _, v := range tt.variant {
+			t.Run(v.name, func(t *testing.T) {
+				cfg := actionConfigFixture(t)
+				client := NewBump(cfg)
+				client.chart = &chart.Chart{
+					Metadata: &chart.Metadata{Name: "test", Version: tt.originVersion},
+				}
 
-	t.Run("Minor bump with valid version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("minor", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.3.0", result)
-	})
-
-	t.Run("Minor bump with invalid version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("minor", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-
-	t.Run("Minor bump with invalid minor version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.a.3"
-		result, err := client.Run("minor", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_Patch(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
+				result, err := client.Run(v.bumpType, "")
+				if tt.wantErr {
+					require.Error(t, err)
+					require.Empty(t, result)
+				} else {
+					require.NoError(t, err)
+					require.Equal(t, v.wantVersion, result)
+				}
+			})
+		}
 	}
-
-	t.Run("Patch bump with valid version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("patch", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.4", result)
-	})
-
-	t.Run("Patch bump with invalid version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("patch", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-
-	t.Run("Patch bump with invalid patch version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.a"
-		result, err := client.Run("patch", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_Stable(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
-	}
-
-	t.Run("Stable bump with pre-release version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-alpha"
-		result, err := client.Run("stable", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3", result)
-	})
-
-	t.Run("Stable bump with pre-release version with number", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-alpha.1"
-		result, err := client.Run("stable", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3", result)
-	})
-
-	t.Run("Stable bump with invalid version format", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("stable", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_Alpha(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
-	}
-
-	t.Run("Alpha bump with version without pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("alpha", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-alpha.1", result)
-	})
-
-	t.Run("Alpha bump with version with pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-alpha"
-		result, err := client.Run("alpha", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-alpha.1", result)
-	})
-
-	t.Run("Alpha bump with version with pre-release number", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-alpha.1"
-		result, err := client.Run("alpha", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-alpha.2", result)
-	})
-
-	t.Run("Alpha bump with invalid version format", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("alpha", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_Beta(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
-	}
-
-	t.Run("Beta bump with version without pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("beta", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-beta.1", result)
-	})
-
-	t.Run("Beta bump with version with pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-beta"
-		result, err := client.Run("beta", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-beta.1", result)
-	})
-
-	t.Run("Beta bump with version with pre-release number", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-beta.1"
-		result, err := client.Run("beta", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-beta.2", result)
-	})
-
-	t.Run("Beta bump with invalid version format", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("beta", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_RC(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
-	}
-
-	t.Run("RC bump with version without pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("rc", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-rc.1", result)
-	})
-
-	t.Run("RC bump with version with pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-rc"
-		result, err := client.Run("rc", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-rc.1", result)
-	})
-
-	t.Run("RC bump with version with pre-release number", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-rc.1"
-		result, err := client.Run("rc", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-rc.2", result)
-	})
-
-	t.Run("RC bump with invalid version format", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("rc", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_Post(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
-	}
-
-	t.Run("Post bump with version without pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("post", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-post.1", result)
-	})
-
-	t.Run("Post bump with version with post-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-post"
-		result, err := client.Run("post", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-post.1", result)
-	})
-
-	t.Run("Post bump with version with pre-release number", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-post.1"
-		result, err := client.Run("post", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-post.2", result)
-	})
-
-	t.Run("Post bump with invalid version format", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("post", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_Dev(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
-	}
-
-	t.Run("Dev bump with version without pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("dev", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-dev.1", result)
-	})
-
-	t.Run("Dev bump with version with pre-release", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-dev"
-		result, err := client.Run("dev", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-dev.1", result)
-	})
-
-	t.Run("Dev bump with version with pre-release number", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3-dev.1"
-		result, err := client.Run("dev", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.2.3-dev.2", result)
-	})
-
-	t.Run("Dev bump with invalid version format", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2"
-		result, err := client.Run("dev", "")
-		require.Error(t, err)
-		require.Empty(t, result)
-	})
-}
-
-func TestBump_Run_ExplicitVersion(t *testing.T) {
-	t.Parallel()
-
-	cfg := actionConfigFixture(t)
-	client := NewBump(cfg)
-	client.chart = &chart.Chart{
-		Metadata: &chart.Metadata{Name: "test"},
-	}
-
-	t.Run("Explicit version with valid format", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("2.0.1", "")
-		require.NoError(t, err)
-		require.Equal(t, "2.0.1", result)
-	})
-
-	t.Run("Explicit version with post version", func(t *testing.T) {
-		client.chart.Metadata.Version = "1.2.3"
-		result, err := client.Run("1.5.3-post.1", "")
-		require.NoError(t, err)
-		require.Equal(t, "1.5.3-post.1", result)
-	})
 }
