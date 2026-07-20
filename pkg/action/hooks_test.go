@@ -401,16 +401,12 @@ data:
 			serverSideApply := true
 			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, nil, 600, serverSideApply)
 
-			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
-				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
-			}
+			require.Truef(t, reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord), "Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
 
-			if err != nil && !tc.expectError {
-				t.Fatal("Got an unexpected error.")
-			}
-
-			if err == nil && tc.expectError {
-				t.Fatal("Expected and error but did not get it.")
+			if !tc.expectError {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
 			}
 		})
 	}
@@ -490,8 +486,7 @@ data:
 	ctx := context.Background()
 	waitOptions := []kube.WaitOption{kube.WithWaitContext(ctx)}
 
-	err := configuration.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, waitOptions, 600, false)
-	req.NoError(err)
+	req.NoError(configuration.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, waitOptions, 600, false))
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
