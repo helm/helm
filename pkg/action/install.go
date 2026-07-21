@@ -327,6 +327,16 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 
 	if !interactWithServer(i.DryRunStrategy) {
+		// Work on a local copy of the Configuration so client-only mocks
+		// (fake KubeClient, in-memory Releases, default Capabilities) do
+		// not mutate the shared *Configuration passed to NewInstall.
+		// Callers that reuse the same cfg for a later real install must
+		// still observe the original client and storage. See #11463.
+		origCfg := i.cfg
+		cfgCopy := *i.cfg
+		i.cfg = &cfgCopy
+		defer func() { i.cfg = origCfg }()
+
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = common.DefaultCapabilities.Copy()
