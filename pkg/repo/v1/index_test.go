@@ -28,6 +28,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
@@ -95,33 +98,22 @@ func TestIndexFile(t *testing.T) {
 		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.8"}, "setter-0.1.8.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.8+beta"}, "setter-0.1.8+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 	} {
-		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
-			t.Errorf("unexpected error adding to index: %s", err)
-		}
+		require.NoErrorf(t, i.MustAdd(x.md, x.filename, x.baseURL, x.digest), "unexpected error adding to index")
 	}
 
 	i.SortEntries()
 
-	if i.APIVersion != APIVersionV1 {
-		t.Error("Expected API version v1")
-	}
+	assert.Equal(t, APIVersionV1, i.APIVersion, "Expected API version v1")
 
-	if len(i.Entries) != 3 {
-		t.Errorf("Expected 3 charts. Got %d", len(i.Entries))
-	}
+	assert.Lenf(t, i.Entries, 3, "Expected 3 charts. Got %d", len(i.Entries))
 
-	if i.Entries["clipper"][0].Name != "clipper" {
-		t.Errorf("Expected clipper, got %s", i.Entries["clipper"][0].Name)
-	}
+	assert.Equalf(t, "clipper", i.Entries["clipper"][0].Name, "Expected clipper, got %s", i.Entries["clipper"][0].Name)
 
-	if len(i.Entries["cutter"]) != 3 {
-		t.Error("Expected three cutters.")
-	}
+	assert.Len(t, i.Entries["cutter"], 3, "Expected three cutters.")
 
 	// Test that the sort worked. 0.2 should be at the first index for Cutter.
-	if v := i.Entries["cutter"][0].Version; v != "0.2.0" {
-		t.Errorf("Unexpected first version: %s", v)
-	}
+	v := i.Entries["cutter"][0].Version
+	assert.Equalf(t, "0.2.0", v, "Unexpected first version: %s", v)
 
 	cv, err := i.Get("setter", "0.1.9")
 	if err == nil && !strings.Contains(cv.Version, "0.1.9") {
@@ -129,14 +121,12 @@ func TestIndexFile(t *testing.T) {
 	}
 
 	cv, err = i.Get("setter", "0.1.9+alpha")
-	if err != nil || cv.Version != "0.1.9+alpha" {
-		t.Error("Expected version: 0.1.9+alpha")
-	}
+	require.NoError(t, err, "Expected version: 0.1.9+alpha")
+	assert.Equal(t, "0.1.9+alpha", cv.Version, "Expected version: 0.1.9+alpha")
 
 	cv, err = i.Get("setter", "0.1.8")
-	if err != nil || cv.Version != "0.1.8" {
-		t.Error("Expected version: 0.1.8")
-	}
+	require.NoError(t, err, "Expected version: 0.1.8")
+	assert.Equal(t, "0.1.8", cv.Version, "Expected version: 0.1.8")
 }
 
 func TestLoadIndex(t *testing.T) {
@@ -162,9 +152,7 @@ func TestLoadIndex(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			i, err := LoadIndexFile(tc.Filename)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			verifyLocalIndex(t, i)
 		})
 	}
@@ -172,52 +160,39 @@ func TestLoadIndex(t *testing.T) {
 
 // TestLoadIndex_Duplicates is a regression to make sure that we don't non-deterministically allow duplicate packages.
 func TestLoadIndex_Duplicates(t *testing.T) {
-	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
-		t.Error("Expected an error when duplicate entries are present")
-	}
+	_, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates")
+	assert.Error(t, err, "Expected an error when duplicate entries are present")
 }
 
 func TestLoadIndex_EmptyEntry(t *testing.T) {
-	if _, err := loadIndex([]byte(indexWithEmptyEntry), "indexWithEmptyEntry"); err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
+	_, err := loadIndex([]byte(indexWithEmptyEntry), "indexWithEmptyEntry")
+	assert.NoError(t, err)
 }
 
 func TestLoadIndex_Empty(t *testing.T) {
-	if _, err := loadIndex([]byte(""), "indexWithEmpty"); err == nil {
-		t.Error("Expected an error when index.yaml is empty.")
-	}
+	_, err := loadIndex([]byte(""), "indexWithEmpty")
+	assert.Error(t, err, "Expected an error when index.yaml is empty.")
 }
 
 func TestLoadIndexFileAnnotations(t *testing.T) {
 	i, err := LoadIndexFile(annotationstestfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	verifyLocalIndex(t, i)
 
-	if len(i.Annotations) != 1 {
-		t.Fatalf("Expected 1 annotation but got %d", len(i.Annotations))
-	}
-	if i.Annotations["helm.sh/test"] != "foo bar" {
-		t.Error("Did not get expected value for helm.sh/test annotation")
-	}
+	require.Lenf(t, i.Annotations, 1, "Expected 1 annotation but got %d", len(i.Annotations))
+	assert.Equal(t, "foo bar", i.Annotations["helm.sh/test"], "Did not get expected value for helm.sh/test annotation")
 }
 
 func TestLoadUnorderedIndex(t *testing.T) {
 	i, err := LoadIndexFile(unorderedTestfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	verifyLocalIndex(t, i)
 }
 
 func TestMerge(t *testing.T) {
 	ind1 := NewIndexFile()
 
-	if err := ind1.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.1.0"}, "dreadnought-0.1.0.tgz", "http://example.com", "aaaa"); err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, ind1.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.1.0"}, "dreadnought-0.1.0.tgz", "http://example.com", "aaaa"))
 
 	ind2 := NewIndexFile()
 
@@ -230,121 +205,89 @@ func TestMerge(t *testing.T) {
 		{&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.2.0"}, "dreadnought-0.2.0.tgz", "http://example.com", "aaaabbbb"},
 		{&chart.Metadata{APIVersion: "v2", Name: "doughnut", Version: "0.2.0"}, "doughnut-0.2.0.tgz", "http://example.com", "ccccbbbb"},
 	} {
-		if err := ind2.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
-			t.Errorf("unexpected error: %s", err)
-		}
+		require.NoError(t, ind2.MustAdd(x.md, x.filename, x.baseURL, x.digest))
 	}
 
 	ind1.Merge(ind2)
 
-	if len(ind1.Entries) != 2 {
-		t.Errorf("Expected 2 entries, got %d", len(ind1.Entries))
-	}
+	assert.Lenf(t, ind1.Entries, 2, "Expected 2 entries, got %d", len(ind1.Entries))
 
 	vs := ind1.Entries["dreadnought"]
-	if len(vs) != 2 {
-		t.Errorf("Expected 2 versions, got %d", len(vs))
-	}
+	assert.Lenf(t, vs, 2, "Expected 2 versions, got %d", len(vs))
 
-	if v := vs[1]; v.Version != "0.2.0" {
-		t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
-	}
+	v := vs[1]
+	assert.Equalf(t, "0.2.0", v.Version, "Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
 }
 
 func TestDownloadIndexFile(t *testing.T) {
 	t.Run("should  download index file", func(t *testing.T) {
 		srv, err := startLocalServerForTests(nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer srv.Close()
 
 		r, err := NewChartRepository(&Entry{
 			Name: testRepo,
 			URL:  srv.URL,
 		}, getter.All(&cli.EnvSettings{}))
-		if err != nil {
-			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
-		}
+		require.NoErrorf(t, err, "Problem creating chart repository from %s", testRepo)
 
 		idx, err := r.DownloadIndexFile()
-		if err != nil {
-			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
-		}
+		require.NoErrorf(t, err, "Failed to download index file to %s", idx)
 
-		if _, err := os.Stat(idx); err != nil {
-			t.Fatalf("error finding created index file: %#v", err)
-		}
+		_, err = os.Stat(idx)
+
+		require.NoErrorf(t, err, "error finding created index file")
 
 		i, err := LoadIndexFile(idx)
-		if err != nil {
-			t.Fatalf("Index %q failed to parse: %s", testfile, err)
-		}
+		require.NoErrorf(t, err, "Index %q failed to parse", testfile)
 		verifyLocalIndex(t, i)
 
 		// Check that charts file is also created
 		idx = filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
-		if _, err := os.Stat(idx); err != nil {
-			t.Fatalf("error finding created charts file: %#v", err)
-		}
+		_, err = os.Stat(idx)
+		require.NoErrorf(t, err, "error finding created charts file")
 
 		b, err := os.ReadFile(idx)
-		if err != nil {
-			t.Fatalf("error reading charts file: %#v", err)
-		}
+		require.NoErrorf(t, err, "error reading charts file")
 		verifyLocalChartsFile(t, b, i)
 	})
 
 	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {
 		chartRepoURLPath := "/some%2Fpath/test"
 		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.RawPath == chartRepoURLPath+"/index.yaml" {
 				w.Write(fileBytes)
 			}
 		})
 		srv, err := startLocalServerForTests(handler)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer srv.Close()
 
 		r, err := NewChartRepository(&Entry{
 			Name: testRepo,
 			URL:  srv.URL + chartRepoURLPath,
 		}, getter.All(&cli.EnvSettings{}))
-		if err != nil {
-			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
-		}
+		require.NoErrorf(t, err, "Problem creating chart repository from %s", testRepo)
 
 		idx, err := r.DownloadIndexFile()
-		if err != nil {
-			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
-		}
+		require.NoErrorf(t, err, "Failed to download index file to %s", idx)
 
-		if _, err := os.Stat(idx); err != nil {
-			t.Fatalf("error finding created index file: %#v", err)
-		}
+		_, err = os.Stat(idx)
+		require.NoErrorf(t, err, "error finding created index file")
 
 		i, err := LoadIndexFile(idx)
-		if err != nil {
-			t.Fatalf("Index %q failed to parse: %s", testfile, err)
-		}
+		require.NoErrorf(t, err, "Index %q failed to parse", testfile)
 		verifyLocalIndex(t, i)
 
 		// Check that charts file is also created
 		idx = filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
-		if _, err := os.Stat(idx); err != nil {
-			t.Fatalf("error finding created charts file: %#v", err)
-		}
+		_, err = os.Stat(idx)
+		require.NoErrorf(t, err, "error finding created charts file")
 
 		b, err := os.ReadFile(idx)
-		if err != nil {
-			t.Fatalf("error reading charts file: %#v", err)
-		}
+		require.NoErrorf(t, err, "error reading charts file")
 		verifyLocalChartsFile(t, b, i)
 	})
 }
@@ -352,18 +295,13 @@ func TestDownloadIndexFile(t *testing.T) {
 func verifyLocalIndex(t *testing.T, i *IndexFile) {
 	t.Helper()
 	numEntries := len(i.Entries)
-	if numEntries != 3 {
-		t.Errorf("Expected 3 entries in index file but got %d", numEntries)
-	}
+	assert.Equalf(t, 3, numEntries, "Expected 3 entries in index file but got %d", numEntries)
 
 	alpine, ok := i.Entries["alpine"]
-	if !ok {
-		t.Fatal("'alpine' section not found.")
-	}
+	require.True(t, ok, "'alpine' section not found.")
 
-	if l := len(alpine); l != 1 {
-		t.Fatalf("'alpine' should have 1 chart, got %d", l)
-	}
+	l := len(alpine)
+	require.Equalf(t, 1, l, "'alpine' should have 1 chart, got %d", l)
 
 	nginx, ok := i.Entries["nginx"]
 	if !ok || len(nginx) != 2 {
@@ -419,31 +357,17 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 
 	for i, tt := range tests {
 		expect := expects[i]
-		if tt.Name != expect.Name {
-			t.Errorf("Expected name %q, got %q", expect.Name, tt.Name)
-		}
-		if tt.Description != expect.Description {
-			t.Errorf("Expected description %q, got %q", expect.Description, tt.Description)
-		}
-		if tt.Version != expect.Version {
-			t.Errorf("Expected version %q, got %q", expect.Version, tt.Version)
-		}
-		if tt.Digest != expect.Digest {
-			t.Errorf("Expected digest %q, got %q", expect.Digest, tt.Digest)
-		}
-		if tt.Home != expect.Home {
-			t.Errorf("Expected home %q, got %q", expect.Home, tt.Home)
-		}
+		assert.Equalf(t, expect.Name, tt.Name, "Expected name %q, got %q", expect.Name, tt.Name)
+		assert.Equalf(t, expect.Description, tt.Description, "Expected description %q, got %q", expect.Description, tt.Description)
+		assert.Equalf(t, expect.Version, tt.Version, "Expected version %q, got %q", expect.Version, tt.Version)
+		assert.Equalf(t, expect.Digest, tt.Digest, "Expected digest %q, got %q", expect.Digest, tt.Digest)
+		assert.Equalf(t, expect.Home, tt.Home, "Expected home %q, got %q", expect.Home, tt.Home)
 
 		for i, url := range tt.URLs {
-			if url != expect.URLs[i] {
-				t.Errorf("Expected URL %q, got %q", expect.URLs[i], url)
-			}
+			assert.Equalf(t, expect.URLs[i], url, "Expected URL %q, got %q", expect.URLs[i], url)
 		}
 		for i, kw := range tt.Keywords {
-			if kw != expect.Keywords[i] {
-				t.Errorf("Expected keywords %q, got %q", expect.Keywords[i], kw)
-			}
+			assert.Equalf(t, expect.Keywords[i], kw, "Expected keywords %q, got %q", expect.Keywords[i], kw)
 		}
 	}
 }
@@ -462,21 +386,16 @@ func verifyLocalChartsFile(t *testing.T, chartsContent []byte, indexContent *Ind
 	}
 	sort.Strings(reald)
 
-	if strings.Join(expected, " ") != strings.Join(reald, " ") {
-		t.Errorf("Cached charts file content unexpected. Expected:\n%s\ngot:\n%s", expected, reald)
-	}
+	assert.Equalf(t, strings.Join(expected, " "), strings.Join(reald, " "), "Cached charts file content unexpected. Expected:\n%s\ngot:\n%s", expected, reald)
 }
 
 func TestIndexDirectory(t *testing.T) {
 	dir := "testdata/repository"
 	index, err := IndexDirectory(dir, "http://localhost:8080")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if l := len(index.Entries); l != 3 {
-		t.Fatalf("Expected 3 entries, got %d", l)
-	}
+	l := len(index.Entries)
+	require.Equalf(t, 3, l, "Expected 3 entries, got %d", l)
 
 	// Other things test the entry generation more thoroughly. We just test a
 	// few fields.
@@ -489,20 +408,12 @@ func TestIndexDirectory(t *testing.T) {
 	for _, test := range corpus {
 		cname := test.chartName
 		frobs, ok := index.Entries[cname]
-		if !ok {
-			t.Fatalf("Could not read chart %s", cname)
-		}
+		require.Truef(t, ok, "Could not read chart %s", cname)
 
 		frob := frobs[0]
-		if frob.Digest == "" {
-			t.Errorf("Missing digest of file %s.", frob.Name)
-		}
-		if frob.URLs[0] != test.downloadLink {
-			t.Errorf("Unexpected URLs: %v", frob.URLs)
-		}
-		if frob.Name != cname {
-			t.Errorf("Expected %q, got %q", cname, frob.Name)
-		}
+		assert.NotEmptyf(t, frob.Digest, "Missing digest of file %s.", frob.Name)
+		assert.Equalf(t, test.downloadLink, frob.URLs[0], "Unexpected URLs: %v", frob.URLs)
+		assert.Equalf(t, cname, frob.Name, "Expected %q, got %q", cname, frob.Name)
 	}
 }
 
@@ -520,64 +431,40 @@ func TestIndexAdd(t *testing.T) {
 		{&chart.Metadata{APIVersion: "v2", Name: "alpine", Version: "0.1.0"}, "/home/charts/alpine-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"},
 		{&chart.Metadata{APIVersion: "v2", Name: "deis", Version: "0.1.0"}, "/home/charts/deis-0.1.0.tgz", "http://example.com/charts/", "sha256:1234567890"},
 	} {
-		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
-			t.Errorf("unexpected error adding to index: %s", err)
-		}
+		require.NoErrorf(t, i.MustAdd(x.md, x.filename, x.baseURL, x.digest), "unexpected error adding to index")
 	}
 
-	if i.Entries["clipper"][0].URLs[0] != "http://example.com/charts/clipper-0.1.0.tgz" {
-		t.Errorf("Expected http://example.com/charts/clipper-0.1.0.tgz, got %s", i.Entries["clipper"][0].URLs[0])
-	}
-	if i.Entries["alpine"][0].URLs[0] != "http://example.com/charts/alpine-0.1.0.tgz" {
-		t.Errorf("Expected http://example.com/charts/alpine-0.1.0.tgz, got %s", i.Entries["alpine"][0].URLs[0])
-	}
-	if i.Entries["deis"][0].URLs[0] != "http://example.com/charts/deis-0.1.0.tgz" {
-		t.Errorf("Expected http://example.com/charts/deis-0.1.0.tgz, got %s", i.Entries["deis"][0].URLs[0])
-	}
+	assert.Equalf(t, "http://example.com/charts/clipper-0.1.0.tgz", i.Entries["clipper"][0].URLs[0], "Expected http://example.com/charts/clipper-0.1.0.tgz, got %s", i.Entries["clipper"][0].URLs[0])
+	assert.Equalf(t, "http://example.com/charts/alpine-0.1.0.tgz", i.Entries["alpine"][0].URLs[0], "Expected http://example.com/charts/alpine-0.1.0.tgz, got %s", i.Entries["alpine"][0].URLs[0])
+	assert.Equalf(t, "http://example.com/charts/deis-0.1.0.tgz", i.Entries["deis"][0].URLs[0], "Expected http://example.com/charts/deis-0.1.0.tgz, got %s", i.Entries["deis"][0].URLs[0])
 
 	// test error condition
-	if err := i.MustAdd(&chart.Metadata{}, "error-0.1.0.tgz", "", ""); err == nil {
-		t.Fatal("expected error adding to index")
-	}
+	require.Error(t, i.MustAdd(&chart.Metadata{}, "error-0.1.0.tgz", "", ""), "expected error adding to index")
 }
 
 func TestIndexWrite(t *testing.T) {
 	i := NewIndexFile()
-	if err := i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"); err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"))
 	dir := t.TempDir()
 	testpath := filepath.Join(dir, "test")
 	i.WriteFile(testpath, 0o600)
 
 	got, err := os.ReadFile(testpath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
-		t.Fatal("Index files doesn't contain expected content")
-	}
+	require.NoError(t, err)
+	require.Contains(t, string(got), "clipper-0.1.0.tgz", "Index files doesn't contain expected content")
 }
 
 func TestIndexJSONWrite(t *testing.T) {
 	i := NewIndexFile()
-	if err := i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"); err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"))
 	dir := t.TempDir()
 	testpath := filepath.Join(dir, "test")
 	i.WriteJSONFile(testpath, 0o600)
 
 	got, err := os.ReadFile(testpath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !json.Valid(got) {
-		t.Fatal("Index files doesn't contain valid JSON")
-	}
-	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
-		t.Fatal("Index files doesn't contain expected content")
-	}
+	require.NoError(t, err)
+	require.True(t, json.Valid(got), "Index files doesn't contain valid JSON")
+	require.Contains(t, string(got), "clipper-0.1.0.tgz", "Index files doesn't contain expected content")
 }
 
 func TestAddFileIndexEntriesNil(t *testing.T) {
@@ -592,9 +479,7 @@ func TestAddFileIndexEntriesNil(t *testing.T) {
 	}{
 		{&chart.Metadata{APIVersion: "v2", Name: " ", Version: "8033-5.apinie+s.r"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 	} {
-		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err == nil {
-			t.Error("expected err to be non-nil when entries not initialized")
-		}
+		assert.Error(t, i.MustAdd(x.md, x.filename, x.baseURL, x.digest), "expected err to be non-nil when entries not initialized")
 	}
 }
 
@@ -624,22 +509,16 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 			result := ignoreSkippableChartValidationError(tc.Input)
 
 			if tc.Input == nil {
-				if result != nil {
-					t.Error("expected nil result for nil input")
-				}
+				assert.NoError(t, result, "expected nil result for nil input")
 				return
 			}
 
 			if tc.ErrorSkipped {
-				if result != nil {
-					t.Error("expected nil result for skipped error")
-				}
+				assert.NoError(t, result, "expected nil result for skipped error")
 				return
 			}
 
-			if !errors.Is(tc.Input, result) {
-				t.Error("expected the result equal to input")
-			}
+			assert.ErrorIs(t, tc.Input, result, "expected the result equal to input")
 		})
 	}
 }
@@ -700,17 +579,11 @@ func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.source, func(t *testing.T) {
 			idx, err := loadIndex([]byte(tc.data), tc.source)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err)
-			}
+			require.NoError(t, err)
 			cvs := idx.Entries["nginx"]
-			if cvs == nil {
-				t.Error("expected one chart version not to be filtered out")
-			}
+			assert.NotNil(t, cvs, "expected one chart version not to be filtered out")
 			for _, v := range cvs {
-				if v.Name == "alpine" {
-					t.Error("malformed version was not filtered out")
-				}
+				assert.NotEqual(t, "alpine", v.Name, "malformed version was not filtered out")
 			}
 		})
 	}
@@ -751,9 +624,7 @@ func TestIsVersionRange(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.version, func(t *testing.T) {
 			got := isVersionRange(tt.version)
-			if got != tt.expected {
-				t.Errorf("isVersionRange(%q) = %v, want %v", tt.version, got, tt.expected)
-			}
+			assert.Equalf(t, tt.expected, got, "isVersionRange(%q) = %v, want %v", tt.version, got, tt.expected)
 		})
 	}
 }
