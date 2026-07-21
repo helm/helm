@@ -39,9 +39,7 @@ func TestPrepareCommand(t *testing.T) {
 	cmd, args, err := PrepareCommands(platformCommand, true, []string{}, env)
 	require.NoError(t, err)
 	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.Truef(t, reflect.DeepEqual(args, cmdArgs), "Expected %v, got %v", cmdArgs, args)
 }
 
 func TestPrepareCommandExtraArgs(t *testing.T) {
@@ -113,9 +111,7 @@ func TestPrepareCommands(t *testing.T) {
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
 	require.NoError(t, err)
 	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.Truef(t, reflect.DeepEqual(args, cmdArgs), "Expected %v, got %v", cmdArgs, args)
 }
 
 func TestPrepareCommandsExtraArgs(t *testing.T) {
@@ -136,9 +132,7 @@ func TestPrepareCommandsExtraArgs(t *testing.T) {
 	cmd, args, err := PrepareCommands(cmds, true, extraArgs, env)
 	require.NoError(t, err)
 	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
-	if !reflect.DeepEqual(args, expectedArgs) {
-		t.Fatalf("Expected %v, got %v", expectedArgs, args)
-	}
+	require.Truef(t, reflect.DeepEqual(args, expectedArgs), "Expected %v, got %v", expectedArgs, args)
 }
 
 func TestPrepareCommandsNoArch(t *testing.T) {
@@ -155,9 +149,7 @@ func TestPrepareCommandsNoArch(t *testing.T) {
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
 	require.NoError(t, err)
 	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.Truef(t, reflect.DeepEqual(args, cmdArgs), "Expected %v, got %v", cmdArgs, args)
 }
 
 func TestPrepareCommandsNoOsNoArch(t *testing.T) {
@@ -174,9 +166,7 @@ func TestPrepareCommandsNoOsNoArch(t *testing.T) {
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
 	require.NoError(t, err)
 	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.Truef(t, reflect.DeepEqual(args, cmdArgs), "Expected %v, got %v", cmdArgs, args)
 }
 
 func TestPrepareCommandsNoMatch(t *testing.T) {
@@ -216,9 +206,7 @@ func TestPrepareCommandsExpand(t *testing.T) {
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
 	require.NoError(t, err)
 	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
-	if !reflect.DeepEqual(args, expectedArgs) {
-		t.Fatalf("Expected %v, got %v", expectedArgs, args)
-	}
+	require.Truef(t, reflect.DeepEqual(args, expectedArgs), "Expected %v, got %v", expectedArgs, args)
 }
 
 func TestPrepareCommandsNoExpand(t *testing.T) {
@@ -235,7 +223,5 @@ func TestPrepareCommandsNoExpand(t *testing.T) {
 	cmd, args, err := PrepareCommands(cmds, false, []string{}, env)
 	require.NoError(t, err)
 	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.Truef(t, reflect.DeepEqual(args, cmdArgs), "Expected %v, got %v", cmdArgs, args)
 }

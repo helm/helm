@@ -15,33 +15,27 @@ limitations under the License.
 
 package installer
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestIsRemoteHTTPArchive(t *testing.T) {
 	srv := mockArchiveServer()
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
-	if isRemoteHTTPArchive("/not/a/URL") {
-		t.Error("Expected non-URL to return false")
-	}
+	assert.False(t, isRemoteHTTPArchive("/not/a/URL"), "Expected non-URL to return false")
 
 	// URLs with valid archive extensions are considered valid archives
 	// even if the server is unreachable (optimization to avoid unnecessary HTTP requests)
-	if !isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.tgz") {
-		t.Error("URL with .tgz extension should be considered a valid archive")
-	}
+	assert.True(t, isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.tgz"), "URL with .tgz extension should be considered a valid archive")
 
 	// Test with invalid extension and unreachable server
-	if isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.notanarchive") {
-		t.Error("Bad URL without valid extension should not succeed")
-	}
+	assert.False(t, isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.notanarchive"), "Bad URL without valid extension should not succeed")
 
-	if !isRemoteHTTPArchive(source) {
-		t.Errorf("Expected %q to be a valid archive URL", source)
-	}
+	assert.True(t, isRemoteHTTPArchive(source), "Expected %q to be a valid archive URL", source)
 
-	if isRemoteHTTPArchive(source + "-not-an-extension") {
-		t.Error("Expected media type match to fail")
-	}
+	assert.False(t, isRemoteHTTPArchive(source+"-not-an-extension"), "Expected media type match to fail")
 }
