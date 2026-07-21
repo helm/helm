@@ -82,6 +82,9 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 	o.plugins = make(map[string]string, len(args))
 
 	for _, arg := range args {
+		if strings.HasSuffix(arg, "@") {
+			return fmt.Errorf("invalid plugin reference %q: missing version after @", arg)
+		}
 		name, version := parsePluginVersion(arg)
 		if name == "" {
 			return fmt.Errorf("invalid plugin reference %q: plugin name must not be empty", arg)
