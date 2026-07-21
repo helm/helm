@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 
 	"helm.sh/helm/v4/internal/test/ensure"
@@ -209,8 +208,7 @@ func TestExtract(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Get current umask to predict expected permissions
-	currentUmask := syscall.Umask(0)
-	syscall.Umask(currentUmask)
+	currentUmask := processUmask()
 
 	// Write a tarball to a buffer for us to extract
 	var tarbuf bytes.Buffer
@@ -280,7 +278,7 @@ func TestExtract(t *testing.T) {
 			t.Fatalf("Expected %s to exist but doesn't", pluginYAMLFullPath)
 		}
 		t.Fatal(err)
-	} else if info.Mode().Perm() != expectedPluginYAMLPerm {
+	} else if posixPermsSupported && info.Mode().Perm() != expectedPluginYAMLPerm {
 		t.Fatalf("Expected %s to have %o mode but has %o (umask: %o)",
 			pluginYAMLFullPath, expectedPluginYAMLPerm, info.Mode().Perm(), currentUmask)
 	}
@@ -291,7 +289,7 @@ func TestExtract(t *testing.T) {
 			t.Fatalf("Expected %s to exist but doesn't", readmeFullPath)
 		}
 		t.Fatal(err)
-	} else if info.Mode().Perm() != expectedReadmePerm {
+	} else if posixPermsSupported && info.Mode().Perm() != expectedReadmePerm {
 		t.Fatalf("Expected %s to have %o mode but has %o (umask: %o)",
 			readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
 	}
