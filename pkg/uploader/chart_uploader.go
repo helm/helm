@@ -36,20 +36,21 @@ type ChartUploader struct {
 	RegistryClient *registry.Client
 }
 
-// UploadTo uploads a chart. Depending on the settings, it may also upload a provenance file.
-func (c *ChartUploader) UploadTo(ref, remote string) error {
+// UploadTo uploads a chart to the remote URL and returns the push result containing
+// the ref and manifest digest. Depending on the settings, it may also upload a provenance file.
+func (c *ChartUploader) UploadTo(ref, remote string) (*registry.PushResult, error) {
 	u, err := url.Parse(remote)
 	if err != nil {
-		return fmt.Errorf("invalid chart URL format: %s", remote)
+		return nil, fmt.Errorf("invalid chart URL format: %s", remote)
 	}
 
 	if u.Scheme == "" {
-		return fmt.Errorf("scheme prefix missing from remote (e.g. \"%s://\")", registry.OCIScheme)
+		return nil, fmt.Errorf("scheme prefix missing from remote (e.g. \"%s://\")", registry.OCIScheme)
 	}
 
 	p, err := c.Pushers.ByScheme(u.Scheme)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return p.Push(ref, u.String(), c.Options...)
