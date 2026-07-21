@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/internal/plugin"
@@ -116,7 +115,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	for name, version := range o.plugins {
 		if found := findPlugin(installed, name); found != nil {
 			if err := updatePlugin(found, version); err != nil {
-				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
+				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%w)", name, err))
 			} else {
 				fmt.Fprintf(out, "Updated plugin: %s\n", name)
 			}
