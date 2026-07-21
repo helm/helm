@@ -110,7 +110,7 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 			continue
 		}
 
-		rls.Labels = filterSystemLabels(item.Labels)
+		rls.Labels = item.Labels
 
 		if filter(rls) {
 			results = append(results, rls)
@@ -152,7 +152,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, err
 			)
 			continue
 		}
-		rls.Labels = filterSystemLabels(item.Labels)
+		rls.Labels = item.Labels
 		results = append(results, rls)
 	}
 	return results, nil

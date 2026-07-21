@@ -134,12 +134,11 @@ func TestSecretList(t *testing.T) {
 	if len(ssd) != 2 {
 		t.Errorf("Expected 2 superseded, got %d", len(ssd))
 	}
-	// List should return custom labels only, system labels (name, owner, status, etc.)
-	// must not leak into rls.Labels or they'll be carried into the next revision on upgrade.
+	// Check if release having both system and custom labels, this is needed to ensure that selector filtering would work.
 	rls := convertReleaserToV1(t, ssd[0])
 	_, ok := rls.Labels["name"]
-	if ok {
-		t.Fatalf("Expected 'name' system label to be filtered out, actual %v", rls.Labels)
+	if !ok {
+		t.Fatalf("Expected 'name' label in results, actual %v", rls.Labels)
 	}
 	_, ok = rls.Labels["key1"]
 	if !ok {
@@ -163,12 +162,6 @@ func TestSecretQuery(t *testing.T) {
 	}
 	if len(rls) != 2 {
 		t.Fatalf("Expected 2 results, actual %d", len(rls))
-	}
-
-	// Query should return custom labels only, same as Get and List.
-	queried := convertReleaserToV1(t, rls[0])
-	if _, ok := queried.Labels["name"]; ok {
-		t.Fatalf("Expected 'name' system label to be filtered out, actual %v", queried.Labels)
 	}
 
 	_, err = secrets.Query(map[string]string{"name": "notExist"})

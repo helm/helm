@@ -113,7 +113,7 @@ func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.R
 			continue
 		}
 
-		rls.Labels = filterSystemLabels(item.Labels)
+		rls.Labels = item.Labels
 
 		if filter(rls) {
 			results = append(results, rls)
@@ -152,7 +152,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]release.Releaser, 
 			cfgmaps.Logger().Debug("failed to decode release", slog.Any("error", err))
 			continue
 		}
-		rls.Labels = filterSystemLabels(item.Labels)
+		rls.Labels = item.Labels
 		results = append(results, rls)
 	}
 	return results, nil

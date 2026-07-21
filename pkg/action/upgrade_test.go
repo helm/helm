@@ -489,6 +489,10 @@ func TestMergeCustomLabels(t *testing.T) {
 		{map[string]string{"k1": "v1", "k2": "v2"}, nil, map[string]string{"k1": "v1", "k2": "v2"}},
 		{nil, map[string]string{"k1": "v1", "k2": "v2"}, map[string]string{"k1": "v1", "k2": "v2"}},
 		{map[string]string{"k1": "v1", "k2": "v2"}, map[string]string{"k1": "null", "k2": "v3"}, map[string]string{"k2": "v3"}},
+		// current can carry stale system labels forward from a previous
+		// revision (the k8s drivers' List/Query don't filter them like Get
+		// does); they must never end up in the merged result.
+		{map[string]string{"k1": "v1", "createdAt": "111", "owner": "helm"}, map[string]string{"k2": "v2"}, map[string]string{"k1": "v1", "k2": "v2"}},
 	}
 	for _, test := range tests {
 		if output := mergeCustomLabels(test[0], test[1]); !reflect.DeepEqual(test[2], output) {
