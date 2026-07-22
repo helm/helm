@@ -417,7 +417,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 				return upgradedRelease, err
 			}
 		}
-		if len(u.Description) > 0 {
+		if u.Description != "" {
 			upgradedRelease.Info.Description = u.Description
 		} else {
 			upgradedRelease.Info.Description = "Dry run complete"

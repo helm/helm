@@ -502,7 +502,7 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	is.NoError(err)
 	res, err := releaserToV1Release(resi)
 	is.NoError(err)
-	is.Equal(res.Info.Description, "Dry run complete")
+	is.Equal("Dry run complete", res.Info.Description)
 }
 
 func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {

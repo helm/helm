@@ -685,10 +685,10 @@ func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
 	resi, err := upAction2.RunWithContext(ctx, rel2.Name, buildChart(), vals)
 	done()
 
-	is.NoError(err)
+	req.NoError(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
-	is.Equal(res.Info.Description, "Dry run complete")
+	req.NoError(err)
+	is.Equal("Dry run complete", res.Info.Description)
 }
 
 func TestGetUpgradeServerSideValue(t *testing.T) {
