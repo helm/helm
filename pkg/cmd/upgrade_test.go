@@ -18,6 +18,8 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -191,6 +193,64 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+// TestUpgradeDependencyUpdateOCINoPanic is a regression test for a nil-pointer
+// panic in `helm upgrade --dependency-update` when a chart declares an OCI
+// dependency. The upgrade command built its downloader.Manager without a
+// RegistryClient (unlike install, dependency update, and dependency build), so
+// resolving an OCI dependency dereferenced a nil *registry.Client. The command
+// must now return a graceful error instead of panicking.
+func TestUpgradeDependencyUpdateOCINoPanic(t *testing.T) {
+	defer resetEnv()()
+
+	// A stub registry that answers the API-version ping but rejects the tag
+	// lookup, so OCI dependency resolution fails fast and hermetically instead
+	// of reaching a real registry.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	// A chart with an unresolved OCI dependency forces --dependency-update into
+	// the tag-lookup path that previously panicked: the version is a range (an
+	// explicit version would skip the lookup) and the dependency is not present
+	// under charts/.
+	tmp := t.TempDir()
+	parent := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "oci-parent",
+			Version:    "0.1.0",
+			Dependencies: []*chart.Dependency{{
+				Name:       "subchart",
+				Repository: fmt.Sprintf("oci://%s/charts", srv.Listener.Addr()),
+				Version:    "^1.0.0",
+			}},
+		},
+	}
+	if err := chartutil.SaveDir(parent, tmp); err != nil {
+		t.Fatalf("Error creating chart: %v", err)
+	}
+	chartPath := filepath.Join(tmp, parent.Metadata.Name)
+	// SaveDir writes only resolved subcharts (Chart.Dependencies()), not the
+	// declared Metadata.Dependencies, so create the empty charts/ directory
+	// explicitly to make the "dependency missing from charts/" state concrete.
+	if err := os.MkdirAll(filepath.Join(chartPath, "charts"), 0o755); err != nil {
+		t.Fatalf("Error creating charts dir: %v", err)
+	}
+
+	// The command must return an error (registry rejects the lookup), not panic.
+	_, _, err := executeActionCommandC(storageFixture(),
+		fmt.Sprintf("upgrade --dependency-update --plain-http oci-parent '%s'", chartPath))
+	if err == nil {
+		t.Fatal("expected an error resolving the OCI dependency, got nil")
+	}
 }
 
 func TestUpgradeWithValue(t *testing.T) {
