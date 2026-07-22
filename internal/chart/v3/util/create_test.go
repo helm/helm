@@ -38,7 +38,7 @@ func TestCreate(t *testing.T) {
 	dir := filepath.Join(tdir, "foo")
 
 	mychart, err := loader.LoadDir(c)
-	require.NoError(t, err, "Failed to load newly created chart %q: %s", c, err)
+	require.NoError(t, err, "Failed to load newly created chart %q", c)
 
 	assert.Equal(t, "foo", mychart.Name(), "Expected name to be 'foo', got %q", mychart.Name())
 
@@ -55,9 +55,8 @@ func TestCreate(t *testing.T) {
 		TestConnectionName,
 		ValuesfileName,
 	} {
-		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		}
+		_, err := os.Stat(filepath.Join(dir, f))
+		assert.NoErrorf(t, err, "Expected %s file", f)
 	}
 }
 
@@ -71,14 +70,12 @@ func TestCreateFrom(t *testing.T) {
 	}
 	srcdir := "./testdata/frobnitz/charts/mariner"
 
-	if err := CreateFrom(cf, tdir, srcdir); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, CreateFrom(cf, tdir, srcdir))
 
 	dir := filepath.Join(tdir, "foo")
 	c := filepath.Join(tdir, cf.Name)
 	mychart, err := loader.LoadDir(c)
-	require.NoError(t, err, "Failed to load newly created chart %q: %s", c, err)
+	require.NoError(t, err, "Failed to load newly created chart %q", c)
 
 	assert.Equal(t, "foo", mychart.Name(), "Expected name to be 'foo', got %q", mychart.Name())
 
@@ -87,16 +84,13 @@ func TestCreateFrom(t *testing.T) {
 		ValuesfileName,
 		filepath.Join(TemplatesDir, "placeholder.tpl"),
 	} {
-		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		}
+		_, err := os.Stat(filepath.Join(dir, f))
+		require.NoErrorf(t, err, "Expected %s file", f)
 
 		// Check each file to make sure <CHARTNAME> has been replaced
 		b, err := os.ReadFile(filepath.Join(dir, f))
-		require.NoError(t, err, "Unable to read file %s: %s", f, err)
-		if bytes.Contains(b, []byte("<CHARTNAME>")) {
-			t.Errorf("File %s contains <CHARTNAME>", f)
-		}
+		require.NoError(t, err, "Unable to read file %s", f)
+		assert.Falsef(t, bytes.Contains(b, []byte("<CHARTNAME>")), "File %s contains <CHARTNAME>", f)
 	}
 }
 
@@ -106,9 +100,8 @@ func TestCreate_Overwrite(t *testing.T) {
 
 	var errlog bytes.Buffer
 
-	if _, err := Create("foo", tdir); err != nil {
-		t.Fatal(err)
-	}
+	_, err := Create("foo", tdir)
+	require.NoError(t, err)
 
 	dir := filepath.Join(tdir, "foo")
 
@@ -117,9 +110,8 @@ func TestCreate_Overwrite(t *testing.T) {
 
 	// Now re-run the create
 	Stderr = &errlog
-	if _, err := Create("foo", tdir); err != nil {
-		t.Fatal(err)
-	}
+	_, err = Create("foo", tdir)
+	require.NoError(t, err)
 
 	data, err := os.ReadFile(tplname)
 	require.NoError(t, err)
@@ -150,8 +142,11 @@ func TestValidateChartName(t *testing.T) {
 			"abcdefghijklmnopqrstuvwxyz-_." +
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": false,
 	} {
-		if err := validateChartName(name); (err != nil) == shouldPass {
-			t.Errorf("test for %q failed", name)
+		err := validateChartName(name)
+		if shouldPass {
+			assert.NoErrorf(t, err, "Expected chart name %q to pass validation", name)
+		} else {
+			assert.Errorf(t, err, "Expected chart name %q to fail validation, but it passed", name)
 		}
 	}
 }

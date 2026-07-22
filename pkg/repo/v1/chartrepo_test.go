@@ -18,7 +18,6 @@ package repo
 
 import (
 	"bytes"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/cli"
@@ -68,37 +69,25 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 		Name: repoName,
 		URL:  repoURL,
 	}, providers)
-	if err != nil {
-		t.Fatalf("Problem loading chart repository from %s: %v", repoURL, err)
-	}
+	require.NoErrorf(t, err, "Problem loading chart repository from %s", repoURL)
 	repo.CachePath = t.TempDir()
 
 	tempIndexFile, err := os.CreateTemp(t.TempDir(), "test-repo")
-	if err != nil {
-		t.Fatalf("Failed to create temp index file: %v", err)
-	}
+	require.NoErrorf(t, err, "Failed to create temp index file")
 	defer os.Remove(tempIndexFile.Name())
 
 	idx, err := repo.DownloadIndexFile()
-	if err != nil {
-		t.Fatalf("Failed to download index file to %s: %v", idx, err)
-	}
+	require.NoErrorf(t, err, "Failed to download index file to %s", idx)
 
-	if len(myCustomGetter.repoUrls) != 1 {
-		t.Fatal("Custom Getter.Get should be called once")
-	}
+	require.Len(t, myCustomGetter.repoUrls, 1, "Custom Getter.Get should be called once")
 
 	expectedRepoIndexURL := repoURL + "/index.yaml"
-	if myCustomGetter.repoUrls[0] != expectedRepoIndexURL {
-		t.Fatalf("Custom Getter.Get should be called with %s", expectedRepoIndexURL)
-	}
+	require.Equalf(t, expectedRepoIndexURL, myCustomGetter.repoUrls[0], "Custom Getter.Get should be called with %s", expectedRepoIndexURL)
 }
 
 func TestConcurrencyDownloadIndex(t *testing.T) {
 	srv, err := startLocalServerForTests(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	repo, err := NewChartRepository(&Entry{
@@ -106,16 +95,12 @@ func TestConcurrencyDownloadIndex(t *testing.T) {
 		URL:  srv.URL,
 	}, getter.All(&cli.EnvSettings{}))
 
-	if err != nil {
-		t.Fatalf("Problem loading chart repository from %s: %v", srv.URL, err)
-	}
+	require.NoErrorf(t, err, "Problem loading chart repository from %s", srv.URL)
 	repo.CachePath = t.TempDir()
 
 	// initial download index
 	idx, err := repo.DownloadIndexFile()
-	if err != nil {
-		t.Fatalf("Failed to download index file to %s: %v", idx, err)
-	}
+	require.NoErrorf(t, err, "Failed to download index file to %s", idx)
 
 	indexFName := filepath.Join(repo.CachePath, helmpath.CacheIndexFile(repo.Config.Name))
 
@@ -128,16 +113,12 @@ func TestConcurrencyDownloadIndex(t *testing.T) {
 	for range 150 {
 		wg.Go(func() {
 			idx, err := repo.DownloadIndexFile()
-			if err != nil {
-				t.Errorf("Failed to download index file to %s: %v", idx, err)
-			}
+			assert.NoErrorf(t, err, "Failed to download index file to %s", idx)
 		})
 
 		wg.Go(func() {
 			_, err := LoadIndexFile(indexFName)
-			if err != nil {
-				t.Errorf("Failed to load index file: %v", err)
-			}
+			assert.NoErrorf(t, err, "Failed to load index file")
 		})
 	}
 	wg.Wait()
@@ -175,9 +156,7 @@ func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error)
 
 func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	srv, err := startLocalTLSServerForTests(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	chartURL, err := FindChartInRepoURL(
@@ -186,12 +165,8 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 		getter.All(&cli.EnvSettings{}),
 		WithInsecureSkipTLSVerify(true),
 	)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
-		t.Errorf("%s is not the valid URL", chartURL)
-	}
+	require.NoError(t, err)
+	assert.Equalf(t, "https://charts.helm.sh/stable/nginx-0.2.0.tgz", chartURL, "%s is not the valid URL", chartURL)
 
 	// If the insecureSkipTLSVerify is false, it will return an error that contains "x509: certificate signed by unknown authority".
 	_, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.1.0"))
@@ -203,33 +178,23 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 		if !strings.Contains(err.Error(), "x509: “Acme Co” certificate is not trusted") && !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 			t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error (%v)", err)
 		}
-	} else if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
-		t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error (%v)", err)
+	} else {
+		assert.ErrorContainsf(t, err, "x509: certificate signed by unknown authority", "Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error")
 	}
 }
 
 func TestFindChartInRepoURL(t *testing.T) {
 	srv, err := startLocalServerForTests(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}))
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
-		t.Errorf("%s is not the valid URL", chartURL)
-	}
+	require.NoError(t, err)
+	assert.Equalf(t, "https://charts.helm.sh/stable/nginx-0.2.0.tgz", chartURL, "%s is not the valid URL", chartURL)
 
 	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.1.0"))
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "https://charts.helm.sh/stable/nginx-0.1.0.tgz" {
-		t.Errorf("%s is not the valid URL", chartURL)
-	}
+	require.NoError(t, err)
+	assert.Equalf(t, "https://charts.helm.sh/stable/nginx-0.1.0.tgz", chartURL, "%s is not the valid URL", chartURL)
 }
 
 func TestErrorFindChartInRepoURL(t *testing.T) {
@@ -237,38 +202,26 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 		RepositoryCache: t.TempDir(),
 	})
 
-	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", g); err == nil {
-		t.Error("Expected error for bad chart URL, but did not get any errors")
-	} else if !strings.Contains(err.Error(), `looks like "http://someserver/something" is not a valid chart repository or cannot be reached`) {
-		t.Errorf("Expected error for bad chart URL, but got a different error (%v)", err)
-	}
+	_, err := FindChartInRepoURL("http://someserver/something", "nginx", g)
+	require.Error(t, err, "Expected error for bad chart URL, but did not get any errors")
+	require.ErrorContainsf(t, err, `looks like "http://someserver/something" is not a valid chart repository or cannot be reached`, "Expected error for bad chart URL, but got a different error")
 
 	srv, err := startLocalServerForTests(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", g); err == nil {
-		t.Error("Expected error for chart not found, but did not get any errors")
-	} else if err.Error() != `chart "nginx1" not found in `+srv.URL+` repository` {
-		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
-	}
-	if !errors.Is(err, ChartNotFoundError{}) {
-		t.Error("error is not of correct error type structure")
-	}
+	_, err = FindChartInRepoURL(srv.URL, "nginx1", g)
+	require.Error(t, err, "Expected error for chart not found, but did not get any errors")
+	require.EqualError(t, err, `chart "nginx1" not found in `+srv.URL+` repository`, "Expected error for chart not found, but got a different error")
+	require.ErrorIs(t, err, ChartNotFoundError{}, "error is not of correct error type structure")
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", g, WithChartVersion("0.1.0")); err == nil {
-		t.Error("Expected error for chart not found, but did not get any errors")
-	} else if err.Error() != `chart "nginx1" version "0.1.0" not found in `+srv.URL+` repository` {
-		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
-	}
+	_, err = FindChartInRepoURL(srv.URL, "nginx1", g, WithChartVersion("0.1.0"))
+	require.Error(t, err, "Expected error for chart not found, but did not get any errors")
+	require.EqualError(t, err, `chart "nginx1" version "0.1.0" not found in `+srv.URL+` repository`, "Expected error for chart not found, but got a different error")
 
-	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", g); err == nil {
-		t.Error("Expected error for no chart URLs available, but did not get any errors")
-	} else if err.Error() != `chart "chartWithNoURL" has no downloadable URLs` {
-		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
-	}
+	_, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", g)
+	require.Error(t, err, "Expected error for no chart URLs available, but did not get any errors")
+	assert.EqualError(t, err, `chart "chartWithNoURL" has no downloadable URLs`, "Expected error for chart not found, but got a different error")
 }
 
 func TestResolveReferenceURL(t *testing.T) {
@@ -286,11 +239,7 @@ func TestResolveReferenceURL(t *testing.T) {
 		{"http://localhost:8123/charts?with=queryparameter", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz?with=queryparameter"},
 	} {
 		chartURL, err := ResolveReferenceURL(tt.baseURL, tt.refURL)
-		if err != nil {
-			t.Errorf("unexpected error in ResolveReferenceURL(%q, %q): %s", tt.baseURL, tt.refURL, err)
-		}
-		if chartURL != tt.chartURL {
-			t.Errorf("expected ResolveReferenceURL(%q, %q) to equal %q, got %q", tt.baseURL, tt.refURL, tt.chartURL, chartURL)
-		}
+		require.NoErrorf(t, err, "unexpected error in ResolveReferenceURL(%q, %q)", tt.baseURL, tt.refURL)
+		assert.Equalf(t, chartURL, tt.chartURL, "expected ResolveReferenceURL(%q, %q) to equal %q, got %q", tt.baseURL, tt.refURL, tt.chartURL, chartURL)
 	}
 }

@@ -250,5 +250,5 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 	require.NoError(t, err, "%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
 
 	// Verify creation annotation after (or equals) time test began
-	assert.False(t, nowTime.Before(createdTimeAnnotation), "%s annotation with value '%s' not configured properly. Annotation value is not after %s", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated], nowTimeString)
+	assert.GreaterOrEqual(t, nowTime, createdTimeAnnotation, "%s annotation with value '%s' not configured properly. Annotation value is not after %s", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated], nowTimeString)
 }

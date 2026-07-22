@@ -52,24 +52,19 @@ func TestValidateChartYamlNotDirectory(t *testing.T) {
 	_ = os.Mkdir(nonExistingChartFilePath, os.ModePerm)
 	defer os.Remove(nonExistingChartFilePath)
 
-	err := validateChartYamlNotDirectory(nonExistingChartFilePath)
-	assert.Error(t, err, "validateChartYamlNotDirectory to return a linter error, got no error")
+	assert.Error(t, validateChartYamlNotDirectory(nonExistingChartFilePath), "validateChartYamlNotDirectory to return a linter error, got no error")
 }
 
 func TestValidateChartYamlFormat(t *testing.T) {
-	err := validateChartYamlFormat(errors.New("Read error"))
-	require.Error(t, err, "validateChartYamlFormat to return a linter error, got no error")
+	require.Error(t, validateChartYamlFormat(errors.New("Read error")), "validateChartYamlFormat to return a linter error, got no error")
 
-	err = validateChartYamlFormat(nil)
-	assert.NoError(t, err, "validateChartYamlFormat to return no error, got a linter error")
+	assert.NoError(t, validateChartYamlFormat(nil), "validateChartYamlFormat to return no error, got a linter error")
 }
 
 func TestValidateChartName(t *testing.T) {
-	err := validateChartName(badChart)
-	require.Error(t, err, "validateChartName to return a linter error, got no error")
+	require.Error(t, validateChartName(badChart), "validateChartName to return a linter error, got no error")
 
-	err = validateChartName(badChartName)
-	assert.Error(t, err, "expected validateChartName to return a linter error for an invalid name, got no error")
+	assert.Error(t, validateChartName(badChartName), "expected validateChartName to return a linter error for an invalid name, got no error")
 }
 
 func TestValidateChartVersion(t *testing.T) {
@@ -90,15 +85,13 @@ func TestValidateChartVersion(t *testing.T) {
 	for i, test := range failTest {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			badChart.Version = test.Version
-			err := validateChartVersion(badChart)
-			require.ErrorContains(t, err, test.ErrorMsg, "validateChartVersion(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
+			require.ErrorContains(t, validateChartVersion(badChart), test.ErrorMsg, "validateChartVersion(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
 		})
 	}
 
 	for _, version := range successTest {
 		badChart.Version = version
-		err := validateChartVersion(badChart)
-		assert.NoError(t, err, "validateChartVersion(%s) to return no error, got a linter error", version)
+		assert.NoError(t, validateChartVersion(badChart), "validateChartVersion(%s) to return no error, got a linter error", version)
 	}
 }
 
@@ -124,24 +117,20 @@ func TestValidateChartMaintainer(t *testing.T) {
 	for _, test := range failTest {
 		t.Run(fmt.Sprintf("%s, %s", test.Name, test.Email), func(t *testing.T) {
 			badChart.Maintainers = []*chart.Maintainer{{Name: test.Name, Email: test.Email}}
-			err := validateChartMaintainer(badChart)
-			require.ErrorContains(t, err, test.ErrorMsg, "validateChartMaintainer(%s, %s) to return \"%s\", got no error", test.Name, test.Email, test.ErrorMsg)
+			require.ErrorContains(t, validateChartMaintainer(badChart), test.ErrorMsg, "validateChartMaintainer(%s, %s) to return \"%s\", got no error", test.Name, test.Email, test.ErrorMsg)
 		})
 	}
 
 	for _, test := range successTest {
 		t.Run(fmt.Sprintf("%s, %s", test.Name, test.Email), func(t *testing.T) {
 			badChart.Maintainers = []*chart.Maintainer{{Name: test.Name, Email: test.Email}}
-			err := validateChartMaintainer(badChart)
-			require.NoError(t, err, "validateChartMaintainer(%s, %s) to return no error", test.Name, test.Email)
+			require.NoError(t, validateChartMaintainer(badChart), "validateChartMaintainer(%s, %s) to return no error", test.Name, test.Email)
 		})
 	}
 
 	// Testing for an empty maintainer
 	badChart.Maintainers = []*chart.Maintainer{nil}
-	err := validateChartMaintainer(badChart)
-	require.Error(t, err, "validateChartMaintainer did not return error for nil maintainer as expected")
-	assert.EqualError(t, err, "a maintainer entry is empty", "validateChartMaintainer returned unexpected error for nil maintainer")
+	assert.EqualError(t, validateChartMaintainer(badChart), "a maintainer entry is empty")
 }
 
 func TestValidateChartSources(t *testing.T) {
@@ -150,15 +139,13 @@ func TestValidateChartSources(t *testing.T) {
 	for _, test := range failTest {
 		t.Run(test, func(t *testing.T) {
 			badChart.Sources = []string{test}
-			err := validateChartSources(badChart)
-			require.ErrorContains(t, err, "invalid source URL", "validateChartSources(%s) to return \"invalid source URL\", got no error", test)
+			require.ErrorContains(t, validateChartSources(badChart), "invalid source URL", "validateChartSources(%s) to return \"invalid source URL\", got no error", test)
 		})
 	}
 
 	for _, test := range successTest {
 		badChart.Sources = []string{test}
-		err := validateChartSources(badChart)
-		assert.NoError(t, err, "validateChartSources(%s) to return no error", test)
+		assert.NoError(t, validateChartSources(badChart), "validateChartSources(%s) to return no error", test)
 	}
 }
 
@@ -168,19 +155,13 @@ func TestValidateChartIconPresence(t *testing.T) {
 			Icon: "",
 		}
 
-		err := validateChartIconPresence(testChart)
-
-		require.Error(t, err, "validateChartIconPresence to return a linter error, got no error")
-		assert.ErrorContains(t, err, "icon is recommended", "expected %q", "icon is recommended")
+		assert.ErrorContains(t, validateChartIconPresence(testChart), "icon is recommended", "expected %q", "icon is recommended")
 	})
 	t.Run("Icon present", func(t *testing.T) {
 		testChart := &chart.Metadata{
 			Icon: "http://example.org/icon.png",
 		}
-
-		err := validateChartIconPresence(testChart)
-
-		assert.NoError(t, err, "Unexpected error")
+		assert.NoError(t, validateChartIconPresence(testChart))
 	})
 }
 
@@ -190,15 +171,13 @@ func TestValidateChartIconURL(t *testing.T) {
 	for _, test := range failTest {
 		t.Run(test, func(t *testing.T) {
 			badChart.Icon = test
-			err := validateChartIconURL(badChart)
-			require.ErrorContains(t, err, "invalid icon URL", "validateChartIconURL(%s) to return \"invalid icon URL\", got no error", test)
+			require.ErrorContains(t, validateChartIconURL(badChart), "invalid icon URL", "validateChartIconURL(%s) to return \"invalid icon URL\", got no error", test)
 		})
 	}
 
 	for _, test := range successTest {
 		badChart.Icon = test
-		err := validateChartIconURL(badChart)
-		assert.NoError(t, err, "validateChartIconURL(%s) to return no error", test)
+		assert.NoError(t, validateChartIconURL(badChart), "validateChartIconURL(%s) to return no error", test)
 	}
 }
 

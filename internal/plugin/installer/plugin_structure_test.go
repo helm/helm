@@ -19,6 +19,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDetectPluginRoot(t *testing.T) {
@@ -73,26 +76,18 @@ func TestDetectPluginRoot(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
-			if err := tt.setup(dir); err != nil {
-				t.Fatalf("Setup failed: %v", err)
-			}
+			require.NoErrorf(t, tt.setup(dir), "Setup failed")
 
 			root, err := detectPluginRoot(dir)
 			if tt.expectError {
-				if err == nil {
-					t.Error("Expected error but got none")
-				}
+				assert.Error(t, err)
 			} else {
-				if err != nil {
-					t.Errorf("Unexpected error: %v", err)
-				}
+				require.NoError(t, err)
 				expectedPath := dir
 				if tt.expectRoot != "." {
 					expectedPath = filepath.Join(dir, tt.expectRoot)
 				}
-				if root != expectedPath {
-					t.Errorf("Expected root %s but got %s", expectedPath, root)
-				}
+				assert.Equal(t, expectedPath, root, "Expected root %s but got %s", expectedPath, root)
 			}
 		})
 	}
@@ -145,20 +140,14 @@ description: test`
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
-			if err := tt.setup(dir); err != nil {
-				t.Fatalf("Setup failed: %v", err)
-			}
+			require.NoErrorf(t, tt.setup(dir), "Setup failed")
 
 			pluginRoot := filepath.Join(dir, tt.pluginRoot)
 			err := validatePluginName(pluginRoot, tt.expectedName)
 			if tt.expectError {
-				if err == nil {
-					t.Error("Expected error but got none")
-				}
+				assert.Error(t, err)
 			} else {
-				if err != nil {
-					t.Errorf("Unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			}
 		})
 	}

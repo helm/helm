@@ -29,10 +29,7 @@ const testfile = "testdata/chartfiletest.yaml"
 
 func TestLoadChartfile(t *testing.T) {
 	f, err := LoadChartfile(testfile)
-	if err != nil {
-		t.Errorf("Failed to open %s: %s", testfile, err)
-		return
-	}
+	require.NoErrorf(t, err, "Failed to open %s", testfile)
 	verifyChartfile(t, f, "frobnitz")
 }
 
@@ -64,13 +61,11 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 
 	require.Len(t, f.Annotations, 2, "Unexpected annotations")
 
-	if want, got := "extravalue", f.Annotations["extrakey"]; want != got {
-		t.Errorf("Want %q, but got %q", want, got)
-	}
+	want, got := "extravalue", f.Annotations["extrakey"]
+	assert.Equalf(t, want, got, "Want %q, but got %q", want, got)
 
-	if want, got := "anothervalue", f.Annotations["anotherkey"]; want != got {
-		t.Errorf("Want %q, but got %q", want, got)
-	}
+	want, got = "anothervalue", f.Annotations["anotherkey"]
+	assert.Equalf(t, want, got, "Want %q, but got %q", want, got)
 
 	kk := []string{"frobnitz", "sprocket", "dodad"}
 	for i, k := range f.Keywords {
@@ -80,13 +75,9 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 
 func TestIsChartDir(t *testing.T) {
 	validChartDir, err := IsChartDir("testdata/frobnitz")
-	if !validChartDir {
-		t.Errorf("unexpected error while reading chart-directory: (%v)", err)
-		return
-	}
+	require.NoError(t, err, "while reading chart-directory")
+	require.True(t, validChartDir, "expected valid chart directory")
 	validChartDir, err = IsChartDir("testdata")
-	if validChartDir || err == nil {
-		t.Error("expected error but did not get any")
-		return
-	}
+	require.Error(t, err)
+	require.False(t, validChartDir, "expected invalid chart directory")
 }

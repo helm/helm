@@ -18,8 +18,10 @@ package repo
 
 import (
 	"os"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testRepositoriesFile = "testdata/repositories.yaml"
@@ -37,24 +39,14 @@ func TestFile(t *testing.T) {
 		},
 	)
 
-	if len(rf.Repositories) != 2 {
-		t.Fatal("Expected 2 repositories")
-	}
+	require.Len(t, rf.Repositories, 2, "Expected 2 repositories")
 
-	if rf.Has("nosuchrepo") {
-		t.Error("Found nonexistent repo")
-	}
-	if !rf.Has("incubator") {
-		t.Error("incubator repo is missing")
-	}
+	assert.False(t, rf.Has("nosuchrepo"), "Found nonexistent repo")
+	assert.True(t, rf.Has("incubator"), "incubator repo is missing")
 
 	stable := rf.Repositories[0]
-	if stable.Name != "stable" {
-		t.Error("stable is not named stable")
-	}
-	if stable.URL != "https://example.com/stable/charts" {
-		t.Error("Wrong URL for stable")
-	}
+	assert.Equal(t, "stable", stable.Name, "stable is not named stable")
+	assert.Equal(t, "https://example.com/stable/charts", stable.URL, "Wrong URL for stable")
 }
 
 func TestNewFile(t *testing.T) {
@@ -71,22 +63,14 @@ func TestNewFile(t *testing.T) {
 	)
 
 	file, err := LoadFile(testRepositoriesFile)
-	if err != nil {
-		t.Errorf("%q could not be loaded: %s", testRepositoriesFile, err)
-	}
+	require.NoErrorf(t, err, "%q could not be loaded", testRepositoriesFile)
 
-	if len(expects.Repositories) != len(file.Repositories) {
-		t.Fatalf("Unexpected repo data: %#v", file.Repositories)
-	}
+	require.Lenf(t, file.Repositories, len(expects.Repositories), "Unexpected repo data: %#v", file.Repositories)
 
 	for i, expect := range expects.Repositories {
 		got := file.Repositories[i]
-		if expect.Name != got.Name {
-			t.Errorf("Expected name %q, got %q", expect.Name, got.Name)
-		}
-		if expect.URL != got.URL {
-			t.Errorf("Expected url %q, got %q", expect.URL, got.URL)
-		}
+		assert.Equalf(t, expect.Name, got.Name, "Expected name %q, got %q", expect.Name, got.Name)
+		assert.Equalf(t, expect.URL, got.URL, "Expected url %q, got %q", expect.URL, got.URL)
 	}
 }
 
@@ -114,18 +98,12 @@ func TestRepoFile_Get(t *testing.T) {
 	name := "second"
 
 	entry := repo.Get(name)
-	if entry == nil {
-		t.Fatalf("Expected repo entry %q to be found", name)
-	}
+	require.NotNilf(t, entry, "Expected repo entry %q to be found", name)
 
-	if entry.URL != "https://example.com/second" {
-		t.Errorf("Expected repo URL to be %q but got %q", "https://example.com/second", entry.URL)
-	}
+	assert.Equalf(t, "https://example.com/second", entry.URL, "Expected repo URL to be %q but got %q", "https://example.com/second", entry.URL)
 
 	entry = repo.Get("nonexistent")
-	if entry != nil {
-		t.Errorf("Got unexpected entry %+v", entry)
-	}
+	assert.Nilf(t, entry, "Got unexpected entry %+v", entry)
 }
 
 func TestRemoveRepository(t *testing.T) {
@@ -143,14 +121,10 @@ func TestRemoveRepository(t *testing.T) {
 
 	removeRepository := "stable"
 	found := sampleRepository.Remove(removeRepository)
-	if !found {
-		t.Errorf("expected repository %s not found", removeRepository)
-	}
+	assert.Truef(t, found, "expected repository %s not found", removeRepository)
 
 	found = sampleRepository.Has(removeRepository)
-	if found {
-		t.Errorf("repository %s not deleted", removeRepository)
-	}
+	assert.Falsef(t, found, "repository %s not deleted", removeRepository)
 }
 
 func TestUpdateRepository(t *testing.T) {
@@ -170,18 +144,14 @@ func TestUpdateRepository(t *testing.T) {
 		URL: "https://example.com/sample",
 	})
 
-	if !sampleRepository.Has(newRepoName) {
-		t.Errorf("expected repository %s not found", newRepoName)
-	}
+	assert.Truef(t, sampleRepository.Has(newRepoName), "expected repository %s not found", newRepoName)
 	repoCount := len(sampleRepository.Repositories)
 
 	sampleRepository.Update(&Entry{Name: newRepoName,
 		URL: "https://example.com/sample",
 	})
 
-	if repoCount != len(sampleRepository.Repositories) {
-		t.Errorf("invalid number of repositories found %d, expected number of repositories %d", len(sampleRepository.Repositories), repoCount)
-	}
+	assert.Lenf(t, sampleRepository.Repositories, repoCount, "invalid number of repositories found %d, expected number of repositories %d", len(sampleRepository.Repositories), repoCount)
 }
 
 func TestWriteFile(t *testing.T) {
@@ -198,31 +168,21 @@ func TestWriteFile(t *testing.T) {
 	)
 
 	file, err := os.CreateTemp(t.TempDir(), "helm-repo")
-	if err != nil {
-		t.Errorf("failed to create test-file (%v)", err)
-	}
+	require.NoErrorf(t, err, "failed to create test-file")
 	defer os.Remove(file.Name())
-	if err := sampleRepository.WriteFile(file.Name(), 0o600); err != nil {
-		t.Errorf("failed to write file (%v)", err)
-	}
+	require.NoErrorf(t, sampleRepository.WriteFile(file.Name(), 0o600), "failed to write file")
 
 	repos, err := LoadFile(file.Name())
-	if err != nil {
-		t.Errorf("failed to load file (%v)", err)
-	}
+	require.NoErrorf(t, err, "failed to load file")
 	for _, repo := range sampleRepository.Repositories {
-		if !repos.Has(repo.Name) {
-			t.Errorf("expected repository %s not found", repo.Name)
-		}
+		assert.Truef(t, repos.Has(repo.Name), "expected repository %s not found", repo.Name)
 	}
 }
 
 func TestRepoNotExists(t *testing.T) {
-	if _, err := LoadFile("/this/path/does/not/exist.yaml"); err == nil {
-		t.Error("expected err to be non-nil when path does not exist")
-	} else if !strings.Contains(err.Error(), "couldn't load repositories file") {
-		t.Error("expected prompt `couldn't load repositories file`")
-	}
+	_, err := LoadFile("/this/path/does/not/exist.yaml")
+	require.Error(t, err, "expected err to be non-nil when path does not exist")
+	assert.ErrorContains(t, err, "couldn't load repositories file", "expected prompt `couldn't load repositories file`")
 }
 
 func TestRemoveRepositoryInvalidEntries(t *testing.T) {
@@ -246,12 +206,8 @@ func TestRemoveRepositoryInvalidEntries(t *testing.T) {
 
 	removeRepository := "stable"
 	found := sampleRepository.Remove(removeRepository)
-	if !found {
-		t.Errorf("expected repository %s not found", removeRepository)
-	}
+	assert.Truef(t, found, "expected repository %s not found", removeRepository)
 
 	found = sampleRepository.Has(removeRepository)
-	if found {
-		t.Errorf("repository %s not deleted", removeRepository)
-	}
+	assert.Falsef(t, found, "repository %s not deleted", removeRepository)
 }

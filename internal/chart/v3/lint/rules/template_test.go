@@ -37,13 +37,11 @@ const templateTestBasedir = "./testdata/albatross"
 func TestValidateAllowedExtension(t *testing.T) {
 	var failTest = []string{"/foo", "/test.toml"}
 	for _, test := range failTest {
-		err := validateAllowedExtension(test)
-		require.ErrorContains(t, err, "Valid extensions are .yaml, .yml, .tpl, or .txt", "validateAllowedExtension('%s') to return \"Valid extensions are .yaml, .yml, .tpl, or .txt\", got no error", test)
+		require.ErrorContains(t, validateAllowedExtension(test), "Valid extensions are .yaml, .yml, .tpl, or .txt", "validateAllowedExtension('%s') to return \"Valid extensions are .yaml, .yml, .tpl, or .txt\", got no error", test)
 	}
 	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml", "NOTES.txt"}
 	for _, test := range successTest {
-		err := validateAllowedExtension(test)
-		assert.NoError(t, err, "validateAllowedExtension('%s') to return no error", test)
+		assert.NoError(t, validateAllowedExtension(test), "validateAllowedExtension('%s') to return no error", test)
 	}
 }
 
@@ -58,8 +56,7 @@ func TestTemplateParsing(t *testing.T) {
 	res := linter.Messages
 
 	require.Len(t, res, 1, "Expected one error, got %d, %v", len(res), res)
-
-	assert.ErrorContains(t, res[0].Err, "deliberateSyntaxError", "Unexpected error: %s", res[0])
+	assert.ErrorContains(t, res[0].Err, "deliberateSyntaxError")
 }
 
 var wrongTemplatePath = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
@@ -86,7 +83,7 @@ func TestMultiTemplateFail(t *testing.T) {
 
 	require.Len(t, res, 1, "Expected 1 error, got %d, %v", len(res), res)
 
-	assert.ErrorContains(t, res[0].Err, "object name does not conform to Kubernetes naming requirements", "Unexpected error: %s", res[0].Err)
+	assert.ErrorContains(t, res[0].Err, "object name does not conform to Kubernetes naming requirements")
 }
 
 func TestValidateMetadataName(t *testing.T) {
@@ -292,8 +289,7 @@ spec:
       - name: nginx
         image: nginx:1.14.2
 	`
-	err := validateMatchSelector(md, manifest)
-	require.NoError(t, err)
+	require.NoError(t, validateMatchSelector(md, manifest))
 	manifest = `
 	apiVersion: apps/v1
 kind: Deployment
@@ -315,8 +311,7 @@ spec:
       - name: nginx
         image: nginx:1.14.2
 	`
-	err = validateMatchSelector(md, manifest)
-	require.NoError(t, err)
+	require.NoError(t, validateMatchSelector(md, manifest))
 	manifest = `
 	apiVersion: apps/v1
 kind: Deployment
@@ -335,8 +330,7 @@ spec:
       - name: nginx
         image: nginx:1.14.2
 	`
-	err = validateMatchSelector(md, manifest)
-	assert.Error(t, err, "expected Deployment with no selector to fail")
+	assert.Error(t, validateMatchSelector(md, manifest), "expected Deployment with no selector to fail")
 }
 
 func TestValidateTopIndentLevel(t *testing.T) {
@@ -349,8 +343,11 @@ func TestValidateTopIndentLevel(t *testing.T) {
 		"  apiVersion:foo":         true,
 		"\n\n  apiVersion:foo\n\n": true,
 	} {
-		if err := validateTopIndentLevel(doc); (err == nil) == shouldFail {
-			t.Errorf("Expected %t for %q", shouldFail, doc)
+		err := validateTopIndentLevel(doc)
+		if shouldFail {
+			assert.Errorf(t, err, "Expected %t for %q", shouldFail, doc)
+		} else {
+			assert.NoErrorf(t, err, "Expected %t for %q", shouldFail, doc)
 		}
 	}
 }
