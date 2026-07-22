@@ -78,8 +78,7 @@ func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
 	// Access the underlying FailingKubeClient to check recorded options
 	failer := config.KubeClient.(*kubefake.FailingKubeClient)
 
-	err := client.Run(rel.Name)
-	req.NoError(err)
+	req.NoError(client.Run(rel.Name))
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
