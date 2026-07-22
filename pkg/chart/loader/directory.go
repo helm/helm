@@ -77,20 +77,20 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		// Normalize to / since it will also work on Windows
 		n = filepath.ToSlash(n)
 
+		// If a .helmignore file matches, skip this file.
+		if fi != nil && rules.Ignore(n, fi) {
+			if fi.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}
 		if fi.IsDir() {
 			// Directory-based ignore rules should involve skipping the entire
 			// contents of that directory.
-			if rules.Ignore(n, fi) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		// If a .helmignore file matches, skip this file.
-		if rules.Ignore(n, fi) {
 			return nil
 		}
 
