@@ -180,6 +180,7 @@ func (ch *Chart) CRDObjects() []CRD {
 // StampModTimes sets timestamps on the chart (and dependencies) to epoch.
 // This is used for reproducible builds via SOURCE_DATE_EPOCH.
 func (ch *Chart) StampModTimes(epoch time.Time) {
+	epoch = epoch.UTC().Truncate(time.Second)
 	ch.ModTime = epoch
 	if len(ch.Schema) > 0 {
 		ch.SchemaModTime = epoch
