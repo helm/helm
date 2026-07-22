@@ -20,7 +20,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"testing"
 
 	"github.com/Masterminds/semver/v3"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -41,15 +40,17 @@ var (
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
 	DefaultVersionSet = allKnownVersions()
 
-	DefaultCapabilities = func() *Capabilities {
-		caps, err := makeDefaultCapabilities()
-		if err != nil {
-			panic(fmt.Sprintf("failed to create default capabilities: %v", err))
-		}
-		return caps
-
-	}()
+	// DefaultCapabilities is initialized during init().
+	DefaultCapabilities *Capabilities
 )
+
+func init() {
+	var err error
+	DefaultCapabilities, err = makeDefaultCapabilities()
+	if err != nil {
+		panic(fmt.Sprintf("failed to create default capabilities: %v", err))
+	}
+}
 
 // Capabilities describes the capabilities of the Kubernetes cluster.
 type Capabilities struct {
@@ -143,16 +144,11 @@ func allKnownVersions() VersionSet {
 }
 
 func makeDefaultCapabilities() (*Capabilities, error) {
-	// Test builds don't include debug info / module info
-	// (And even if they did, we probably want stable capabilities for tests anyway)
-	// Return a default value for test builds
-	if testing.Testing() {
-		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
-	}
-
 	vstr, err := helmversion.K8sIOClientGoModVersion()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
+		// Test builds and environments without k8s.io/client-go build info
+		// fall back to a stable default version.
+		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
 	v, err := semver.NewVersion(vstr)
