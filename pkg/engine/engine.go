@@ -176,27 +176,18 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 
 // As does 'tpl', so that nested calls to 'tpl' see the templates
 // defined by their enclosing contexts.
-func tplFun(parent *template.Template, includedNames map[string]int, strict bool) func(string, any) (string, error) {
+func tplFun(parent *template.Template, includedNames map[string]int) func(string, any) (string, error) {
 	return func(tpl string, vals any) (string, error) {
 		t, err := parent.Clone()
 		if err != nil {
 			return "", fmt.Errorf("cannot clone template: %w", err)
 		}
 
-		// Re-inject the missingkey option, see text/template issue https://github.com/golang/go/issues/43022
-		// We have to go by strict from our engine configuration, as the option fields are private in Template.
-		// TODO: Remove workaround (and the strict parameter) once we build only with golang versions with a fix.
-		if strict {
-			t.Option("missingkey=error")
-		} else {
-			t.Option("missingkey=zero")
-		}
-
 		// Re-inject 'include' so that it can close over our clone of t;
 		// this lets any 'define's inside tpl be 'include'd.
 		t.Funcs(template.FuncMap{
 			"include": includeFun(t, includedNames),
-			"tpl":     tplFun(t, includedNames, strict),
+			"tpl":     tplFun(t, includedNames),
 		})
 
 		// We need a .New template, as template text which is just blanks
@@ -227,7 +218,7 @@ func (e Engine) initFunMap(ctx context.Context, t *template.Template) {
 
 	// Add the template-rendering functions here so we can close over t.
 	funcMap["include"] = includeFun(t, includedNames)
-	funcMap["tpl"] = tplFun(t, includedNames, e.Strict)
+	funcMap["tpl"] = tplFun(t, includedNames)
 
 	// Add the `required` function here so we can use lintMode
 	funcMap["required"] = func(warn string, val any) (any, error) {
