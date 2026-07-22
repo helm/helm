@@ -34,6 +34,7 @@ type options struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
+	ociNormalizeVersion   bool
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -66,6 +67,18 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 func WithPlainHTTP(plainHTTP bool) Option {
 	return func(opts *options) {
 		opts.plainHTTP = plainHTTP
+	}
+}
+
+// WithOCINormalizeVersion determines whether the OCI tag is derived from the
+// canonical semver representation of the chart version rather than the raw
+// version string. Note this is unrelated to the registry client's "strict
+// mode" (registry.PushOptStrictMode); enabling it may in fact require that
+// strict mode be relaxed, since the canonical tag can differ from the raw
+// chart version.
+func WithOCINormalizeVersion(ociNormalizeVersion bool) Option {
+	return func(opts *options) {
+		opts.ociNormalizeVersion = ociNormalizeVersion
 	}
 }
 

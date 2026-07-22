@@ -40,6 +40,7 @@ type registryPushOptions struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
+	ociNormalizeVersion   bool
 	password              string
 	username              string
 }
@@ -84,6 +85,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSVerify),
 				action.WithPlainHTTP(o.plainHTTP),
+				action.WithOCINormalizeVersion(o.ociNormalizeVersion),
 				action.WithPushOptWriter(out))
 			client.Settings = settings
 			output, err := client.Run(chartRef, remote)
@@ -101,6 +103,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart upload")
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
+	f.BoolVar(&o.ociNormalizeVersion, "oci-normalize-version", false, "push using the canonical semver form of the chart version as the OCI tag (e.g. v1.2.3 is pushed as 1.2.3)")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
 

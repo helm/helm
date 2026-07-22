@@ -391,6 +391,199 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 	}
 }
 
+func TestWithOCINormalizeVersion(t *testing.T) {
+	p, err := NewOCIPusher(WithOCINormalizeVersion(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	op, ok := p.(*OCIPusher)
+	if !ok {
+		t.Fatal("Expected NewOCIPusher to produce an *OCIPusher")
+	}
+
+	if !op.opts.ociNormalizeVersion {
+		t.Error("Expected WithOCINormalizeVersion(true) to set ociNormalizeVersion")
+	}
+
+	// Defaults to false when the option is not supplied.
+	p, err = NewOCIPusher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.(*OCIPusher).opts.ociNormalizeVersion {
+		t.Error("Expected ociNormalizeVersion to default to false")
+	}
+}
+
+func TestResolveOCITagVersion(t *testing.T) {
+	tests := []struct {
+		name                string
+		rawVersion          string
+		ociNormalizeVersion bool
+		want                string
+		expectError         bool
+	}{
+		{
+			name:                "normalize disabled returns raw version unchanged",
+			rawVersion:          "v1.2.3",
+			ociNormalizeVersion: false,
+			want:                "v1.2.3",
+		},
+		{
+			name:                "normalize disabled does not validate version",
+			rawVersion:          "not-a-semver",
+			ociNormalizeVersion: false,
+			want:                "not-a-semver",
+		},
+		{
+			name:                "normalize strips leading v",
+			rawVersion:          "v1.2.3",
+			ociNormalizeVersion: true,
+			want:                "1.2.3",
+		},
+		{
+			name:                "normalize leaves canonical version unchanged",
+			rawVersion:          "1.2.3",
+			ociNormalizeVersion: true,
+			want:                "1.2.3",
+		},
+		{
+			name:                "normalize preserves prerelease",
+			rawVersion:          "1.2.3-alpha.1",
+			ociNormalizeVersion: true,
+			want:                "1.2.3-alpha.1",
+		},
+		{
+			name:                "normalize preserves build metadata (sanitized to underscore later)",
+			rawVersion:          "1.2.3+build.5",
+			ociNormalizeVersion: true,
+			want:                "1.2.3+build.5",
+		},
+		{
+			name:                "normalize errors on non-semver version",
+			rawVersion:          "not-a-semver",
+			ociNormalizeVersion: true,
+			expectError:         true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveOCITagVersion(tt.rawVersion, tt.ociNormalizeVersion)
+			if tt.expectError {
+				if err == nil {
+					t.Fatalf("Expected error for version %q but got none", tt.rawVersion)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("resolveOCITagVersion(%q, %t) = %q, want %q", tt.rawVersion, tt.ociNormalizeVersion, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildOCIReference(t *testing.T) {
+	tests := []struct {
+		name                string
+		href                string
+		chartName           string
+		rawVersion          string
+		ociNormalizeVersion bool
+		wantRef             string
+		wantRelax           bool
+		expectError         bool
+	}{
+		{
+			name:                "normalize disabled uses raw version and keeps strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "v1.2.3",
+			ociNormalizeVersion: false,
+			wantRef:             "localhost:5000/charts/mychart:v1.2.3",
+			wantRelax:           false,
+		},
+		{
+			name:                "normalize canonicalizes v-prefixed version and relaxes strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "v1.2.3",
+			ociNormalizeVersion: true,
+			wantRef:             "localhost:5000/charts/mychart:1.2.3",
+			wantRelax:           true,
+		},
+		{
+			name:                "normalize leaves canonical version and keeps strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "1.2.3",
+			ociNormalizeVersion: true,
+			wantRef:             "localhost:5000/charts/mychart:1.2.3",
+			wantRelax:           false,
+		},
+		{
+			name:                "normalize completes short version and relaxes strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "1.2",
+			ociNormalizeVersion: true,
+			wantRef:             "localhost:5000/charts/mychart:1.2.0",
+			wantRelax:           true,
+		},
+		{
+			name:                "normalize with build metadata keeps strict mode",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "1.2.3+build.5",
+			ociNormalizeVersion: true,
+			wantRef:             "localhost:5000/charts/mychart:1.2.3+build.5",
+			wantRelax:           false,
+		},
+		{
+			name:                "oci scheme prefix is trimmed from href",
+			href:                "oci://registry.example.com/team/charts",
+			chartName:           "mychart",
+			rawVersion:          "1.2.3",
+			ociNormalizeVersion: false,
+			wantRef:             "registry.example.com/team/charts/mychart:1.2.3",
+			wantRelax:           false,
+		},
+		{
+			name:                "normalize errors on non-semver version",
+			href:                "oci://localhost:5000/charts",
+			chartName:           "mychart",
+			rawVersion:          "not-a-semver",
+			ociNormalizeVersion: true,
+			expectError:         true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ref, relax, err := buildOCIReference(tt.href, tt.chartName, tt.rawVersion, tt.ociNormalizeVersion)
+			if tt.expectError {
+				if err == nil {
+					t.Fatalf("Expected error for version %q but got none", tt.rawVersion)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			if ref != tt.wantRef {
+				t.Errorf("buildOCIReference ref = %q, want %q", ref, tt.wantRef)
+			}
+			if relax != tt.wantRelax {
+				t.Errorf("buildOCIReference relaxStrictMode = %t, want %t", relax, tt.wantRelax)
+			}
+		})
+	}
+}
+
 func TestOCIPusher_Push_MultipleOptions(t *testing.T) {
 	chartPath := "../../pkg/cmd/testdata/testcharts/compressedchart-0.1.0.tgz"
 
