@@ -32,8 +32,23 @@ func newBase(source string) base {
 	settings := cli.New()
 	return base{
 		Source:           source,
-		PluginsDirectory: settings.PluginsDirectory,
+		PluginsDirectory: pluginInstallDir(settings.PluginsDirectory),
 	}
+}
+
+// pluginInstallDir returns the directory to install a new plugin into.
+// When HELM_PLUGINS contains multiple colon-separated paths, the first
+// path is used as the install destination — consistent with how
+// FindPlugins() loads from all paths and matching git conventions.
+func pluginInstallDir(helmPlugins string) string {
+	if helmPlugins == "" {
+		return helmPlugins
+	}
+	dirs := filepath.SplitList(helmPlugins)
+	if len(dirs) == 0 {
+		return helmPlugins
+	}
+	return dirs[0]
 }
 
 // Path is where the plugin will be installed.
