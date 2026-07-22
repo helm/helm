@@ -38,6 +38,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 func TestSortTemplates(t *testing.T) {
@@ -1316,7 +1317,6 @@ func TestTraceableError_NoTemplateForm(t *testing.T) {
 func TestRenderSubchartDefaultNilNoStringify(t *testing.T) {
 	modTime := time.Now()
 
-	// Subchart has a default with nil values
 	subchart := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "child"},
 		Templates: []*common.File{
@@ -1328,19 +1328,29 @@ func TestRenderSubchartDefaultNilNoStringify(t *testing.T) {
 		},
 		Values: map[string]any{
 			"keyMapping": map[string]any{
-				"password": nil, // nil in chart defaults
+				"password": nil,
 			},
 		},
 	}
 
 	parent := &chart.Chart{
-		Metadata: &chart.Metadata{Name: "parent"},
-		Values:   map[string]any{},
+		Metadata: &chart.Metadata{
+			Name:         "parent",
+			Dependencies: []*chart.Dependency{{Name: "child"}},
+		},
+		Values: map[string]any{},
 	}
 	parent.AddDependency(subchart)
 
-	// Parent user values don't set keyMapping
-	injValues := map[string]any{}
+	injValues := map[string]any{
+		"child": map[string]any{
+			"someOtherKey": "someValue",
+		},
+	}
+
+	if err := chartutil.ProcessDependencies(parent, injValues); err != nil {
+		t.Fatalf("Failed to process dependencies: %s", err)
+	}
 
 	tmp, err := util.CoalesceValues(parent, injValues)
 	require.NoError(t, err, "Failed to coalesce values")
