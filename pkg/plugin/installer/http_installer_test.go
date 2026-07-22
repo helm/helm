@@ -127,6 +127,23 @@ func TestHTTPInstaller(t *testing.T) {
 
 }
 
+func TestHTTPInstallerPathWithPluginPathList(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	t.Setenv("HELM_PLUGINS", first+string(filepath.ListSeparator)+second)
+
+	source := "https://example.com/plugins/fake-plugin-0.0.1.tar.gz"
+	i, err := NewHTTPInstaller(source)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	expect := filepath.Join(first, "fake-plugin")
+	if i.Path() != expect {
+		t.Fatalf("expected path %q, got %q", expect, i.Path())
+	}
+}
+
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	ensure.HelmHome(t)
 	srv := mockArchiveServer()
