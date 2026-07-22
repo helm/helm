@@ -20,8 +20,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
@@ -47,35 +49,17 @@ var badChartName, _ = chartutil.LoadChartfile(badChartNamePath)
 func TestValidateChartYamlNotDirectory(t *testing.T) {
 	_ = os.Mkdir(nonExistingChartFilePath, os.ModePerm)
 	defer os.Remove(nonExistingChartFilePath)
-
-	err := validateChartYamlNotDirectory(nonExistingChartFilePath)
-	if err == nil {
-		t.Error("validateChartYamlNotDirectory to return a linter error, got no error")
-	}
+	assert.Error(t, validateChartYamlNotDirectory(nonExistingChartFilePath), "validateChartYamlNotDirectory to return a linter error, got no error")
 }
 
 func TestValidateChartYamlFormat(t *testing.T) {
-	err := validateChartYamlFormat(errors.New("Read error"))
-	if err == nil {
-		t.Error("validateChartYamlFormat to return a linter error, got no error")
-	}
-
-	err = validateChartYamlFormat(nil)
-	if err != nil {
-		t.Error("validateChartYamlFormat to return no error, got a linter error")
-	}
+	require.Error(t, validateChartYamlFormat(errors.New("Read error")), "validateChartYamlFormat to return a linter error, got no error")
+	assert.NoError(t, validateChartYamlFormat(nil), "validateChartYamlFormat to return no error, got a linter error")
 }
 
 func TestValidateChartName(t *testing.T) {
-	err := validateChartName(badChart)
-	if err == nil {
-		t.Error("validateChartName to return a linter error, got no error")
-	}
-
-	err = validateChartName(badChartName)
-	if err == nil {
-		t.Error("expected validateChartName to return a linter error for an invalid name, got no error")
-	}
+	require.Error(t, validateChartName(badChart), "validateChartName to return a linter error, got no error")
+	assert.Error(t, validateChartName(badChartName), "expected validateChartName to return a linter error for an invalid name, got no error")
 }
 
 func TestValidateChartVersion(t *testing.T) {
@@ -93,18 +77,12 @@ func TestValidateChartVersion(t *testing.T) {
 
 	for _, test := range failTest {
 		badChart.Version = test.Version
-		err := validateChartVersion(badChart)
-		if err == nil || !strings.Contains(err.Error(), test.ErrorMsg) {
-			t.Errorf("validateChartVersion(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
-		}
+		require.ErrorContainsf(t, validateChartVersion(badChart), test.ErrorMsg, "validateChartVersion(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
 	}
 
 	for _, version := range successTest {
 		badChart.Version = version
-		err := validateChartVersion(badChart)
-		if err != nil {
-			t.Errorf("validateChartVersion(%s) to return no error, got a linter error", version)
-		}
+		assert.NoError(t, validateChartVersion(badChart), "validateChartVersion(%s) to return no error, got a linter error", version)
 	}
 }
 
@@ -122,18 +100,12 @@ func TestValidateChartVersionStrictSemVerV2(t *testing.T) {
 
 	for _, test := range failTest {
 		badChart.Version = test.Version
-		err := validateChartVersionStrictSemVerV2(badChart)
-		if err == nil || !strings.Contains(err.Error(), test.ErrorMsg) {
-			t.Errorf("validateChartVersionStrictSemVerV2(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
-		}
+		require.ErrorContainsf(t, validateChartVersionStrictSemVerV2(badChart), test.ErrorMsg, "validateChartVersionStrictSemVerV2(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
 	}
 
 	for _, version := range successTest {
 		badChart.Version = version
-		err := validateChartVersionStrictSemVerV2(badChart)
-		if err != nil {
-			t.Errorf("validateChartVersionStrictSemVerV2(%s) to return no error, got a linter error", version)
-		}
+		assert.NoError(t, validateChartVersionStrictSemVerV2(badChart), "validateChartVersionStrictSemVerV2(%s) to return no error, got a linter error", version)
 	}
 }
 
@@ -158,29 +130,17 @@ func TestValidateChartMaintainer(t *testing.T) {
 
 	for _, test := range failTest {
 		badChart.Maintainers = []*chart.Maintainer{{Name: test.Name, Email: test.Email}}
-		err := validateChartMaintainer(badChart)
-		if err == nil || !strings.Contains(err.Error(), test.ErrorMsg) {
-			t.Errorf("validateChartMaintainer(%s, %s) to return \"%s\", got no error", test.Name, test.Email, test.ErrorMsg)
-		}
+		require.ErrorContainsf(t, validateChartMaintainer(badChart), test.ErrorMsg, "validateChartMaintainer(%s, %s) to return \"%s\", got no error", test.Name, test.Email, test.ErrorMsg)
 	}
 
 	for _, test := range successTest {
 		badChart.Maintainers = []*chart.Maintainer{{Name: test.Name, Email: test.Email}}
-		err := validateChartMaintainer(badChart)
-		if err != nil {
-			t.Errorf("validateChartMaintainer(%s, %s) to return no error, got %s", test.Name, test.Email, err.Error())
-		}
+		require.NoError(t, validateChartMaintainer(badChart), "validateChartMaintainer(%s, %s)", test.Name, test.Email)
 	}
 
 	// Testing for an empty maintainer
 	badChart.Maintainers = []*chart.Maintainer{nil}
-	err := validateChartMaintainer(badChart)
-	if err == nil {
-		t.Error("validateChartMaintainer did not return error for nil maintainer as expected")
-	}
-	if err.Error() != "a maintainer entry is empty" {
-		t.Errorf("validateChartMaintainer returned unexpected error for nil maintainer: %s", err.Error())
-	}
+	assert.EqualError(t, validateChartMaintainer(badChart), "a maintainer entry is empty")
 }
 
 func TestValidateChartSources(t *testing.T) {
@@ -188,18 +148,12 @@ func TestValidateChartSources(t *testing.T) {
 	var successTest = []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish"}
 	for _, test := range failTest {
 		badChart.Sources = []string{test}
-		err := validateChartSources(badChart)
-		if err == nil || !strings.Contains(err.Error(), "invalid source URL") {
-			t.Errorf("validateChartSources(%s) to return \"invalid source URL\", got no error", test)
-		}
+		require.ErrorContainsf(t, validateChartSources(badChart), "invalid source URL", "validateChartSources(%s) to return \"invalid source URL\", got no error", test)
 	}
 
 	for _, test := range successTest {
 		badChart.Sources = []string{test}
-		err := validateChartSources(badChart)
-		if err != nil {
-			t.Errorf("validateChartSources(%s) to return no error, got %s", test, err.Error())
-		}
+		assert.NoError(t, validateChartSources(badChart), "validateChartSources(%s) to return no error", test)
 	}
 }
 
@@ -209,24 +163,13 @@ func TestValidateChartIconPresence(t *testing.T) {
 			Icon: "",
 		}
 
-		err := validateChartIconPresence(testChart)
-
-		if err == nil {
-			t.Error("validateChartIconPresence to return a linter error, got no error")
-		} else if !strings.Contains(err.Error(), "icon is recommended") {
-			t.Errorf("expected %q, got %q", "icon is recommended", err.Error())
-		}
+		assert.ErrorContainsf(t, validateChartIconPresence(testChart), "icon is recommended", "expected %q", "icon is recommended")
 	})
 	t.Run("Icon present", func(t *testing.T) {
 		testChart := &chart.Metadata{
 			Icon: "http://example.org/icon.png",
 		}
-
-		err := validateChartIconPresence(testChart)
-
-		if err != nil {
-			t.Errorf("Unexpected error: %q", err.Error())
-		}
+		assert.NoError(t, validateChartIconPresence(testChart))
 	})
 }
 
@@ -235,18 +178,12 @@ func TestValidateChartIconURL(t *testing.T) {
 	var successTest = []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish.png"}
 	for _, test := range failTest {
 		badChart.Icon = test
-		err := validateChartIconURL(badChart)
-		if err == nil || !strings.Contains(err.Error(), "invalid icon URL") {
-			t.Errorf("validateChartIconURL(%s) to return \"invalid icon URL\", got no error", test)
-		}
+		require.ErrorContainsf(t, validateChartIconURL(badChart), "invalid icon URL", "validateChartIconURL(%s) to return \"invalid icon URL\", got no error", test)
 	}
 
 	for _, test := range successTest {
 		badChart.Icon = test
-		err := validateChartSources(badChart)
-		if err != nil {
-			t.Errorf("validateChartIconURL(%s) to return no error, got %s", test, err.Error())
-		}
+		assert.NoError(t, validateChartSources(badChart), "validateChartIconURL(%s) to return no error", test)
 	}
 }
 
@@ -257,37 +194,15 @@ func TestChartfile(t *testing.T) {
 		msgs := linter.Messages
 		expectedNumberOfErrorMessages := 7
 
-		if len(msgs) != expectedNumberOfErrorMessages {
-			t.Errorf("Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
-			return
-		}
+		require.Lenf(t, msgs, expectedNumberOfErrorMessages, "Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
 
-		if !strings.Contains(msgs[0].Err.Error(), "name is required") {
-			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
-		}
-
-		if !strings.Contains(msgs[1].Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
-			t.Errorf("Unexpected message 1: %s", msgs[1].Err)
-		}
-
-		if !strings.Contains(msgs[2].Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
-			t.Errorf("Unexpected message 2: %s", msgs[2].Err)
-		}
-
-		if !strings.Contains(msgs[3].Err.Error(), "icon is recommended") {
-			t.Errorf("Unexpected message 3: %s", msgs[3].Err)
-		}
-
-		if !strings.Contains(msgs[4].Err.Error(), "chart type is not valid in apiVersion") {
-			t.Errorf("Unexpected message 4: %s", msgs[4].Err)
-		}
-
-		if !strings.Contains(msgs[5].Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
-			t.Errorf("Unexpected message 5: %s", msgs[5].Err)
-		}
-		if !strings.Contains(msgs[6].Err.Error(), "version '0.0.0.0' is not a valid SemVerV2") {
-			t.Errorf("Unexpected message 6: %s", msgs[6].Err)
-		}
+		require.ErrorContains(t, msgs[0].Err, "name is required", "Unexpected message 0: %s", msgs[0].Err)
+		require.ErrorContains(t, msgs[1].Err, "apiVersion is required. The value must be either \"v1\" or \"v2\"", "Unexpected message 1: %s", msgs[1].Err)
+		require.ErrorContains(t, msgs[2].Err, "version '0.0.0.0' is not a valid SemVer", "Unexpected message 2: %s", msgs[2].Err)
+		require.ErrorContains(t, msgs[3].Err, "icon is recommended", "Unexpected message 3: %s", msgs[3].Err)
+		require.ErrorContains(t, msgs[4].Err, "chart type is not valid in apiVersion", "Unexpected message 4: %s", msgs[4].Err)
+		require.ErrorContains(t, msgs[5].Err, "dependencies are not valid in the Chart file with apiVersion", "Unexpected message 5: %s", msgs[5].Err)
+		assert.ErrorContains(t, msgs[6].Err, "version '0.0.0.0' is not a valid SemVerV2", "Unexpected message 6: %s", msgs[6].Err)
 	})
 
 	t.Run("Chart.yaml validity issues due to type mismatch", func(t *testing.T) {
@@ -301,19 +216,9 @@ func TestChartfile(t *testing.T) {
 			return
 		}
 
-		if !strings.Contains(msgs[0].Err.Error(), "version should be of type string") {
-			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
-		}
-
-		if !strings.Contains(msgs[1].Err.Error(), "version '7.2445e+06' is not a valid SemVer") {
-			t.Errorf("Unexpected message 1: %s", msgs[1].Err)
-		}
-
-		if !strings.Contains(msgs[2].Err.Error(), "appVersion should be of type string") {
-			t.Errorf("Unexpected message 2: %s", msgs[2].Err)
-		}
-		if !strings.Contains(msgs[3].Err.Error(), "version '7.2445e+06' is not a valid SemVerV2") {
-			t.Errorf("Unexpected message 3: %s", msgs[3].Err)
-		}
+		require.ErrorContains(t, msgs[0].Err, "version should be of type string", "Unexpected message 0: %s", msgs[0].Err)
+		require.ErrorContains(t, msgs[1].Err, "version '7.2445e+06' is not a valid SemVer", "Unexpected message 1: %s", msgs[1].Err)
+		require.ErrorContains(t, msgs[2].Err, "appVersion should be of type string", "Unexpected message 2: %s", msgs[2].Err)
+		assert.ErrorContains(t, msgs[3].Err, "version '7.2445e+06' is not a valid SemVerV2", "Unexpected message 3: %s", msgs[3].Err)
 	})
 }
