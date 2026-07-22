@@ -220,6 +220,72 @@ func TestInstallRelease(t *testing.T) {
 	is.Equal(rcommon.StatusDeployed, lrel.Info.Status)
 }
 
+func TestInstallReleaseRecordsChartSourceAfterRender(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	instAction := installAction(t)
+	instAction.ChartSource = "https://charts.example.com/repo"
+
+	// This template renders the chart's annotations. If the source were recorded
+	// before rendering, it would leak into the manifest via .Chart.Annotations.
+	tmpl := []*common.File{
+		{Name: "templates/cfg", ModTime: time.Now(), Data: []byte("annotations: {{ .Chart.Annotations }}")},
+	}
+	resi, err := instAction.RunWithContext(t.Context(), buildChartWithTemplates(tmpl), map[string]any{})
+	req.NoError(err)
+	res, err := releaserToV1Release(resi)
+	req.NoError(err)
+
+	// The rendered manifest must not contain the recorded source: the annotation
+	// is applied only after rendering, so it never reaches .Chart.Annotations.
+	is.NotContains(res.Manifest, "https://charts.example.com/repo")
+	is.NotContains(res.Manifest, ReleaseSourceAnnotation)
+
+	// The persisted release, however, must carry the source annotation so it can
+	// be surfaced by 'helm list --show-source' and 'helm get metadata'.
+	stored, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	req.NoError(err)
+	rel, err := releaserToV1Release(stored)
+	req.NoError(err)
+	is.Equal("https://charts.example.com/repo", rel.Chart.Metadata.Annotations[ReleaseSourceAnnotation])
+}
+
+func TestUpgradeReleaseRecordsChartSourceAfterRender(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "previous-release"
+	rel.Info.Status = rcommon.StatusDeployed
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	upAction.ChartSource = "https://charts.example.com/repo"
+
+	// Same probe as the install path: a template that renders the chart's
+	// annotations. If the source were recorded before rendering, it would leak
+	// into the manifest via .Chart.Annotations.
+	tmpl := []*common.File{
+		{Name: "templates/cfg", ModTime: time.Now(), Data: []byte("annotations: {{ .Chart.Annotations }}")},
+	}
+	resi, err := upAction.RunWithContext(t.Context(), rel.Name, buildChartWithTemplates(tmpl), map[string]any{})
+	req.NoError(err)
+	res, err := releaserToV1Release(resi)
+	req.NoError(err)
+
+	// The recorded source must not appear in the rendered manifest.
+	is.NotContains(res.Manifest, "https://charts.example.com/repo")
+	is.NotContains(res.Manifest, ReleaseSourceAnnotation)
+
+	// The persisted upgraded release must carry the source annotation.
+	stored, err := upAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	last, err := releaserToV1Release(stored)
+	req.NoError(err)
+	is.Equal("https://charts.example.com/repo", last.Chart.Metadata.Annotations[ReleaseSourceAnnotation])
+}
+
 func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
 	// This test will test checking ownership of a resource
 	// returned by the fake client. If the resource is not

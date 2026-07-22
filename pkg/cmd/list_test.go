@@ -41,6 +41,9 @@ func TestListCmd(t *testing.T) {
 			Name:       "chickadee",
 			Version:    "1.0.0",
 			AppVersion: "0.0.1",
+			Annotations: map[string]string{
+				"meta.helm.sh/release-source": "https://example.com/repo",
+			},
 		},
 	}
 
@@ -237,6 +240,11 @@ func TestListCmd(t *testing.T) {
 		cmd:    "list -n milano",
 		golden: "output/list-namespace.txt",
 		rels:   releaseFixture,
+	}, {
+		name:   "list releases with the source column",
+		cmd:    "list --show-source",
+		golden: "output/list-show-source.txt",
+		rels:   releaseFixture,
 	}}
 	runTestCmd(t, tests)
 }
@@ -257,6 +265,9 @@ func TestListOutputFormats(t *testing.T) {
 			Name:       "test-chart",
 			Version:    "1.0.0",
 			AppVersion: "0.0.1",
+			Annotations: map[string]string{
+				"meta.helm.sh/release-source": "https://example.com/repo",
+			},
 		},
 	}
 
@@ -316,6 +327,7 @@ func TestReleaseListWriter(t *testing.T) {
 		timeFormat string
 		noHeaders  bool
 		noColor    bool
+		showSource bool
 	}{
 		{
 			name:       "empty releases list",
@@ -345,11 +357,19 @@ func TestReleaseListWriter(t *testing.T) {
 			noHeaders:  false,
 			noColor:    true,
 		},
+		{
+			name:       "show source",
+			releases:   releases,
+			timeFormat: "",
+			noHeaders:  false,
+			noColor:    false,
+			showSource: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			writer := newReleaseListWriter(tt.releases, tt.timeFormat, tt.noHeaders, tt.noColor)
+			writer := newReleaseListWriter(tt.releases, tt.timeFormat, tt.noHeaders, tt.noColor, tt.showSource)
 
 			require.NotNil(t, writer, "Expected writer to be non-nil")
 			assert.Len(t, writer.releases, len(tt.releases), "Expected %d releases, got %d", len(tt.releases), len(writer.releases))
@@ -421,7 +441,7 @@ func TestReleaseListWriterMethods(t *testing.T) {
 				},
 			}
 
-			writer := newReleaseListWriter(testReleases, "", false, false)
+			writer := newReleaseListWriter(testReleases, "", false, false, false)
 
 			var buf []byte
 			out := &bytesWriter{buf: &buf}
@@ -443,7 +463,7 @@ func TestReleaseListWriterMethods(t *testing.T) {
 		})
 	}
 
-	writer := newReleaseListWriter(releases, "", false, false)
+	writer := newReleaseListWriter(releases, "", false, false, false)
 
 	var buf []byte
 	out := &bytesWriter{buf: &buf}
@@ -602,7 +622,7 @@ func TestListStatusMapping(t *testing.T) {
 				},
 			}
 
-			writer := newReleaseListWriter(releaseFixture, "", false, false)
+			writer := newReleaseListWriter(releaseFixture, "", false, false, false)
 			if len(writer.releases) != 1 {
 				t.Errorf("Expected 1 release, got %d", len(writer.releases))
 			}
