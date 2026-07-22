@@ -40,22 +40,19 @@ func (suite *TLSRegistryClientTestSuite) TearDownSuite() {
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_0_Login() {
-	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().Error(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth("badverybad", "ohsobad"),
-		LoginOptTLSClientConfig(tlsCert, tlsKey, tlsCA))
-	suite.Require().Error(err, "error logging into registry with bad credentials")
+		LoginOptTLSClientConfig(tlsCert, tlsKey, tlsCA)), "error logging into registry with bad credentials")
 
-	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().NoError(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptTLSClientConfig(tlsCert, tlsKey, tlsCA))
-	suite.Require().NoError(err, "no error logging into registry with good credentials")
+		LoginOptTLSClientConfig(tlsCert, tlsKey, tlsCA)), "no error logging into registry with good credentials")
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_1_Login() {
-	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().Error(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth("badverybad", "ohsobad"),
-		LoginOptTLSClientConfigFromConfig(&tls.Config{}))
-	suite.Require().Error(err, "error logging into registry with bad credentials")
+		LoginOptTLSClientConfigFromConfig(&tls.Config{})), "error logging into registry with bad credentials")
 
 	// Create a *tls.Config from tlsCert, tlsKey, and tlsCA.
 	cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
@@ -69,10 +66,9 @@ func (suite *TLSRegistryClientTestSuite) Test_1_Login() {
 		RootCAs:      rootCAs,
 	}
 
-	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().NoError(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptTLSClientConfigFromConfig(conf))
-	suite.Require().NoError(err, "no error logging into registry with good credentials")
+		LoginOptTLSClientConfigFromConfig(conf)), "no error logging into registry with good credentials")
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_1_Push() {
@@ -94,8 +90,7 @@ func (suite *TLSRegistryClientTestSuite) Test_4_Logout() {
 		suite.Require().Error(err, "failed to delete the credential for this-host-aint-real:5000")
 	}
 
-	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
-	suite.Require().NoError(err, "no error logging out of registry")
+	suite.Require().NoError(suite.RegistryClient.Logout(suite.DockerRegistryHost), "no error logging out of registry")
 }
 
 func TestTLSRegistryClientTestSuite(t *testing.T) {
