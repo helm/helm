@@ -170,12 +170,12 @@ func TestHookExecutionUnmarshalJSON(t *testing.T) {
 			err := json.Unmarshal([]byte(tt.input), &exec)
 			if tt.wantErr {
 				assert.Error(t, err)
-				return
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected.StartedAt.Unix(), exec.StartedAt.Unix())
+				assert.Equal(t, tt.expected.CompletedAt.Unix(), exec.CompletedAt.Unix())
+				assert.Equal(t, tt.expected.Phase, exec.Phase)
 			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected.StartedAt.Unix(), exec.StartedAt.Unix())
-			assert.Equal(t, tt.expected.CompletedAt.Unix(), exec.CompletedAt.Unix())
-			assert.Equal(t, tt.expected.Phase, exec.Phase)
 		})
 	}
 }
@@ -194,9 +194,7 @@ func TestHookExecutionRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	var decoded HookExecution
-	err = json.Unmarshal(data, &decoded)
-	require.NoError(t, err)
-
+	require.NoError(t, json.Unmarshal(data, &decoded))
 	assert.Equal(t, original.StartedAt.Unix(), decoded.StartedAt.Unix())
 	assert.Equal(t, original.CompletedAt.Unix(), decoded.CompletedAt.Unix())
 	assert.Equal(t, original.Phase, decoded.Phase)
@@ -208,12 +206,11 @@ func TestHookExecutionEmptyStringRoundTrip(t *testing.T) {
 	input := `{"started_at":"","completed_at":"","phase":"Succeeded"}`
 
 	var exec HookExecution
-	err := json.Unmarshal([]byte(input), &exec)
-	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal([]byte(input), &exec))
 
 	// Verify time fields are zero values
-	assert.True(t, exec.StartedAt.IsZero())
-	assert.True(t, exec.CompletedAt.IsZero())
+	assert.Zero(t, exec.StartedAt)
+	assert.Zero(t, exec.CompletedAt)
 	assert.Equal(t, HookPhaseSucceeded, exec.Phase)
 
 	// Marshal back and verify empty time fields are omitted
@@ -221,8 +218,7 @@ func TestHookExecutionEmptyStringRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	var result map[string]any
-	err = json.Unmarshal(data, &result)
-	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &result))
 
 	// Zero time values should be omitted
 	assert.NotContains(t, result, "started_at")
