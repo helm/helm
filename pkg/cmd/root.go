@@ -271,6 +271,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newDependencyCmd(actionConfig, out),
 		newPullCmd(actionConfig, out),
 		newShowCmd(actionConfig, out),
+		newBumpCmd(actionConfig, out),
 		newLintCmd(out),
 		newPackageCmd(out),
 		newRepoCmd(out),
