@@ -164,7 +164,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	relsi, err := u.cfg.Releases.History(name)
 	if err != nil {
-		if u.IgnoreNotFound {
+		if u.IgnoreNotFound && errors.Is(err, driver.ErrReleaseNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("uninstall: Release not loaded: %s: %w", name, err)
