@@ -32,6 +32,19 @@ func TestVersion(t *testing.T) {
 		name:   "template",
 		cmd:    "version --template='Version: {{.Version}}'",
 		golden: "output/version-template.txt",
+	}, {
+		name:   "output go",
+		cmd:    "version -o go",
+		golden: "output/version-output-go.txt",
+	}, {
+		name:   "output human",
+		cmd:    "version -o human",
+		golden: "output/version-output-human.txt",
+	}, {
+		name:      "invalid output format",
+		cmd:       "version -o invalid",
+		wantError: true,
+		golden:    "output/version-output-invalid.txt",
 	}}
 	runTestCmd(t, tests)
 }
