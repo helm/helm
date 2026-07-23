@@ -19,8 +19,10 @@ package cmd
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
@@ -32,9 +34,7 @@ func TestShowPreReleaseChart(t *testing.T) {
 	)
 	defer srv.Stop()
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	tests := []struct {
 		name        string
@@ -79,9 +79,7 @@ func TestShowPreReleaseChart(t *testing.T) {
 			_, _, err := executeActionCommand(cmd)
 			if err != nil {
 				if tt.fail {
-					if !strings.Contains(err.Error(), tt.expectedErr) {
-						t.Errorf("%q expected error: %s, got: %s", tt.name, tt.expectedErr, err.Error())
-					}
+					assert.ErrorContains(t, err, tt.expectedErr, "%q expected error: %s, got: %s", tt.name, tt.expectedErr, err.Error())
 					return
 				}
 				t.Errorf("%q reported error: %s", tt.name, err)

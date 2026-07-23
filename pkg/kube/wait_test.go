@@ -19,7 +19,6 @@ package kube
 import (
 	"errors"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -298,17 +297,12 @@ func TestLegacyWaiter_waitForPodSuccess(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			done, err := lw.waitForPodSuccess(tt.obj, "foo")
 			if tt.wantErr {
-				if err == nil {
-					t.Error("expected error, got none")
-				} else if !strings.Contains(err.Error(), tt.errMessage) {
-					t.Errorf("expected error to contain %q, got %q", tt.errMessage, err.Error())
-				}
-			} else if err != nil {
-				t.Errorf("unexpected error: %v", err)
+				require.Error(t, err, "expected error, got none")
+				require.ErrorContains(t, err, tt.errMessage, "expected error to contain %q, got %q", tt.errMessage, err.Error())
+			} else {
+				require.NoError(t, err)
 			}
-			if done != tt.wantDone {
-				t.Errorf("got done=%v, want %v", done, tt.wantDone)
-			}
+			assert.Equal(t, tt.wantDone, done, "got done=%v, want %v", done, tt.wantDone)
 		})
 	}
 }
@@ -390,17 +384,11 @@ func TestLegacyWaiter_waitForJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			done, err := lw.waitForJob(tt.obj, "test-job")
 			if tt.wantErr {
-				if err == nil {
-					t.Error("expected error, got none")
-				} else if !strings.Contains(err.Error(), tt.errMessage) {
-					t.Errorf("expected error to contain %q, got %q", tt.errMessage, err.Error())
-				}
-			} else if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-
-			if done != tt.wantDone {
-				t.Errorf("got done=%v, want %v", done, tt.wantDone)
+				require.Error(t, err, "expected error, got none")
+				require.ErrorContainsf(t, err, tt.errMessage, "expected error to contain %q, got %q", tt.errMessage, err.Error())
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantDone, done, "got done=%v, want %v", done, tt.wantDone)
 			}
 		})
 	}
@@ -459,9 +447,7 @@ func TestLegacyWaiter_isRetryableError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := lw.isRetryableError(tt.err, info)
-			if got != tt.wantRetry {
-				t.Errorf("isRetryableError() = %v, want %v", got, tt.wantRetry)
-			}
+			assert.Equal(t, tt.wantRetry, got, "isRetryableError() = %v, want %v", got, tt.wantRetry)
 		})
 	}
 }

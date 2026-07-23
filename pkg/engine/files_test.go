@@ -44,17 +44,13 @@ func getTestFiles() files {
 
 func TestNewFiles(t *testing.T) {
 	files := getTestFiles()
-	if len(files) != len(cases) {
-		t.Errorf("Expected len() = %d, got %d", len(cases), len(files))
-	}
+	assert.Len(t, files, len(cases), "Expected len() = %d, got %d", len(cases), len(files))
 
 	for i, f := range cases {
-		if got := string(files.GetBytes(f.path)); got != f.data {
-			t.Errorf("%d: expected %q, got %q", i, f.data, got)
-		}
-		if got := files.Get(f.path); got != f.data {
-			t.Errorf("%d: expected %q, got %q", i, f.data, got)
-		}
+		got := string(files.GetBytes(f.path))
+		assert.Equalf(t, got, f.data, "%d: expected %q, got %q", i, f.data, got)
+		got = files.Get(f.path)
+		assert.Equalf(t, got, f.data, "%d: expected %q, got %q", i, f.data, got)
 	}
 }
 

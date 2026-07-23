@@ -24,6 +24,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/repo/v1"
@@ -44,9 +47,7 @@ func TestUpdateCmd(t *testing.T) {
 		update:   updater,
 		repoFile: "testdata/repositories.yaml",
 	}
-	if err := o.run(&out); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, o.run(&out))
 
 	if got := out.String(); !strings.Contains(got, "charts") ||
 		!strings.Contains(got, "firstexample") ||
@@ -70,9 +71,7 @@ func TestUpdateCmdMultiple(t *testing.T) {
 		repoFile: "testdata/repositories.yaml",
 		names:    []string{"firstexample", "charts"},
 	}
-	if err := o.run(&out); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, o.run(&out))
 
 	if got := out.String(); !strings.Contains(got, "charts") ||
 		!strings.Contains(got, "firstexample") ||
@@ -96,9 +95,7 @@ func TestUpdateCmdInvalid(t *testing.T) {
 		repoFile: "testdata/repositories.yaml",
 		names:    []string{"firstexample", "invalid"},
 	}
-	if err := o.run(&out); err == nil {
-		t.Fatal("expected error but did not get one")
-	}
+	require.Error(t, o.run(&out), "expected error but did not get one")
 }
 
 func TestUpdateCustomCacheCmd(t *testing.T) {
@@ -119,12 +116,9 @@ func TestUpdateCustomCacheCmd(t *testing.T) {
 		repoCache: cachePath,
 	}
 	b := io.Discard
-	if err := o.run(b); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(cachePath, "test-index.yaml")); err != nil {
-		t.Fatalf("error finding created index file in custom cache: %v", err)
-	}
+	require.NoError(t, o.run(b))
+	_, err := os.Stat(filepath.Join(cachePath, "test-index.yaml"))
+	require.NoErrorf(t, err, "error finding created index file in custom cache")
 }
 
 func TestUpdateCharts(t *testing.T) {
@@ -140,20 +134,14 @@ func TestUpdateCharts(t *testing.T) {
 		Name: "charts",
 		URL:  ts.URL(),
 	}, getter.All(settings))
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	b := bytes.NewBuffer(nil)
 	updateCharts([]*repo.ChartRepository{r}, b)
 
 	got := b.String()
-	if strings.Contains(got, "Unable to get an update") {
-		t.Errorf("Failed to get a repo: %q", got)
-	}
-	if !strings.Contains(got, "Update Complete.") {
-		t.Error("Update was not successful")
-	}
+	assert.NotContains(t, got, "Unable to get an update", "Failed to get a repo: %q", got)
+	assert.Contains(t, got, "Update Complete.", "Update was not successful")
 }
 
 func TestRepoUpdateFileCompletion(t *testing.T) {
@@ -176,37 +164,22 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 		Name: "charts",
 		URL:  invalidURL,
 	}, getter.All(settings))
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	r2, err := repo.NewChartRepository(&repo.Entry{
 		Name: "charts",
 		URL:  invalidURL,
 	}, getter.All(settings))
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	b := bytes.NewBuffer(nil)
 	err = updateCharts([]*repo.ChartRepository{r1, r2}, b)
-	if err == nil {
-		t.Error("Repo update should return error because update of repository fails and 'fail-on-repo-update-fail' flag set")
-		return
-	}
+	require.Error(t, err, "Repo update should return error because update of repository fails and 'fail-on-repo-update-fail' flag set")
 	var expectedErr = "failed to update the following repositories"
 	var receivedErr = err.Error()
-	if !strings.Contains(receivedErr, expectedErr) {
-		t.Errorf("Expected error (%s) but got (%s) instead", expectedErr, receivedErr)
-	}
-	if !strings.Contains(receivedErr, invalidURL) {
-		t.Errorf("Expected invalid URL (%s) in error message but got (%s) instead", invalidURL, receivedErr)
-	}
+	require.ErrorContains(t, err, expectedErr, "Expected error (%s) but got (%s) instead", expectedErr, receivedErr)
+	require.ErrorContains(t, err, invalidURL, "Expected invalid URL (%s) in error message but got (%s) instead", invalidURL, receivedErr)
 
 	got := b.String()
-	if !strings.Contains(got, "Unable to get an update") {
-		t.Errorf("Repo should have failed update but instead got: %q", got)
-	}
-	if strings.Contains(got, "Update Complete.") {
-		t.Error("Update was not successful and should return error message because 'fail-on-repo-update-fail' flag set")
-	}
+	assert.Contains(t, got, "Unable to get an update", "Repo should have failed update but instead got: %q", got)
+	assert.NotContains(t, got, "Update Complete.", "Update was not successful and should return error message because 'fail-on-repo-update-fail' flag set")
 }

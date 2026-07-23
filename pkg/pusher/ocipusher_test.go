@@ -21,9 +21,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/registry"
@@ -31,13 +31,10 @@ import (
 
 func TestNewOCIPusher(t *testing.T) {
 	p, err := NewOCIPusher()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if _, ok := p.(*OCIPusher); !ok {
-		t.Fatal("Expected NewOCIPusher to produce an *OCIPusher")
-	}
+	_, ok := p.(*OCIPusher)
+	require.True(t, ok, "Expected NewOCIPusher to produce an *OCIPusher")
 
 	cd := "../../testdata"
 	join := filepath.Join
@@ -51,55 +48,28 @@ func TestNewOCIPusher(t *testing.T) {
 		WithInsecureSkipTLSVerify(insecureSkipTLSVerify),
 		WithPlainHTTP(plainHTTP),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	op, ok := p.(*OCIPusher)
-	if !ok {
-		t.Fatal("Expected NewOCIPusher to produce an *OCIPusher")
-	}
-
-	if op.opts.certFile != pub {
-		t.Errorf("Expected NewOCIPusher to contain %q as the public key file, got %q", pub, op.opts.certFile)
-	}
-
-	if op.opts.keyFile != priv {
-		t.Errorf("Expected NewOCIPusher to contain %q as the private key file, got %q", priv, op.opts.keyFile)
-	}
-
-	if op.opts.caFile != ca {
-		t.Errorf("Expected NewOCIPusher to contain %q as the CA file, got %q", ca, op.opts.caFile)
-	}
-
-	if op.opts.plainHTTP != plainHTTP {
-		t.Errorf("Expected NewOCIPusher to have plainHTTP as %t, got %t", plainHTTP, op.opts.plainHTTP)
-	}
-
-	if op.opts.insecureSkipTLSVerify != insecureSkipTLSVerify {
-		t.Errorf("Expected NewOCIPusher to have insecureSkipVerifyTLS as %t, got %t", insecureSkipTLSVerify, op.opts.insecureSkipTLSVerify)
-	}
+	require.True(t, ok, "Expected NewOCIPusher to produce an *OCIPusher")
+	assert.Equal(t, pub, op.opts.certFile, "Expected NewOCIPusher to contain %q as the public key file, got %q", pub, op.opts.certFile)
+	assert.Equal(t, priv, op.opts.keyFile, "Expected NewOCIPusher to contain %q as the private key file, got %q", priv, op.opts.keyFile)
+	assert.Equal(t, ca, op.opts.caFile, "Expected NewOCIPusher to contain %q as the CA file, got %q", ca, op.opts.caFile)
+	assert.Equal(t, plainHTTP, op.opts.plainHTTP, "Expected NewOCIPusher to have plainHTTP as %t, got %t", plainHTTP, op.opts.plainHTTP)
+	assert.Equal(t, insecureSkipTLSVerify, op.opts.insecureSkipTLSVerify, "Expected NewOCIPusher to have insecureSkipVerifyTLS as %t, got %t", insecureSkipTLSVerify, op.opts.insecureSkipTLSVerify)
 
 	// Test if setting registryClient is being passed to the ops
 	registryClient, err := registry.NewClient()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	p, err = NewOCIPusher(
 		WithRegistryClient(registryClient),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	op, ok = p.(*OCIPusher)
-	if !ok {
-		t.Fatal("expected NewOCIPusher to produce an *OCIPusher")
-	}
+	require.NoError(t, err)
 
-	if op.opts.registryClient != registryClient {
-		t.Errorf("Expected NewOCIPusher to contain %p as RegistryClient, got %p", registryClient, op.opts.registryClient)
-	}
+	op, ok = p.(*OCIPusher)
+	require.True(t, ok, "expected NewOCIPusher to produce an *OCIPusher")
+	assert.Equal(t, registryClient, op.opts.registryClient, "Expected NewOCIPusher to contain %p as RegistryClient, got %p", registryClient, op.opts.registryClient)
 }
 
 func TestOCIPusher_Push_ErrorHandling(t *testing.T) {
@@ -127,23 +97,13 @@ func TestOCIPusher_Push_ErrorHandling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pusher, err := NewOCIPusher()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			chartRef := tt.chartRef
 			if tt.setupFunc != nil {
 				chartRef = tt.setupFunc()
 			}
-
-			err = pusher.Push(chartRef, "oci://localhost:5000/test")
-			if err == nil {
-				t.Fatal("Expected error but got none")
-			}
-
-			if !strings.Contains(err.Error(), tt.expectedError) {
-				t.Errorf("Expected error containing %q, got %q", tt.expectedError, err.Error())
-			}
+			assert.ErrorContains(t, pusher.Push(chartRef, "oci://localhost:5000/test"), tt.expectedError)
 		})
 	}
 }
@@ -227,30 +187,20 @@ func TestOCIPusher_newRegistryClient(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pusher, err := NewOCIPusher(tt.opts...)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			op, ok := pusher.(*OCIPusher)
-			if !ok {
-				t.Fatal("Expected *OCIPusher")
-			}
+			require.True(t, ok, "Expected *OCIPusher")
 
 			client, err := op.newRegistryClient()
 			if tt.expectError {
-				if err == nil {
-					t.Fatal("Expected error but got none")
-				}
-				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("Expected error containing %q, got %q", tt.errorContains, err.Error())
+				require.Error(t, err, "Expected error but got none")
+				if tt.errorContains != "" {
+					require.ErrorContainsf(t, err, tt.errorContains, "Expected error containing %q, got %q", tt.errorContains, err.Error())
 				}
 			} else {
-				if err != nil {
-					t.Fatalf("Unexpected error: %v", err)
-				}
-				if client == nil {
-					t.Fatal("Expected non-nil registry client")
-				}
+				require.NoError(t, err)
+				require.NotNil(t, client, "Expected non-nil registry client")
 			}
 		})
 	}
@@ -287,25 +237,18 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 
 				// Copy a valid chart
 				src, err := os.Open(chartPath)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				defer src.Close()
 
 				dst, err := os.Create(tempChart)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
-				if _, err := io.Copy(dst, src); err != nil {
-					t.Fatal(err)
-				}
+				_, err = io.Copy(dst, src)
+				require.NoError(t, err)
 				dst.Close()
 
 				// Make the file unreadable
-				if err := os.Chmod(tempChart, 0o000); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.Chmod(tempChart, 0o000))
 
 				return tempChart, func() {
 					os.Chmod(tempChart, 0o644) // Restore permissions for cleanup
@@ -328,25 +271,18 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 
 				// Copy chart file
 				src, err := os.Open(chartWithProvPath)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				defer src.Close()
 
 				dst, err := os.Create(tempChart)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
-				if _, err := io.Copy(dst, src); err != nil {
-					t.Fatal(err)
-				}
+				_, err = io.Copy(dst, src)
+				require.NoError(t, err)
 				dst.Close()
 
 				// Create provenance file
-				if err := os.WriteFile(tempProv, []byte("test provenance data"), 0o644); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.WriteFile(tempProv, []byte("test provenance data"), 0o644))
 
 				return tempChart, func() {}
 			},
@@ -373,9 +309,7 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 			}
 
 			pusher, err := NewOCIPusher(tt.options...)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			err = pusher.Push(chartRef, tt.href)
 
@@ -400,27 +334,17 @@ func TestOCIPusher_Push_MultipleOptions(t *testing.T) {
 	}
 
 	pusher, err := NewOCIPusher()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test that multiple options are applied correctly
-	err = pusher.Push(chartPath, "oci://localhost:5000/test",
+	// We expect an error since we're not actually pushing to a registry
+	require.Error(t, pusher.Push(chartPath, "oci://localhost:5000/test",
 		WithPlainHTTP(true),
 		WithInsecureSkipTLSVerify(true),
-	)
-
-	// We expect an error since we're not actually pushing to a registry
-	if err == nil {
-		t.Fatal("Expected error when pushing without a valid registry")
-	}
+	), "Expected error when pushing without a valid registry")
 
 	// Verify options were applied
 	op := pusher.(*OCIPusher)
-	if !op.opts.plainHTTP {
-		t.Error("Expected plainHTTP option to be applied")
-	}
-	if !op.opts.insecureSkipTLSVerify {
-		t.Error("Expected insecureSkipTLSVerify option to be applied")
-	}
+	assert.True(t, op.opts.plainHTTP, "Expected plainHTTP option to be applied")
+	assert.True(t, op.opts.insecureSkipTLSVerify, "Expected insecureSkipTLSVerify option to be applied")
 }
