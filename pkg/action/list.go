@@ -300,11 +300,6 @@ func (l *List) filterSelector(releases []*release.Release, selector labels.Selec
 
 // SetStateMask calculates the state mask based on parameters.
 func (l *List) SetStateMask() {
-	if l.All {
-		l.StateMask = ListAll
-		return
-	}
-
 	state := ListStates(0)
 	if l.Deployed {
 		state |= ListDeployed
