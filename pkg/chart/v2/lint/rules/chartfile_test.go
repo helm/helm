@@ -58,8 +58,32 @@ func TestValidateChartYamlFormat(t *testing.T) {
 }
 
 func TestValidateChartName(t *testing.T) {
+	// empty name (badChart has name: "")
 	require.Error(t, validateChartName(badChart), "validateChartName to return a linter error, got no error")
+
 	assert.Error(t, validateChartName(badChartName), "expected validateChartName to return a linter error for an invalid name, got no error")
+
+	invalidNames := []struct {
+		name   string
+		reason string
+	}{
+		{"../badchartname", "path traversal"},
+		{"MyInvalidChart", "uppercase letters"},
+		{"my_chart", "underscore"},
+		{"-my-chart", "leading hyphen"},
+		{"my-chart-", "trailing hyphen"},
+		{"my chart", "space"},
+	}
+	for _, tc := range invalidNames {
+		meta := &chart.Metadata{Name: tc.name}
+		assert.Error(t, validateChartName(meta), "expected validateChartName to return error for %q (%s), got nil", tc.name, tc.reason)
+	}
+
+	validNames := []string{"my-chart", "my.chart", "mychart", "my-chart-v2", "1-chart", "myinvalidchart"} // "myinvalidchart" is the lowercase twin of the invalid "MyInvalidChart", confirming uppercase triggers failure
+	for _, name := range validNames {
+		meta := &chart.Metadata{Name: name}
+		assert.NoError(t, validateChartName(meta), "expected validateChartName to return no error for %q", name)
+	}
 }
 
 func TestValidateChartVersion(t *testing.T) {
