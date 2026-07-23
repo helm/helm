@@ -691,7 +691,10 @@ func (i *Install) recordRelease(r *release.Release) error {
 // This allows us to reuse names by superseding an existing release with a new one
 func (i *Install) replaceRelease(rel *release.Release) error {
 	hist, err := i.cfg.Releases.History(rel.Name)
-	if err != nil || len(hist) == 0 {
+	if err != nil {
+		return err
+	}
+	if len(hist) == 0 {
 		// No releases exist for this name, so we can return early
 		return nil
 	}
