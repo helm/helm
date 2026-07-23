@@ -332,6 +332,7 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 		Hooks:       hooks,
 		Labels:      mergeCustomLabels(lastRelease.Labels, u.Labels),
 		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
+		Source:      u.resolvedSource,
 	}
 
 	if notesTxt != "" {
