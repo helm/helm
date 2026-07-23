@@ -20,6 +20,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/release/common"
 )
 
@@ -50,10 +53,11 @@ func TestRecordsAdd(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if err := rs.Add(tt.rec); err != nil {
-			if !tt.ok {
-				t.Fatalf("failed: %q: %s\n", tt.desc, err)
-			}
+		err := rs.Add(tt.rec)
+		if !tt.ok {
+			require.NoError(t, err, "failed: %q:", tt.desc)
+		} else {
+			require.Error(t, err)
 		}
 	}
 }
@@ -77,23 +81,18 @@ func TestRecordsRemove(t *testing.T) {
 	startLen := rs.Len()
 
 	for _, tt := range tests {
-		if r := rs.Remove(tt.key); r == nil {
-			if !tt.ok {
-				t.Fatalf("Failed to %q (key = %s). Expected nil, got %v",
-					tt.desc,
-					tt.key,
-					r,
-				)
-			}
+		r := rs.Remove(tt.key)
+		if tt.ok {
+			require.Nil(t, r, "Failed to %q (key = %s). Expected nil, got %v", tt.desc, tt.key, r)
+		} else {
+			require.NotNil(t, r)
 		}
 	}
 
 	// We expect the total number of records will be less now than there were
 	// when we started.
 	endLen := rs.Len()
-	if endLen >= startLen {
-		t.Errorf("expected ending length %d to be less than starting length %d", endLen, startLen)
-	}
+	assert.Lessf(t, endLen, startLen, "expected ending length %d to be less than starting length %d", endLen, startLen)
 }
 
 func TestRecordsRemoveAt(t *testing.T) {
@@ -102,14 +101,10 @@ func TestRecordsRemoveAt(t *testing.T) {
 		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
-	if len(rs) != 2 {
-		t.Fatal("Expected len=2 for mock")
-	}
+	require.Len(t, rs, 2, "Expected len=2 for mock")
 
 	rs.Remove("rls-a.v1")
-	if len(rs) != 1 {
-		t.Fatalf("Expected length of rs to be 1, got %d", len(rs))
-	}
+	require.Len(t, rs, 1, "Expected length of rs to be 1, got %d", len(rs))
 }
 
 func TestRecordsGet(t *testing.T) {
@@ -137,9 +132,7 @@ func TestRecordsGet(t *testing.T) {
 
 	for _, tt := range tests {
 		got := rs.Get(tt.key)
-		if !reflect.DeepEqual(tt.rec, got) {
-			t.Fatalf("Expected %v, got %v", tt.rec, got)
-		}
+		require.Truef(t, reflect.DeepEqual(tt.rec, got), "Expected %v, got %v", tt.rec, got)
 	}
 }
 
@@ -168,9 +161,7 @@ func TestRecordsIndex(t *testing.T) {
 
 	for _, tt := range tests {
 		got, _ := rs.Index(tt.key)
-		if got != tt.sort {
-			t.Fatalf("Expected %d, got %d", tt.sort, got)
-		}
+		require.Equal(t, tt.sort, got, "Expected %d, got %d", tt.sort, got)
 	}
 }
 
@@ -199,9 +190,7 @@ func TestRecordsExists(t *testing.T) {
 
 	for _, tt := range tests {
 		got := rs.Exists(tt.key)
-		if got != tt.ok {
-			t.Fatalf("Expected %t, got %t", tt.ok, got)
-		}
+		require.Equal(t, tt.ok, got, "Expected %t, got %t", tt.ok, got)
 	}
 }
 
@@ -233,8 +222,6 @@ func TestRecordsReplace(t *testing.T) {
 
 	for _, tt := range tests {
 		got := rs.Replace(tt.key, tt.rec)
-		if !reflect.DeepEqual(tt.expected, got) {
-			t.Fatalf("Expected %v, got %v", tt.expected, got)
-		}
+		require.Truef(t, reflect.DeepEqual(tt.expected, got), "Expected %v, got %v", tt.expected, got)
 	}
 }

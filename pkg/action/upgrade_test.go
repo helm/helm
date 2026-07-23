@@ -176,8 +176,8 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 
 		resi, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
-		is.Contains(err.Error(), "arming key removed")
-		is.Contains(err.Error(), "rollback-on-failure")
+		req.ErrorContains(err, "arming key removed")
+		req.ErrorContains(err, "rollback-on-failure")
 		res, err := releaserToV1Release(resi)
 		req.NoError(err)
 
@@ -207,8 +207,8 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 
 		_, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
-		is.Contains(err.Error(), "update fail")
-		is.Contains(err.Error(), "an error occurred while rolling back the release")
+		req.ErrorContains(err, "update fail")
+		is.ErrorContains(err, "an error occurred while rolling back the release")
 	})
 }
 
@@ -240,8 +240,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		rel.Info.Status = common.StatusDeployed
 		rel.Config = existingValues
 
-		err := upAction.cfg.Releases.Create(rel)
-		req.NoError(err)
+		req.NoError(upAction.cfg.Releases.Create(rel))
 
 		upAction.ReuseValues = true
 		// setting newValues and upgrading
@@ -303,8 +302,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			Config:  existingValues,
 			Version: 1,
 		}
-		err := upAction.cfg.Releases.Create(rel)
-		req.NoError(err)
+		req.NoError(upAction.cfg.Releases.Create(rel))
 
 		upAction.ReuseValues = true
 		sampleChartWithSubChart := buildChart(
@@ -373,8 +371,7 @@ func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 		rel.Info.Status = common.StatusDeployed
 		rel.Config = existingValues
 
-		err := upAction.cfg.Releases.Create(rel)
-		req.NoError(err)
+		req.NoError(upAction.cfg.Releases.Create(rel))
 
 		upAction.ResetThenReuseValues = true
 		// setting newValues and upgrading
@@ -417,7 +414,7 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	vals := map[string]any{}
 
 	_, err := upAction.Run(rel.Name, buildChart(), vals)
-	req.Contains(err.Error(), "progress", err)
+	req.ErrorContains(err, "progress")
 }
 
 func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
@@ -470,7 +467,7 @@ func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
 	resi, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
-	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to rollback-on-failure being set: context canceled")
+	req.ErrorContains(err, "release interrupted-release failed, and has been rolled back due to rollback-on-failure being set: context canceled")
 	res, err := releaserToV1Release(resi)
 	req.NoError(err)
 	// Now make sure it is actually upgraded
@@ -491,9 +488,8 @@ func TestMergeCustomLabels(t *testing.T) {
 		{map[string]string{"k1": "v1", "k2": "v2"}, map[string]string{"k1": "null", "k2": "v3"}, map[string]string{"k2": "v3"}},
 	}
 	for _, test := range tests {
-		if output := mergeCustomLabels(test[0], test[1]); !reflect.DeepEqual(test[2], output) {
-			t.Errorf("Expected {%v}, got {%v}", test[2], output)
-		}
+		output := mergeCustomLabels(test[0], test[1])
+		assert.Truef(t, reflect.DeepEqual(test[2], output), "Expected {%v}, got {%v}", test[2], output)
 	}
 }
 
@@ -511,8 +507,7 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 	}
 	rel.Info.Status = common.StatusDeployed
 
-	err := upAction.cfg.Releases.Create(rel)
-	req.NoError(err)
+	req.NoError(upAction.cfg.Releases.Create(rel))
 
 	upAction.Labels = map[string]string{
 		"key1": "null",
@@ -566,8 +561,7 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 	}
 	rel.Info.Status = common.StatusDeployed
 
-	err := upAction.cfg.Releases.Create(rel)
-	req.NoError(err)
+	req.NoError(upAction.cfg.Releases.Create(rel))
 
 	upAction.Labels = map[string]string{
 		"key1":  "null",
@@ -575,12 +569,10 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 		"owner": "val3",
 	}
 	// setting newValues and upgrading
-	_, err = upAction.Run(rel.Name, buildChart(), nil)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	_, err := upAction.Run(rel.Name, buildChart(), nil)
+	require.Error(t, err, "expected an error")
 
-	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+	is.EqualError(err, fmt.Sprintf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()))
 }
 
 func TestUpgradeRelease_DryRun(t *testing.T) {

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 )
@@ -89,11 +90,10 @@ func TestLintChart(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := lintChart(tt.chartPath, map[string]any{}, namespace, nil, tt.skipSchemaValidation)
-			switch {
-			case err != nil && !tt.err:
-				t.Errorf("%s", err)
-			case err == nil && tt.err:
-				t.Error("Expected a chart parsing error")
+			if tt.err {
+				require.Error(t, err, "Expected a chart parsing error")
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -106,14 +106,10 @@ func TestNonExistentChart(t *testing.T) {
 		testLint := NewLint()
 
 		result := testLint.Run(testCharts, values)
-		if len(result.Errors) != 1 {
-			t.Error("expected one error, but got", len(result.Errors))
-		}
+		assert.Len(t, result.Errors, 1, "expected one error, but got", len(result.Errors))
 
 		actual := result.Errors[0].Error()
-		if actual != expectedError {
-			t.Errorf("expected '%s', but got '%s'", expectedError, actual)
-		}
+		assert.EqualError(t, result.Errors[0], expectedError, "expected '%s', but got '%s'", expectedError, actual)
 	})
 
 	t.Run("should error out for corrupted tgz chart", func(t *testing.T) {
@@ -122,31 +118,25 @@ func TestNonExistentChart(t *testing.T) {
 		testLint := NewLint()
 
 		result := testLint.Run(testCharts, values)
-		if len(result.Errors) != 1 {
-			t.Error("expected one error, but got", len(result.Errors))
-		}
+		assert.Len(t, result.Errors, 1, "expected one error, but got", len(result.Errors))
 
 		actual := result.Errors[0].Error()
-		if actual != expectedEOFError {
-			t.Errorf("expected '%s', but got '%s'", expectedEOFError, actual)
-		}
+		assert.EqualError(t, result.Errors[0], expectedEOFError, "expected '%s', but got '%s'", expectedEOFError, actual)
 	})
 }
 
 func TestLint_MultipleCharts(t *testing.T) {
 	testCharts := []string{chart2MultipleChartLint, chart1MultipleChartLint}
 	testLint := NewLint()
-	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
-		t.Error(result.Errors)
-	}
+	result := testLint.Run(testCharts, values)
+	assert.Empty(t, result.Errors)
 }
 
 func TestLint_EmptyResultErrors(t *testing.T) {
 	testCharts := []string{chart2MultipleChartLint}
 	testLint := NewLint()
-	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
-		t.Error("Expected no error, got more")
-	}
+	result := testLint.Run(testCharts, values)
+	assert.Empty(t, result.Errors, "Expected no error, got more")
 }
 
 func TestLint_ChartWithWarnings(t *testing.T) {
@@ -154,18 +144,16 @@ func TestLint_ChartWithWarnings(t *testing.T) {
 		testCharts := []string{chartWithNoTemplatesDir}
 		testLint := NewLint()
 		testLint.Strict = false
-		if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
-			t.Error("Expected no error, got more")
-		}
+		result := testLint.Run(testCharts, values)
+		assert.Empty(t, result.Errors, "Expected no error, got more")
 	})
 
 	t.Run("should fail with one error when strict", func(t *testing.T) {
 		testCharts := []string{chartWithNoTemplatesDir}
 		testLint := NewLint()
 		testLint.Strict = true
-		if result := testLint.Run(testCharts, values); len(result.Errors) != 1 {
-			t.Error("expected one error, but got", len(result.Errors))
-		}
+		result := testLint.Run(testCharts, values)
+		assert.Len(t, result.Errors, 1, "expected one error")
 	})
 }
 
