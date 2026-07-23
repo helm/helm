@@ -19,11 +19,11 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/release"
@@ -42,16 +42,14 @@ func TestStorageCreate(t *testing.T) {
 		Version: 1,
 	}.ToRelease()
 
-	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
+	require.NoError(t, storage.Create(rls), "StoreRelease")
 
 	// fetch the release
 	res, err := storage.Get(rls.Name, rls.Version)
-	assertErrNil(t.Fatal, err, "QueryRelease")
+	require.NoError(t, err, "QueryRelease")
 
 	// verify the fetched and created release are the same
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %v, got %v", rls, res)
-	}
+	require.Truef(t, reflect.DeepEqual(rls, res), "Expected %v, got %v", rls, res)
 }
 
 func TestStorageUpdate(t *testing.T) {
@@ -65,20 +63,18 @@ func TestStorageUpdate(t *testing.T) {
 		Status:  common.StatusDeployed,
 	}.ToRelease()
 
-	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
+	require.NoError(t, storage.Create(rls), "StoreRelease")
 
 	// modify the release
 	rls.Info.Status = common.StatusUninstalled
-	assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
+	require.NoError(t, storage.Update(rls), "UpdateRelease")
 
 	// retrieve the updated release
 	res, err := storage.Get(rls.Name, rls.Version)
-	assertErrNil(t.Fatal, err, "QueryRelease")
+	require.NoError(t, err, "QueryRelease")
 
 	// verify updated and fetched releases are the same.
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %v, got %v", rls, res)
-	}
+	require.Truef(t, reflect.DeepEqual(rls, res), "Expected %v, got %v", rls, res)
 }
 
 func TestStorageDelete(t *testing.T) {
@@ -95,34 +91,26 @@ func TestStorageDelete(t *testing.T) {
 		Version: 2,
 	}.ToRelease()
 
-	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
-	assertErrNil(t.Fatal, storage.Create(rls2), "StoreRelease")
+	require.NoError(t, storage.Create(rls), "StoreRelease")
+	require.NoError(t, storage.Create(rls2), "StoreRelease")
 
 	// delete the release
 	res, err := storage.Delete(rls.Name, rls.Version)
-	assertErrNil(t.Fatal, err, "DeleteRelease")
+	require.NoError(t, err, "DeleteRelease")
 
 	// verify updated and fetched releases are the same.
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %v, got %v", rls, res)
-	}
+	require.Truef(t, reflect.DeepEqual(rls, res), "Expected %v, got %v", rls, res)
 
 	hist, err := storage.History(rls.Name)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	rhist, err := releaseListToV1List(hist)
 	require.NoError(t, err)
 
 	// We have now deleted one of the two records.
-	if len(rhist) != 1 {
-		t.Errorf("expected 1 record for deleted release version, got %d", len(hist))
-	}
+	assert.Len(t, rhist, 1, "expected 1 record for deleted release version, got %d", len(hist))
 
-	if rhist[0].Version != 2 {
-		t.Errorf("Expected version to be 2, got %d", rhist[0].Version)
-	}
+	assert.Equal(t, 2, rhist[0].Version, "Expected version to be 2, got %d", rhist[0].Version)
 }
 
 func TestStorageList(t *testing.T) {
@@ -141,13 +129,13 @@ func TestStorageList(t *testing.T) {
 		rls6 := ReleaseTestData{Name: "happy-liger", Status: common.StatusUninstalled}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'rls0'")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'rls1'")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'rls2'")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'rls3'")
-		assertErrNil(t.Fatal, storage.Create(rls4), "Storing release 'rls4'")
-		assertErrNil(t.Fatal, storage.Create(rls5), "Storing release 'rls5'")
-		assertErrNil(t.Fatal, storage.Create(rls6), "Storing release 'rls6'")
+		require.NoError(t, storage.Create(rls0), "Storing release 'rls0'")
+		require.NoError(t, storage.Create(rls1), "Storing release 'rls1'")
+		require.NoError(t, storage.Create(rls2), "Storing release 'rls2'")
+		require.NoError(t, storage.Create(rls3), "Storing release 'rls3'")
+		require.NoError(t, storage.Create(rls4), "Storing release 'rls4'")
+		require.NoError(t, storage.Create(rls5), "Storing release 'rls5'")
+		require.NoError(t, storage.Create(rls6), "Storing release 'rls6'")
 	}
 
 	var listTests = []struct {
@@ -164,14 +152,9 @@ func TestStorageList(t *testing.T) {
 
 	for _, tt := range listTests {
 		list, err := tt.ListFunc()
-		assertErrNil(t.Fatal, err, tt.Description)
+		require.NoError(t, err, tt.Description)
 		// verify the count of releases returned
-		if len(list) != tt.NumExpected {
-			t.Errorf("ListReleases(%s): expected %d, actual %d",
-				tt.Description,
-				tt.NumExpected,
-				len(list))
-		}
+		assert.Len(t, list, tt.NumExpected, "ListReleases(%s): expected %d, actual %d", tt.Description, tt.NumExpected, len(list))
 	}
 }
 
@@ -190,32 +173,24 @@ func TestStorageDeployed(t *testing.T) {
 		rls3 := ReleaseTestData{Name: name, Version: 4, Status: common.StatusDeployed}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+		require.NoError(t, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		require.NoError(t, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		require.NoError(t, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		require.NoError(t, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
 	}
 
 	setup()
 
 	rls, err := storage.Last(name)
-	if err != nil {
-		t.Fatalf("Failed to query for deployed release: %s\n", err)
-	}
+	require.NoError(t, err, "Failed to query for deployed release")
 
 	rel, err := releaserToV1Release(rls)
 	require.NoError(t, err)
 
-	switch {
-	case rls == nil:
-		t.Fatal("Release is nil")
-	case rel.Name != name:
-		t.Fatalf("Expected release name %q, actual %q\n", name, rel.Name)
-	case rel.Version != vers:
-		t.Fatalf("Expected release version %d, actual %d\n", vers, rel.Version)
-	case rel.Info.Status != common.StatusDeployed:
-		t.Fatalf("Expected release status 'DEPLOYED', actual %s\n", rel.Info.Status.String())
-	}
+	require.NotNil(t, rls, "Release is nil")
+	require.Equal(t, name, rel.Name, "Expected release name %q, actual %q\n", name, rel.Name)
+	require.Equal(t, vers, rel.Version, "Expected release version %d, actual %d\n", vers, rel.Version)
+	require.Equal(t, common.StatusDeployed, rel.Info.Status, "Expected release status 'DEPLOYED', actual %s\n", rel.Info.Status.String())
 }
 
 func TestStorageDeployedWithCorruption(t *testing.T) {
@@ -233,32 +208,24 @@ func TestStorageDeployedWithCorruption(t *testing.T) {
 		rls3 := ReleaseTestData{Name: name, Version: 2, Status: common.StatusDeployed}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+		require.NoError(t, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		require.NoError(t, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		require.NoError(t, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		require.NoError(t, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
 	}
 
 	setup()
 
 	rls, err := storage.Deployed(name)
-	if err != nil {
-		t.Fatalf("Failed to query for deployed release: %s\n", err)
-	}
+	require.NoError(t, err, "Failed to query for deployed release")
 
 	rel, err := releaserToV1Release(rls)
 	require.NoError(t, err)
 
-	switch {
-	case rls == nil:
-		t.Fatal("Release is nil")
-	case rel.Name != name:
-		t.Fatalf("Expected release name %q, actual %q\n", name, rel.Name)
-	case rel.Version != vers:
-		t.Fatalf("Expected release version %d, actual %d\n", vers, rel.Version)
-	case rel.Info.Status != common.StatusDeployed:
-		t.Fatalf("Expected release status 'DEPLOYED', actual %s\n", rel.Info.Status.String())
-	}
+	require.NotNil(t, rls, "Release is nil")
+	require.Equal(t, name, rel.Name, "Expected release name %q, actual %q\n", name, rel.Name)
+	require.Equal(t, vers, rel.Version, "Expected release version %d, actual %d\n", vers, rel.Version)
+	require.Equal(t, common.StatusDeployed, rel.Info.Status, "Expected release status 'DEPLOYED', actual %s\n", rel.Info.Status.String())
 }
 
 func TestStorageHistory(t *testing.T) {
@@ -275,21 +242,17 @@ func TestStorageHistory(t *testing.T) {
 		rls3 := ReleaseTestData{Name: name, Version: 4, Status: common.StatusDeployed}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+		require.NoError(t, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		require.NoError(t, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		require.NoError(t, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		require.NoError(t, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
 	}
 
 	setup()
 
 	h, err := storage.History(name)
-	if err != nil {
-		t.Fatalf("Failed to query for release history (%q): %s\n", name, err)
-	}
-	if len(h) != 4 {
-		t.Fatalf("Release history (%q) is empty\n", name)
-	}
+	require.NoError(t, err, "Failed to query for release history (%q)", name)
+	require.Len(t, h, 4, "Release history (%q) is empty\n", name)
 }
 
 var errMaxHistoryMockDriverSomethingHappened = errors.New("something happened")
@@ -336,16 +299,14 @@ func TestMaxHistoryErrorHandling(t *testing.T) {
 		rls1 := ReleaseTestData{Name: name, Version: 1, Status: common.StatusSuperseded}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Driver.Create(makeKey(rls1.Name, rls1.Version), rls1), "Storing release 'angry-bird' (v1)")
+		require.NoError(t, storage.Driver.Create(makeKey(rls1.Name, rls1.Version), rls1), "Storing release 'angry-bird' (v1)")
 	}
 	setup()
 
 	rls2 := ReleaseTestData{Name: name, Version: 2, Status: common.StatusSuperseded}.ToRelease()
 	wantErr := errMaxHistoryMockDriverSomethingHappened
 	gotErr := storage.Create(rls2)
-	if !errors.Is(gotErr, wantErr) {
-		t.Fatalf("Storing release 'angry-bird' (v2) should return the error %#v, but returned %#v", wantErr, gotErr)
-	}
+	require.ErrorIs(t, gotErr, wantErr, "Storing release 'angry-bird' (v2) should return the error %#v, but returned %#v", wantErr, gotErr)
 }
 
 func TestStorageRemoveLeastRecent(t *testing.T) {
@@ -365,27 +326,25 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 		rls3 := ReleaseTestData{Name: name, Version: 4, Status: common.StatusDeployed}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+		require.NoError(t, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		require.NoError(t, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		require.NoError(t, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		require.NoError(t, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
 	}
 	setup()
 
 	// Because we have not set a limit, we expect 4.
 	expect := 4
-	if hist, err := storage.History(name); err != nil {
-		t.Fatal(err)
-	} else if len(hist) != expect {
-		t.Fatalf("expected %d items in history, got %d", expect, len(hist))
-	}
+	hist, err := storage.History(name)
+	require.NoError(t, err)
+	require.Equal(t, len(hist), expect, "expected %d items in history, got %d", expect, len(hist))
 
 	storage.MaxHistory = 3
 	rls5 := ReleaseTestData{Name: name, Version: 5, Status: common.StatusDeployed}.ToRelease()
-	assertErrNil(t.Fatal, storage.Create(rls5), "Storing release 'angry-bird' (v5)")
+	require.NoError(t, storage.Create(rls5), "Storing release 'angry-bird' (v5)")
 
 	// On inserting the 5th record, we expect two records to be pruned from history.
-	hist, err := storage.History(name)
+	hist, err = storage.History(name)
 	require.NoError(t, err)
 	rhist, err := releaseListToV1List(hist)
 	require.NoError(t, err)
@@ -399,9 +358,8 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 	// We expect the existing records to be 3, 4, and 5.
 	for i, item := range rhist {
 		v := item.Version
-		if expect := i + 3; v != expect {
-			t.Errorf("Expected release %d, got %d", expect, v)
-		}
+		expect := i + 3
+		assert.Equalf(t, v, expect, "Expected release %d, got %d", expect, v)
 	}
 }
 
@@ -420,22 +378,21 @@ func TestStorageDoNotDeleteDeployed(t *testing.T) {
 		rls3 := ReleaseTestData{Name: name, Version: 4, Status: common.StatusFailed}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+		require.NoError(t, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		require.NoError(t, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		require.NoError(t, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		require.NoError(t, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
 	}
 	setup()
 
 	rls5 := ReleaseTestData{Name: name, Version: 5, Status: common.StatusFailed}.ToRelease()
-	assertErrNil(t.Fatal, storage.Create(rls5), "Storing release 'angry-bird' (v5)")
+	require.NoError(t, storage.Create(rls5), "Storing release 'angry-bird' (v5)")
 
 	// On inserting the 5th record, we expect a total of 3 releases, but we expect version 2
 	// (the only deployed release), to still exist
 	hist, err := storage.History(name)
-	if err != nil {
-		t.Fatal(err)
-	} else if len(hist) != storage.MaxHistory {
+	require.NoError(t, err)
+	if len(hist) != storage.MaxHistory {
 		rhist, err := releaseListToV1List(hist)
 		require.NoError(t, err)
 		for _, item := range rhist {
@@ -453,9 +410,7 @@ func TestStorageDoNotDeleteDeployed(t *testing.T) {
 	rhist, err := releaseListToV1List(hist)
 	require.NoError(t, err)
 	for _, item := range rhist {
-		if !expectedVersions[item.Version] {
-			t.Errorf("Release version %d, found when not expected", item.Version)
-		}
+		assert.Truef(t, expectedVersions[item.Version], "Release version %d, found when not expected", item.Version)
 	}
 }
 
@@ -473,25 +428,21 @@ func TestStorageLast(t *testing.T) {
 		rls3 := ReleaseTestData{Name: name, Version: 4, Status: common.StatusFailed}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+		require.NoError(t, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		require.NoError(t, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		require.NoError(t, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		require.NoError(t, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
 	}
 
 	setup()
 
 	h, err := storage.Last(name)
-	if err != nil {
-		t.Fatalf("Failed to query for release history (%q): %s\n", name, err)
-	}
+	require.NoError(t, err, "Failed to query for release history (%q)", name)
 
 	rel, err := releaserToV1Release(h)
 	require.NoError(t, err)
 
-	if rel.Version != 4 {
-		t.Errorf("Expected revision 4, got %d", rel.Version)
-	}
+	assert.Equal(t, 4, rel.Version, "Expected revision 4, got %d", rel.Version)
 }
 
 // TestUpgradeInitiallyFailedReleaseWithHistoryLimit tests a case when there are no deployed release yet, but history limit has been
@@ -511,47 +462,34 @@ func TestUpgradeInitiallyFailedReleaseWithHistoryLimit(t *testing.T) {
 		rls3 := ReleaseTestData{Name: name, Version: 4, Status: common.StatusFailed}.ToRelease()
 
 		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+		require.NoError(t, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		require.NoError(t, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		require.NoError(t, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		require.NoError(t, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
 
 		hist, err := storage.History(name)
-		if err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
+		require.NoError(t, err)
 
 		wantHistoryLen := 4
-		if len(hist) != wantHistoryLen {
-			t.Fatalf("expected history of release %q to contain %d releases, got %d", name, wantHistoryLen, len(hist))
-		}
+		require.Len(t, hist, wantHistoryLen, "expected history of release %q to contain %d releases, got %d", name, wantHistoryLen, len(hist))
 	}
 
 	setup()
 
 	rls5 := ReleaseTestData{Name: name, Version: 5, Status: common.StatusFailed}.ToRelease()
-	err := storage.Create(rls5)
-	if err != nil {
-		t.Fatalf("Failed to create a new release version: %s", err)
-	}
+	require.NoError(t, storage.Create(rls5), "Failed to create a new release version")
 
 	hist, err := storage.History(name)
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	rhist, err := releaseListToV1List(hist)
 	require.NoError(t, err)
 	for i, rel := range rhist {
 		wantVersion := i + 2
-		if rel.Version != wantVersion {
-			t.Fatalf("Expected history release %d version to equal %d, got %d", i+1, wantVersion, rel.Version)
-		}
+		require.Equal(t, wantVersion, rel.Version, "Expected history release %d version to equal %d, got %d", i+1, wantVersion, rel.Version)
 
 		wantStatus := common.StatusFailed
-		if rel.Info.Status != wantStatus {
-			t.Fatalf("Expected history release %d status to equal %q, got %q", i+1, wantStatus, rel.Info.Status)
-		}
+		require.Equal(t, wantStatus, rel.Info.Status, "Expected history release %d status to equal %q, got %q", i+1, wantStatus, rel.Info.Status)
 	}
 }
 
@@ -573,21 +511,13 @@ func (test ReleaseTestData) ToRelease() *rspb.Release {
 	}
 }
 
-func assertErrNil(eh func(args ...any), err error, message string) {
-	if err != nil {
-		eh(fmt.Sprintf("%s: %q", message, err))
-	}
-}
-
 func TestStorageGetsLoggerFromDriver(t *testing.T) {
 	d := driver.NewMemory()
 	l := &mockSLogHandler{}
 	d.SetLogger(l)
 	s := Init(d)
 	_, _ = s.Get("doesnt-matter", 123)
-	if !l.Called {
-		t.Fatal("Expected storage to use driver's logger, but it did not")
-	}
+	require.True(t, l.Called, "Expected storage to use driver's logger, but it did not")
 }
 
 type mockSLogHandler struct {

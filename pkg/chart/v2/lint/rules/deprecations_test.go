@@ -19,6 +19,7 @@ package rules
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,17 +29,13 @@ func TestValidateNoDeprecations(t *testing.T) {
 		Kind:       "Deployment",
 	}
 	err := validateNoDeprecations(deprecated, nil)
-	if err == nil {
-		t.Fatal("Expected deprecated extension to be flagged")
-	}
+	require.Error(t, err, "Expected deprecated extension to be flagged")
 	var depErr deprecatedAPIError
 	require.ErrorAs(t, err, &depErr)
 	require.NotEmptyf(t, depErr.Message, "Expected error message to be non-blank")
 
-	if err := validateNoDeprecations(&k8sYamlStruct{
+	assert.NoError(t, validateNoDeprecations(&k8sYamlStruct{
 		APIVersion: "v1",
 		Kind:       "Pod",
-	}, nil); err != nil {
-		t.Error("Expected a v1 Pod to not be deprecated")
-	}
+	}, nil), "Expected a v1 Pod to not be deprecated")
 }

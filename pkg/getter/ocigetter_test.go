@@ -21,18 +21,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/registry"
 )
 
 func TestOCIGetter(t *testing.T) {
 	g, err := NewOCIGetter(WithURL("oci://example.com"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if _, ok := g.(*OCIGetter); !ok {
-		t.Fatal("Expected NewOCIGetter to produce an *OCIGetter")
-	}
+	_, ok := g.(*OCIGetter)
+	require.True(t, ok, "Expected NewOCIGetter to produce an *OCIGetter")
 
 	cd := "../../testdata"
 	join := filepath.Join
@@ -51,71 +51,41 @@ func TestOCIGetter(t *testing.T) {
 		WithInsecureSkipVerifyTLS(insecureSkipVerifyTLS),
 		WithPlainHTTP(plainHTTP),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	og, ok := g.(*OCIGetter)
-	if !ok {
-		t.Fatal("expected NewOCIGetter to produce an *OCIGetter")
-	}
+	require.True(t, ok, "expected NewOCIGetter to produce an *OCIGetter")
 
-	if og.opts.username != "I" {
-		t.Errorf("Expected NewOCIGetter to contain %q as the username, got %q", "I", og.opts.username)
-	}
+	assert.Equal(t, "I", og.opts.username, "Expected NewOCIGetter to contain %q as the username, got %q", "I", og.opts.username)
 
-	if og.opts.password != "Am" {
-		t.Errorf("Expected NewOCIGetter to contain %q as the password, got %q", "Am", og.opts.password)
-	}
+	assert.Equal(t, "Am", og.opts.password, "Expected NewOCIGetter to contain %q as the password, got %q", "Am", og.opts.password)
 
-	if og.opts.certFile != pub {
-		t.Errorf("Expected NewOCIGetter to contain %q as the public key file, got %q", pub, og.opts.certFile)
-	}
+	assert.Equal(t, pub, og.opts.certFile, "Expected NewOCIGetter to contain %q as the public key file, got %q", pub, og.opts.certFile)
 
-	if og.opts.keyFile != priv {
-		t.Errorf("Expected NewOCIGetter to contain %q as the private key file, got %q", priv, og.opts.keyFile)
-	}
+	assert.Equal(t, priv, og.opts.keyFile, "Expected NewOCIGetter to contain %q as the private key file, got %q", priv, og.opts.keyFile)
 
-	if og.opts.caFile != ca {
-		t.Errorf("Expected NewOCIGetter to contain %q as the CA file, got %q", ca, og.opts.caFile)
-	}
+	assert.Equal(t, ca, og.opts.caFile, "Expected NewOCIGetter to contain %q as the CA file, got %q", ca, og.opts.caFile)
 
-	if og.opts.timeout != timeout {
-		t.Errorf("Expected NewOCIGetter to contain %s as Timeout flag, got %s", timeout, og.opts.timeout)
-	}
+	assert.Equal(t, timeout, og.opts.timeout, "Expected NewOCIGetter to contain %s as Timeout flag, got %s", timeout, og.opts.timeout)
 
-	if og.opts.transport != transport {
-		t.Errorf("Expected NewOCIGetter to contain %p as Transport, got %p", transport, og.opts.transport)
-	}
+	assert.Equal(t, transport, og.opts.transport, "Expected NewOCIGetter to contain %p as Transport, got %p", transport, og.opts.transport)
 
-	if og.opts.plainHTTP != plainHTTP {
-		t.Errorf("Expected NewOCIGetter to have plainHTTP as %t, got %t", plainHTTP, og.opts.plainHTTP)
-	}
+	assert.Equal(t, plainHTTP, og.opts.plainHTTP, "Expected NewOCIGetter to have plainHTTP as %t, got %t", plainHTTP, og.opts.plainHTTP)
 
-	if og.opts.insecureSkipVerifyTLS != insecureSkipVerifyTLS {
-		t.Errorf("Expected NewOCIGetter to have insecureSkipVerifyTLS as %t, got %t", insecureSkipVerifyTLS, og.opts.insecureSkipVerifyTLS)
-	}
+	assert.Equal(t, insecureSkipVerifyTLS, og.opts.insecureSkipVerifyTLS, "Expected NewOCIGetter to have insecureSkipVerifyTLS as %t, got %t", insecureSkipVerifyTLS, og.opts.insecureSkipVerifyTLS)
 
 	// Test if setting registryClient is being passed to the ops
 	registryClient, err := registry.NewClient()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	g, err = NewOCIGetter(
 		WithRegistryClient(registryClient),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	og, ok = g.(*OCIGetter)
-	if !ok {
-		t.Fatal("expected NewOCIGetter to produce an *OCIGetter")
-	}
+	require.True(t, ok, "expected NewOCIGetter to produce an *OCIGetter")
 
-	if og.opts.registryClient != registryClient {
-		t.Errorf("Expected NewOCIGetter to contain %p as RegistryClient, got %p", registryClient, og.opts.registryClient)
-	}
+	assert.Equal(t, registryClient, og.opts.registryClient, "Expected NewOCIGetter to contain %p as RegistryClient, got %p", registryClient, og.opts.registryClient)
 }
 
 func TestOCIHTTPTransportReuse(t *testing.T) {
@@ -123,29 +93,19 @@ func TestOCIHTTPTransportReuse(t *testing.T) {
 
 	_, err := g.newRegistryClient()
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if g.transport == nil {
-		t.Fatal("Expected non nil value for transport")
-	}
+	require.NotNil(t, g.transport, "Expected non nil value for transport")
 
 	transport1 := g.transport
 
 	_, err = g.newRegistryClient()
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if g.transport == nil {
-		t.Fatal("Expected non nil value for transport")
-	}
+	require.NotNil(t, g.transport, "Expected non nil value for transport")
 
 	transport2 := g.transport
 
-	if transport1 != transport2 {
-		t.Fatal("Expected default transport to be reused")
-	}
+	require.Equal(t, transport2, transport1, "Expected default transport to be reused")
 }

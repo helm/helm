@@ -426,20 +426,9 @@ func TestReleaseListWriterMethods(t *testing.T) {
 			var buf []byte
 			out := &bytesWriter{buf: &buf}
 
-			err := writer.WriteJSON(out)
-			if err != nil {
-				t.Errorf("WriteJSON failed: %v", err)
-			}
-
-			err = writer.WriteYAML(out)
-			if err != nil {
-				t.Errorf("WriteYAML failed: %v", err)
-			}
-
-			err = writer.WriteTable(out)
-			if err != nil {
-				t.Errorf("WriteTable failed: %v", err)
-			}
+			require.NoError(t, writer.WriteJSON(out), "WriteJSON failed")
+			require.NoError(t, writer.WriteYAML(out), "WriteYAML failed")
+			assert.NoError(t, writer.WriteTable(out), "WriteTable failed")
 		})
 	}
 
@@ -448,20 +437,9 @@ func TestReleaseListWriterMethods(t *testing.T) {
 	var buf []byte
 	out := &bytesWriter{buf: &buf}
 
-	err := writer.WriteJSON(out)
-	if err != nil {
-		t.Errorf("WriteJSON failed: %v", err)
-	}
-
-	err = writer.WriteYAML(out)
-	if err != nil {
-		t.Errorf("WriteYAML failed: %v", err)
-	}
-
-	err = writer.WriteTable(out)
-	if err != nil {
-		t.Errorf("WriteTable failed: %v", err)
-	}
+	require.NoError(t, writer.WriteJSON(out), "WriteJSON failed")
+	require.NoError(t, writer.WriteYAML(out), "WriteYAML failed")
+	assert.NoError(t, writer.WriteTable(out), "WriteTable failed")
 }
 
 func TestFilterReleases(t *testing.T) {
@@ -512,9 +490,7 @@ func TestFilterReleases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := filterReleases(tt.releases, tt.ignoredReleaseNames)
-			if len(result) != tt.expectedCount {
-				t.Errorf("Expected %d releases, got %d", tt.expectedCount, len(result))
-			}
+			assert.Len(t, result, tt.expectedCount, "Expected %d releases, got %d", tt.expectedCount, len(result))
 		})
 	}
 }
@@ -603,13 +579,9 @@ func TestListStatusMapping(t *testing.T) {
 			}
 
 			writer := newReleaseListWriter(releaseFixture, "", false, false)
-			if len(writer.releases) != 1 {
-				t.Errorf("Expected 1 release, got %d", len(writer.releases))
-			}
+			assert.Len(t, writer.releases, 1, "Expected 1 release, got %d", len(writer.releases))
 
-			if writer.releases[0].Status != tc.status.String() {
-				t.Errorf("Expected status %s, got %s", tc.status.String(), writer.releases[0].Status)
-			}
+			assert.Equal(t, tc.status.String(), writer.releases[0].Status, "Expected status %s, got %s", tc.status.String(), writer.releases[0].Status)
 		})
 	}
 }

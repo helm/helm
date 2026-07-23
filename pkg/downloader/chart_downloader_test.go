@@ -18,7 +18,6 @@ package downloader
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,9 +68,7 @@ func TestResolveChartRef(t *testing.T) {
 
 	// Create a mock registry client for OCI references
 	registryClient, err := registry.NewClient()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	c := ChartDownloader{
 		Out:              os.Stderr,
@@ -93,9 +90,8 @@ func TestResolveChartRef(t *testing.T) {
 			t.Errorf("%s: failed with error %q", tt.name, err)
 			continue
 		}
-		if got := u.String(); got != tt.expect {
-			t.Errorf("%s: expected %s, got %s", tt.name, tt.expect, got)
-		}
+		got := u.String()
+		assert.Equalf(t, tt.expect, got, "%s: expected %s, got %s", tt.name, tt.expect, got)
 	}
 }
 
@@ -162,14 +158,10 @@ func TestResolveChartOpts(t *testing.T) {
 
 func TestVerifyChart(t *testing.T) {
 	v, err := VerifyChart("testdata/signtest-0.1.0.tgz", "testdata/signtest-0.1.0.tgz.prov", "testdata/helm-test-key.pub")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// The verification is tested at length in the provenance package. Here,
 	// we just want a quick sanity check that the v is not empty.
-	if v.FileHash == "" {
-		t.Error("Digest missing")
-	}
+	assert.NotEmpty(t, v.FileHash, "Digest missing")
 }
 
 func TestIsTar(t *testing.T) {
@@ -183,9 +175,7 @@ func TestIsTar(t *testing.T) {
 	}
 
 	for src, expect := range tests {
-		if isTar(src) != expect {
-			t.Errorf("%q should be %t", src, expect)
-		}
+		assert.Equal(t, expect, isTar(src), "%q should be %t", src, expect)
 	}
 }
 
@@ -196,13 +186,8 @@ func TestDownloadTo(t *testing.T) {
 		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
 	)
 	defer srv.Stop()
-	if err := srv.CreateIndex(); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.CreateIndex())
+	require.NoError(t, srv.LinkIndices())
 
 	contentCache := t.TempDir()
 
@@ -226,21 +211,14 @@ func TestDownloadTo(t *testing.T) {
 	cname := "/signtest-0.1.0.tgz"
 	dest := srv.Root()
 	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if expect := filepath.Join(dest, cname); where != expect {
-		t.Errorf("Expected download to %s, got %s", expect, where)
-	}
+	expect := filepath.Join(dest, cname)
+	assert.Equalf(t, expect, where, "Expected download to %s, got %s", expect, where)
+	assert.NotEmpty(t, v.FileHash, "File hash was empty, but verification is required.")
 
-	if v.FileHash == "" {
-		t.Error("File hash was empty, but verification is required.")
-	}
-
-	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
-		t.Error(err)
-	}
+	_, err = os.Stat(filepath.Join(dest, cname))
+	assert.NoError(t, err)
 }
 
 func TestDownloadTo_TLS(t *testing.T) {
@@ -251,12 +229,8 @@ func TestDownloadTo_TLS(t *testing.T) {
 		repotest.WithTLSConfig(repotest.MakeTestTLSConfig(t, "../../testdata")),
 	)
 	defer srv.Stop()
-	if err := srv.CreateIndex(); err != nil {
-		t.Fatal(err)
-	}
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.CreateIndex())
+	require.NoError(t, srv.LinkIndices())
 
 	repoConfig := filepath.Join(srv.Root(), "repositories.yaml")
 	repoCache := srv.Root()
@@ -285,22 +259,15 @@ func TestDownloadTo_TLS(t *testing.T) {
 	cname := "test/signtest"
 	dest := srv.Root()
 	where, v, err := c.DownloadTo(cname, "", dest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	target := filepath.Join(dest, "signtest-0.1.0.tgz")
-	if expect := target; where != expect {
-		t.Errorf("Expected download to %s, got %s", expect, where)
-	}
+	expect := target
+	assert.Equalf(t, expect, where, "Expected download to %s, got %s", expect, where)
+	assert.NotEmpty(t, v.FileHash, "File hash was empty, but verification is required.")
 
-	if v.FileHash == "" {
-		t.Error("File hash was empty, but verification is required.")
-	}
-
-	if _, err := os.Stat(target); err != nil {
-		t.Error(err)
-	}
+	_, err = os.Stat(target)
+	assert.NoError(t, err)
 }
 
 func TestDownloadTo_VerifyLater(t *testing.T) {
@@ -314,9 +281,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 		repotest.WithChartSourceGlob("testdata/*.tgz*"),
 	)
 	defer srv.Stop()
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 	contentCache := t.TempDir()
 
 	c := ChartDownloader{
@@ -333,20 +298,16 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	}
 	cname := "/signtest-0.1.0.tgz"
 	where, _, err := c.DownloadTo(srv.URL()+cname, "", dest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if expect := filepath.Join(dest, cname); where != expect {
-		t.Errorf("Expected download to %s, got %s", expect, where)
-	}
+	expect := filepath.Join(dest, cname)
+	assert.Equalf(t, expect, where, "Expected download to %s, got %s", expect, where)
 
-	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(dest, cname+".prov")); err != nil {
-		t.Fatal(err)
-	}
+	_, err = os.Stat(filepath.Join(dest, cname))
+	require.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(dest, cname+".prov"))
+	require.NoError(t, err)
 }
 
 func TestScanReposForURL(t *testing.T) {
@@ -363,24 +324,17 @@ func TestScanReposForURL(t *testing.T) {
 
 	u := "http://example.com/alpine-0.2.0.tgz"
 	rf, err := repo.LoadFile(repoConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	entry, err := c.scanReposForURL(u, rf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if entry.Name != "testing" {
-		t.Errorf("Unexpected repo %q for URL %q", entry.Name, u)
-	}
+	assert.Equal(t, "testing", entry.Name, "Unexpected repo %q for URL %q", entry.Name, u)
 
 	// A lookup failure should produce an ErrNoOwnerRepo
 	u = "https://no.such.repo/foo/bar-1.23.4.tgz"
-	if _, err = c.scanReposForURL(u, rf); !errors.Is(err, ErrNoOwnerRepo) {
-		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
-	}
+	_, err = c.scanReposForURL(u, rf)
+	require.ErrorIs(t, err, ErrNoOwnerRepo)
 }
 
 func TestDownloadToCache(t *testing.T) {
@@ -388,12 +342,8 @@ func TestDownloadToCache(t *testing.T) {
 		repotest.WithChartSourceGlob("testdata/*.tgz*"),
 	)
 	defer srv.Stop()
-	if err := srv.CreateIndex(); err != nil {
-		t.Fatal(err)
-	}
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.CreateIndex())
+	require.NoError(t, srv.LinkIndices())
 
 	// The repo file needs to point to our server.
 	repoFile := filepath.Join(srv.Root(), "repositories.yaml")
@@ -431,6 +381,7 @@ func TestDownloadToCache(t *testing.T) {
 		// Check that it's in the cache
 		digest, _, err := c.ResolveChartVersion("test/signtest", "0.1.0")
 		require.NoError(t, err)
+
 		digestBytes, err := hex.DecodeString(digest)
 		require.NoError(t, err)
 		var digestArray [sha256.Size]byte
@@ -472,6 +423,7 @@ func TestDownloadToCache(t *testing.T) {
 		// Check that both chart and prov are in cache
 		digest, _, err := c.ResolveChartVersion("test/signtest", "0.1.0")
 		require.NoError(t, err)
+
 		digestBytes, err := hex.DecodeString(digest)
 		require.NoError(t, err)
 		var digestArray [sha256.Size]byte
@@ -479,6 +431,7 @@ func TestDownloadToCache(t *testing.T) {
 
 		_, err = c.Cache.Get(digestArray, CacheChart)
 		require.NoError(t, err, "chart should be in cache")
+
 		_, err = c.Cache.Get(digestArray, CacheProv)
 		require.NoError(t, err, "provenance file should be in cache")
 

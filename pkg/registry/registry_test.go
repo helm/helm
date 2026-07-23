@@ -73,10 +73,8 @@ type TestRegistry struct {
 
 func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	suite.WorkspaceDir = testWorkspaceDir
-	err := os.RemoveAll(suite.WorkspaceDir)
-	suite.Require().NoError(err, "no error removing test workspace dir")
-	err = os.Mkdir(suite.WorkspaceDir, 0o700)
-	suite.Require().NoError(err, "no error creating test workspace dir")
+	suite.Require().NoError(os.RemoveAll(suite.WorkspaceDir), "no error removing test workspace dir")
+	suite.Require().NoError(os.Mkdir(suite.WorkspaceDir, 0o700), "no error creating test workspace dir")
 
 	var out bytes.Buffer
 
@@ -92,6 +90,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 		ClientOptBasicAuth(testUsername, testPassword),
 	}
 
+	var err error
 	if tlsEnabled {
 		var tlsConf *tls.Config
 		if insecure {
@@ -122,8 +121,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Require().NoError(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644)
-	suite.Require().NoError(err, "no error creating test htpasswd file")
+	suite.Require().NoError(os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644), "no error creating test htpasswd file")
 
 	// Registry config
 	config := &configuration.Configuration{}

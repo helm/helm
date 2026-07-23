@@ -24,6 +24,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
@@ -31,134 +34,81 @@ func TestRepoIndexCmd(t *testing.T) {
 	dir := t.TempDir()
 
 	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")
-	if err := linkOrCopy("testdata/testcharts/compressedchart-0.1.0.tgz", comp); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, linkOrCopy("testdata/testcharts/compressedchart-0.1.0.tgz", comp))
 	comp2 := filepath.Join(dir, "compressedchart-0.2.0.tgz")
-	if err := linkOrCopy("testdata/testcharts/compressedchart-0.2.0.tgz", comp2); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, linkOrCopy("testdata/testcharts/compressedchart-0.2.0.tgz", comp2))
 
 	buf := bytes.NewBuffer(nil)
 	c := newRepoIndexCmd(buf)
 
-	if err := c.RunE(c, []string{dir}); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, c.RunE(c, []string{dir}))
 
 	destIndex := filepath.Join(dir, "index.yaml")
 
 	index, err := repo.LoadIndexFile(destIndex)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(index.Entries) != 1 {
-		t.Errorf("expected 1 entry, got %d: %#v", len(index.Entries), index.Entries)
-	}
+	assert.Len(t, index.Entries, 1, "expected 1 entry, got %d: %#v", len(index.Entries), index.Entries)
 
 	vs := index.Entries["compressedchart"]
-	if len(vs) != 2 {
-		t.Errorf("expected 2 versions, got %d: %#v", len(vs), vs)
-	}
+	assert.Len(t, vs, 2, "expected 2 versions, got %d: %#v", len(vs), vs)
 
 	expectedVersion := "0.2.0"
-	if vs[0].Version != expectedVersion {
-		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
-	}
+	assert.Equal(t, expectedVersion, vs[0].Version, "expected %q, got %q", expectedVersion, vs[0].Version)
 
 	b, err := os.ReadFile(destIndex)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if json.Valid(b) {
-		t.Error("did not expect index file to be valid json")
-	}
+	require.NoError(t, err)
+	assert.False(t, json.Valid(b), "did not expect index file to be valid json")
 
 	// Test with `--json`
 
 	c.ParseFlags([]string{"--json", "true"})
-	if err := c.RunE(c, []string{dir}); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, c.RunE(c, []string{dir}))
 
-	if b, err = os.ReadFile(destIndex); err != nil {
-		t.Fatal(err)
-	}
-	if !json.Valid(b) {
-		t.Error("index file is not valid json")
-	}
+	b, err = os.ReadFile(destIndex)
+	require.NoError(t, err)
+	assert.True(t, json.Valid(b), "index file is not valid json")
 
 	// Test with `--merge`
 
 	// Remove first two charts.
-	if err := os.Remove(comp); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(comp2); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Remove(comp))
+	require.NoError(t, os.Remove(comp2))
 	// Add a new chart and a new version of an existing chart
-	if err := linkOrCopy("testdata/testcharts/reqtest-0.1.0.tgz", filepath.Join(dir, "reqtest-0.1.0.tgz")); err != nil {
-		t.Fatal(err)
-	}
-	if err := linkOrCopy("testdata/testcharts/compressedchart-0.3.0.tgz", filepath.Join(dir, "compressedchart-0.3.0.tgz")); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, linkOrCopy("testdata/testcharts/reqtest-0.1.0.tgz", filepath.Join(dir, "reqtest-0.1.0.tgz")))
+	require.NoError(t, linkOrCopy("testdata/testcharts/compressedchart-0.3.0.tgz", filepath.Join(dir, "compressedchart-0.3.0.tgz")))
 
 	c.ParseFlags([]string{"--merge", destIndex})
-	if err := c.RunE(c, []string{dir}); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, c.RunE(c, []string{dir}))
 
 	index, err = repo.LoadIndexFile(destIndex)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(index.Entries) != 2 {
-		t.Errorf("expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
-	}
+	assert.Len(t, index.Entries, 2, "expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
 
 	vs = index.Entries["compressedchart"]
-	if len(vs) != 3 {
-		t.Errorf("expected 3 versions, got %d: %#v", len(vs), vs)
-	}
+	assert.Len(t, vs, 3, "expected 3 versions, got %d: %#v", len(vs), vs)
 
 	expectedVersion = "0.3.0"
-	if vs[0].Version != expectedVersion {
-		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
-	}
+	assert.Equal(t, expectedVersion, vs[0].Version, "expected %q, got %q", expectedVersion, vs[0].Version)
 
 	// test that index.yaml gets generated on merge even when it doesn't exist
-	if err := os.Remove(destIndex); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Remove(destIndex))
 
 	c.ParseFlags([]string{"--merge", destIndex})
-	if err := c.RunE(c, []string{dir}); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, c.RunE(c, []string{dir}))
 
 	index, err = repo.LoadIndexFile(destIndex)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// verify it didn't create an empty index.yaml and the merged happened
-	if len(index.Entries) != 2 {
-		t.Errorf("expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
-	}
+	assert.Len(t, index.Entries, 2, "expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
 
 	vs = index.Entries["compressedchart"]
-	if len(vs) != 1 {
-		t.Errorf("expected 1 versions, got %d: %#v", len(vs), vs)
-	}
+	assert.Len(t, vs, 1, "expected 1 versions, got %d: %#v", len(vs), vs)
 
 	expectedVersion = "0.3.0"
-	if vs[0].Version != expectedVersion {
-		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
-	}
+	assert.Equal(t, expectedVersion, vs[0].Version, "expected %q, got %q", expectedVersion, vs[0].Version)
 }
 
 func linkOrCopy(source, target string) error {

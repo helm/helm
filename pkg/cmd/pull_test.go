@@ -25,6 +25,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
@@ -36,14 +39,10 @@ func TestPullCmd(t *testing.T) {
 	defer srv.Stop()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ociSrv.Run(t)
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	helmTestKeyOut := "Signed by: Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>\n" +
 		"Using Key With Fingerprint: 5E615389B53CA37F0EE60BD3843BBF981FC18762\n" +
@@ -229,20 +228,13 @@ func TestPullCmd(t *testing.T) {
 			// Create file or Dir before helm pull --untar, see: https://github.com/helm/helm/issues/7182
 			if tt.existFile != "" {
 				file := filepath.Join(outdir, tt.existFile)
-				if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				_, err := os.Create(file)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.MkdirAll(filepath.Dir(file), 0o755))
+				_, err = os.Create(file)
+				require.NoError(t, err)
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.MkdirAll(file, 0o755)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.MkdirAll(file, 0o755))
 			}
 			_, out, err := executeActionCommand(cmd)
 			if err != nil {
@@ -257,19 +249,13 @@ func TestPullCmd(t *testing.T) {
 
 			if tt.expectVerify {
 				outString := helmTestKeyOut + tt.expectSha + "\n"
-				if out != outString {
-					t.Errorf("%q: expected verification output %q, got %q", tt.name, outString, out)
-				}
+				assert.Equal(t, outString, out, "%q: expected verification output %q, got %q", tt.name, outString, out)
 			}
 
 			ef := filepath.Join(outdir, tt.expectFile)
 			fi, err := os.Stat(ef)
-			if err != nil {
-				t.Errorf("%q: expected a file at %s. %s", tt.name, ef, err)
-			}
-			if fi.IsDir() != tt.expectDir {
-				t.Errorf("%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
-			}
+			require.NoError(t, err, "%q: expected a file at %s.", tt.name, ef)
+			assert.Equal(t, tt.expectDir, fi.IsDir(), "%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
 		})
 	}
 }
@@ -300,38 +286,24 @@ func runPullTests(t *testing.T, tests []struct {
 			if tt.existFile != "" {
 				file := filepath.Join(outdir, tt.existFile)
 				_, err := os.Create(file)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.MkdirAll(file, 0o755)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.MkdirAll(file, 0o755))
 			}
 			_, _, err := executeActionCommand(cmd)
-			if tt.wantError && err == nil {
-				t.Fatalf("%q: expected error but got none", tt.name)
-			}
-			if err != nil {
-				if tt.wantError {
-					if tt.wantErrorMsg != "" && tt.wantErrorMsg != err.Error() {
-						t.Fatalf("Actual error '%s', not equal to expected error '%s'", err, tt.wantErrorMsg)
-					}
-					return
+			if tt.wantError {
+				require.Error(t, err, "%q: expected error but got none", tt.name)
+				if tt.wantErrorMsg != "" {
+					require.EqualErrorf(t, err, tt.wantErrorMsg, "Actual error '%s', not equal to expected error '%s'", err, tt.wantErrorMsg)
 				}
-				t.Fatalf("%q reported error: %s", tt.name, err)
-			}
-
-			ef := filepath.Join(outdir, tt.expectFile)
-			fi, err := os.Stat(ef)
-			if err != nil {
-				t.Errorf("%q: expected a file at %s. %s", tt.name, ef, err)
-			}
-			if fi.IsDir() != tt.expectDir {
-				t.Errorf("%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
+			} else {
+				require.NoError(t, err, "%q reported error", tt.name)
+				ef := filepath.Join(outdir, tt.expectFile)
+				fi, err := os.Stat(ef)
+				require.NoError(t, err, "%q: expected a file at %s.", tt.name, ef)
+				assert.Equal(t, tt.expectDir, fi.IsDir(), "%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
 			}
 		})
 	}
@@ -362,9 +334,7 @@ func TestPullWithCredentialsCmd(t *testing.T) {
 	}))
 	defer srv2.Close()
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	// all flags will get "-d outdir" appended.
 	tests := []struct {
@@ -445,14 +415,10 @@ func TestPullWithCredentialsCmdOCIRegistry(t *testing.T) {
 	defer srv.Stop()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ociSrv.Run(t)
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	// all flags will get "-d outdir" appended.
 	tests := []struct {
@@ -517,9 +483,7 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 	defer srv.Stop()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	result := ociSrv.RunWithReturn(t)
 
 	contentCache := t.TempDir()
@@ -538,9 +502,7 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 	)
 
 	_, _, err = executeActionCommand(cmd)
-	if err != nil {
-		t.Fatalf("pull with tag+digest failed: %v", err)
-	}
+	require.NoError(t, err, "pull with tag+digest failed")
 
 	// Verify the file was downloaded
 	// When digest is present, the filename uses the digest format (e.g. chart@sha256-hex.tgz)
@@ -548,12 +510,9 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 	if _, err := os.Stat(expectedFile); err != nil {
 		// Try the digest-based filename; parse algorithm:hex to avoid fixed-offset assumptions
 		algorithm, digestPart, ok := strings.Cut(result.PushedChart.Manifest.Digest, ":")
-		if !ok {
-			t.Fatalf("digest must be in algorithm:hex format, got %q", result.PushedChart.Manifest.Digest)
-		}
+		require.True(t, ok, "digest must be in algorithm:hex format, got %q", result.PushedChart.Manifest.Digest)
 		expectedFile = filepath.Join(outdir, fmt.Sprintf("oci-dependent-chart@%s-%s.tgz", algorithm, digestPart))
-		if _, err := os.Stat(expectedFile); err != nil {
-			t.Errorf("expected chart file not found: %v", err)
-		}
+		_, err := os.Stat(expectedFile)
+		assert.NoErrorf(t, err, "expected chart file not found")
 	}
 }
