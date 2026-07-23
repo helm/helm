@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release/v1/sequence"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -37,12 +39,13 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version      int
-	Timeout      time.Duration
-	WaitStrategy kube.WaitStrategy
-	WaitOptions  []kube.WaitOption
-	WaitForJobs  bool
-	DisableHooks bool
+	Version          int
+	Timeout          time.Duration
+	ReadinessTimeout time.Duration
+	WaitStrategy     kube.WaitStrategy
+	WaitOptions      []kube.WaitOption
+	WaitForJobs      bool
+	DisableHooks     bool
 	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
 	DryRunStrategy DryRunStrategy
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the rollback anyway.
@@ -72,8 +75,20 @@ func NewRollback(cfg *Configuration) *Rollback {
 
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
+	return r.RunWithContext(context.Background(), name)
+}
+
+// RunWithContext executes 'helm rollback' against the given release, propagating
+// ctx to the sequenced-wait path. It mirrors the Run/RunWithContext split used by
+// Install and Upgrade so callers that already hold a context (e.g. upgrade's
+// rollback-on-failure) can thread it through instead of starting a fresh one.
+func (r *Rollback) RunWithContext(ctx context.Context, name string) error {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
+	}
+
+	if r.ReadinessTimeout > 0 && r.Timeout > 0 && r.ReadinessTimeout > r.Timeout {
+		return fmt.Errorf("--readiness-timeout (%s) must not exceed --timeout (%s)", r.ReadinessTimeout, r.Timeout)
 	}
 
 	r.cfg.Releases.MaxHistory = r.MaxHistory
@@ -92,7 +107,7 @@ func (r *Rollback) Run(name string) error {
 	}
 
 	r.cfg.Logger().Debug("performing rollback", "name", name)
-	if _, err := r.performRollback(currentRelease, targetRelease, serverSideApply); err != nil {
+	if _, err := r.performRollback(ctx, currentRelease, targetRelease, serverSideApply); err != nil {
 		return err
 	}
 
@@ -190,15 +205,20 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Manifest:    previousRelease.Manifest,
 		Hooks:       previousRelease.Hooks,
 		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
+		Sequenced:   previousRelease.IsSequenced(),
 	}
 
 	return currentRelease, targetRelease, serverSideApply, nil
 }
 
-func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release, serverSideApply bool) (*release.Release, error) {
+func (r *Rollback) performRollback(ctx context.Context, currentRelease, targetRelease *release.Release, serverSideApply bool) (*release.Release, error) {
 	if isDryRun(r.DryRunStrategy) {
 		r.cfg.Logger().Debug("dry run", "name", targetRelease.Name)
 		return targetRelease, nil
+	}
+
+	if targetRelease.IsSequenced() {
+		return r.performSequencedRollback(ctx, currentRelease, targetRelease, serverSideApply)
 	}
 
 	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
@@ -225,6 +245,19 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return targetRelease, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
 	}
+
+	// Strip Helm-internal sequencing annotations from both current and target
+	// before applying to K8s. The stored Manifest in a release secret retains
+	// the raw annotations even though they were stripped before the original
+	// apply; without this strip, SSA on rollback rejects the multi-slash
+	// annotation key (e.g. helm.sh/depends-on/resource-groups) as invalid.
+	if err := stripSequencingAnnotations(current); err != nil {
+		return targetRelease, fmt.Errorf("stripping sequencing annotations from current release: %w", err)
+	}
+	if err := stripSequencingAnnotations(target); err != nil {
+		return targetRelease, fmt.Errorf("stripping sequencing annotations from target release: %w", err)
+	}
+
 	results, err := r.cfg.KubeClient.Update(
 		current,
 		target,
@@ -295,6 +328,154 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		rel, err := releaserToV1Release(reli)
 		if err != nil {
 			return nil, err
+		}
+		r.cfg.Logger().Debug("superseding previous deployment", "version", rel.Version)
+		rel.Info.Status = common.StatusSuperseded
+		r.cfg.recordRelease(rel)
+	}
+
+	targetRelease.Info.Status = common.StatusDeployed
+
+	return targetRelease, nil
+}
+
+func (r *Rollback) failRollback(currentRelease, targetRelease *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
+	msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
+	r.cfg.Logger().Warn(msg)
+
+	currentRelease.Info.Status = common.StatusSuperseded
+	targetRelease.Info.Status = common.StatusFailed
+	targetRelease.Info.Description = msg
+	r.cfg.recordRelease(currentRelease)
+	r.cfg.recordRelease(targetRelease)
+
+	if r.CleanupOnFail && len(created) > 0 {
+		r.cfg.Logger().Debug("cleanup on fail set, cleaning up resources", "count", len(created))
+		_, errs := r.cfg.KubeClient.Delete(created, metav1.DeletePropagationBackground)
+		if errs != nil {
+			return targetRelease, fmt.Errorf(
+				"an error occurred while cleaning up resources after rollback failure: %w: %w",
+				err,
+				joinErrors(errs, ", "),
+			)
+		}
+		r.cfg.Logger().Debug("resource cleanup complete")
+	}
+
+	return targetRelease, err
+}
+
+// performSequencedRollback deploys the target revision's resources in DAG-ordered batches
+// when the target revision was originally deployed with --wait=ordered.
+func (r *Rollback) performSequencedRollback(ctx context.Context, currentRelease, targetRelease *release.Release, serverSideApply bool) (*release.Release, error) {
+	fail := func(created kube.ResourceList, err error) (*release.Release, error) {
+		return r.failRollback(currentRelease, targetRelease, created, err)
+	}
+
+	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
+	if err != nil {
+		return fail(nil, fmt.Errorf("unable to build kubernetes objects from current release manifest: %w", err))
+	}
+	if err := stripSequencingAnnotations(current); err != nil {
+		return fail(nil, fmt.Errorf("stripping sequencing annotations from current release: %w", err))
+	}
+
+	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), false)
+	if err != nil {
+		return fail(nil, fmt.Errorf("unable to build kubernetes objects from target release manifest: %w", err))
+	}
+
+	sortedManifests, err := sequence.ParseStoredManifests(targetRelease.Manifest)
+	if err != nil {
+		return fail(nil, fmt.Errorf("parsing target release manifest for sequenced rollback: %w", err))
+	}
+
+	plan, err := sequence.Build(targetRelease.Chart, sortedManifests)
+	if err != nil {
+		return fail(nil, fmt.Errorf("building sequencing plan for rollback: %w", err))
+	}
+	logPlanWarnings(r.cfg.Logger(), plan)
+
+	if !r.DisableHooks {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
+			return fail(nil, err)
+		}
+	} else {
+		r.cfg.Logger().Debug("rollback hooks disabled", "name", targetRelease.Name)
+	}
+
+	readinessTimeout := r.ReadinessTimeout
+	if readinessTimeout <= 0 {
+		readinessTimeout = time.Minute
+	}
+
+	gatingStrategy := r.WaitStrategy
+	if gatingStrategy == kube.HookOnlyStrategy {
+		r.cfg.Logger().Info("release was deployed with ordered sequencing; using the status watcher to gate rollback batches (hooks keep the hook-only strategy)", "release", targetRelease.Name)
+		gatingStrategy = kube.StatusWatcherStrategy
+	}
+
+	sd := &sequencedDeployment{
+		cfg:                    r.cfg,
+		releaseName:            targetRelease.Name,
+		releaseNamespace:       targetRelease.Namespace,
+		serverSideApply:        serverSideApply,
+		forceConflicts:         r.ForceConflicts,
+		forceReplace:           r.ForceReplace,
+		waitStrategy:           gatingStrategy,
+		waitOptions:            r.WaitOptions,
+		waitForJobs:            r.WaitForJobs,
+		timeout:                r.Timeout,
+		readinessTimeout:       readinessTimeout,
+		deadline:               computeDeadline(r.Timeout),
+		upgradeMode:            true,
+		currentResources:       current,
+		upgradeCSAFieldManager: true,
+	}
+
+	if err := sd.apply(ctx, plan); err != nil {
+		return fail(sd.createdResources, err)
+	}
+
+	allTargetKeys := make(map[string]bool, len(target))
+	for _, resource := range target {
+		allTargetKeys[objectKey(resource)] = true
+	}
+
+	removedKeys := make(map[string]bool)
+	var toBeDeleted kube.ResourceList
+	for _, resource := range current {
+		if !allTargetKeys[objectKey(resource)] {
+			removedKeys[objectKey(resource)] = true
+			toBeDeleted = append(toBeDeleted, resource)
+		}
+	}
+
+	if len(toBeDeleted) > 0 {
+		waiter, err := getWaiterFor(r.cfg.KubeClient, gatingStrategy, r.WaitOptions...)
+		if err != nil {
+			return fail(sd.createdResources, fmt.Errorf("getting waiter for removed-resource deletion: %w", err))
+		}
+		if err := sd.deleteRemovedFromOldRelease(currentRelease, removedKeys, toBeDeleted, waiter); err != nil {
+			return fail(sd.createdResources, fmt.Errorf("deleting removed resources during rollback: %w", err))
+		}
+	}
+
+	if !r.DisableHooks {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
+			return fail(sd.createdResources, err)
+		}
+	}
+
+	deployed, err := r.cfg.Releases.DeployedAll(currentRelease.Name)
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
+		return fail(sd.createdResources, err)
+	}
+
+	for _, reli := range deployed {
+		rel, err := releaserToV1Release(reli)
+		if err != nil {
+			return fail(sd.createdResources, err)
 		}
 		r.cfg.Logger().Debug("superseding previous deployment", "version", rel.Version)
 		rel.Info.Status = common.StatusSuperseded
