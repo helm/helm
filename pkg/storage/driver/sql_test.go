@@ -288,6 +288,59 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
 }
 
+func TestSqlCreateCommitFailure(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	body, _ := encodeRelease(rel)
+
+	query := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(query)).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	labelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(labelsQuery)).
+			WithArgs(key, rel.Namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	mock.ExpectCommit().WillReturnError(errors.New("commit failed"))
+
+	err := sqlDriver.Create(key, rel)
+	require.ErrorContains(t, err, "commit failed")
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
 func TestSqlUpdate(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
@@ -496,6 +549,132 @@ func TestSqlDelete(t *testing.T) {
 	require.NoError(t, err, "failed to delete release with key %q", key)
 
 	assert.Truef(t, reflect.DeepEqual(rel, deletedRelease), "Expected release {%v}, got {%v}", rel, deletedRelease)
+}
+
+func TestSqlDeleteCommitFailure(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+
+	body, _ := encodeRelease(rel)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	selectQuery := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery(regexp.QuoteMeta(selectQuery)).
+		WithArgs(key, namespace).
+		WillReturnRows(
+			mock.NewRows([]string{
+				sqlReleaseTableBodyColumn,
+			}).AddRow(
+				body,
+			),
+		).RowsWillBeClosed()
+
+	deleteQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mockGetReleaseCustomLabels(mock, key, namespace, rel.Labels)
+
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectCommit().WillReturnError(errors.New("commit failed"))
+
+	_, err := sqlDriver.Delete(key)
+	require.ErrorContains(t, err, "commit failed")
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+func TestSqlDeleteLabelsFailureRollsBack(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+
+	body, _ := encodeRelease(rel)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	selectQuery := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery(regexp.QuoteMeta(selectQuery)).
+		WithArgs(key, namespace).
+		WillReturnRows(
+			mock.NewRows([]string{
+				sqlReleaseTableBodyColumn,
+			}).AddRow(
+				body,
+			),
+		).RowsWillBeClosed()
+
+	deleteQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mockGetReleaseCustomLabels(mock, key, namespace, rel.Labels)
+
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnError(errors.New("labels delete failed"))
+
+	mock.ExpectRollback()
+
+	_, err := sqlDriver.Delete(key)
+	require.ErrorContains(t, err, "labels delete failed")
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
 }
 
 func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace string, labels map[string]string) {
