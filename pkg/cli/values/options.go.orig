@@ -62,7 +62,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]any, error) {
 	// User specified a value via --set-json
 	for _, value := range opts.JSONValues {
 		trimmedValue := strings.TrimSpace(value)
-		if trimmedValue != "" && trimmedValue[0] == '{' {
+		if len(trimmedValue) > 0 && trimmedValue[0] == '{' {
 			// If value is JSON object format, parse it as map
 			var jsonMap map[string]any
 			if err := json.Unmarshal([]byte(trimmedValue), &jsonMap); err != nil {
@@ -128,11 +128,7 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	// FIXME: maybe someone handle other protocols like ftp.
 	g, err := p.ByScheme(u.Scheme)
 	if err != nil {
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
-		}
-		return data, nil
+		return os.ReadFile(filePath)
 	}
 	data, err := g.Get(filePath, getter.WithURL(filePath))
 	if err != nil {
