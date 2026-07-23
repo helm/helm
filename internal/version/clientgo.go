@@ -24,10 +24,18 @@ import (
 	_ "k8s.io/client-go/kubernetes" // Force k8s.io/client-go to be included in the build
 )
 
+// ReadBuildInfo is a package-level hook for tests to override runtime/debug.ReadBuildInfo.
+// It must not be modified by production code
+var ReadBuildInfo = debug.ReadBuildInfo
+
 func K8sIOClientGoModVersion() (string, error) {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
+	info, ok := ReadBuildInfo()
+	if !ok || info == nil {
 		return "", errors.New("failed to read build info")
+	}
+
+	if info.Deps == nil {
+		return "", errors.New("k8s.io/client-go not found in build info")
 	}
 
 	idx := slices.IndexFunc(info.Deps, func(m *debug.Module) bool {

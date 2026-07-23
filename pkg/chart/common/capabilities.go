@@ -17,6 +17,7 @@ package common
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -36,6 +37,9 @@ const (
 	kubeVersionMajorTesting = 1
 	kubeVersionMinorTesting = 20
 )
+
+// isTesting is a package-level variable to allow testing the non-testing code path.
+var isTesting = testing.Testing
 
 var (
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
@@ -146,18 +150,24 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 	// Test builds don't include debug info / module info
 	// (And even if they did, we probably want stable capabilities for tests anyway)
 	// Return a default value for test builds
-	if testing.Testing() {
+	if isTesting() {
 		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
 	vstr, err := helmversion.K8sIOClientGoModVersion()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
+		// Non-go-build toolchains (Bazel, Nix, etc.) don't embed module info.
+		// Fall back to the same defaults used during testing rather than panicking.
+		slog.Warn("unable to determine k8s.io/client-go version from build info, using defaults",
+			slog.Any("error", err))
+		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
 	v, err := semver.NewVersion(vstr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse k8s.io/client-go version %q: %w", vstr, err)
+		slog.Warn("unable to parse k8s.io/client-go version, using defaults",
+			slog.String("version", vstr), slog.Any("error", err))
+		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
 	kubeVersionMajor := v.Major() + 1
