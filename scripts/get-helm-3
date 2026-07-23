@@ -114,12 +114,14 @@ verifySupported() {
 checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
     # Get tag from release URL
-    local latest_release_url="https://get.helm.sh/helm3-latest-version"
+    # Append a cache-busting query string to avoid CDN edge servers
+    # serving stale version files after a new release.
+    local latest_release_url="https://get.helm.sh/helm3-latest-version?ts=$(date +%s)"
     local latest_release_response=""
     if [ "${HAS_CURL}" == "true" ]; then
-      latest_release_response=$( curl -L --silent --show-error --fail "$latest_release_url" 2>&1 || true )
+      latest_release_response=$( curl -L --silent --show-error --fail -H "Cache-Control: no-cache" "$latest_release_url" 2>&1 || true )
     elif [ "${HAS_WGET}" == "true" ]; then
-      latest_release_response=$( wget "$latest_release_url" -q -O - 2>&1 || true )
+      latest_release_response=$( wget "$latest_release_url" --header="Cache-Control: no-cache" -q -O - 2>&1 || true )
     fi
     TAG=$( echo "$latest_release_response" | grep '^v[0-9]' )
     if [ "x$TAG" == "x" ]; then
