@@ -29,7 +29,7 @@ type TLSRegistryClientTestSuite struct {
 
 func (suite *TLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	dockerRegistry := setup(&suite.TestSuite, true, false)
+	dockerRegistry := setup(&suite.TestSuite, true, false, "htpasswd")
 
 	// Start Docker registry
 	go dockerRegistry.ListenAndServe()
