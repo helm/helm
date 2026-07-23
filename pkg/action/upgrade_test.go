@@ -634,6 +634,55 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	req.Error(err)
 }
 
+func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
+
+	upAction := NewUpgrade(config)
+	upAction.Namespace = "spaced"
+
+	rel := releaseStub()
+	rel.Name = "test-server-dry-run"
+	rel.Info.Status = common.StatusDeployed
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	expectedErr := errors.New("validation error: unknown field in spec")
+	config.KubeClient.(*kubefake.FailingKubeClient).UpdateError = expectedErr
+	upAction.DryRunStrategy = DryRunServer
+
+	vals := map[string]any{}
+	ctx, done := context.WithCancel(t.Context())
+	_, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+	done()
+
+	is.Error(err)
+	is.Contains(err.Error(), "validation error")
+
+	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
+	config2.KubeClient.(*kubefake.FailingKubeClient).UpdateError = expectedErr
+
+	upAction2 := NewUpgrade(config2)
+	upAction2.Namespace = "spaced"
+
+	rel2 := releaseStub()
+	rel2.Name = "test-client-dry-run"
+	rel2.Info.Status = common.StatusDeployed
+	req.NoError(upAction2.cfg.Releases.Create(rel2))
+
+	upAction2.DryRunStrategy = DryRunClient
+
+	ctx, done = context.WithCancel(t.Context())
+	resi, err := upAction2.RunWithContext(ctx, rel2.Name, buildChart(), vals)
+	done()
+
+	req.NoError(err)
+	res, err := releaserToV1Release(resi)
+	req.NoError(err)
+	is.Equal("Dry run complete", res.Info.Description)
+}
+
 func TestGetUpgradeServerSideValue(t *testing.T) {
 	tests := []struct {
 		name                    string
