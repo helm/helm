@@ -1247,3 +1247,32 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+func TestWriteToFileNoTrailingNewline(t *testing.T) {
+	// Use a template whose output already ends with \n to expose the regression.
+	// Without the fix, writeToFile appends another \n producing double newline at EOF.
+	templates := []*common.File{
+		{Name: "templates/test.yaml", Data: []byte("key: value\n")},
+	}
+	chart := buildChartWithTemplates(templates)
+	instAction := installAction(t)
+	vals := map[string]any{}
+	dir := t.TempDir()
+	instAction.OutputDir = dir
+	_, err := instAction.Run(chart, vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	path := filepath.Join(dir, "hello/templates/test.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %s", err)
+	}
+	c := string(data)
+	if strings.HasSuffix(c, "\n\n") {
+		t.Errorf("output file ends with double newline (regression): got %q", c)
+	}
+	if !strings.HasSuffix(c, "\n") {
+		t.Errorf("output file does not end with newline: got %q", c)
+	}
+}
