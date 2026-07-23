@@ -280,7 +280,21 @@ func compListReleases(toComplete string, ignoredReleaseNames []string, cfg *acti
 
 	var choices []string
 	filteredReleases := filterReleases(releases, ignoredReleaseNames)
+	// Completions are release names, so keep only the latest revision of each
+	// release even though ListAll also returns superseded revisions.
+	latestReleases := make([]*release.Release, 0, len(filteredReleases))
+	indices := make(map[string]int, len(filteredReleases))
 	for _, rel := range filteredReleases {
+		if index, ok := indices[rel.Name]; ok {
+			if rel.Version > latestReleases[index].Version {
+				latestReleases[index] = rel
+			}
+			continue
+		}
+		indices[rel.Name] = len(latestReleases)
+		latestReleases = append(latestReleases, rel)
+	}
+	for _, rel := range latestReleases {
 		choices = append(choices,
 			fmt.Sprintf("%s\t%s-%s -> %s", rel.Name, rel.Chart.Metadata.Name, rel.Chart.Metadata.Version, rel.Info.Status.String()))
 	}
