@@ -1247,3 +1247,39 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+// TestInstallDryRunClientDoesNotMutateSharedConfiguration ensures that a
+// client-only install does not permanently replace the shared Configuration's
+// KubeClient, Releases, or Capabilities (issue #11463).
+func TestInstallDryRunClientDoesNotMutateSharedConfiguration(t *testing.T) {
+	req := require.New(t)
+
+	config := actionConfigFixture(t)
+	originalKubeClient := config.KubeClient
+	originalCapabilities := config.Capabilities
+	originalReleases := config.Releases
+
+	clientOnly := NewInstall(config)
+	clientOnly.DryRunStrategy = DryRunClient
+	clientOnly.ReleaseName = "test-client-only"
+	clientOnly.Namespace = "spaced"
+
+	_, err := clientOnly.Run(buildChart(), nil)
+	req.NoError(err)
+
+	req.Same(originalKubeClient, config.KubeClient, "KubeClient must not be replaced by client-only install")
+	req.Same(originalCapabilities, config.Capabilities, "Capabilities must not be replaced by client-only install")
+	req.Same(originalReleases, config.Releases, "Releases must not be replaced by client-only install")
+
+	// A subsequent real install sharing the same Configuration must still work.
+	realInstall := NewInstall(config)
+	realInstall.DryRunStrategy = DryRunNone
+	realInstall.ReleaseName = "test-real-install"
+	realInstall.Namespace = "spaced"
+
+	_, err = realInstall.Run(buildChart(), nil)
+	req.NoError(err)
+
+	req.Same(originalKubeClient, config.KubeClient, "KubeClient must still be original after real install")
+	req.Same(originalReleases, config.Releases, "Releases must still be original after real install")
+}

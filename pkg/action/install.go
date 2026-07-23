@@ -327,6 +327,29 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 
 	if !interactWithServer(i.DryRunStrategy) {
+		// Work on a local copy of the Configuration so client-only mocks
+		// (fake KubeClient, in-memory Releases, default Capabilities) do
+		// not mutate the shared *Configuration passed to NewInstall.
+		// Callers that reuse the same cfg for a later real install must
+		// still observe the original client and storage. See #11463.
+		//
+		// Copy fields explicitly: Configuration embeds sync.Mutex and
+		// logging.LogHolder (atomic.Pointer), which must not be copied
+		// by value (govet copylocks).
+		origCfg := i.cfg
+		cfgCopy := &Configuration{
+			RESTClientGetter:    origCfg.RESTClientGetter,
+			Releases:            origCfg.Releases,
+			KubeClient:          origCfg.KubeClient,
+			RegistryClient:      origCfg.RegistryClient,
+			Capabilities:        origCfg.Capabilities,
+			CustomTemplateFuncs: origCfg.CustomTemplateFuncs,
+			HookOutputFunc:      origCfg.HookOutputFunc,
+		}
+		cfgCopy.SetLogger(origCfg.Logger().Handler())
+		i.cfg = cfgCopy
+		defer func() { i.cfg = origCfg }()
+
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = common.DefaultCapabilities.Copy()
