@@ -23,6 +23,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -32,11 +33,17 @@ func TestDefaultVersionSetMatchesScheme(t *testing.T) {
 	require.NoError(t, apiextensionsv1beta1.AddToScheme(scheme))
 	require.NoError(t, apiextensionsv1.AddToScheme(scheme))
 
-	groups := scheme.PrioritizedVersionsAllGroups()
-	schemeVersions := make(VersionSet, 0, len(groups))
-	for _, group := range groups {
-		schemeVersions = append(schemeVersions, group.String())
+	defaultVersionsByGroup := make(map[string][]string)
+	for _, apiVersion := range DefaultVersionSet {
+		groupVersion, err := schema.ParseGroupVersion(apiVersion)
+		require.NoErrorf(t, err, "invalid API version %q in DefaultVersionSet", apiVersion)
+		defaultVersionsByGroup[groupVersion.Group] = append(defaultVersionsByGroup[groupVersion.Group], groupVersion.Version)
 	}
 
-	require.ElementsMatch(t, DefaultVersionSet, schemeVersions, "DefaultVersionSet must stay in sync with the Kubernetes scheme")
+	schemeVersionsByGroup := make(map[string][]string)
+	for _, groupVersion := range scheme.PrioritizedVersionsAllGroups() {
+		schemeVersionsByGroup[groupVersion.Group] = append(schemeVersionsByGroup[groupVersion.Group], groupVersion.Version)
+	}
+
+	require.Equal(t, schemeVersionsByGroup, defaultVersionsByGroup, "DefaultVersionSet must stay in sync with the Kubernetes scheme")
 }
