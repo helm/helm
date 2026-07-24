@@ -1,0 +1,1 @@
+Error: invalid argument "table" for "-o, --output" flag: invalid format type
