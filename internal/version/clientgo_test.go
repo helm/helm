@@ -27,8 +27,9 @@ import (
 )
 
 func TestK8sClientGoModVersion(t *testing.T) {
-	// Unfortunately, test builds don't include debug info / module info
-	// So we expect "K8sIOClientGoModVersion" to return error
+	// Generated test binaries omit dependency modules from embedded build info,
+	// even when the package under test imports them. The built-binary test below
+	// covers the normal executable path where dependency modules are present.
 	_, err := K8sIOClientGoModVersion()
 	require.ErrorContains(t, err, "k8s.io/client-go not found in build info")
 }
