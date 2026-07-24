@@ -24,10 +24,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/openpgp"           //nolint
-	"golang.org/x/crypto/openpgp/clearsign" //nolint
-	"golang.org/x/crypto/openpgp/packet"    //nolint
 	"sigs.k8s.io/yaml"
 
 	hapi "helm.sh/helm/v3/pkg/chart"
@@ -314,8 +314,9 @@ func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {
 func (s *Signatory) verifySignature(block *clearsign.Block) (*openpgp.Entity, error) {
 	return openpgp.CheckDetachedSignature(
 		s.KeyRing,
-		bytes.NewBuffer(block.Bytes),
+		bytes.NewReader(block.Bytes),
 		block.ArmoredSignature.Body,
+		&defaultPGPConfig,
 	)
 }
 
