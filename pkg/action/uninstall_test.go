@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -28,7 +29,10 @@ import (
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
@@ -58,6 +62,46 @@ func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 	res, err := unAction.Run("release-non-exist")
 	is.Nil(res)
 	is.NoError(err)
+}
+
+// queryFailingDriver wraps a storage driver but forces Query (the method
+// Storage.History calls) to fail with a supplied error. It lets a test
+// simulate a storage-backend failure instead of a genuine "release not found".
+type queryFailingDriver struct {
+	driver.Driver
+	queryErr error
+}
+
+func (d *queryFailingDriver) Query(_ map[string]string) ([]release.Releaser, error) {
+	return nil, d.queryErr
+}
+
+// Regression test: uninstall --ignore-not-found must ignore only a genuine
+// driver.ErrReleaseNotFound. Any other storage failure surfaces as a wrapped,
+// non-sentinel error and must propagate, not be swallowed into a false success.
+// See pkg/action/uninstall.go.
+func TestUninstallRelease_ignoreNotFound_realStorageError(t *testing.T) {
+	is := assert.New(t)
+
+	unAction := uninstallAction(t)
+	unAction.DryRun = false
+	unAction.IgnoreNotFound = true
+
+	// Mirror how the Secrets driver reports a backend failure: a wrapped error
+	// that is NOT driver.ErrReleaseNotFound.
+	backendErr := errors.New("forbidden: user cannot list secrets")
+	failingDriver := &queryFailingDriver{
+		Driver:   driver.NewMemory(),
+		queryErr: fmt.Errorf("query: failed to query with labels: %w", backendErr),
+	}
+	unAction.cfg.Releases = storage.Init(failingDriver)
+
+	res, err := unAction.Run("release-non-exist")
+	is.Nil(res)
+	is.Error(err)
+	is.ErrorContains(err, "forbidden: user cannot list secrets")
+	// The failure must not be misclassified as a not-found and swallowed.
+	is.False(errors.Is(err, driver.ErrReleaseNotFound))
 }
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
