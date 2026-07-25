@@ -280,6 +280,10 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
+	if ch == nil {
+		return hs, b, "", errors.New("chart is nil")
+	}
+
 	caps, err := cfg.getCapabilities()
 	if err != nil {
 		return hs, b, "", err

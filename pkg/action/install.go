@@ -291,6 +291,9 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	default:
 		return nil, errors.New("invalid chart apiVersion")
 	}
+	if chrt == nil {
+		return nil, errors.New("chart is nil")
+	}
 
 	if interactWithServer(i.DryRunStrategy) {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {

@@ -1245,3 +1245,16 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+func TestInstallRun_NilChart(t *testing.T) {
+	is := assert.New(t)
+
+	instAction := installAction(t)
+	instAction.DryRunStrategy = DryRunClient
+
+	vals := map[string]any{}
+	// Pass a typed nil *chart.Chart as the ci.Charter interface
+	_, err := instAction.Run((*chart.Chart)(nil), vals)
+	is.Error(err)
+	is.Contains(err.Error(), "chart is nil")
+}
