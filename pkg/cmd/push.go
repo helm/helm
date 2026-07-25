@@ -23,8 +23,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/pusher"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 const pushDesc = `
@@ -46,6 +48,7 @@ type registryPushOptions struct {
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	o := &registryPushOptions{}
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "push [chart] [remote]",
@@ -70,8 +73,15 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return noMoreArgsComp()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			// The registry client writes a human-readable push summary
+			// directly to its writer. Suppress it for the machine-readable
+			// output formats so that only the structured result is written.
+			registryClientOut := out
+			if outfmt != output.Table {
+				registryClientOut = io.Discard
+			}
 			registryClient, err := newRegistryClient(
-				out, o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
+				registryClientOut, o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
 			)
 
 			if err != nil {
@@ -80,18 +90,28 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			cfg.RegistryClient = registryClient
 			chartRef := args[0]
 			remote := args[1]
+			var result *registry.PushResult
 			client := action.NewPushWithOpts(action.WithPushConfig(cfg),
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSVerify),
 				action.WithPlainHTTP(o.plainHTTP),
-				action.WithPushOptWriter(out))
+				action.WithPushOptWriter(out),
+				action.WithPushResultHandler(func(r *registry.PushResult) {
+					result = r
+				}))
 			client.Settings = settings
-			output, err := client.Run(chartRef, remote)
+			uploadOutput, err := client.Run(chartRef, remote)
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
-			return nil
+			if outfmt == output.Table {
+				fmt.Fprint(out, uploadOutput)
+				return nil
+			}
+			if result == nil {
+				return fmt.Errorf("no push result available to write as %s", outfmt)
+			}
+			return outfmt.Write(out, newPushWriter(result))
 		},
 	}
 
@@ -104,5 +124,44 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
 
+	bindOutputFlag(cmd, &outfmt)
+
 	return cmd
+}
+
+// pushResult is the structure written by the push command for the
+// machine-readable output formats.
+type pushResult struct {
+	Ref    string `json:"ref"`
+	Digest string `json:"digest"`
+}
+
+type pushWriter struct {
+	result pushResult
+}
+
+func newPushWriter(result *registry.PushResult) *pushWriter {
+	w := &pushWriter{result: pushResult{Ref: result.Ref}}
+	if result.Manifest != nil {
+		w.result.Digest = result.Manifest.Digest
+	}
+	return w
+}
+
+// WriteTable mirrors the push summary the registry client writes for the
+// default table output format.
+func (w *pushWriter) WriteTable(out io.Writer) error {
+	if _, err := fmt.Fprintf(out, "Pushed: %s\n", w.result.Ref); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(out, "Digest: %s\n", w.result.Digest)
+	return err
+}
+
+func (w *pushWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, w.result)
+}
+
+func (w *pushWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, w.result)
 }
