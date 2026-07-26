@@ -162,7 +162,7 @@ func (r *v3Accessor) Dependencies() []Charter {
 }
 
 func (r *v3Accessor) MetaDependencies() []Dependency {
-	var deps = make([]Dependency, len(r.chrt.Dependencies()))
+	var deps = make([]Dependency, len(r.chrt.Metadata.Dependencies))
 	for i, c := range r.chrt.Metadata.Dependencies {
 		deps[i] = c
 	}
