@@ -78,11 +78,10 @@ func TestGetPluginName(t *testing.T) {
 
 			if tt.expectErr {
 				assert.Error(t, err, "expected error but got none")
-				return
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, pluginName)
 			}
-
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, pluginName)
 		})
 	}
 }

@@ -122,9 +122,9 @@ func TestDownload(t *testing.T) {
 	const expectedUserAgent = "I am Groot"
 	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-		}
+		assert.True(t, ok, "Expected request to use basic auth")
+		assert.Equal(t, "username", username)
+		assert.Equal(t, "password", password)
 		assert.Equal(t, expectedUserAgent, r.UserAgent(), "Expected '%s', got '%s'", expectedUserAgent, r.UserAgent())
 		fmt.Fprint(w, expect)
 	}))
@@ -147,9 +147,9 @@ func TestDownload(t *testing.T) {
 	// test with Get URL differing from withURL
 	crossAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
-		if ok || username == "username" || password == "password" {
-			t.Errorf("Expected request to not include but got '%v', '%s', '%s'", ok, username, password)
-		}
+		assert.False(t, ok)
+		assert.NotEqual(t, "username", username)
+		assert.NotEqual(t, "password", password)
 		fmt.Fprint(w, expect)
 	}))
 
@@ -176,9 +176,9 @@ func TestDownload(t *testing.T) {
 	// test with Get URL differing from withURL and should pass creds
 	crossAuthSrv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-		}
+		assert.True(t, ok, "Expected request to use basic auth")
+		assert.Equal(t, "username", username)
+		assert.Equal(t, "password", password)
 		fmt.Fprint(w, expect)
 	}))
 

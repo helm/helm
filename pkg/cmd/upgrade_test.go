@@ -22,7 +22,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -201,9 +200,9 @@ func TestUpgradeDependencyUpdateOCINoPanic(t *testing.T) {
 		w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
 		if r.URL.Path == "/v2/" {
 			w.WriteHeader(http.StatusOK)
-			return
+		} else {
+			w.WriteHeader(http.StatusNotFound)
 		}
-		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer srv.Close()
 
@@ -224,23 +223,17 @@ func TestUpgradeDependencyUpdateOCINoPanic(t *testing.T) {
 			}},
 		},
 	}
-	if err := chartutil.SaveDir(parent, tmp); err != nil {
-		t.Fatalf("Error creating chart: %v", err)
-	}
+	require.NoError(t, chartutil.SaveDir(parent, tmp), "Error creating chart")
 	chartPath := filepath.Join(tmp, parent.Metadata.Name)
 	// SaveDir writes only resolved subcharts (Chart.Dependencies()), not the
 	// declared Metadata.Dependencies, so create the empty charts/ directory
 	// explicitly to make the "dependency missing from charts/" state concrete.
-	if err := os.MkdirAll(filepath.Join(chartPath, "charts"), 0o755); err != nil {
-		t.Fatalf("Error creating charts dir: %v", err)
-	}
+	require.NoError(t, os.MkdirAll(filepath.Join(chartPath, "charts"), 0o755), "Error creating charts dir")
 
 	// The command must return an error (registry rejects the lookup), not panic.
 	_, _, err := executeActionCommandC(storageFixture(),
 		fmt.Sprintf("upgrade --dependency-update --plain-http oci-parent '%s'", chartPath))
-	if err == nil {
-		t.Fatal("expected an error resolving the OCI dependency, got nil")
-	}
+	require.Error(t, err, "expected an error resolving the OCI dependency, got nil")
 }
 
 func TestUpgradeWithValue(t *testing.T) {
@@ -471,7 +464,7 @@ func TestUpgradeInstallWithLabels(t *testing.T) {
 
 	updatedRel, err := releaserToV1Release(updatedReli)
 	require.NoError(t, err)
-	assert.Truef(t, reflect.DeepEqual(updatedRel.Labels, expectedLabels), "Expected {%v}, got {%v}", expectedLabels, updatedRel.Labels)
+	assert.Equal(t, expectedLabels, updatedRel.Labels)
 }
 
 func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {

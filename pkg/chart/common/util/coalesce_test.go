@@ -372,8 +372,7 @@ func TestMergeValues(t *testing.T) {
 	assert.True(t, ok, "Expected nested boat key to be present but it was removed")
 
 	subchart := v["pequod"].(map[string]any)["ahab"].(map[string]any)
-	_, ok = subchart["boat"]
-	assert.True(t, ok, "Expected subchart boat key to be present but it was removed")
+	assert.Contains(t, subchart, "boat", "Expected subchart boat key to be present but it was removed")
 
 	_, ok = subchart["nested"].(map[string]any)["bar"]
 	assert.True(t, ok, "Expected subchart nested bar key to be present but it was removed")
@@ -526,8 +525,7 @@ func TestMergeTables(t *testing.T) {
 
 	// This is one test that is different from CoalesceTables. Because hole
 	// is a nil value and it's not removed it's still present.
-	_, ok = dst["hole"]
-	assert.True(t, ok, "The hole no longer exists.")
+	assert.Contains(t, dst, "hole", "The hole no longer exists.")
 
 	dst2 := map[string]any{
 		"name": "Ishmael",
@@ -559,8 +557,7 @@ func TestMergeTables(t *testing.T) {
 	det2, ok := dst2["details"].(map[string]any)
 	require.Truef(t, ok, "Details is the wrong type: %v", dst2["details"])
 
-	_, ok = det2["friends"]
-	assert.True(t, ok, "Could not find your friends. Maybe you don't have any. :-(")
+	assert.Contains(t, det2, "friends", "Could not find your friends. Maybe you don't have any. :-(")
 	assert.Equal(t, "pequod", dst2["boat"].(string), "Expected boat string, got %v", dst2["boat"])
 	assert.Equal(t, "black", dst2["hole"].(string), "Expected hole string, got %v", dst2["hole"])
 	assert.Nil(t, dst2["nilval"], "Expected nilvalue to have nil value but it does not")
@@ -659,8 +656,7 @@ func TestCoalesceValuesEmptyMapWithNils(t *testing.T) {
 	is.Equal("bar", data["foo"])
 
 	// "baz" should be preserved with nil value since it wasn't in chart defaults
-	_, ok = data["baz"]
-	is.True(ok, "Expected data.baz key to be present but it was removed")
+	is.Contains(data, "baz", "Expected data.baz key to be present but it was removed")
 	is.Nil(data["baz"], "Expected data.baz key to be nil but it is not")
 }
 

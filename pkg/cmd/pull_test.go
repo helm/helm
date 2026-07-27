@@ -237,25 +237,23 @@ func TestPullCmd(t *testing.T) {
 				require.NoError(t, os.MkdirAll(file, 0o755))
 			}
 			_, out, err := executeActionCommand(cmd)
-			if err != nil {
-				if tt.wantError {
-					if tt.wantErrorMsg != "" && tt.wantErrorMsg != err.Error() {
-						t.Fatalf("Actual error '%s', not equal to expected error '%s'", err, tt.wantErrorMsg)
-					}
-					return
+			if tt.wantError {
+				if tt.wantErrorMsg != "" {
+					require.EqualError(t, err, tt.wantErrorMsg, "Actual error '%s', not equal to expected error '%s'", err, tt.wantErrorMsg)
 				}
-				t.Fatalf("%q reported error: %s", tt.name, err)
-			}
+			} else {
+				require.NoError(t, err)
 
-			if tt.expectVerify {
-				outString := helmTestKeyOut + tt.expectSha + "\n"
-				assert.Equal(t, outString, out, "%q: expected verification output %q, got %q", tt.name, outString, out)
-			}
+				if tt.expectVerify {
+					outString := helmTestKeyOut + tt.expectSha + "\n"
+					assert.Equal(t, outString, out, "%q: expected verification output %q, got %q", tt.name, outString, out)
+				}
 
-			ef := filepath.Join(outdir, tt.expectFile)
-			fi, err := os.Stat(ef)
-			require.NoError(t, err, "%q: expected a file at %s.", tt.name, ef)
-			assert.Equal(t, tt.expectDir, fi.IsDir(), "%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
+				ef := filepath.Join(outdir, tt.expectFile)
+				fi, err := os.Stat(ef)
+				require.NoError(t, err, "%q: expected a file at %s.", tt.name, ef)
+				assert.Equal(t, tt.expectDir, fi.IsDir(), "%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
+			}
 		})
 	}
 }

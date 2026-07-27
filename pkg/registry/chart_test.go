@@ -232,8 +232,7 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 	result := generateOCIAnnotations(testChart, nowTimeString)
 
 	// Check that created annotation exists
-	_, ok := result[ocispec.AnnotationCreated]
-	assert.True(t, ok, "%s annotation not created", ocispec.AnnotationCreated)
+	assert.Contains(t, result, ocispec.AnnotationCreated, "%s annotation not created", ocispec.AnnotationCreated)
 
 	// Verify value of created artifact in RFC3339 format
 	_, err := time.Parse(time.RFC3339, result[ocispec.AnnotationCreated])
@@ -243,8 +242,7 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 	result = generateOCIAnnotations(testChart, "")
 
 	// Check that created annotation exists
-	_, ok = result[ocispec.AnnotationCreated]
-	require.True(t, ok, "%s annotation not created", ocispec.AnnotationCreated)
+	require.Contains(t, result, ocispec.AnnotationCreated, "%s annotation not created", ocispec.AnnotationCreated)
 
 	createdTimeAnnotation, err := time.Parse(time.RFC3339, result[ocispec.AnnotationCreated])
 	require.NoError(t, err, "%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])

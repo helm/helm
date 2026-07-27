@@ -16,7 +16,6 @@ package driver
 import (
 	"encoding/base64"
 	"encoding/json"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,7 +45,7 @@ func TestConfigMapGet(t *testing.T) {
 	got, err := cfgmaps.Get(key)
 	require.NoError(t, err, "Failed to get release")
 	// compare fetched release with original
-	assert.Truef(t, reflect.DeepEqual(rel, got), "Expected {%v}, got {%v}", rel, got)
+	assert.Equalf(t, rel, got, "Expected {%v}, got {%v}", rel, got)
 }
 
 func TestUncompressedConfigMapGet(t *testing.T) {
@@ -70,7 +69,7 @@ func TestUncompressedConfigMapGet(t *testing.T) {
 	got, err := cfgmaps.Get(key)
 	require.NoError(t, err, "Failed to get release")
 	// compare fetched release with original
-	assert.Truef(t, reflect.DeepEqual(rel, got), "Expected {%v}, got {%v}", rel, got)
+	assert.Equalf(t, rel, got, "Expected {%v}, got {%v}", rel, got)
 }
 
 func convertReleaserToV1(t *testing.T, rel release.Releaser) *rspb.Release {
@@ -105,7 +104,7 @@ func TestConfigMapList(t *testing.T) {
 	})
 	// check
 	require.NoError(t, err, "Failed to list deleted")
-	assert.Len(t, del, 2, "Expected 2 deleted, got %d:\n%v\n", len(del), del)
+	assert.Len(t, del, 2, "Expected 2 deleted")
 
 	// list all deployed releases
 	dpl, err := cfgmaps.List(func(rel release.Releaser) bool {
@@ -114,7 +113,7 @@ func TestConfigMapList(t *testing.T) {
 	})
 	// check
 	require.NoError(t, err, "Failed to list deployed")
-	assert.Len(t, dpl, 2, "Expected 2 deployed, got %d", len(dpl))
+	assert.Len(t, dpl, 2, "Expected 2 deployed")
 
 	// list all superseded releases
 	ssd, err := cfgmaps.List(func(rel release.Releaser) bool {
@@ -123,13 +122,11 @@ func TestConfigMapList(t *testing.T) {
 	})
 	// check
 	require.NoError(t, err, "Failed to list superseded")
-	assert.Len(t, ssd, 2, "Expected 2 superseded, got %d", len(ssd))
+	assert.Len(t, ssd, 2, "Expected 2 superseded")
 	// Check if release having both system and custom labels, this is needed to ensure that selector filtering would work.
 	rls := convertReleaserToV1(t, ssd[0])
-	_, ok := rls.Labels["name"]
-	require.True(t, ok, "Expected 'name' label in results, actual %v", rls.Labels)
-	_, ok = rls.Labels["key1"]
-	require.True(t, ok, "Expected 'key1' label in results, actual %v", rls.Labels)
+	require.Contains(t, rls.Labels, "name", "Expected 'name' label in results, actual %v", rls.Labels)
+	require.Contains(t, rls.Labels, "key1", "Expected 'key1' label in results, actual %v", rls.Labels)
 }
 
 func TestConfigMapQuery(t *testing.T) {
@@ -144,7 +141,7 @@ func TestConfigMapQuery(t *testing.T) {
 
 	rls, err := cfgmaps.Query(map[string]string{"status": "deployed"})
 	require.NoError(t, err, "Failed to query")
-	assert.Len(t, rls, 2, "Expected 2 results, got %d", len(rls))
+	assert.Len(t, rls, 2, "Expected 2 results")
 
 	_, err = cfgmaps.Query(map[string]string{"name": "notExist"})
 	assert.ErrorIs(t, err, ErrReleaseNotFound)
@@ -167,7 +164,7 @@ func TestConfigMapCreate(t *testing.T) {
 	require.NoError(t, err, "Failed to get release with key %q", key)
 
 	// compare created release with original
-	assert.Truef(t, reflect.DeepEqual(rel, got), "Expected {%v}, got {%v}", rel, got)
+	assert.Equalf(t, rel, got, "Expected {%v}, got {%v}", rel, got)
 }
 
 func TestConfigMapUpdate(t *testing.T) {
@@ -210,7 +207,7 @@ func TestConfigMapDelete(t *testing.T) {
 	// perform the delete
 	rls, err := cfgmaps.Delete(key)
 	require.NoError(t, err, "Failed to delete release with key %q", key)
-	assert.Truef(t, reflect.DeepEqual(rel, rls), "Expected {%v}, got {%v}", rel, rls)
+	assert.Equalf(t, rel, rls, "Expected {%v}, got {%v}", rel, rls)
 	_, err = cfgmaps.Get(key)
 	assert.ErrorIs(t, err, ErrReleaseNotFound)
 }

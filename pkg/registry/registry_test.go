@@ -376,22 +376,20 @@ func initFakeRegistryTestServer() string {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
-				return
+			} else {
+				w.Header().Set("Content-Type", ProvLayerMediaType)
+				w.Write(data)
 			}
-
-			w.Header().Set("Content-Type", ProvLayerMediaType)
-			w.Write(data)
 
 		case "/v2/testrepo/image-index/blobs/sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55":
 			data, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
-				return
+			} else {
+				w.Header().Set("Content-Type", ChartLayerMediaType)
+				w.Write(data)
 			}
-
-			w.Header().Set("Content-Type", ChartLayerMediaType)
-			w.Write(data)
 
 		default:
 			w.WriteHeader(http.StatusNotFound)

@@ -140,8 +140,7 @@ func TestDependencies(t *testing.T) {
 	linter := support.Linter{ChartDir: filepath.Join(tmp, c.Metadata.Name)}
 
 	Dependencies(&linter)
-	if l := len(linter.Messages); l != 2 {
-		t.Errorf("expected 2 linter errors for bad chart dependencies. Got %d.", l)
+	if !assert.Len(t, linter.Messages, 2, "expected 2 linter errors for bad chart dependencies") {
 		for i, msg := range linter.Messages {
 			t.Logf("Message: %d, Error: %#v", i, msg)
 		}

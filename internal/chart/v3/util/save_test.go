@@ -69,9 +69,8 @@ func TestSave(t *testing.T) {
 			c2, err := loader.LoadFile(where)
 			require.NoError(t, err)
 			require.Equal(t, c.Name(), c2.Name(), "Expected chart archive to have %q, got %q", c.Name(), c2.Name())
-			if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
-				t.Fatal("Files data did not match")
-			}
+			require.Len(t, c2.Files, 1, "Files data did not match")
+			require.Equal(t, "scheherazade/shahryar.txt", c2.Files[0].Name, "Files data did not match")
 
 			if !bytes.Equal(c.Schema, c2.Schema) {
 				indentation := 4

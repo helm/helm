@@ -65,9 +65,9 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 		if r.URL.Path == "/v2/" {
 			// Accept either HEAD or GET
 			w.WriteHeader(http.StatusOK)
-			return
+		} else {
+			http.NotFound(w, r)
 		}
-		http.NotFound(w, r)
 	}))
 	defer srv.Close()
 

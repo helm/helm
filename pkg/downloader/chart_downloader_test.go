@@ -82,16 +82,15 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		_, u, err := c.ResolveChartVersion(tt.ref, tt.version)
-		if err != nil {
-			if tt.fail {
-				continue
+		t.Run(tt.name, func(t *testing.T) {
+			_, u, err := c.ResolveChartVersion(tt.ref, tt.version)
+			if err != nil {
+				require.True(t, tt.fail)
+			} else {
+				got := u.String()
+				assert.Equalf(t, tt.expect, got, "%s: expected %s, got %s", tt.name, tt.expect, got)
 			}
-			t.Errorf("%s: failed with error %q", tt.name, err)
-			continue
-		}
-		got := u.String()
-		assert.Equalf(t, tt.expect, got, "%s: expected %s, got %s", tt.name, tt.expect, got)
+		})
 	}
 }
 
@@ -124,35 +123,25 @@ func TestResolveChartOpts(t *testing.T) {
 	snapshotOpts := c.Options
 
 	for _, tt := range tests {
-		// reset chart downloader options for each test case
-		c.Options = snapshotOpts
+		t.Run(tt.name, func(t *testing.T) {
+			// reset chart downloader options for each test case
+			c.Options = snapshotOpts
 
-		expect, err := getter.NewHTTPGetter(tt.expect...)
-		if err != nil {
-			t.Errorf("%s: failed to setup http client: %s", tt.name, err)
-			continue
-		}
+			expect, err := getter.NewHTTPGetter(tt.expect...)
+			require.NoError(t, err, "failed to setup http client")
 
-		_, u, err := c.ResolveChartVersion(tt.ref, tt.version)
-		if err != nil {
-			t.Errorf("%s: failed with error %s", tt.name, err)
-			continue
-		}
+			_, u, err := c.ResolveChartVersion(tt.ref, tt.version)
+			require.NoError(t, err, "failed with error")
 
-		got, err := getter.NewHTTPGetter(
-			append(
-				c.Options,
-				getter.WithURL(u.String()),
-			)...,
-		)
-		if err != nil {
-			t.Errorf("%s: failed to create http client: %s", tt.name, err)
-			continue
-		}
-
-		if *(got.(*getter.HTTPGetter)) != *(expect.(*getter.HTTPGetter)) {
-			t.Errorf("%s: expected %s, got %s", tt.name, expect, got)
-		}
+			got, err := getter.NewHTTPGetter(
+				append(
+					c.Options,
+					getter.WithURL(u.String()),
+				)...,
+			)
+			require.NoError(t, err, "failed to create http client")
+			assert.Equal(t, expect, got)
+		})
 	}
 }
 

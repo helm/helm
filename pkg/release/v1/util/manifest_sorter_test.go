@@ -143,7 +143,6 @@ metadata:
 
 	// This test will fail if 'six' or 'seven' was added.
 	assert.Len(t, generic, 2)
-
 	assert.Len(t, hs, 4)
 
 	for _, out := range hs {

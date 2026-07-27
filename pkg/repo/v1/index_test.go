@@ -116,9 +116,8 @@ func TestIndexFile(t *testing.T) {
 	assert.Equalf(t, "0.2.0", v, "Unexpected first version: %s", v)
 
 	cv, err := i.Get("setter", "0.1.9")
-	if err == nil && !strings.Contains(cv.Version, "0.1.9") {
-		t.Errorf("Unexpected version: %s", cv.Version)
-	}
+	require.NoError(t, err)
+	assert.Contains(t, cv.Version, "0.1.9", "Unexpected version: %s", cv.Version)
 
 	cv, err = i.Get("setter", "0.1.9+alpha")
 	require.NoError(t, err, "Expected version: 0.1.9+alpha")
@@ -304,9 +303,8 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 	require.Equalf(t, 1, l, "'alpine' should have 1 chart, got %d", l)
 
 	nginx, ok := i.Entries["nginx"]
-	if !ok || len(nginx) != 2 {
-		t.Fatal("Expected 2 nginx entries")
-	}
+	require.True(t, ok)
+	require.Len(t, nginx, 2, "Expected 2 nginx entries")
 
 	expects := []*ChartVersion{
 		{
@@ -507,18 +505,14 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			result := ignoreSkippableChartValidationError(tc.Input)
-
-			if tc.Input == nil {
+			switch {
+			case tc.Input == nil:
 				assert.NoError(t, result, "expected nil result for nil input")
-				return
-			}
-
-			if tc.ErrorSkipped {
+			case tc.ErrorSkipped:
 				assert.NoError(t, result, "expected nil result for skipped error")
-				return
+			default:
+				assert.ErrorIs(t, tc.Input, result, "expected the result equal to input")
 			}
-
-			assert.ErrorIs(t, tc.Input, result, "expected the result equal to input")
 		})
 	}
 }

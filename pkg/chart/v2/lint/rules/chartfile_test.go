@@ -195,7 +195,6 @@ func TestChartfile(t *testing.T) {
 		expectedNumberOfErrorMessages := 7
 
 		require.Lenf(t, msgs, expectedNumberOfErrorMessages, "Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
-
 		require.ErrorContains(t, msgs[0].Err, "name is required", "Unexpected message 0: %s", msgs[0].Err)
 		require.ErrorContains(t, msgs[1].Err, "apiVersion is required. The value must be either \"v1\" or \"v2\"", "Unexpected message 1: %s", msgs[1].Err)
 		require.ErrorContains(t, msgs[2].Err, "version '0.0.0.0' is not a valid SemVer", "Unexpected message 2: %s", msgs[2].Err)
@@ -211,11 +210,7 @@ func TestChartfile(t *testing.T) {
 		msgs := linter.Messages
 		expectedNumberOfErrorMessages := 4
 
-		if len(msgs) != expectedNumberOfErrorMessages {
-			t.Errorf("Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
-			return
-		}
-
+		require.Len(t, msgs, expectedNumberOfErrorMessages, "Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
 		require.ErrorContains(t, msgs[0].Err, "version should be of type string", "Unexpected message 0: %s", msgs[0].Err)
 		require.ErrorContains(t, msgs[1].Err, "version '7.2445e+06' is not a valid SemVer", "Unexpected message 1: %s", msgs[1].Err)
 		require.ErrorContains(t, msgs[2].Err, "appVersion should be of type string", "Unexpected message 2: %s", msgs[2].Err)

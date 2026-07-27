@@ -25,7 +25,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -201,11 +200,9 @@ icon: https://example.com/64x64.png
 	require.NoError(t, err, "Expected good files to be loaded")
 	assert.Equal(t, "frobnitz", c.Name(), "Expected chart name to be 'frobnitz', got %s", c.Name())
 	assert.Equal(t, "some values", c.Values["var"], "Expected chart values to be populated with default values")
-	assert.Len(t, c.Raw, 5, "Expected %d files, got %d", 5, len(c.Raw))
-
+	assert.Len(t, c.Raw, 5, "Expected 5 files")
 	assert.True(t, bytes.Equal(c.Schema, []byte("type: Values")), "Expected chart schema to be populated with default values")
-
-	assert.Len(t, c.Templates, 2, "Expected number of templates == 2, got %d", len(c.Templates))
+	assert.Len(t, c.Templates, 2, "Expected 2 templates")
 
 	_, err = LoadFiles([]*archive.BufferedFile{})
 	require.Error(t, err, "Expected err to be non-nil")
@@ -417,7 +414,7 @@ foo:
 		t.Run(testName, func(tt *testing.T) {
 			values, err := LoadValues(bytes.NewReader(testCase.data))
 			require.NoError(tt, err)
-			assert.Truef(tt, reflect.DeepEqual(values, testCase.expctedValues), "Expected values: %v, got %v", testCase.expctedValues, values)
+			assert.Equalf(tt, testCase.expctedValues, values, "Expected values: %v, got %v", testCase.expctedValues, values)
 		})
 	}
 }
@@ -445,16 +442,13 @@ func TestMergeValuesV3(t *testing.T) {
 	}
 
 	testMap := MergeMaps(flatMap, nestedMap)
-	equal := reflect.DeepEqual(testMap, nestedMap)
-	assert.True(t, equal, "Expected a nested map to overwrite a flat value. Expected: %v, got %v", nestedMap, testMap)
+	assert.Equal(t, testMap, nestedMap, "Expected a nested map to overwrite a flat value. Expected: %v, got %v", nestedMap, testMap)
 
 	testMap = MergeMaps(nestedMap, flatMap)
-	equal = reflect.DeepEqual(testMap, flatMap)
-	assert.True(t, equal, "Expected a flat value to overwrite a map. Expected: %v, got %v", flatMap, testMap)
+	assert.Equal(t, testMap, flatMap, "Expected a flat value to overwrite a map. Expected: %v, got %v", flatMap, testMap)
 
 	testMap = MergeMaps(nestedMap, anotherNestedMap)
-	equal = reflect.DeepEqual(testMap, anotherNestedMap)
-	assert.True(t, equal, "Expected a nested map to overwrite another nested map. Expected: %v, got %v", anotherNestedMap, testMap)
+	assert.Equal(t, testMap, anotherNestedMap, "Expected a nested map to overwrite another nested map. Expected: %v, got %v", anotherNestedMap, testMap)
 
 	testMap = MergeMaps(anotherFlatMap, anotherNestedMap)
 	expectedMap := map[string]any{
@@ -465,26 +459,23 @@ func TestMergeValuesV3(t *testing.T) {
 			"awesome": "stuff",
 		},
 	}
-	equal = reflect.DeepEqual(testMap, expectedMap)
-	assert.True(t, equal, "Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
+	assert.Equal(t, expectedMap, testMap, "Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
 }
 
 func verifyChart(t *testing.T, c *chart.Chart) {
 	t.Helper()
 	require.NotEmpty(t, c.Name(), "No chart metadata found on %v", c)
 	t.Logf("Verifying chart %s", c.Name())
-	assert.Len(t, c.Templates, 1, "Expected 1 template, got %d", len(c.Templates))
+	assert.Len(t, c.Templates, 1, "Expected 1 template")
 
 	numfiles := 6
-	if len(c.Files) != numfiles {
-		t.Errorf("Expected %d extra files, got %d", numfiles, len(c.Files))
+	if !assert.Len(t, c.Files, numfiles, "Expected %d extra files", numfiles) {
 		for _, n := range c.Files {
 			t.Logf("\t%s", n.Name)
 		}
 	}
 
-	if len(c.Dependencies()) != 2 {
-		t.Errorf("Expected 2 dependencies, got %d (%v)", len(c.Dependencies()), c.Dependencies())
+	if !assert.Len(t, c.Dependencies(), 2, "Expected 2 dependencies") {
 		for _, d := range c.Dependencies() {
 			t.Logf("\tSubchart: %s\n", d.Name())
 		}
@@ -509,7 +500,7 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 
 func verifyDependencies(t *testing.T, c *chart.Chart) {
 	t.Helper()
-	assert.Len(t, c.Metadata.Dependencies, 2, "Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
+	assert.Len(t, c.Metadata.Dependencies, 2, "Expected 2 dependencies")
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},

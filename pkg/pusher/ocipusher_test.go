@@ -33,8 +33,7 @@ func TestNewOCIPusher(t *testing.T) {
 	p, err := NewOCIPusher()
 	require.NoError(t, err)
 
-	_, ok := p.(*OCIPusher)
-	require.True(t, ok, "Expected NewOCIPusher to produce an *OCIPusher")
+	require.IsType(t, &OCIPusher{}, p, "Expected NewOCIPusher to produce an *OCIPusher")
 
 	cd := "../../testdata"
 	join := filepath.Join
@@ -196,7 +195,7 @@ func TestOCIPusher_newRegistryClient(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err, "Expected error but got none")
 				if tt.errorContains != "" {
-					require.ErrorContainsf(t, err, tt.errorContains, "Expected error containing %q, got %q", tt.errorContains, err.Error())
+					require.ErrorContains(t, err, tt.errorContains)
 				}
 			} else {
 				require.NoError(t, err)

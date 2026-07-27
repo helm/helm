@@ -138,8 +138,11 @@ func TestValidateChartName(t *testing.T) {
 			"abcdefghijklmnopqrstuvwxyz-_." +
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": false,
 	} {
-		if err := validateChartName(name); (err != nil) == shouldPass {
-			t.Errorf("test for %q failed", name)
+		err := validateChartName(name)
+		if shouldPass {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
 		}
 	}
 }

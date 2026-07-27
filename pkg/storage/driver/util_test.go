@@ -14,7 +14,6 @@ limitations under the License.
 package driver
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,7 +21,7 @@ import (
 
 func TestGetSystemLabel(t *testing.T) {
 	output := GetSystemLabels()
-	assert.Truef(t, reflect.DeepEqual(systemLabels, output), "Expected {%v}, got {%v}", systemLabels, output)
+	assert.Equalf(t, systemLabels, output, "Expected {%v}, got {%v}", systemLabels, output)
 }
 
 func TestIsSystemLabel(t *testing.T) {
@@ -69,7 +68,7 @@ func TestFilterSystemLabels(t *testing.T) {
 	}
 	for _, test := range tests {
 		output := filterSystemLabels(test[0])
-		assert.Truef(t, reflect.DeepEqual(test[1], output), "Expected {%v}, got {%v}", test[1], output)
+		assert.Equalf(t, test[1], output, "Expected {%v}, got {%v}", test[1], output)
 	}
 }
 
@@ -101,6 +100,6 @@ func TestContainsSystemLabels(t *testing.T) {
 	}
 	for _, test := range tests {
 		output := ContainsSystemLabels(test.input)
-		assert.Truef(t, reflect.DeepEqual(test.output, output), "Expected {%v}, got {%v}", test.output, output)
+		assert.Equalf(t, test.output, output, "Expected {%v}, got {%v}", test.output, output)
 	}
 }

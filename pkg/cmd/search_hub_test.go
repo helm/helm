@@ -46,11 +46,7 @@ func TestSearchHubCmd(t *testing.T) {
 	storage := storageFixture()
 	_, out, err := executeActionCommandC(storage, testcmd)
 	require.NoError(t, err)
-	if out != expected {
-		t.Error("expected and actual output did not match")
-		t.Log(out)
-		t.Log(expected)
-	}
+	assert.Equal(t, expected, out, "expected and actual output did not match")
 }
 
 func TestSearchHubListRepoCmd(t *testing.T) {
@@ -73,11 +69,7 @@ func TestSearchHubListRepoCmd(t *testing.T) {
 	storage := storageFixture()
 	_, out, err := executeActionCommandC(storage, testcmd)
 	require.NoError(t, err)
-	if out != expected {
-		t.Error("expected and actual output did not match")
-		t.Log(out)
-		t.Log(expected)
-	}
+	assert.Equal(t, expected, out, "expected and actual output did not match")
 }
 
 func TestSearchHubOutputCompletion(t *testing.T) {

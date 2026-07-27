@@ -118,7 +118,7 @@ func TestBadValues(t *testing.T) {
 func TestBadCrdFile(t *testing.T) {
 	var values map[string]any
 	m := RunAll(badCrdFileDir, values, namespace).Messages
-	assert.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
+	require.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
 	require.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
 	assert.ErrorContains(t, m[1].Err, "object kind is not 'CustomResourceDefinition'")
 }
@@ -126,8 +126,7 @@ func TestBadCrdFile(t *testing.T) {
 func TestGoodChart(t *testing.T) {
 	var values map[string]any
 	m := RunAll(goodChartDir, values, namespace).Messages
-	if len(m) != 0 {
-		t.Error("All returned linter messages when it shouldn't have")
+	if !assert.Empty(t, m, "All returned linter messages when it shouldn't have") {
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg)
 		}
@@ -147,13 +146,12 @@ func TestHelmCreateChart(t *testing.T) {
 	// Note: we test with strict=true here, even though others have
 	// strict = false.
 	m := RunAll(createdChart, values, namespace, WithSkipSchemaValidation(true)).Messages
-	if ll := len(m); ll != 1 {
-		t.Errorf("All should have had exactly 1 error. Got %d", ll)
+	if !assert.Len(t, m, 1, "All should have had exactly 1 error") {
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg.Error())
 		}
-	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
-		t.Errorf("Unexpected lint error: %s", msg)
+	} else {
+		assert.ErrorContains(t, m[0].Err, "icon is recommended")
 	}
 }
 
@@ -196,8 +194,7 @@ func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 func TestSubChartValuesChart(t *testing.T) {
 	var values map[string]any
 	m := RunAll(subChartValuesDir, values, namespace).Messages
-	if len(m) != 0 {
-		t.Error("All returned linter messages when it shouldn't have")
+	if !assert.Empty(t, m, "All returned linter messages when it shouldn't have") {
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg)
 		}

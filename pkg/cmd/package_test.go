@@ -139,24 +139,22 @@ func TestPackage(t *testing.T) {
 				}
 			}
 			_, _, err = executeActionCommand(strings.Join(cmd, " "))
-
-			if err != nil {
-				if tt.err && re.MatchString(err.Error()) {
-					return
+			if tt.err {
+				require.Error(t, err)
+				require.True(t, re.MatchString(err.Error()))
+			} else {
+				require.NoError(t, err)
+				if tt.hasfile != "" {
+					fi, err := os.Stat(tt.hasfile)
+					require.NoErrorf(t, err, "%q: expected file %q", tt.name, tt.hasfile)
+					assert.NotEqualf(t, 0, fi.Size(), "%q: file %q has zero bytes.", tt.name, tt.hasfile)
 				}
-				t.Fatalf("%q: expected error %q, got %q", tt.name, tt.expect, err)
-			}
 
-			if tt.hasfile != "" {
-				fi, err := os.Stat(tt.hasfile)
-				require.NoErrorf(t, err, "%q: expected file %q", tt.name, tt.hasfile)
-				assert.NotEqualf(t, 0, fi.Size(), "%q: file %q has zero bytes.", tt.name, tt.hasfile)
-			}
-
-			if v, ok := tt.flags["sign"]; ok && v == "1" {
-				fi, err := os.Stat(tt.hasfile + ".prov")
-				require.NoErrorf(t, err, "%q: expected provenance file", tt.name)
-				assert.NotEqualf(t, 0, fi.Size(), "%q: provenance file is empty", tt.name)
+				if v, ok := tt.flags["sign"]; ok && v == "1" {
+					fi, err := os.Stat(tt.hasfile + ".prov")
+					require.NoErrorf(t, err, "%q: expected provenance file", tt.name)
+					assert.NotEqualf(t, 0, fi.Size(), "%q: provenance file is empty", tt.name)
+				}
 			}
 		})
 	}

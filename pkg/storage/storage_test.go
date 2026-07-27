@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,7 +48,7 @@ func TestStorageCreate(t *testing.T) {
 	require.NoError(t, err, "QueryRelease")
 
 	// verify the fetched and created release are the same
-	require.Truef(t, reflect.DeepEqual(rls, res), "Expected %v, got %v", rls, res)
+	require.Equalf(t, rls, res, "Expected %v, got %v", rls, res)
 }
 
 func TestStorageUpdate(t *testing.T) {
@@ -74,7 +73,7 @@ func TestStorageUpdate(t *testing.T) {
 	require.NoError(t, err, "QueryRelease")
 
 	// verify updated and fetched releases are the same.
-	require.Truef(t, reflect.DeepEqual(rls, res), "Expected %v, got %v", rls, res)
+	require.Equalf(t, rls, res, "Expected %v, got %v", rls, res)
 }
 
 func TestStorageDelete(t *testing.T) {
@@ -99,7 +98,7 @@ func TestStorageDelete(t *testing.T) {
 	require.NoError(t, err, "DeleteRelease")
 
 	// verify updated and fetched releases are the same.
-	require.Truef(t, reflect.DeepEqual(rls, res), "Expected %v, got %v", rls, res)
+	require.Equalf(t, rls, res, "Expected %v, got %v", rls, res)
 
 	hist, err := storage.History(rls.Name)
 	require.NoError(t, err)
@@ -348,12 +347,12 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 	require.NoError(t, err)
 	rhist, err := releaseListToV1List(hist)
 	require.NoError(t, err)
-	if len(rhist) != storage.MaxHistory {
+	if !assert.Len(t, rhist, storage.MaxHistory) {
 		for _, item := range rhist {
 			t.Logf("%s %v", item.Name, item.Version)
 		}
-		t.Fatalf("expected %d items in history, got %d", storage.MaxHistory, len(rhist))
 	}
+	require.Len(t, rhist, storage.MaxHistory)
 
 	// We expect the existing records to be 3, 4, and 5.
 	for i, item := range rhist {
@@ -392,14 +391,14 @@ func TestStorageDoNotDeleteDeployed(t *testing.T) {
 	// (the only deployed release), to still exist
 	hist, err := storage.History(name)
 	require.NoError(t, err)
-	if len(hist) != storage.MaxHistory {
+	if !assert.Len(t, hist, storage.MaxHistory) {
 		rhist, err := releaseListToV1List(hist)
 		require.NoError(t, err)
 		for _, item := range rhist {
 			t.Logf("%s %v", item.Name, item.Version)
 		}
-		t.Fatalf("expected %d items in history, got %d", storage.MaxHistory, len(rhist))
 	}
+	require.Len(t, hist, storage.MaxHistory)
 
 	expectedVersions := map[int]bool{
 		2: true,
