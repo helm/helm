@@ -34,8 +34,6 @@ func TestIsRemoteHTTPArchive(t *testing.T) {
 
 	// Test with invalid extension and unreachable server
 	assert.False(t, isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.notanarchive"), "Bad URL without valid extension should not succeed")
-
 	assert.True(t, isRemoteHTTPArchive(source), "Expected %q to be a valid archive URL", source)
-
 	assert.False(t, isRemoteHTTPArchive(source+"-not-an-extension"), "Expected media type match to fail")
 }

@@ -120,11 +120,8 @@ func TestRemoveRepository(t *testing.T) {
 	)
 
 	removeRepository := "stable"
-	found := sampleRepository.Remove(removeRepository)
-	assert.Truef(t, found, "expected repository %s not found", removeRepository)
-
-	found = sampleRepository.Has(removeRepository)
-	assert.Falsef(t, found, "repository %s not deleted", removeRepository)
+	assert.Truef(t, sampleRepository.Remove(removeRepository), "expected repository %s not found", removeRepository)
+	assert.Falsef(t, sampleRepository.Has(removeRepository), "repository %s not deleted", removeRepository)
 }
 
 func TestUpdateRepository(t *testing.T) {
@@ -205,9 +202,6 @@ func TestRemoveRepositoryInvalidEntries(t *testing.T) {
 	)
 
 	removeRepository := "stable"
-	found := sampleRepository.Remove(removeRepository)
-	assert.Truef(t, found, "expected repository %s not found", removeRepository)
-
-	found = sampleRepository.Has(removeRepository)
-	assert.Falsef(t, found, "repository %s not deleted", removeRepository)
+	assert.Truef(t, sampleRepository.Remove(removeRepository), "expected repository %s not found", removeRepository)
+	assert.Falsef(t, sampleRepository.Has(removeRepository), "repository %s not deleted", removeRepository)
 }

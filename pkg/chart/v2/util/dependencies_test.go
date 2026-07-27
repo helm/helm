@@ -43,7 +43,7 @@ func TestLoadDependency(t *testing.T) {
 	}
 
 	check := func(deps []*chart.Dependency) {
-		assert.Len(t, deps, 2, "expected 2 dependencies, got %d", len(deps))
+		require.Len(t, deps, 2, "expected 2 dependencies, got %d", len(deps))
 		for i, tt := range tests {
 			assert.Equal(t, tt.Name, deps[i].Name, "expected dependency named %q, got %q", tt.Name, deps[i].Name)
 			assert.Equal(t, tt.Version, deps[i].Version, "expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, deps[i].Version)

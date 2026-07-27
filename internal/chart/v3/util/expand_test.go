@@ -101,7 +101,7 @@ func TestExpand(t *testing.T) {
 	require.NoError(t, err)
 
 	expectLen := 11
-	assert.Len(t, fis, expectLen, "Expected %d files, but got %d", expectLen, len(fis))
+	assert.Len(t, fis, expectLen, "Expected %d files", expectLen)
 
 	for _, fi := range fis {
 		expect, err := os.Stat(filepath.Join("testdata", "frobnitz", fi.Name()))
@@ -154,7 +154,7 @@ func TestExpandFile(t *testing.T) {
 	require.NoError(t, err)
 
 	expectLen := 11
-	assert.Len(t, fis, expectLen, "Expected %d files, but got %d", expectLen, len(fis))
+	assert.Len(t, fis, expectLen, "Expected %d files", expectLen)
 
 	for _, fi := range fis {
 		expect, err := os.Stat(filepath.Join("testdata", "frobnitz", fi.Name()))

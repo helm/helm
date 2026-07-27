@@ -171,8 +171,11 @@ func TestValidateMetadataName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s/%s", tt.obj.Kind, tt.obj.Metadata.Name), func(t *testing.T) {
-			if err := validateMetadataName(tt.obj); (err != nil) != tt.wantErr {
-				t.Errorf("validateMetadataName() error = %v, wantErr %v", err, tt.wantErr)
+			err := validateMetadataName(tt.obj)
+			if tt.wantErr {
+				require.Error(t, err, "validateMetadataName()")
+			} else {
+				require.NoError(t, err, "validateMetadataName()")
 			}
 		})
 	}
@@ -210,12 +213,12 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		namespace,
 		values,
 		TemplateLinterSkipSchemaValidation(false))
-	if l := len(linter.Messages); l != 1 {
+	if !assert.Len(t, linter.Messages, 1) {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %s", i, msg)
 		}
-		t.Fatalf("Expected 1 lint error, got %d", l)
 	}
+	require.Len(t, linter.Messages, 1, "Expected 1 lint error")
 
 	var depErr deprecatedAPIError
 	require.ErrorAs(t, linter.Messages[0].Err, &depErr)
@@ -267,8 +270,7 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 		namespace,
 		ch.Values,
 		TemplateLinterSkipSchemaValidation(false))
-	if len(linter.Messages) != 0 {
-		t.Errorf("expected zero messages, got %d", len(linter.Messages))
+	if !assert.Empty(t, linter.Messages, "expected zero messages") {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %q", i, msg)
 		}
@@ -358,9 +360,14 @@ func TestValidateTopIndentLevel(t *testing.T) {
 		"  apiVersion:foo":         true,
 		"\n\n  apiVersion:foo\n\n": true,
 	} {
-		if err := validateTopIndentLevel(doc); (err == nil) == shouldFail {
-			t.Errorf("Expected %t for %q", shouldFail, doc)
-		}
+		t.Run(doc, func(t *testing.T) {
+			err := validateTopIndentLevel(doc)
+			if shouldFail {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
 
@@ -392,12 +399,12 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 		namespace,
 		values,
 		TemplateLinterSkipSchemaValidation(false))
-	if l := len(linter.Messages); l > 0 {
+	if !assert.Empty(t, linter.Messages) {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %s", i, msg)
 		}
-		t.Fatalf("Expected 0 lint errors, got %d", l)
 	}
+	require.Empty(t, linter.Messages, "Expected 0 lint errors")
 }
 func TestValidateListAnnotations(t *testing.T) {
 	md := &k8sYamlStruct{

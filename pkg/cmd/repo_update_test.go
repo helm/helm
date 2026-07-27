@@ -174,10 +174,8 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	err = updateCharts([]*repo.ChartRepository{r1, r2}, b)
 	require.Error(t, err, "Repo update should return error because update of repository fails and 'fail-on-repo-update-fail' flag set")
-	var expectedErr = "failed to update the following repositories"
-	var receivedErr = err.Error()
-	require.ErrorContains(t, err, expectedErr, "Expected error (%s) but got (%s) instead", expectedErr, receivedErr)
-	require.ErrorContains(t, err, invalidURL, "Expected invalid URL (%s) in error message but got (%s) instead", invalidURL, receivedErr)
+	require.ErrorContains(t, err, "failed to update the following repositories")
+	require.ErrorContains(t, err, invalidURL)
 
 	got := b.String()
 	assert.Contains(t, got, "Unable to get an update", "Repo should have failed update but instead got: %q", got)

@@ -99,10 +99,8 @@ func TestParallelDownloadTo(t *testing.T) {
 	// Verify the file has the expected size (should match the source file)
 	sourceFile := "testdata/local-subchart-0.1.0.tgz"
 	sourceInfo, err := os.Stat(sourceFile)
-	if err == nil && info.Size() != sourceInfo.Size() {
-		t.Errorf("Downloaded file size (%d bytes) doesn't match source file size (%d bytes)",
-			info.Size(), sourceInfo.Size())
-	}
+	require.NoError(t, err)
+	assert.False(t, info.Size() != sourceInfo.Size(), "Downloaded file size doesn't match source file size")
 
 	// Verify it's a valid tar.gz file by checking the magic bytes
 	file, err := os.Open(expectedFile)
@@ -110,10 +108,10 @@ func TestParallelDownloadTo(t *testing.T) {
 		defer file.Close()
 		// gzip magic bytes are 0x1f 0x8b
 		magic := make([]byte, 2)
-		if n, err := file.Read(magic); err == nil && n == 2 {
-			if magic[0] != 0x1f || magic[1] != 0x8b {
-				t.Errorf("Downloaded file is not a valid gzip file (magic bytes: %x)", magic)
-			}
+		n, err := file.Read(magic)
+		require.NoError(t, err)
+		if n == 2 {
+			assert.False(t, magic[0] != 0x1f || magic[1] != 0x8b, "Downloaded file is not a valid gzip file (magic bytes: %x)", magic)
 		}
 	}
 

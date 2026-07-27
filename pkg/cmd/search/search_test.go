@@ -232,26 +232,21 @@ func TestSearchByName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			charts, err := i.Search(tt.query, 100, tt.regexp)
-			if err != nil {
-				if tt.fail {
-					require.ErrorContains(t, err, tt.failMsg)
-					return
+			if tt.fail {
+				require.ErrorContains(t, err, tt.failMsg)
+			} else {
+				require.NoError(t, err) // Give us predictably ordered results.
+				SortScore(charts)
+
+				l := len(tt.expect)
+				require.Len(t, charts, len(tt.expect))
+				// For empty result sets, just keep going.
+				if l != 0 {
+					for i, got := range charts {
+						ex := tt.expect[i]
+						assert.Equalf(t, got.Name, ex.Name, "[%d]: Expected name %q, got %q", i, ex.Name, got.Name)
+					}
 				}
-				t.Fatalf("%s: %s", tt.name, err)
-			}
-			// Give us predictably ordered results.
-			SortScore(charts)
-
-			l := len(charts)
-			require.Lenf(t, tt.expect, l, "Expected %d result, got %d", len(tt.expect), l)
-			// For empty result sets, just keep going.
-			if l == 0 {
-				return
-			}
-
-			for i, got := range charts {
-				ex := tt.expect[i]
-				assert.Equalf(t, got.Name, ex.Name, "[%d]: Expected name %q, got %q", i, ex.Name, got.Name)
 			}
 		})
 	}

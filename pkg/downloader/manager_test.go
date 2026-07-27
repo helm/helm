@@ -20,7 +20,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -168,19 +167,16 @@ func TestGetRepoNames(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		l, err := m.resolveRepoNames(tt.req)
-		if err != nil {
+		t.Run(tt.name, func(t *testing.T) {
+			l, err := m.resolveRepoNames(tt.req)
 			if tt.err {
-				continue
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				// m1 and m2 are the maps we want to compare
+				assert.Equal(t, l, tt.expect, "%s: expected map %v, got %v", tt.name, l, tt.name)
 			}
-			t.Fatal(err)
-		}
-
-		require.False(t, tt.err, "Expected error in test %q", tt.name)
-
-		// m1 and m2 are the maps we want to compare
-		eq := reflect.DeepEqual(l, tt.expect)
-		assert.True(t, eq, "%s: expected map %v, got %v", tt.name, l, tt.name)
+		})
 	}
 }
 
@@ -479,8 +475,7 @@ func TestErrRepoNotFound_Error(t *testing.T) {
 			e := ErrRepoNotFound{
 				Repos: tt.fields.Repos,
 			}
-			got := e.Error()
-			assert.EqualErrorf(t, e, tt.want, "Error() = %v, want %v", got, tt.want)
+			assert.EqualError(t, e, tt.want)
 		})
 	}
 }

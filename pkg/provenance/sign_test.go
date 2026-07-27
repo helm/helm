@@ -128,9 +128,7 @@ func TestParseMessageBlock(t *testing.T) {
 func TestLoadKey(t *testing.T) {
 	k, err := loadKey(testKeyfile)
 	require.NoError(t, err)
-
-	_, ok := k.Identities[testKeyName]
-	assert.Truef(t, ok, "Expected to load a key for user %q", testKeyName)
+	assert.Containsf(t, k.Identities, testKeyName, "Expected to load a key for user %q", testKeyName)
 }
 
 func TestLoadKeyRing(t *testing.T) {
@@ -163,8 +161,7 @@ func TestNewFromFiles(t *testing.T) {
 	s, err := NewFromFiles(testKeyfile, testPubfile)
 	require.NoError(t, err)
 
-	_, ok := s.Entity.Identities[testKeyName]
-	assert.Truef(t, ok, "Expected to load a key for user %q", testKeyName)
+	assert.Containsf(t, s.Entity.Identities, testKeyName, "Expected to load a key for user %q", testKeyName)
 }
 
 func TestDigestFile(t *testing.T) {
@@ -240,7 +237,6 @@ func TestMixedKeyringRSASigningAndVerification(t *testing.T) {
 	}
 
 	assert.True(t, hasEdDSA, "expected %s to include an Ed25519 public key", testMixedKeyring)
-
 	require.NotNil(t, signer.Entity, "expected signer entity to be loaded")
 	require.NotNil(t, signer.Entity.PrivateKey, "expected signer private key to be loaded")
 	assert.Equal(t, packet.PubKeyAlgoRSA, signer.Entity.PrivateKey.PubKeyAlgo, "expected RSA key")
@@ -259,9 +255,7 @@ func TestMixedKeyringRSASigningAndVerification(t *testing.T) {
 	require.NotNil(t, verification.SignedBy, "expected verification to include signer")
 	require.NotNil(t, verification.SignedBy.PrimaryKey, "expected verification to include signer primary key")
 	assert.Equal(t, packet.PubKeyAlgoRSA, verification.SignedBy.PrimaryKey.PubKeyAlgo, "expected verification to report RSA key")
-
-	_, ok := verification.SignedBy.Identities[testKeyName]
-	assert.True(t, ok, "expected verification to be signed by %q", testKeyName)
+	assert.Contains(t, verification.SignedBy.Identities, testKeyName, "expected verification to be signed by %q", testKeyName)
 }
 
 // failSigner always fails to sign and returns an error

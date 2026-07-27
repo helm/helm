@@ -58,11 +58,11 @@ func TestRunLinterRule(t *testing.T) {
 
 func TestMessage(t *testing.T) {
 	m := Message{ErrorSev, "Chart.yaml", errors.New("Foo")}
-	require.EqualErrorf(t, m, "[ERROR] Chart.yaml: Foo", "Unexpected output: %s", m.Error())
+	require.EqualError(t, m, "[ERROR] Chart.yaml: Foo")
 
 	m = Message{WarningSev, "templates/", errors.New("Bar")}
-	require.EqualErrorf(t, m, "[WARNING] templates/: Bar", "Unexpected output: %s", m.Error())
+	require.EqualError(t, m, "[WARNING] templates/: Bar")
 
 	m = Message{InfoSev, "templates/rc.yaml", errors.New("FooBar")}
-	assert.EqualErrorf(t, m, "[INFO] templates/rc.yaml: FooBar", "Unexpected output: %s", m.Error())
+	assert.EqualError(t, m, "[INFO] templates/rc.yaml: FooBar")
 }

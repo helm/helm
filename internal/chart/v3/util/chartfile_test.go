@@ -36,36 +36,21 @@ func TestLoadChartfile(t *testing.T) {
 func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	t.Helper()
 	require.NotNil(t, f, "Failed verifyChartfile because f is nil")
-
 	assert.Equal(t, name, f.Name, "Expected %s, got %s", name, f.Name)
-
 	assert.Equal(t, "This is a frobnitz.", f.Description, "Unexpected description %q", f.Description)
-
 	assert.Equal(t, "1.2.3", f.Version, "Unexpected version %q", f.Version)
-
 	assert.Len(t, f.Maintainers, 2, "Expected 2 maintainers, got %d", len(f.Maintainers))
-
 	assert.Equal(t, "The Helm Team", f.Maintainers[0].Name, "Unexpected maintainer name.")
-
 	assert.Equal(t, "nobody@example.com", f.Maintainers[1].Email, "Unexpected maintainer email.")
-
 	require.Len(t, f.Sources, 1, "Unexpected number of sources")
-
 	assert.Equal(t, "https://example.com/foo/bar", f.Sources[0], "Expected https://example.com/foo/bar, got %s", f.Sources)
-
 	assert.Equal(t, "http://example.com", f.Home, "Unexpected home.")
-
 	assert.Equal(t, "https://example.com/64x64.png", f.Icon, "Unexpected icon: %q", f.Icon)
-
 	require.Len(t, f.Keywords, 3, "Unexpected keywords")
-
 	require.Len(t, f.Annotations, 2, "Unexpected annotations")
 
-	want, got := "extravalue", f.Annotations["extrakey"]
-	assert.Equalf(t, want, got, "Want %q, but got %q", want, got)
-
-	want, got = "anothervalue", f.Annotations["anotherkey"]
-	assert.Equalf(t, want, got, "Want %q, but got %q", want, got)
+	assert.Equal(t, "extravalue", f.Annotations["extrakey"])
+	assert.Equal(t, "anothervalue", f.Annotations["anotherkey"])
 
 	kk := []string{"frobnitz", "sprocket", "dodad"}
 	for i, k := range f.Keywords {

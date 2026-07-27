@@ -49,12 +49,8 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	assert.Equal(t, "https://example.com/64x64.png", f.Icon, "Unexpected icon: %q", f.Icon)
 	assert.Len(t, f.Keywords, 3, "Unexpected keywords")
 	require.Len(t, f.Annotations, 2, "Unexpected annotations")
-
-	want, got := "extravalue", f.Annotations["extrakey"]
-	assert.Equalf(t, want, got, "Want %q, but got %q", want, got)
-
-	want, got = "anothervalue", f.Annotations["anotherkey"]
-	assert.Equalf(t, want, got, "Want %q, but got %q", want, got)
+	assert.Equal(t, "extravalue", f.Annotations["extrakey"])
+	assert.Equal(t, "anothervalue", f.Annotations["anotherkey"])
 
 	kk := []string{"frobnitz", "sprocket", "dodad"}
 	for i, k := range f.Keywords {

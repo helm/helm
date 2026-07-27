@@ -77,12 +77,10 @@ func TestShowPreReleaseChart(t *testing.T) {
 				contentTmp,
 			)
 			_, _, err := executeActionCommand(cmd)
-			if err != nil {
-				if tt.fail {
-					assert.ErrorContains(t, err, tt.expectedErr, "%q expected error: %s, got: %s", tt.name, tt.expectedErr, err.Error())
-					return
-				}
-				t.Errorf("%q reported error: %s", tt.name, err)
+			if tt.fail {
+				assert.ErrorContains(t, err, tt.expectedErr)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}

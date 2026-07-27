@@ -67,10 +67,10 @@ func mockArchiveServer() *httptest.Server {
 		if !strings.HasSuffix(r.URL.Path, ".tar.gz") {
 			w.Header().Add("Content-Type", "text/html")
 			fmt.Fprintln(w, "broken")
-			return
+		} else {
+			w.Header().Add("Content-Type", "application/gzip")
+			fmt.Fprintln(w, "test")
 		}
-		w.Header().Add("Content-Type", "application/gzip")
-		fmt.Fprintln(w, "test")
 	}))
 }
 
@@ -221,22 +221,22 @@ func TestExtract(t *testing.T) {
 	expectedReadmePerm := os.FileMode(0o777 &^ currentUmask)
 
 	pluginYAMLFullPath := filepath.Join(tempDir, "plugin.yaml")
-	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
+	info, err := os.Stat(pluginYAMLFullPath)
+	if err != nil {
 		require.NotErrorIs(t, err, fs.ErrNotExist, "Expected %s to exist but doesn't", pluginYAMLFullPath)
-		t.Fatal(err)
-	} else {
-		require.Equalf(t, expectedPluginYAMLPerm, info.Mode().Perm(), "Expected %s to have %o mode but has %o (umask: %o)",
-			pluginYAMLFullPath, expectedPluginYAMLPerm, info.Mode().Perm(), currentUmask)
 	}
+	require.NoError(t, err)
+	require.Equalf(t, expectedPluginYAMLPerm, info.Mode().Perm(), "Expected %s to have %o mode but has %o (umask: %o)",
+		pluginYAMLFullPath, expectedPluginYAMLPerm, info.Mode().Perm(), currentUmask)
 
 	readmeFullPath := filepath.Join(tempDir, "README.md")
-	if info, err := os.Stat(readmeFullPath); err != nil {
+	info, err = os.Stat(readmeFullPath)
+	if err != nil {
 		require.NotErrorIs(t, err, fs.ErrNotExist, "Expected %s to exist but doesn't", readmeFullPath)
-		t.Fatal(err)
-	} else {
-		require.Equalf(t, expectedReadmePerm, info.Mode().Perm(), "Expected %s to have %o mode but has %o (umask: %o)",
-			readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
 	}
+	require.NoError(t, err)
+	require.Equalf(t, expectedReadmePerm, info.Mode().Perm(), "Expected %s to have %o mode but has %o (umask: %o)",
+		readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
 }
 
 func TestCleanJoin(t *testing.T) {

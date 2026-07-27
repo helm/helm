@@ -48,10 +48,10 @@ func TestRepoIndexCmd(t *testing.T) {
 	index, err := repo.LoadIndexFile(destIndex)
 	require.NoError(t, err)
 
-	assert.Len(t, index.Entries, 1, "expected 1 entry, got %d: %#v", len(index.Entries), index.Entries)
+	require.Len(t, index.Entries, 1, "expected 1 entry, got %d: %#v", len(index.Entries), index.Entries)
 
 	vs := index.Entries["compressedchart"]
-	assert.Len(t, vs, 2, "expected 2 versions, got %d: %#v", len(vs), vs)
+	require.Len(t, vs, 2, "expected 2 versions")
 
 	expectedVersion := "0.2.0"
 	assert.Equal(t, expectedVersion, vs[0].Version, "expected %q, got %q", expectedVersion, vs[0].Version)

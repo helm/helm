@@ -96,16 +96,14 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	// ensure a VCSInstaller was returned
-	_, ok := i.(*VCSInstaller)
-	require.True(t, ok, "expected a VCSInstaller")
+	require.IsType(t, &VCSInstaller{}, i, "expected a VCSInstaller")
 
-	if err := Install(i); err == nil {
-		t.Fatal("expected error for version does not exists, got none")
-	} else if strings.Contains(err.Error(), "Could not resolve host: github.com") {
+	err = Install(i)
+	require.Error(t, err, "expected error for version does not exists, got none")
+	if strings.Contains(err.Error(), "Could not resolve host: github.com") {
 		t.Skip("Unable to run test without Internet access")
-	} else {
-		require.EqualErrorf(t, err, fmt.Sprintf("requested version %q does not exist for plugin %q", version, source), "expected error for version does not exists")
 	}
+	require.EqualErrorf(t, err, fmt.Sprintf("requested version %q does not exist for plugin %q", version, source), "expected error for version does not exists")
 }
 func TestVCSInstallerUpdate(t *testing.T) {
 	ensure.HelmHome(t)
@@ -116,19 +114,16 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// ensure a VCSInstaller was returned
-	_, ok := i.(*VCSInstaller)
-	require.True(t, ok, "expected a VCSInstaller")
+	require.IsType(t, &VCSInstaller{}, i, "expected a VCSInstaller")
 
 	require.EqualErrorf(t, Update(i), "plugin does not exist", "expected error for plugin does not exist")
 
 	// Install plugin before update
-	if err := Install(i); err != nil {
-		if strings.Contains(err.Error(), "Could not resolve host: github.com") {
-			t.Skip("Unable to run test without Internet access")
-		} else {
-			t.Fatal(err)
-		}
+	err = Install(i)
+	if err != nil && strings.Contains(err.Error(), "Could not resolve host: github.com") {
+		t.Skip("Unable to run test without Internet access")
 	}
+	require.NoError(t, err)
 
 	// Test FindSource method for positive result
 	pluginInfo, err := FindSource(i.Path())

@@ -199,12 +199,12 @@ func TestDeprecatedAPIFails(t *testing.T) {
 
 	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
 	Templates(&linter, values, namespace, strict)
-	if l := len(linter.Messages); l != 1 {
+	if !assert.Len(t, linter.Messages, 1) {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %s", i, msg)
 		}
-		t.Fatalf("Expected 1 lint error, got %d", l)
 	}
+	require.Len(t, linter.Messages, 1, "Expected 1 lint error")
 
 	var err deprecatedAPIError
 	require.ErrorAs(t, linter.Messages[0].Err, &err, "Expected error to be of type deprecatedAPIError")
@@ -252,8 +252,7 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 		ChartDir: filepath.Join(dir, ch.Metadata.Name),
 	}
 	Templates(linter, ch.Values, namespace, strict)
-	if len(linter.Messages) != 0 {
-		t.Errorf("expected zero messages, got %d", len(linter.Messages))
+	if !assert.Empty(t, linter.Messages, "expected zero messages") {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %q", i, msg)
 		}
@@ -376,12 +375,12 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 
 	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
 	Templates(&linter, values, namespace, strict)
-	if l := len(linter.Messages); l > 0 {
+	if !assert.Empty(t, linter.Messages) {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %s", i, msg)
 		}
-		t.Fatalf("Expected 0 lint errors, got %d", l)
 	}
+	require.Empty(t, linter.Messages, "Expected 0 lint errors")
 }
 func TestValidateListAnnotations(t *testing.T) {
 	md := &k8sYamlStruct{

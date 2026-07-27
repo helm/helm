@@ -78,8 +78,7 @@ func TestFuncMap(t *testing.T) {
 	// Test for Engine-specific template functions.
 	expect := []string{"include", "required", "tpl", "toYaml", "fromYaml", "toToml", "fromToml", "toJson", "fromJson", "lookup"}
 	for _, f := range expect {
-		_, ok := fns[f]
-		assert.Truef(t, ok, "Expected add-on function %q", f)
+		assert.Containsf(t, fns, f, "Expected add-on function %q", f)
 	}
 }
 
@@ -412,8 +411,7 @@ func TestParseErrors(t *testing.T) {
 	}
 	_, err := new(Engine).render(t.Context(), tplsUndefinedFunction)
 	require.Error(t, err, "Expected failures while rendering")
-	expected := `parse error at (undefined_function:1): function "foo" not defined`
-	assert.EqualError(t, err, expected)
+	assert.EqualError(t, err, `parse error at (undefined_function:1): function "foo" not defined`)
 }
 
 func TestExecErrors(t *testing.T) {
@@ -887,9 +885,8 @@ func TestRenderRecursionLimit(t *testing.T) {
 	expectErr := "rendering template has a nested reference name: recursion: unable to execute template"
 
 	_, err := Render(c, v)
-	if err == nil || !strings.HasSuffix(err.Error(), expectErr) {
-		t.Errorf("Expected err with suffix: %s", expectErr)
-	}
+	require.Error(t, err)
+	assert.True(t, strings.HasSuffix(err.Error(), expectErr), "Expected err with suffix: %s", expectErr)
 
 	// calling the same function many times is ok
 	times := 4000
@@ -1261,18 +1258,14 @@ func TestRenderCustomTemplateFuncs(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expected output should be "hello!!!".
-	expected := "hello!!!"
-	key := "CustomFunc/templates/manifest"
-	if rendered, ok := out[key]; !ok || rendered != expected {
-		t.Errorf("Expected %q, got %q", expected, rendered)
-	}
+	rendered, ok := out["CustomFunc/templates/manifest"]
+	require.True(t, ok)
+	assert.Equal(t, "hello!!!", rendered)
 
 	// Verify that the rendered template used the custom "upper" function.
-	expected = "custom:hello"
-	key = "CustomFunc/templates/override"
-	if rendered, ok := out[key]; !ok || rendered != expected {
-		t.Errorf("Expected %q, got %q", expected, rendered)
-	}
+	rendered, ok = out["CustomFunc/templates/override"]
+	require.True(t, ok)
+	assert.Equal(t, "custom:hello", rendered)
 }
 
 func TestTraceableError_SimpleForm(t *testing.T) {

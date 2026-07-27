@@ -567,17 +567,16 @@ func TestUpdate(t *testing.T) {
 
 			// Special handling for the rollback test case
 			if name == "rollback after failed upgrade with removed resource" {
-				assert.Empty(t, result.Created, "expected 0 resource created, got %d", len(result.Created))
-				assert.Len(t, result.Updated, 1, "expected 1 resource updated, got %d", len(result.Updated))
-				assert.Empty(t, result.Deleted, "expected 0 resource deleted, got %d", len(result.Deleted))
+				assert.Empty(t, result.Created, "expected 0 resource created")
+				assert.Len(t, result.Updated, 1, "expected 1 resource updated")
+				assert.Empty(t, result.Deleted, "expected 0 resource deleted")
 			} else {
-				assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
-				assert.Len(t, result.Updated, 2, "expected 2 resource updated, got %d", len(result.Updated))
-				assert.Len(t, result.Deleted, 1, "expected 1 resource deleted, got %d", len(result.Deleted))
+				assert.Len(t, result.Created, 1, "expected 1 resource created")
+				assert.Len(t, result.Updated, 2, "expected 2 resource updated")
+				assert.Len(t, result.Deleted, 1, "expected 1 resource deleted")
 			}
 
 			if tc.ExpectedError != "" {
-				require.Error(t, err)
 				require.ErrorContains(t, err, tc.ExpectedError)
 			} else {
 				require.NoError(t, err)
@@ -702,11 +701,11 @@ func TestPerform(t *testing.T) {
 			}
 
 			err = perform(infos, fn)
-			assert.Equal(t, tt.err, (err != nil), "expected error: %v", tt.err)
-			if err != nil {
-				require.EqualErrorf(t, err, tt.errMessage, "expected error message: %v, got %v", tt.errMessage, err)
+			if tt.err {
+				require.EqualError(t, err, tt.errMessage)
+			} else {
+				require.NoError(t, err)
 			}
-
 			assert.Len(t, results, tt.count, "expected %d result objects, got %d", tt.count, len(results))
 		})
 	}
@@ -782,7 +781,6 @@ func TestWait(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result.Created, 3, "expected 3 resource created, got %d", len(result.Created))
 	require.NoErrorf(t, c.Wait(resources, time.Second*30), "expected wait without error")
-
 	assert.GreaterOrEqualf(t, time.Since(*created), time.Second*5, "expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*created))
 }
 

@@ -16,7 +16,6 @@ limitations under the License.
 package strvals
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -279,29 +278,21 @@ func TestParseLiteral(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		got, err := ParseLiteral(tt.str)
-		if err != nil {
-			if !tt.err {
-				require.NoError(t, err, tt.str)
+		t.Run(tt.str, func(t *testing.T) {
+			got, err := ParseLiteral(tt.str)
+			if tt.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				y1, err := yaml.Marshal(tt.expect)
+				require.NoError(t, err)
+
+				y2, err := yaml.Marshal(got)
+				require.NoError(t, err, "Error serializing parsed value")
+
+				assert.YAMLEq(t, string(y1), string(y2), tt.str)
 			}
-			continue
-		}
-
-		if tt.err {
-			assert.Fail(t, "Expected error. Got nil", tt.str)
-		}
-
-		y1, err := yaml.Marshal(tt.expect)
-		require.NoError(t, err)
-
-		y2, err := yaml.Marshal(got)
-		if err != nil {
-			require.NoError(t, err, "Error serializing parsed value")
-		}
-
-		if !bytes.Equal(y1, y2) {
-			assert.Equal(t, string(y1), string(y2), tt.str)
-		}
+		})
 	}
 }
 
@@ -386,17 +377,13 @@ func TestParseLiteralInto(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if err := ParseLiteralInto(tt.input, tt.got); err != nil {
-			require.NoError(t, err)
-		}
+		require.NoError(t, ParseLiteralInto(tt.input, tt.got))
 		if tt.err {
 			assert.Fail(t, "Expected error. Got nil", tt.input)
 		}
 
 		if tt.input2 != "" {
-			if err := ParseLiteralInto(tt.input2, tt.got); err != nil {
-				require.NoError(t, err)
-			}
+			require.NoError(t, ParseLiteralInto(tt.input2, tt.got))
 			if tt.err {
 				assert.Fail(t, "Expected error. Got nil", tt.input2)
 			}
@@ -406,13 +393,9 @@ func TestParseLiteralInto(t *testing.T) {
 		require.NoError(t, err)
 
 		y2, err := yaml.Marshal(tt.got)
-		if err != nil {
-			require.NoError(t, err, "Error serializing parsed value")
-		}
+		require.NoError(t, err, "Error serializing parsed value")
 
-		if !bytes.Equal(y1, y2) {
-			assert.Equal(t, string(y1), string(y2), tt.input)
-		}
+		assert.YAMLEq(t, string(y1), string(y2), tt.input)
 	}
 }
 
@@ -447,29 +430,23 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := ParseLiteral(tt.str)
-		if err != nil {
+		t.Run(tt.str, func(t *testing.T) {
+			got, err := ParseLiteral(tt.str)
 			if tt.err {
+				require.Error(t, err)
 				if tt.errStr != "" {
 					require.EqualError(t, err, tt.errStr)
 				}
-				continue
+			} else {
+				require.NoError(t, err)
+				y1, err := yaml.Marshal(tt.expect)
+				require.NoError(t, err)
+
+				y2, err := yaml.Marshal(got)
+				require.NoError(t, err, "Error serializing parsed value")
+
+				assert.YAMLEq(t, string(y1), string(y2), tt.str)
 			}
-			require.NoError(t, err, tt.str)
-		}
-
-		if tt.err {
-			assert.Fail(t, "Expected error. Got nil", tt.str)
-		}
-
-		y1, err := yaml.Marshal(tt.expect)
-		require.NoError(t, err)
-
-		y2, err := yaml.Marshal(got)
-		require.NoError(t, err, "Error serializing parsed value")
-
-		if !bytes.Equal(y1, y2) {
-			assert.Equal(t, string(y1), string(y2), tt.str)
-		}
+		})
 	}
 }

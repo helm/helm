@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -161,5 +160,5 @@ func TestRollbackWithLabels(t *testing.T) {
 
 	updatedRel, err := releaserToV1Release(updatedReli)
 	require.NoError(t, err)
-	assert.Truef(t, reflect.DeepEqual(updatedRel.Labels, labels1), "Expected {%v}, got {%v}", labels1, updatedRel.Labels)
+	assert.Equalf(t, labels1, updatedRel.Labels, "Expected {%v}, got {%v}", labels1, updatedRel.Labels)
 }

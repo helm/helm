@@ -215,19 +215,17 @@ func TestReadFile(t *testing.T) {
 				got, err := readFile(actualFilePath, tt.providers)
 				require.NoError(t, err, "readFile() expected no error for stdin")
 				assert.Equal(t, testData, got)
-				return
-			}
-
-			// Regular test cases
-			got, err := readFile(actualFilePath, tt.providers)
-			if tt.expectError {
-				assert.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-
-			if tt.expectedData != nil {
-				assert.Equal(t, tt.expectedData, got)
+			} else {
+				// Regular test cases
+				got, err := readFile(actualFilePath, tt.providers)
+				if tt.expectError {
+					assert.Error(t, err)
+				} else {
+					require.NoError(t, err)
+					if tt.expectedData != nil {
+						assert.Equal(t, tt.expectedData, got)
+					}
+				}
 			}
 		})
 	}
@@ -356,10 +354,10 @@ func TestMergeValuesCLI(t *testing.T) {
 			got, err := tt.opts.MergeValues(getter.Providers{})
 			if tt.wantErr {
 				assert.Error(t, err)
-				return
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, got)
 			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, got)
 		})
 	}
 }

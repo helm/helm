@@ -55,23 +55,14 @@ func TestOCIGetter(t *testing.T) {
 
 	og, ok := g.(*OCIGetter)
 	require.True(t, ok, "expected NewOCIGetter to produce an *OCIGetter")
-
 	assert.Equal(t, "I", og.opts.username, "Expected NewOCIGetter to contain %q as the username, got %q", "I", og.opts.username)
-
 	assert.Equal(t, "Am", og.opts.password, "Expected NewOCIGetter to contain %q as the password, got %q", "Am", og.opts.password)
-
 	assert.Equal(t, pub, og.opts.certFile, "Expected NewOCIGetter to contain %q as the public key file, got %q", pub, og.opts.certFile)
-
 	assert.Equal(t, priv, og.opts.keyFile, "Expected NewOCIGetter to contain %q as the private key file, got %q", priv, og.opts.keyFile)
-
 	assert.Equal(t, ca, og.opts.caFile, "Expected NewOCIGetter to contain %q as the CA file, got %q", ca, og.opts.caFile)
-
 	assert.Equal(t, timeout, og.opts.timeout, "Expected NewOCIGetter to contain %s as Timeout flag, got %s", timeout, og.opts.timeout)
-
 	assert.Equal(t, transport, og.opts.transport, "Expected NewOCIGetter to contain %p as Transport, got %p", transport, og.opts.transport)
-
 	assert.Equal(t, plainHTTP, og.opts.plainHTTP, "Expected NewOCIGetter to have plainHTTP as %t, got %t", plainHTTP, og.opts.plainHTTP)
-
 	assert.Equal(t, insecureSkipVerifyTLS, og.opts.insecureSkipVerifyTLS, "Expected NewOCIGetter to have insecureSkipVerifyTLS as %t, got %t", insecureSkipVerifyTLS, og.opts.insecureSkipVerifyTLS)
 
 	// Test if setting registryClient is being passed to the ops
@@ -84,7 +75,6 @@ func TestOCIGetter(t *testing.T) {
 	require.NoError(t, err)
 	og, ok = g.(*OCIGetter)
 	require.True(t, ok, "expected NewOCIGetter to produce an *OCIGetter")
-
 	assert.Equal(t, registryClient, og.opts.registryClient, "Expected NewOCIGetter to contain %p as RegistryClient, got %p", registryClient, og.opts.registryClient)
 }
 

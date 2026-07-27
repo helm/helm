@@ -16,6 +16,7 @@ limitations under the License.
 package engine
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,10 +48,10 @@ func TestNewFiles(t *testing.T) {
 	assert.Len(t, files, len(cases), "Expected len() = %d, got %d", len(cases), len(files))
 
 	for i, f := range cases {
-		got := string(files.GetBytes(f.path))
-		assert.Equalf(t, got, f.data, "%d: expected %q, got %q", i, f.data, got)
-		got = files.Get(f.path)
-		assert.Equalf(t, got, f.data, "%d: expected %q, got %q", i, f.data, got)
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, f.data, string(files.GetBytes(f.path)))
+			assert.Equal(t, f.data, files.Get(f.path))
+		})
 	}
 }
 

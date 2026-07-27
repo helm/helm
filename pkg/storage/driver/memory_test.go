@@ -18,7 +18,6 @@ package driver
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -112,7 +111,7 @@ func TestMemoryList(t *testing.T) {
 	})
 	// check
 	require.NoError(t, err, "Failed to list deployed releases")
-	assert.Len(t, dpl, 2, "Expected 2 deployed, got %d", len(dpl))
+	assert.Len(t, dpl, 2, "Expected 2 deployed")
 
 	// list all superseded releases
 	ssd, err := ts.List(func(rel release.Releaser) bool {
@@ -121,7 +120,7 @@ func TestMemoryList(t *testing.T) {
 	})
 	// check
 	require.NoError(t, err, "Failed to list superseded releases")
-	assert.Len(t, ssd, 6, "Expected 6 superseded, got %d", len(ssd))
+	assert.Len(t, ssd, 6, "Expected 6 superseded")
 
 	// list all deleted releases
 	del, err := ts.List(func(rel release.Releaser) bool {
@@ -210,7 +209,7 @@ func TestMemoryUpdate(t *testing.T) {
 
 			r, err := ts.Get(tt.key)
 			require.NoError(t, err, "Failed to get")
-			require.Truef(t, reflect.DeepEqual(r, tt.rls), "Expected %v, actual %v\n", tt.rls, r)
+			require.Equalf(t, r, tt.rls, "Expected %v, actual %v\n", tt.rls, r)
 		}
 	}
 }
@@ -256,10 +255,8 @@ func TestMemoryDelete(t *testing.T) {
 	ts.SetNamespace("")
 	end, err := ts.Query(map[string]string{"status": "deployed"})
 	require.NoError(t, err, "Query failed")
-	endLen := len(end)
 
-	if startLen-2 != endLen {
-		t.Errorf("expected end to be %d instead of %d", startLen-2, endLen)
+	if !assert.Len(t, end, startLen-2) {
 		for _, ee := range end {
 			rac, err := release.NewAccessor(ee)
 			require.NoError(t, err, "unable to get release accessor")
