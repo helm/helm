@@ -40,7 +40,7 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:   "check values files",
-			cmd:    fmt.Sprintf("template '%s' --values '%s'", chartPath, filepath.Join(chartPath, "/charts/subchartA/values.yaml")),
+			cmd:    fmt.Sprintf("template '%s' --values '%s'", chartPath, filepath.Join(chartPath, "charts", "subchartA", "values.yaml")),
 			golden: "output/template-values-files.txt",
 		},
 		{
@@ -132,6 +132,12 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:       fmt.Sprintf("template '%s' --debug", "testdata/testcharts/chart-with-template-with-invalid-yaml"),
 			wantError: true,
 			golden:    "output/template-with-invalid-yaml-debug.txt",
+		},
+		{
+			name:      "chart with template with invalid template expression (--debug, --show-only)",
+			cmd:       fmt.Sprintf("template '%s' --debug --show-only %s", "testdata/testcharts/chart-with-template-with-invalid-template-expr", "templates/alpine-pod.yaml"),
+			wantError: true,
+			golden:    "output/template-with-invalid-template-expr-debug-show-only.txt",
 		},
 		{
 			name:   "template skip-tests",

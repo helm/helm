@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -96,49 +97,36 @@ func TestBadChart(t *testing.T) {
 func TestInvalidYaml(t *testing.T) {
 	var values map[string]any
 	m := RunAll(badYamlFileDir, values, namespace).Messages
-	if len(m) != 1 {
-		t.Fatalf("All didn't fail with expected errors, got %#v", m)
-	}
-	if !strings.Contains(m[0].Err.Error(), "deliberateSyntaxError") {
-		t.Error("All didn't have the error for deliberateSyntaxError")
-	}
+	require.Len(t, m, 1, "All didn't fail with expected errors, got %#v", m)
+	assert.ErrorContains(t, m[0].Err, "deliberateSyntaxError", "All didn't have the error for deliberateSyntaxError")
 }
 
 func TestInvalidChartYaml(t *testing.T) {
 	var values map[string]any
 	m := RunAll(invalidChartFileDir, values, namespace).Messages
-	if len(m) != 2 {
-		t.Fatalf("All didn't fail with expected errors, got %#v", m)
-	}
-	if !strings.Contains(m[0].Err.Error(), "failed to strictly parse chart metadata file") {
-		t.Error("All didn't have the error for duplicate YAML keys")
-	}
+	require.Len(t, m, 2, "All didn't fail with expected errors, got %#v", m)
+	assert.ErrorContains(t, m[0].Err, "failed to strictly parse chart metadata file", "All didn't have the error for duplicate YAML keys")
 }
 
 func TestBadValues(t *testing.T) {
 	var values map[string]any
 	m := RunAll(badValuesFileDir, values, namespace).Messages
-	if len(m) < 1 {
-		t.Fatalf("All didn't fail with expected errors, got %#v", m)
-	}
-	if !strings.Contains(m[0].Err.Error(), "unable to parse YAML") {
-		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
-	}
+	require.GreaterOrEqualf(t, len(m), 1, "All didn't fail with expected errors, got %#v", m)
+	assert.ErrorContains(t, m[0].Err, "unable to parse YAML", "All didn't have the error for invalid key format: %s", m[0].Err)
 }
 
 func TestBadCrdFile(t *testing.T) {
 	var values map[string]any
 	m := RunAll(badCrdFileDir, values, namespace).Messages
-	assert.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
-	assert.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
+	require.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
+	require.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
 	assert.ErrorContains(t, m[1].Err, "object kind is not 'CustomResourceDefinition'")
 }
 
 func TestGoodChart(t *testing.T) {
 	var values map[string]any
 	m := RunAll(goodChartDir, values, namespace).Messages
-	if len(m) != 0 {
-		t.Error("All returned linter messages when it shouldn't have")
+	if !assert.Empty(t, m, "All returned linter messages when it shouldn't have") {
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg)
 		}
@@ -153,22 +141,17 @@ func TestHelmCreateChart(t *testing.T) {
 	dir := t.TempDir()
 
 	createdChart, err := chartutil.Create("testhelmcreatepasseslint", dir)
-	if err != nil {
-		t.Error(err)
-		// Fatal is bad because of the defer.
-		return
-	}
+	require.NoError(t, err)
 
 	// Note: we test with strict=true here, even though others have
 	// strict = false.
 	m := RunAll(createdChart, values, namespace, WithSkipSchemaValidation(true)).Messages
-	if ll := len(m); ll != 1 {
-		t.Errorf("All should have had exactly 1 error. Got %d", ll)
+	if !assert.Len(t, m, 1, "All should have had exactly 1 error") {
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg.Error())
 		}
-	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
-		t.Errorf("Unexpected lint error: %s", msg)
+	} else {
+		assert.ErrorContains(t, m[0].Err, "icon is recommended")
 	}
 }
 
@@ -181,10 +164,7 @@ func TestHelmCreateChart(t *testing.T) {
 // of the `--set` flag.
 func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 	createdChart, err := chartutil.Create("checkdeprecatedwarnings", t.TempDir())
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	require.NoError(t, err)
 
 	// Add values to enable hpa, and ingress which are disabled by default.
 	// This is the equivalent of:
@@ -214,8 +194,7 @@ func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 func TestSubChartValuesChart(t *testing.T) {
 	var values map[string]any
 	m := RunAll(subChartValuesDir, values, namespace).Messages
-	if len(m) != 0 {
-		t.Error("All returned linter messages when it shouldn't have")
+	if !assert.Empty(t, m, "All returned linter messages when it shouldn't have") {
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg)
 		}
@@ -237,11 +216,7 @@ func TestMalformedTemplate(t *testing.T) {
 	case <-c:
 		t.Fatal("lint malformed template timeout")
 	case <-ch:
-		if len(m) != 1 {
-			t.Fatalf("All didn't fail with expected errors, got %#v", m)
-		}
-		if !strings.Contains(m[0].Err.Error(), "invalid character '{'") {
-			t.Error("All didn't have the error for invalid character '{'")
-		}
+		require.Len(t, m, 1, "All didn't fail with expected errors, got %#v", m)
+		assert.ErrorContains(t, m[0].Err, "invalid character '{'", "All didn't have the error for invalid character '{'")
 	}
 }

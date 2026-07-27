@@ -18,8 +18,10 @@ package cmd
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release/common"
@@ -148,24 +150,15 @@ func TestRollbackWithLabels(t *testing.T) {
 	}
 	storage := storageFixture()
 	for _, rel := range rels {
-		if err := storage.Create(rel); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, storage.Create(rel))
 	}
 	_, _, err := executeActionCommandC(storage, fmt.Sprintf("rollback %s 1", releaseName))
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-	updatedReli, err := storage.Get(releaseName, 3)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-	updatedRel, err := releaserToV1Release(updatedReli)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
-	if !reflect.DeepEqual(updatedRel.Labels, labels1) {
-		t.Errorf("Expected {%v}, got {%v}", labels1, updatedRel.Labels)
-	}
+	updatedReli, err := storage.Get(releaseName, 3)
+	require.NoError(t, err)
+
+	updatedRel, err := releaserToV1Release(updatedReli)
+	require.NoError(t, err)
+	assert.Equalf(t, labels1, updatedRel.Labels, "Expected {%v}, got {%v}", labels1, updatedRel.Labels)
 }

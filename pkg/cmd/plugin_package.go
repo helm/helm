@@ -91,7 +91,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 	}
 
 	// Create destination directory if needed
-	if err := os.MkdirAll(o.destination, 0755); err != nil {
+	if err := os.MkdirAll(o.destination, 0o755); err != nil {
 		return err
 	}
 
@@ -158,7 +158,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 
 		// Write the signature
 		provFile := tarballPath + ".prov"
-		if err := os.WriteFile(provFile, []byte(sig), 0644); err != nil {
+		if err := os.WriteFile(provFile, []byte(sig), 0o644); err != nil {
 			os.Remove(tarballPath)
 			return err
 		}

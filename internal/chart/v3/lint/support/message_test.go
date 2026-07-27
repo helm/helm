@@ -19,6 +19,9 @@ package support
 import (
 	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var errLint = errors.New("lint failed")
@@ -47,33 +50,19 @@ func TestRunLinterRule(t *testing.T) {
 	linter := Linter{}
 	for _, test := range tests {
 		isValid := linter.RunLinterRule(test.Severity, "chart", test.LintError)
-		if len(linter.Messages) != test.ExpectedMessages {
-			t.Errorf("RunLinterRule(%d, \"chart\", %v), linter.Messages should now have %d message, we got %d", test.Severity, test.LintError, test.ExpectedMessages, len(linter.Messages))
-		}
-
-		if linter.HighestSeverity != test.ExpectedHighestSeverity {
-			t.Errorf("RunLinterRule(%d, \"chart\", %v), linter.HighestSeverity should be %d, we got %d", test.Severity, test.LintError, test.ExpectedHighestSeverity, linter.HighestSeverity)
-		}
-
-		if isValid != test.ExpectedReturn {
-			t.Errorf("RunLinterRule(%d, \"chart\", %v), should have returned %t but returned %t", test.Severity, test.LintError, test.ExpectedReturn, isValid)
-		}
+		assert.Lenf(t, linter.Messages, test.ExpectedMessages, "RunLinterRule(%d, \"chart\", %v), linter.Messages should now have %d message, we got %d", test.Severity, test.LintError, test.ExpectedMessages, len(linter.Messages))
+		assert.Equalf(t, test.ExpectedHighestSeverity, linter.HighestSeverity, "RunLinterRule(%d, \"chart\", %v), linter.HighestSeverity should be %d, we got %d", test.Severity, test.LintError, test.ExpectedHighestSeverity, linter.HighestSeverity)
+		assert.Equalf(t, test.ExpectedReturn, isValid, "RunLinterRule(%d, \"chart\", %v), should have returned %t but returned %t", test.Severity, test.LintError, test.ExpectedReturn, isValid)
 	}
 }
 
 func TestMessage(t *testing.T) {
 	m := Message{ErrorSev, "Chart.yaml", errors.New("Foo")}
-	if m.Error() != "[ERROR] Chart.yaml: Foo" {
-		t.Errorf("Unexpected output: %s", m.Error())
-	}
+	require.EqualError(t, m, "[ERROR] Chart.yaml: Foo")
 
 	m = Message{WarningSev, "templates/", errors.New("Bar")}
-	if m.Error() != "[WARNING] templates/: Bar" {
-		t.Errorf("Unexpected output: %s", m.Error())
-	}
+	require.EqualError(t, m, "[WARNING] templates/: Bar")
 
 	m = Message{InfoSev, "templates/rc.yaml", errors.New("FooBar")}
-	if m.Error() != "[INFO] templates/rc.yaml: FooBar" {
-		t.Errorf("Unexpected output: %s", m.Error())
-	}
+	assert.EqualError(t, m, "[INFO] templates/rc.yaml: FooBar")
 }

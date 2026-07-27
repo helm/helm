@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"sigs.k8s.io/yaml"
@@ -78,6 +79,8 @@ type Manager struct {
 
 	// ContentCache is a location where a cache of charts can be stored
 	ContentCache string
+	// SourceDateEpoch, when set, normalizes chart timestamps for reproducible archives.
+	SourceDateEpoch *time.Time
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -118,16 +121,15 @@ func (m *Manager) Build() error {
 	}
 
 	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
+		if c.Metadata.APIVersion != chart.APIVersionV1 {
+			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies with 'helm dependency update'")
+		}
 		// If lock digest differs and chart is apiVersion v1, it maybe because the lock was built
 		// with Helm 2 and therefore should be checked with Helm v2 hash
 		// Fix for: https://github.com/helm/helm/issues/7233
-		if c.Metadata.APIVersion == chart.APIVersionV1 {
-			log.Println("warning: a valid Helm v3 hash was not found. Checking against Helm v2 hash...")
-			if v2Sum != lock.Digest {
-				return errors.New("the lock file (requirements.lock) is out of sync with the dependencies file (requirements.yaml). Please update the dependencies")
-			}
-		} else {
-			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies with 'helm dependency update'")
+		log.Println("warning: a valid Helm v3 hash was not found. Checking against Helm v2 hash...")
+		if v2Sum != lock.Digest {
+			return errors.New("the lock file (requirements.lock) is out of sync with the dependencies file (requirements.yaml). Please update the dependencies")
 		}
 	}
 
@@ -257,7 +259,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			return fmt.Errorf("%q is not a directory", destPath)
 		}
 	} else if errors.Is(err, stdfs.ErrNotExist) {
-		if err := os.MkdirAll(destPath, 0755); err != nil {
+		if err := os.MkdirAll(destPath, 0o755); err != nil {
 			return err
 		}
 	} else {
@@ -265,7 +267,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	// Prepare tmpPath
-	if err := os.MkdirAll(tmpPath, 0755); err != nil {
+	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpPath)
@@ -304,7 +306,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
-			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath)
+			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath, m.SourceDateEpoch)
 			if err != nil {
 				saveError = err
 				break
@@ -365,20 +367,16 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
-	if saveError == nil {
-		// now we can move all downloaded charts to destPath and delete outdated dependencies
-		if err := m.safeMoveDeps(deps, tmpPath, destPath); err != nil {
-			return err
-		}
-	} else {
+	if saveError != nil {
 		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
 		return saveError
 	}
-	return nil
+	// now we can move all downloaded charts to destPath and delete outdated dependencies
+	return m.safeMoveDeps(deps, tmpPath, destPath)
 }
 
 func parseOCIRef(chartRef string) (string, string, error) {
-	refTagRegexp := regexp.MustCompile(`^(oci://[^:]+(:[0-9]{1,5})?[^:]+):(.*)$`)
+	refTagRegexp := regexp.MustCompile(`^(oci://[^:]+(:\d{1,5})?[^:]+):(.*)$`)
 	caps := refTagRegexp.FindStringSubmatch(chartRef)
 	if len(caps) != 4 {
 		return "", "", fmt.Errorf("improperly formatted oci chart reference: %s", chartRef)
@@ -441,21 +439,22 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	fmt.Fprintln(m.Out, "Deleting outdated charts")
 	// find all files that exist in dest that do not exist in source; delete them (outdated dependencies)
 	for _, file := range destFiles {
-		if !file.IsDir() && !existsInSourceDirectory[file.Name()] {
-			fname := filepath.Join(dest, file.Name())
-			ch, err := loader.LoadFile(fname)
-			if err != nil {
-				fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
-				continue
-			}
-			// local dependency - skip
-			if isLocalDependency[ch.Name()] {
-				continue
-			}
-			if err := os.Remove(fname); err != nil {
-				fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
-				continue
-			}
+		if file.IsDir() || existsInSourceDirectory[file.Name()] {
+			continue
+		}
+		fname := filepath.Join(dest, file.Name())
+		ch, err := loader.LoadFile(fname)
+		if err != nil {
+			fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
+			continue
+		}
+		// local dependency - skip
+		if isLocalDependency[ch.Name()] {
+			continue
+		}
+		if err := os.Remove(fname); err != nil {
+			fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
+			continue
 		}
 	}
 
@@ -728,41 +727,42 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	for _, cr := range repos {
-		if urlutil.Equal(repoURL, cr.Config.URL) {
-			var entry repo.ChartVersions
-			entry, err = findEntryByName(name, cr)
-			if err != nil {
-				// TODO: Where linting is skipped in this function we should
-				// refactor to remove naked returns while ensuring the same
-				// behavior
-				//nolint:nakedret
-				return
-			}
-			var ve *repo.ChartVersion
-			ve, err = findVersionedEntry(version, entry)
-			if err != nil {
-				//nolint:nakedret
-				return
-			}
-			url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
-			if err != nil {
-				//nolint:nakedret
-				return
-			}
-			username = cr.Config.Username
-			password = cr.Config.Password
-			passCredentialsAll = cr.Config.PassCredentialsAll
-			insecureSkipTLSVerify = cr.Config.InsecureSkipTLSVerify
-			caFile = cr.Config.CAFile
-			certFile = cr.Config.CertFile
-			keyFile = cr.Config.KeyFile
+		if !urlutil.Equal(repoURL, cr.Config.URL) {
+			continue
+		}
+		var entry repo.ChartVersions
+		entry, err = findEntryByName(name, cr)
+		if err != nil {
+			// TODO: Where linting is skipped in this function we should
+			// refactor to remove naked returns while ensuring the same
+			// behavior
 			//nolint:nakedret
 			return
 		}
+		var ve *repo.ChartVersion
+		ve, err = findVersionedEntry(version, entry)
+		if err != nil {
+			//nolint:nakedret
+			return
+		}
+		url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
+		if err != nil {
+			//nolint:nakedret
+			return
+		}
+		username = cr.Config.Username
+		password = cr.Config.Password
+		passCredentialsAll = cr.Config.PassCredentialsAll
+		insecureSkipTLSVerify = cr.Config.InsecureSkipTLSVerify
+		caFile = cr.Config.CAFile
+		certFile = cr.Config.CertFile
+		keyFile = cr.Config.KeyFile
+		//nolint:nakedret
+		return
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
-		return url, username, password, false, false, "", "", "", err
+		return url, username, password, false, false, "", "", "", nil
 	}
 	err = fmt.Errorf("chart %s not found in %s: %w", name, repoURL, err)
 	return url, username, password, false, false, "", "", "", err
@@ -866,11 +866,11 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 		}
 	}
 
-	return os.WriteFile(dest, data, 0644)
+	return os.WriteFile(dest, data, 0o644)
 }
 
 // archive a dep chart from local directory and save it into destPath
-func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
+func tarFromLocalDir(chartpath, name, repo, version, destPath string, sourceDateEpoch *time.Time) (string, error) {
 	if !strings.HasPrefix(repo, "file://") {
 		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
@@ -883,6 +883,10 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 	ch, err := loader.LoadDir(origPath)
 	if err != nil {
 		return "", err
+	}
+
+	if sourceDateEpoch != nil {
+		ch.StampModTimes(*sourceDateEpoch)
 	}
 
 	constraint, err := semver.NewConstraint(version)

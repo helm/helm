@@ -25,11 +25,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
@@ -38,13 +40,9 @@ import (
 
 func TestLoadDir(t *testing.T) {
 	l, err := Loader("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	c, err := l.Load()
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyDependencies(t, c)
@@ -57,33 +55,24 @@ func TestLoadDirWithDevNull(t *testing.T) {
 	}
 
 	l, err := Loader("testdata/frobnitz_with_dev_null")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	if _, err := l.Load(); err == nil {
-		t.Error("packages with an irregular file (/dev/null) should not load")
-	}
+	require.NoError(t, err, "Failed to load testdata")
+	_, err = l.Load()
+	assert.Error(t, err, "packages with an irregular file (/dev/null) should not load")
 }
 
 func TestLoadDirWithSymlink(t *testing.T) {
 	sym := filepath.Join("..", "LICENSE")
 	link := filepath.Join("testdata", "frobnitz_with_symlink", "LICENSE")
 
-	if err := os.Symlink(sym, link); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Symlink(sym, link))
 
 	defer os.Remove(link)
 
 	l, err := Loader("testdata/frobnitz_with_symlink")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 
 	c, err := l.Load()
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyDependencies(t, c)
@@ -100,53 +89,37 @@ func TestBomTestData(t *testing.T) {
 	}
 
 	archive, err := os.ReadFile("testdata/frobnitz_with_bom.tgz")
-	if err != nil {
-		t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-	}
+	require.NoError(t, err, "Error reading archive frobnitz_with_bom.tgz")
 	unzipped, err := gzip.NewReader(bytes.NewReader(archive))
-	if err != nil {
-		t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-	}
+	require.NoError(t, err, "Error reading archive frobnitz_with_bom.tgz")
 	defer unzipped.Close()
 	for _, testFile := range testFiles {
 		data := make([]byte, 3)
-		err := unzipped.Reset(bytes.NewReader(archive))
-		if err != nil {
-			t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-		}
+		require.NoErrorf(t, unzipped.Reset(bytes.NewReader(archive)), "Error reading archive frobnitz_with_bom.tgz")
 		tr := tar.NewReader(unzipped)
 		for {
 			file, err := tr.Next()
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			if err != nil {
-				t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-			}
+			require.NoErrorf(t, err, "Error reading archive frobnitz_with_bom.tgz")
 			if file != nil && strings.EqualFold(file.Name, testFile) {
 				_, err := tr.Read(data)
-				if err != nil {
-					t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
-				} else {
+				if err == nil {
 					break
 				}
+				t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
 			}
 		}
-		if !bytes.Equal(data, utf8bom) {
-			t.Fatalf("Test file has no BOM or is invalid: frobnitz_with_bom.tgz/%s", testFile)
-		}
+		require.Truef(t, bytes.Equal(data, utf8bom), "Test file has no BOM or is invalid: frobnitz_with_bom.tgz/%s", testFile)
 	}
 }
 
 func TestLoadDirWithUTFBOM(t *testing.T) {
 	l, err := Loader("testdata/frobnitz_with_bom")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	c, err := l.Load()
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyDependencies(t, c)
@@ -156,13 +129,9 @@ func TestLoadDirWithUTFBOM(t *testing.T) {
 
 func TestLoadArchiveWithUTFBOM(t *testing.T) {
 	l, err := Loader("testdata/frobnitz_with_bom.tgz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	c, err := l.Load()
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyDependencies(t, c)
@@ -172,39 +141,27 @@ func TestLoadArchiveWithUTFBOM(t *testing.T) {
 
 func TestLoadV1(t *testing.T) {
 	l, err := Loader("testdata/frobnitz.v1")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	c, err := l.Load()
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyDependencies(t, c)
 	verifyDependenciesLock(t, c)
 }
 
 func TestLoadFileV1(t *testing.T) {
 	l, err := Loader("testdata/frobnitz.v1.tgz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	c, err := l.Load()
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyDependencies(t, c)
 	verifyDependenciesLock(t, c)
 }
 
 func TestLoadFile(t *testing.T) {
 	l, err := Loader("testdata/frobnitz-1.2.3.tgz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	c, err := l.Load()
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyDependencies(t, c)
@@ -228,12 +185,8 @@ func TestLoadFiles_BadCases(t *testing.T) {
 			expectError: "validation: chart.metadata.apiVersion is required"},
 	} {
 		_, err := LoadFiles(tt.bufferedFiles)
-		if err == nil {
-			t.Fatal("expected error when load illegal files")
-		}
-		if !strings.Contains(err.Error(), tt.expectError) {
-			t.Errorf("Expected error to contain %q, got %q for %s", tt.expectError, err.Error(), tt.name)
-		}
+		require.Error(t, err, "expected error when load illegal files")
+		assert.ErrorContains(t, err, tt.expectError, "Expected error to contain %q, got %q for %s", tt.expectError, err.Error(), tt.name)
 	}
 }
 
@@ -285,36 +238,16 @@ icon: https://example.com/64x64.png
 	}
 
 	c, err := LoadFiles(goodFiles)
-	if err != nil {
-		t.Errorf("Expected good files to be loaded, got %v", err)
-	}
+	require.NoError(t, err, "Expected good files to be loaded")
+	assert.Equal(t, "frobnitz", c.Name(), "Expected chart name to be 'frobnitz', got %s", c.Name())
+	assert.Equal(t, "some values", c.Values["var"], "Expected chart values to be populated with default values")
+	assert.Len(t, c.Raw, 5, "Expected %d files, got %d", 5, len(c.Raw))
+	assert.True(t, bytes.Equal(c.Schema, []byte("type: Values")), "Expected chart schema to be populated with default values")
+	assert.Len(t, c.Templates, 2, "Expected number of templates == 2, got %d", len(c.Templates))
 
-	if c.Name() != "frobnitz" {
-		t.Errorf("Expected chart name to be 'frobnitz', got %s", c.Name())
-	}
-
-	if c.Values["var"] != "some values" {
-		t.Error("Expected chart values to be populated with default values")
-	}
-
-	if len(c.Raw) != 5 {
-		t.Errorf("Expected %d files, got %d", 5, len(c.Raw))
-	}
-
-	if !bytes.Equal(c.Schema, []byte("type: Values")) {
-		t.Error("Expected chart schema to be populated with default values")
-	}
-
-	if len(c.Templates) != 2 {
-		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
-	}
-
-	if _, err = LoadFiles([]*archive.BufferedFile{}); err == nil {
-		t.Fatal("Expected err to be non-nil")
-	}
-	if err.Error() != "Chart.yaml file is missing" {
-		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
-	}
+	_, err = LoadFiles([]*archive.BufferedFile{})
+	require.Error(t, err, "Expected err to be non-nil")
+	assert.EqualError(t, err, "Chart.yaml file is missing")
 }
 
 // Test the order of file loading. The Chart.yaml file needs to come first for
@@ -370,9 +303,7 @@ icon: https://example.com/64x64.png
 	// Capture stderr to make sure message about Chart.yaml handle dependencies
 	// is not present
 	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("Unable to create pipe: %s", err)
-	}
+	require.NoError(t, err, "Unable to create pipe")
 	stderr := log.Writer()
 	log.SetOutput(w)
 	defer func() {
@@ -380,25 +311,19 @@ icon: https://example.com/64x64.png
 	}()
 
 	_, err = LoadFiles(goodFiles)
-	if err != nil {
-		t.Errorf("Expected good files to be loaded, got %v", err)
-	}
+	require.NoError(t, err, "Expected good files to be loaded")
 	w.Close()
 
 	var text bytes.Buffer
 	io.Copy(&text, r)
-	if text.String() != "" {
-		t.Errorf("Expected no message to Stderr, got %s", text.String())
-	}
+	assert.Empty(t, text.String(), "Expected no message to Stderr, got %s", text.String())
 }
 
 // Packaging the chart on a Windows machine will produce an
 // archive that has \\ as delimiters. Test that we support these archives
 func TestLoadFileBackslash(t *testing.T) {
 	c, err := Load("testdata/frobnitz_backslash-1.2.3.tgz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyChartFileAndTemplate(t, c, "frobnitz_backslash")
 	verifyChart(t, c)
 	verifyDependencies(t, c)
@@ -406,13 +331,9 @@ func TestLoadFileBackslash(t *testing.T) {
 
 func TestLoadV2WithReqs(t *testing.T) {
 	l, err := Loader("testdata/frobnitz.v2.reqs")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	c, err := l.Load()
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	require.NoError(t, err, "Failed to load testdata")
 	verifyDependencies(t, c)
 	verifyDependenciesLock(t, c)
 }
@@ -422,24 +343,19 @@ func TestLoadInvalidArchive(t *testing.T) {
 
 	writeTar := func(filename, internalPath string, body []byte) {
 		dest, err := os.Create(filename)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		zipper := gzip.NewWriter(dest)
 		tw := tar.NewWriter(zipper)
 
 		h := &tar.Header{
 			Name:    internalPath,
-			Mode:    0755,
+			Mode:    0o755,
 			Size:    int64(len(body)),
 			ModTime: time.Now(),
 		}
-		if err := tw.WriteHeader(h); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := tw.Write(body); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, tw.WriteHeader(h))
+		_, err = tw.Write(body)
+		require.NoError(t, err)
 		tw.Close()
 		zipper.Close()
 		dest.Close()
@@ -468,40 +384,32 @@ func TestLoadInvalidArchive(t *testing.T) {
 		{"illegal-abspath5.tgz", "/./c://foo", "chart contains illegally named files"},
 		{"illegal-abspath6.tgz", "\\\\?\\Some\\windows\\magic", "chart illegally contains absolute paths"},
 	} {
-		illegalChart := filepath.Join(tmpdir, tt.chartname)
-		writeTar(illegalChart, tt.internal, []byte("hello: world"))
-		_, err := Load(illegalChart)
-		if err == nil {
-			t.Fatal("expected error when unpacking illegal files")
-		}
-		if !strings.Contains(err.Error(), tt.expectError) {
-			t.Errorf("Expected error to contain %q, got %q for %s", tt.expectError, err.Error(), tt.chartname)
-		}
+		t.Run(tt.chartname, func(t *testing.T) {
+			illegalChart := filepath.Join(tmpdir, tt.chartname)
+			writeTar(illegalChart, tt.internal, []byte("hello: world"))
+			_, err := Load(illegalChart)
+			require.Error(t, err, "expected error when unpacking illegal files")
+			require.ErrorContains(t, err, tt.expectError)
+		})
 	}
 
 	// Make sure that absolute path gets interpreted as relative
 	illegalChart := filepath.Join(tmpdir, "abs-path.tgz")
 	writeTar(illegalChart, "/Chart.yaml", []byte("hello: world"))
 	_, err := Load(illegalChart)
-	if err.Error() != "validation: chart.metadata.name is required" {
-		t.Error(err)
-	}
+	require.EqualError(t, err, "validation: chart.metadata.name is required")
 
 	// And just to validate that the above was not spurious
 	illegalChart = filepath.Join(tmpdir, "abs-path2.tgz")
 	writeTar(illegalChart, "files/whatever.yaml", []byte("hello: world"))
 	_, err = Load(illegalChart)
-	if err.Error() != "Chart.yaml file is missing" {
-		t.Errorf("Unexpected error message: %s", err)
-	}
+	require.EqualError(t, err, "Chart.yaml file is missing")
 
 	// Finally, test that drive letter gets stripped off on Windows
 	illegalChart = filepath.Join(tmpdir, "abs-winpath.tgz")
 	writeTar(illegalChart, "c:\\Chart.yaml", []byte("hello: world"))
 	_, err = Load(illegalChart)
-	if err.Error() != "validation: chart.metadata.name is required" {
-		t.Error(err)
-	}
+	assert.EqualError(t, err, "validation: chart.metadata.name is required")
 }
 
 func TestLoadValues(t *testing.T) {
@@ -548,12 +456,8 @@ foo:
 	for testName, testCase := range testCases {
 		t.Run(testName, func(tt *testing.T) {
 			values, err := LoadValues(bytes.NewReader(testCase.data))
-			if err != nil {
-				tt.Fatal(err)
-			}
-			if !reflect.DeepEqual(values, testCase.expctedValues) {
-				tt.Errorf("Expected values: %v, got %v", testCase.expctedValues, values)
-			}
+			require.NoError(tt, err)
+			assert.Equal(t, testCase.expctedValues, values)
 		})
 	}
 }
@@ -581,22 +485,13 @@ func TestMergeValuesV2(t *testing.T) {
 	}
 
 	testMap := MergeMaps(flatMap, nestedMap)
-	equal := reflect.DeepEqual(testMap, nestedMap)
-	if !equal {
-		t.Errorf("Expected a nested map to overwrite a flat value. Expected: %v, got %v", nestedMap, testMap)
-	}
+	assert.Equal(t, testMap, nestedMap, "Expected a nested map to overwrite a flat value. Expected: %v, got %v", nestedMap, testMap)
 
 	testMap = MergeMaps(nestedMap, flatMap)
-	equal = reflect.DeepEqual(testMap, flatMap)
-	if !equal {
-		t.Errorf("Expected a flat value to overwrite a map. Expected: %v, got %v", flatMap, testMap)
-	}
+	assert.Equal(t, testMap, flatMap, "Expected a flat value to overwrite a map. Expected: %v, got %v", flatMap, testMap)
 
 	testMap = MergeMaps(nestedMap, anotherNestedMap)
-	equal = reflect.DeepEqual(testMap, anotherNestedMap)
-	if !equal {
-		t.Errorf("Expected a nested map to overwrite another nested map. Expected: %v, got %v", anotherNestedMap, testMap)
-	}
+	assert.Equal(t, testMap, anotherNestedMap, "Expected a nested map to overwrite another nested map. Expected: %v, got %v", anotherNestedMap, testMap)
 
 	testMap = MergeMaps(anotherFlatMap, anotherNestedMap)
 	expectedMap := map[string]any{
@@ -607,32 +502,23 @@ func TestMergeValuesV2(t *testing.T) {
 			"awesome": "stuff",
 		},
 	}
-	equal = reflect.DeepEqual(testMap, expectedMap)
-	if !equal {
-		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
-	}
+	assert.Equal(t, expectedMap, testMap, "Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
 }
 
 func verifyChart(t *testing.T, c *chart.Chart) {
 	t.Helper()
-	if c.Name() == "" {
-		t.Fatalf("No chart metadata found on %v", c)
-	}
+	require.NotEmpty(t, c.Name(), "No chart metadata found on %v", c)
 	t.Logf("Verifying chart %s", c.Name())
-	if len(c.Templates) != 1 {
-		t.Errorf("Expected 1 template, got %d", len(c.Templates))
-	}
+	assert.Len(t, c.Templates, 1, "Expected 1 template, got %d", len(c.Templates))
 
 	numfiles := 6
-	if len(c.Files) != numfiles {
-		t.Errorf("Expected %d extra files, got %d", numfiles, len(c.Files))
+	if !assert.Len(t, c.Files, numfiles) {
 		for _, n := range c.Files {
 			t.Logf("\t%s", n.Name)
 		}
 	}
 
-	if len(c.Dependencies()) != 2 {
-		t.Errorf("Expected 2 dependencies, got %d (%v)", len(c.Dependencies()), c.Dependencies())
+	if !assert.Len(t, c.Dependencies(), 2, "Expected 2 dependencies") {
 		for _, d := range c.Dependencies() {
 			t.Logf("\tSubchart: %s\n", d.Name())
 		}
@@ -648,62 +534,40 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 	}
 
 	for _, dep := range c.Dependencies() {
-		if dep.Metadata == nil {
-			t.Fatalf("expected metadata on dependency: %v", dep)
-		}
+		require.NotNil(t, dep.Metadata, "expected metadata on dependency: %v", dep)
 		exp, ok := expect[dep.Name()]
-		if !ok {
-			t.Fatalf("Unknown dependency %s", dep.Name())
-		}
-		if exp["version"] != dep.Metadata.Version {
-			t.Errorf("Expected %s version %s, got %s", dep.Name(), exp["version"], dep.Metadata.Version)
-		}
+		require.True(t, ok, "Unknown dependency %s", dep.Name())
+		assert.Equal(t, dep.Metadata.Version, exp["version"], "Expected %s version %s, got %s", dep.Name(), exp["version"], dep.Metadata.Version)
 	}
 }
 
 func verifyDependencies(t *testing.T, c *chart.Chart) {
 	t.Helper()
-	if len(c.Metadata.Dependencies) != 2 {
-		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
-	}
+	require.Len(t, c.Metadata.Dependencies, 2, "Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
 		d := c.Metadata.Dependencies[i]
-		if d.Name != tt.Name {
-			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
-		}
-		if d.Version != tt.Version {
-			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
-		}
-		if d.Repository != tt.Repository {
-			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
-		}
+		assert.Equal(t, tt.Name, d.Name, "Expected dependency named %q, got %q", tt.Name, d.Name)
+		assert.Equal(t, tt.Version, d.Version, "Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
+		assert.Equal(t, tt.Repository, d.Repository, "Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
 	}
 }
 
 func verifyDependenciesLock(t *testing.T, c *chart.Chart) {
 	t.Helper()
-	if len(c.Metadata.Dependencies) != 2 {
-		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
-	}
+	require.Len(t, c.Metadata.Dependencies, 2, "Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
 		d := c.Metadata.Dependencies[i]
-		if d.Name != tt.Name {
-			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
-		}
-		if d.Version != tt.Version {
-			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
-		}
-		if d.Repository != tt.Repository {
-			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
-		}
+		assert.Equal(t, tt.Name, d.Name, "Expected dependency named %q, got %q", tt.Name, d.Name)
+		assert.Equal(t, tt.Version, d.Version, "Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
+		assert.Equal(t, tt.Repository, d.Repository, "Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
 	}
 }
 
@@ -714,53 +578,25 @@ func verifyFrobnitz(t *testing.T, c *chart.Chart) {
 
 func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 	t.Helper()
-	if c.Metadata == nil {
-		t.Fatal("Metadata is nil")
-	}
-	if c.Name() != name {
-		t.Errorf("Expected %s, got %s", name, c.Name())
-	}
-	if len(c.Templates) != 1 {
-		t.Fatalf("Expected 1 template, got %d", len(c.Templates))
-	}
-	if c.Templates[0].Name != "templates/template.tpl" {
-		t.Errorf("Unexpected template: %s", c.Templates[0].Name)
-	}
-	if len(c.Templates[0].Data) == 0 {
-		t.Error("No template data.")
-	}
-	if len(c.Files) != 6 {
-		t.Fatalf("Expected 6 Files, got %d", len(c.Files))
-	}
-	if len(c.Dependencies()) != 2 {
-		t.Fatalf("Expected 2 Dependency, got %d", len(c.Dependencies()))
-	}
-	if len(c.Metadata.Dependencies) != 2 {
-		t.Fatalf("Expected 2 Dependencies.Dependency, got %d", len(c.Metadata.Dependencies))
-	}
-	if len(c.Lock.Dependencies) != 2 {
-		t.Fatalf("Expected 2 Lock.Dependency, got %d", len(c.Lock.Dependencies))
-	}
+	require.NotNil(t, c.Metadata, "Metadata is nil")
+	assert.Equal(t, name, c.Name(), "Expected %s, got %s", name, c.Name())
+	require.Len(t, c.Templates, 1, "Expected 1 template, got %d", len(c.Templates))
+	assert.Equal(t, "templates/template.tpl", c.Templates[0].Name, "Unexpected template: %s", c.Templates[0].Name)
+	assert.NotEmpty(t, c.Templates[0].Data, "No template data.")
+	require.Len(t, c.Files, 6, "Expected 6 Files, got %d", len(c.Files))
+	require.Len(t, c.Dependencies(), 2, "Expected 2 Dependency, got %d", len(c.Dependencies()))
+	require.Len(t, c.Metadata.Dependencies, 2, "Expected 2 Dependencies.Dependency, got %d", len(c.Metadata.Dependencies))
+	require.Len(t, c.Lock.Dependencies, 2, "Expected 2 Lock.Dependency, got %d", len(c.Lock.Dependencies))
 
 	for _, dep := range c.Dependencies() {
 		switch dep.Name() {
 		case "mariner":
 		case "alpine":
-			if len(dep.Templates) != 1 {
-				t.Fatalf("Expected 1 template, got %d", len(dep.Templates))
-			}
-			if dep.Templates[0].Name != "templates/alpine-pod.yaml" {
-				t.Errorf("Unexpected template: %s", dep.Templates[0].Name)
-			}
-			if len(dep.Templates[0].Data) == 0 {
-				t.Error("No template data.")
-			}
-			if len(dep.Files) != 1 {
-				t.Fatalf("Expected 1 Files, got %d", len(dep.Files))
-			}
-			if len(dep.Dependencies()) != 2 {
-				t.Fatalf("Expected 2 Dependency, got %d", len(dep.Dependencies()))
-			}
+			require.Len(t, dep.Templates, 1, "Expected 1 template, got %d", len(dep.Templates))
+			assert.Equal(t, "templates/alpine-pod.yaml", dep.Templates[0].Name, "Unexpected template: %s", dep.Templates[0].Name)
+			assert.NotEmpty(t, dep.Templates[0].Data, "No template data.")
+			require.Len(t, dep.Files, 1, "Expected 1 Files, got %d", len(dep.Files))
+			require.Len(t, dep.Dependencies(), 2, "Expected 2 Dependency, got %d", len(dep.Dependencies()))
 		default:
 			t.Errorf("Unexpected dependency %s", dep.Name())
 		}
@@ -770,8 +606,6 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 func verifyBomStripped(t *testing.T, files []*common.File) {
 	t.Helper()
 	for _, file := range files {
-		if bytes.HasPrefix(file.Data, utf8bom) {
-			t.Errorf("Byte Order Mark still present in processed file %s", file.Name)
-		}
+		assert.Falsef(t, bytes.HasPrefix(file.Data, utf8bom), "Byte Order Mark still present in processed file %s", file.Name)
 	}
 }

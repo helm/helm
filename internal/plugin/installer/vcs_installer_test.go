@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v4/internal/plugin/installer"
+package installer
 
 import (
 	"fmt"
@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/vcs"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -52,9 +53,7 @@ func (r *testRepo) UpdateVersion(version string) error {
 func TestVCSInstaller(t *testing.T) {
 	ensure.HelmHome(t)
 
-	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
-	}
+	require.NoErrorf(t, os.MkdirAll(helmpath.DataPath("plugins"), 0o755), "Could not create %s", helmpath.DataPath("plugins"))
 
 	source := "https://github.com/adamreese/helm-env"
 	testRepoPath, _ := filepath.Abs("../testdata/plugdir/good/echo-v1")
@@ -64,43 +63,27 @@ func TestVCSInstaller(t *testing.T) {
 	}
 
 	i, err := NewForSource(source, "~0.1.0")
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	// ensure a VCSInstaller was returned
 	vcsInstaller, ok := i.(*VCSInstaller)
-	if !ok {
-		t.Fatal("expected a VCSInstaller")
-	}
+	require.True(t, ok, "expected a VCSInstaller")
 
 	// set the testRepo in the VCSInstaller
 	vcsInstaller.Repo = repo
 
-	if err := Install(i); err != nil {
-		t.Fatal(err)
-	}
-	if repo.current != "0.1.1" {
-		t.Fatalf("expected version '0.1.1', got %q", repo.current)
-	}
+	require.NoError(t, Install(i))
+	require.Equal(t, "0.1.1", repo.current, "expected version '0.1.1', got %q", repo.current)
 	expectedPath := helmpath.DataPath("plugins", "helm-env")
-	if i.Path() != expectedPath {
-		t.Fatalf("expected path %q, got %q", expectedPath, i.Path())
-	}
+	require.Equal(t, expectedPath, i.Path(), "expected path %q, got %q", expectedPath, i.Path())
 
 	// Install again to test plugin exists error
-	if err := Install(i); err == nil {
-		t.Fatal("expected error for plugin exists, got none")
-	} else if err.Error() != "plugin already exists" {
-		t.Fatalf("expected error for plugin exists, got (%v)", err)
-	}
+	require.EqualErrorf(t, Install(i), "plugin already exists", "expected error for plugin exists")
 
 	// Testing FindSource method, expect error because plugin code is not a cloned repository
-	if _, err := FindSource(i.Path()); err == nil {
-		t.Fatal("expected error for inability to find plugin source, got none")
-	} else if err.Error() != "cannot get information about plugin source" {
-		t.Fatalf("expected error for inability to find plugin source, got (%v)", err)
-	}
+	_, err = FindSource(i.Path())
+	require.Error(t, err, "expected error for inability to find plugin source, got none")
+	require.EqualErrorf(t, err, "cannot get information about plugin source", "expected error for inability to find plugin source")
 }
 
 func TestVCSInstallerNonExistentVersion(t *testing.T) {
@@ -110,22 +93,17 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	version := "0.2.0"
 
 	i, err := NewForSource(source, version)
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	// ensure a VCSInstaller was returned
-	if _, ok := i.(*VCSInstaller); !ok {
-		t.Fatal("expected a VCSInstaller")
-	}
+	require.IsType(t, &VCSInstaller{}, i, "expected a VCSInstaller")
 
-	if err := Install(i); err == nil {
-		t.Fatal("expected error for version does not exists, got none")
-	} else if strings.Contains(err.Error(), "Could not resolve host: github.com") {
+	err = Install(i)
+	require.Error(t, err, "expected error for version does not exists, got none")
+	if strings.Contains(err.Error(), "Could not resolve host: github.com") {
 		t.Skip("Unable to run test without Internet access")
-	} else if err.Error() != fmt.Sprintf("requested version %q does not exist for plugin %q", version, source) {
-		t.Fatalf("expected error for version does not exists, got (%v)", err)
 	}
+	require.EqualErrorf(t, err, fmt.Sprintf("requested version %q does not exist for plugin %q", version, source), "expected error for version does not exists")
 }
 func TestVCSInstallerUpdate(t *testing.T) {
 	ensure.HelmHome(t)
@@ -133,56 +111,34 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	source := "https://github.com/adamreese/helm-env"
 
 	i, err := NewForSource(source, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	// ensure a VCSInstaller was returned
-	if _, ok := i.(*VCSInstaller); !ok {
-		t.Fatal("expected a VCSInstaller")
-	}
+	require.IsType(t, &VCSInstaller{}, i, "expected a VCSInstaller")
 
-	if err := Update(i); err == nil {
-		t.Fatal("expected error for plugin does not exist, got none")
-	} else if err.Error() != "plugin does not exist" {
-		t.Fatalf("expected error for plugin does not exist, got (%v)", err)
-	}
+	require.EqualErrorf(t, Update(i), "plugin does not exist", "expected error for plugin does not exist")
 
 	// Install plugin before update
-	if err := Install(i); err != nil {
-		if strings.Contains(err.Error(), "Could not resolve host: github.com") {
-			t.Skip("Unable to run test without Internet access")
-		} else {
-			t.Fatal(err)
-		}
+	err = Install(i)
+	if err != nil && strings.Contains(err.Error(), "Could not resolve host: github.com") {
+		t.Skip("Unable to run test without Internet access")
 	}
+	require.NoError(t, err)
 
 	// Test FindSource method for positive result
 	pluginInfo, err := FindSource(i.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	vcsInstaller := pluginInfo.(*VCSInstaller)
 
 	repoRemote := vcsInstaller.Repo.Remote()
-	if repoRemote != source {
-		t.Fatalf("invalid source found, expected %q got %q", source, repoRemote)
-	}
+	require.Equal(t, source, repoRemote, "invalid source found, expected %q got %q", source, repoRemote)
 
 	// Update plugin
-	if err := Update(i); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, Update(i))
 
 	// Test update failure
-	if err := os.Remove(filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Remove(filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")))
 	// Testing update for error
-	if err := Update(vcsInstaller); err == nil {
-		t.Fatal("expected error for plugin modified, got none")
-	} else if err.Error() != "plugin repo was modified" {
-		t.Fatalf("expected error for plugin modified, got (%v)", err)
-	}
+	require.EqualErrorf(t, Update(vcsInstaller), "plugin repo was modified", "expected error for plugin modified")
 }

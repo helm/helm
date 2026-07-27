@@ -49,8 +49,7 @@ func TestUnmarshaConfig(t *testing.T) {
 		config, err := unmarshalConfig("cli/v1", map[string]any{
 			"invalid field": "foo",
 		})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "field not found")
+		require.ErrorContains(t, err, "field not found")
 		assert.Nil(t, config)
 	}
 }

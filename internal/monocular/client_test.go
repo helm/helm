@@ -18,14 +18,13 @@ package monocular
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
 	c, err := New("https://hub.helm.sh")
-	if err != nil {
-		t.Errorf("error creating client: %s", err)
-	}
-	if c.BaseURL != "https://hub.helm.sh" {
-		t.Errorf("incorrect BaseURL. Expected \"https://hub.helm.sh\" but got %q", c.BaseURL)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "https://hub.helm.sh", c.BaseURL)
 }

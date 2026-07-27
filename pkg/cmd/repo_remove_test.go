@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/repo/v1"
@@ -49,41 +51,29 @@ func TestRepoRemove(t *testing.T) {
 		repoCache: rootDir,
 	}
 
-	if err := rmOpts.run(os.Stderr); err == nil {
-		t.Errorf("Expected error removing %s, but did not get one.", testRepoName)
-	}
+	require.Errorf(t, rmOpts.run(os.Stderr), "Expected error removing %s, but did not get one.", testRepoName)
 	o := &repoAddOptions{
 		name:     testRepoName,
 		url:      ts.URL(),
 		repoFile: repoFile,
 	}
 
-	if err := o.run(os.Stderr); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, o.run(os.Stderr))
 
 	cacheIndexFile, cacheChartsFile := createCacheFiles(rootDir, testRepoName)
 
 	// Reset the buffer before running repo remove
 	b.Reset()
 
-	if err := rmOpts.run(b); err != nil {
-		t.Errorf("Error removing %s from repositories", testRepoName)
-	}
-	if !strings.Contains(b.String(), "has been removed") {
-		t.Errorf("Unexpected output: %s", b.String())
-	}
+	require.NoErrorf(t, rmOpts.run(b), "Error removing %s from repositories", testRepoName)
+	assert.Contains(t, b.String(), "has been removed", "Unexpected output: %s", b.String())
 
 	testCacheFiles(t, cacheIndexFile, cacheChartsFile, testRepoName)
 
 	f, err := repo.LoadFile(repoFile)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
-	if f.Has(testRepoName) {
-		t.Errorf("%s was not successfully removed from repositories list", testRepoName)
-	}
+	assert.Falsef(t, f.Has(testRepoName), "%s was not successfully removed from repositories list", testRepoName)
 
 	// Test removal of multiple repos in one go
 	var testRepoNames = []string{"foo", "bar", "baz"}
@@ -97,9 +87,7 @@ func TestRepoRemove(t *testing.T) {
 			repoFile: repoFile,
 		}
 
-		if err := o.run(os.Stderr); err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, o.run(os.Stderr))
 
 		cacheIndex, cacheChart := createCacheFiles(rootDir, repoName)
 		cacheFiles[repoName] = []string{cacheIndex, cacheChart}
@@ -116,23 +104,15 @@ func TestRepoRemove(t *testing.T) {
 	b.Reset()
 
 	// Run repo remove command
-	if err := multiRmOpts.run(b); err != nil {
-		t.Errorf("Error removing list of repos from repositories: %q", testRepoNames)
-	}
+	require.NoErrorf(t, multiRmOpts.run(b), "Error removing list of repos from repositories: %q", testRepoNames)
 
 	// Check that stuff were removed
-	if !strings.Contains(b.String(), "has been removed") {
-		t.Errorf("Unexpected output: %s", b.String())
-	}
+	assert.Contains(t, b.String(), "has been removed", "Unexpected output: %s", b.String())
 
 	for _, repoName := range testRepoNames {
 		f, err := repo.LoadFile(repoFile)
-		if err != nil {
-			t.Error(err)
-		}
-		if f.Has(repoName) {
-			t.Errorf("%s was not successfully removed from repositories list", repoName)
-		}
+		require.NoError(t, err)
+		assert.Falsef(t, f.Has(repoName), "%s was not successfully removed from repositories list", repoName)
 		cacheIndex := cacheFiles[repoName][0]
 		cacheChart := cacheFiles[repoName][1]
 		testCacheFiles(t, cacheIndex, cacheChart, repoName)
@@ -153,12 +133,10 @@ func createCacheFiles(rootDir string, repoName string) (cacheIndexFile string, c
 
 func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string, repoName string) {
 	t.Helper()
-	if _, err := os.Stat(cacheIndexFile); err == nil {
-		t.Errorf("Error cache index file was not removed for repository %s", repoName)
-	}
-	if _, err := os.Stat(cacheChartsFile); err == nil {
-		t.Errorf("Error cache chart file was not removed for repository %s", repoName)
-	}
+	_, err := os.Stat(cacheIndexFile)
+	require.Errorf(t, err, "Error cache index file was not removed for repository %s", repoName)
+	_, err = os.Stat(cacheChartsFile)
+	assert.Errorf(t, err, "Error cache chart file was not removed for repository %s", repoName)
 }
 
 func TestRepoRemoveCompletion(t *testing.T) {
@@ -171,7 +149,7 @@ func TestRepoRemoveCompletion(t *testing.T) {
 
 	rootDir := t.TempDir()
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
-	repoCache := filepath.Join(rootDir, "cache/")
+	repoCache := filepath.Join(rootDir, "cache")
 
 	var testRepoNames = []string{"foo", "bar", "baz"}
 
@@ -183,9 +161,7 @@ func TestRepoRemoveCompletion(t *testing.T) {
 			repoFile: repoFile,
 		}
 
-		if err := o.run(os.Stderr); err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, o.run(os.Stderr))
 	}
 
 	repoSetup := fmt.Sprintf("--repository-config %s --repository-cache %s", repoFile, repoCache)

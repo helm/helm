@@ -53,6 +53,7 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
+	"k8s.io/client-go/util/retry"
 	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
 )
 
@@ -273,8 +274,30 @@ func TestCreate(t *testing.T) {
 			},
 			ExpectedErrorContains: "Operation cannot be fulfilled on resourcequotas \"quota\": the object has been modified; " +
 				"please apply your changes to the latest version and try again",
+			ExpectedActions: func() []string { // expect helm to retry on conflict, workaround for: https://github.com/kubernetes/kubernetes/issues/67761
+				actions := make([]string, retry.DefaultRetry.Steps)
+				for i := range actions {
+					actions[i] = "/namespaces/default/pods/dolphin:PATCH"
+				}
+				return actions
+			}(),
+		},
+		"Create fail: managed fields conflict (server-side apply)": {
+			Pods:            newPodList("seal"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				// Return a generic 409 conflict (not quota-related)
+				// This simulates a managed fields conflict
+				return &http.Response{
+					StatusCode: http.StatusConflict,
+					Request:    req,
+				}, nil
+			},
+			ExpectedErrorContains: "the server reported a conflict",
 			ExpectedActions: []string{
-				"/namespaces/default/pods/dolphin:PATCH",
+				"/namespaces/default/pods/seal:PATCH",
 			},
 		},
 	}
@@ -293,9 +316,7 @@ func TestCreate(t *testing.T) {
 
 			list, err := c.Build(objBody(&tc.Pods), false)
 			require.NoError(t, err)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			result, err := c.Create(
 				list,
@@ -464,7 +485,7 @@ func TestUpdate(t *testing.T) {
 						data, err := io.ReadAll(req.Body)
 						require.NoError(t, err)
 
-						assert.Equal(t, `{}`, string(data))
+						assert.JSONEq(t, `{}`, string(data))
 					}
 
 					return newResponse(http.StatusOK, &listTarget.Items[0])
@@ -539,26 +560,24 @@ func TestUpdate(t *testing.T) {
 				ClientUpdateOptionUpgradeClientSideFieldManager(true))
 
 			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
+				require.ErrorContains(t, err, tc.ExpectedError)
 			} else {
 				require.NoError(t, err)
 			}
 
 			// Special handling for the rollback test case
 			if name == "rollback after failed upgrade with removed resource" {
-				assert.Len(t, result.Created, 0, "expected 0 resource created, got %d", len(result.Created))
-				assert.Len(t, result.Updated, 1, "expected 1 resource updated, got %d", len(result.Updated))
-				assert.Len(t, result.Deleted, 0, "expected 0 resource deleted, got %d", len(result.Deleted))
+				assert.Empty(t, result.Created, "expected 0 resource created")
+				assert.Len(t, result.Updated, 1, "expected 1 resource updated")
+				assert.Empty(t, result.Deleted, "expected 0 resource deleted")
 			} else {
-				assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
-				assert.Len(t, result.Updated, 2, "expected 2 resource updated, got %d", len(result.Updated))
-				assert.Len(t, result.Deleted, 1, "expected 1 resource deleted, got %d", len(result.Deleted))
+				assert.Len(t, result.Created, 1, "expected 1 resource created")
+				assert.Len(t, result.Updated, 2, "expected 2 resource updated")
+				assert.Len(t, result.Deleted, 1, "expected 1 resource deleted")
 			}
 
 			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
+				require.ErrorContains(t, err, tc.ExpectedError)
 			} else {
 				require.NoError(t, err)
 			}
@@ -600,15 +619,12 @@ func TestBuild(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test for an invalid manifest
 			infos, err := c.Build(tt.reader, false)
-			if err != nil && !tt.err {
-				t.Errorf("Got error message when no error should have occurred: %v", err)
-			} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
-				t.Error("error message was not scrubbed")
+			if tt.err {
+				require.ErrorContains(t, err, "--validate=false", "error message was not scrubbed")
+			} else {
+				require.NoError(t, err, "Got error message when no error should have occurred")
 			}
-
-			if len(infos) != tt.count {
-				t.Errorf("expected %d result objects, got %d", tt.count, len(infos))
-			}
+			assert.Len(t, infos, tt.count, "expected %d result objects, got %d", tt.count, len(infos))
 		})
 	}
 }
@@ -639,15 +655,12 @@ func TestBuildTable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test for an invalid manifest
 			infos, err := c.BuildTable(tt.reader, false)
-			if err != nil && !tt.err {
-				t.Errorf("Got error message when no error should have occurred: %v", err)
-			} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
-				t.Error("error message was not scrubbed")
+			if tt.err {
+				require.ErrorContains(t, err, "--validate=false", "error message was not scrubbed")
+			} else {
+				require.NoError(t, err, "Got error message when no error should have occurred")
 			}
-
-			if len(infos) != tt.count {
-				t.Errorf("expected %d result objects, got %d", tt.count, len(infos))
-			}
+			assert.Len(t, infos, tt.count, "expected %d result objects, got %d", tt.count, len(infos))
 		})
 	}
 }
@@ -683,21 +696,17 @@ func TestPerform(t *testing.T) {
 
 			c := newTestClient(t)
 			infos, err := c.Build(tt.reader, false)
-			if err != nil && err.Error() != tt.errMessage {
-				t.Errorf("Error while building manifests: %v", err)
+			if err != nil {
+				require.EqualErrorf(t, err, tt.errMessage, "Error while building manifests")
 			}
 
 			err = perform(infos, fn)
-			if (err != nil) != tt.err {
-				t.Errorf("expected error: %v, got %v", tt.err, err)
+			if tt.err {
+				require.EqualError(t, err, tt.errMessage)
+			} else {
+				require.NoError(t, err)
 			}
-			if err != nil && err.Error() != tt.errMessage {
-				t.Errorf("expected error message: %v, got %v", tt.errMessage, err)
-			}
-
-			if len(results) != tt.count {
-				t.Errorf("expected %d result objects, got %d", tt.count, len(results))
-			}
+			assert.Len(t, results, tt.count, "expected %d result objects, got %d", tt.count, len(results))
 		})
 	}
 }
@@ -749,9 +758,7 @@ func TestWait(t *testing.T) {
 				return newResponse(http.StatusOK, pod)
 			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				now := time.Now()
 				created = &now
 				return newResponse(http.StatusOK, resources[0].Object)
@@ -763,32 +770,18 @@ func TestWait(t *testing.T) {
 	}
 	var err error
 	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resources, err := c.Build(objBody(&podList), false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	result, err := c.Create(
 		resources,
 		ClientCreateOptionServerSideApply(false, false))
 
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Created) != 3 {
-		t.Errorf("expected 3 resource created, got %d", len(result.Created))
-	}
-
-	if err := c.Wait(resources, time.Second*30); err != nil {
-		t.Errorf("expected wait without error, got %s", err)
-	}
-
-	if time.Since(*created) < time.Second*5 {
-		t.Errorf("expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*created))
-	}
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 3, "expected 3 resource created, got %d", len(result.Created))
+	require.NoErrorf(t, c.Wait(resources, time.Second*30), "expected wait without error")
+	assert.GreaterOrEqualf(t, time.Since(*created), time.Second*5, "expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*created))
 }
 
 func TestWaitJob(t *testing.T) {
@@ -810,9 +803,7 @@ func TestWaitJob(t *testing.T) {
 				return newResponse(http.StatusOK, job)
 			case p == "/namespaces/default/jobs" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				now := time.Now()
 				created = &now
 				return newResponse(http.StatusOK, resources[0].Object)
@@ -824,31 +815,17 @@ func TestWaitJob(t *testing.T) {
 	}
 	var err error
 	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resources, err := c.Build(objBody(job), false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	result, err := c.Create(
 		resources,
 		ClientCreateOptionServerSideApply(false, false))
 
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Created) != 1 {
-		t.Errorf("expected 1 resource created, got %d", len(result.Created))
-	}
-
-	if err := c.WaitWithJobs(resources, time.Second*30); err != nil {
-		t.Errorf("expected wait without error, got %s", err)
-	}
-
-	if time.Since(*created) < time.Second*5 {
-		t.Errorf("expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*created))
-	}
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
+	require.NoErrorf(t, c.WaitWithJobs(resources, time.Second*30), "expected wait without error")
+	assert.GreaterOrEqualf(t, time.Since(*created), time.Second*5, "expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*created))
 }
 
 func TestWaitDelete(t *testing.T) {
@@ -874,9 +851,7 @@ func TestWaitDelete(t *testing.T) {
 				return newResponse(http.StatusOK, &pod)
 			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				return newResponse(http.StatusOK, resources[0].Object)
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
@@ -886,73 +861,46 @@ func TestWaitDelete(t *testing.T) {
 	}
 	var err error
 	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resources, err := c.Build(objBody(&pod), false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	result, err := c.Create(
 		resources,
 		ClientCreateOptionServerSideApply(false, false))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Created) != 1 {
-		t.Errorf("expected 1 resource created, got %d", len(result.Created))
-	}
-	if _, err := c.Delete(resources, metav1.DeletePropagationBackground); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := c.WaitForDelete(resources, time.Second*30); err != nil {
-		t.Errorf("expected wait without error, got %s", err)
-	}
-
-	if time.Since(*deleted) < time.Second*5 {
-		t.Errorf("expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*deleted))
-	}
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
+	_, errs := c.Delete(resources, metav1.DeletePropagationBackground)
+	require.Nil(t, errs)
+	require.NoErrorf(t, c.WaitForDelete(resources, time.Second*30), "expected wait without error")
+	assert.GreaterOrEqualf(t, time.Since(*deleted), time.Second*5, "expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*deleted))
 }
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
 	c := New(nil)
 	resources, err := c.Build(strings.NewReader(guestbookManifest), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := c.Create(resources); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	_, err = c.Create(resources)
+	require.NoError(t, err)
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
 	c = New(nil)
 	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := c.Create(resources); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	_, err = c.Create(resources)
+	require.NoError(t, err)
 
 	resources, err = c.Build(strings.NewReader(testEndpointManifest), false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if _, errs := c.Delete(resources, metav1.DeletePropagationBackground); errs != nil {
-		t.Fatal(errs)
-	}
+	_, errs := c.Delete(resources, metav1.DeletePropagationBackground)
+	require.Nil(t, errs)
 
 	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// ensures that delete does not fail if a resource is not found
-	if _, errs := c.Delete(resources, metav1.DeletePropagationBackground); errs != nil {
-		t.Fatal(errs)
-	}
+	_, errs = c.Delete(resources, metav1.DeletePropagationBackground)
+	require.Nil(t, errs)
 }
 
 func TestGetPodList(t *testing.T) {
@@ -968,7 +916,8 @@ func TestGetPodList(t *testing.T) {
 
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
 	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
+	req := require.New(t)
+	req.NoError(err)
 	podList.ResourceVersion = ""
 	clientAssertions.Equal(&responsePodList, podList)
 }
@@ -981,9 +930,9 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 	outBuffer := &bytes.Buffer{}
 	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
-	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc)
 	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
+	req := require.New(t)
+	req.NoError(c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc))
 	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())
 }
 
@@ -1223,23 +1172,11 @@ func (c createPatchTestCase) run(t *testing.T) {
 	}
 
 	patch, patchType, err := createPatch(c.original, targetInfo, c.threeWayMergeForUnstructured)
-	if err != nil {
-		t.Fatalf("Failed to create patch: %v", err)
-	}
+	require.NoError(t, err, "Failed to create patch")
 
-	if c.expectedPatch != string(patch) {
-		t.Errorf("Unexpected patch.\nTarget:\n%s\nOriginal:\n%s\nActual:\n%s\n\nExpected:\n%s\nGot:\n%s",
-			c.target,
-			c.original,
-			c.actual,
-			c.expectedPatch,
-			string(patch),
-		)
-	}
+	assert.Equal(t, c.expectedPatch, string(patch), "Unexpected patch.\nTarget:\n%s\nOriginal:\n%s\nActual:\n%s\n\nExpected:\n%s\nGot:\n%s", c.target, c.original, c.actual, c.expectedPatch, string(patch))
 
-	if patchType != types.MergePatchType {
-		t.Errorf("Expected patch type %s, got %s", types.MergePatchType, patchType)
-	}
+	assert.Equal(t, types.MergePatchType, patchType, "Expected patch type %s, got %s", types.MergePatchType, patchType)
 }
 
 func newTestCustomResourceData(metadata map[string]string, spec map[string]any) *unstructured.Unstructured {
@@ -1399,21 +1336,28 @@ func TestIsReachable(t *testing.T) {
 			err := client.IsReachable()
 
 			if tt.expectError {
-				if err == nil {
-					t.Error("expected error but got nil")
-					return
-				}
-
-				if !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("expected error message to contain '%s', got: %v", tt.errorContains, err)
-				}
+				require.ErrorContains(t, err, tt.errorContains)
 			} else {
-				if err != nil {
-					t.Errorf("expected no error but got: %v", err)
-				}
+				require.NoError(t, err)
 			}
 		})
 	}
+}
+
+func TestIsReachableTwiceAfterClientCreationFailure(t *testing.T) {
+	refusedErr := errors.New("connection refused")
+	client := newTestClient(t)
+	client.Factory = &errorFactory{err: refusedErr}
+
+	assertReachableErr := func(label string, err error) {
+		t.Helper()
+		require.Error(t, err, "%s: expected error, got nil", label)
+		require.ErrorIs(t, err, refusedErr)
+	}
+
+	assertReachableErr("first call", client.IsReachable())
+	// Second call must return the same underlying error, not panic.
+	assertReachableErr("second call", client.IsReachable())
 }
 
 func TestIsIncompatibleServerError(t *testing.T) {
@@ -1437,9 +1381,7 @@ func TestIsIncompatibleServerError(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			if got := isIncompatibleServerError(tc.Err); got != tc.Want {
-				t.Errorf("isIncompatibleServerError() = %v, want %v", got, tc.Want)
-			}
+			assert.Equalf(t, tc.Want, isIncompatibleServerError(tc.Err), "isIncompatibleServerError()")
 		})
 	}
 }
@@ -1891,9 +1833,7 @@ func TestClientWaitContextCancellationLegacy(t *testing.T) {
 				return newResponse(http.StatusOK, pod)
 			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				return newResponse(http.StatusOK, resources[0].Object)
 			default:
 				t.Logf("unexpected request: %s %s", req.Method, req.URL.Path)
@@ -1914,10 +1854,7 @@ func TestClientWaitContextCancellationLegacy(t *testing.T) {
 		ClientCreateOptionServerSideApply(false, false))
 	require.NoError(t, err)
 	assert.Len(t, result.Created, 2, "expected 2 resources created, got %d", len(result.Created))
-
-	err = c.Wait(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, c.Wait(resources, time.Second*30), "context canceled")
 }
 
 func TestClientWaitWithJobsContextCancellationLegacy(t *testing.T) {
@@ -1946,9 +1883,7 @@ func TestClientWaitWithJobsContextCancellationLegacy(t *testing.T) {
 				return newResponse(http.StatusOK, job)
 			case p == "/namespaces/default/jobs" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				return newResponse(http.StatusOK, resources[0].Object)
 			default:
 				t.Logf("unexpected request: %s %s", req.Method, req.URL.Path)
@@ -1969,10 +1904,7 @@ func TestClientWaitWithJobsContextCancellationLegacy(t *testing.T) {
 		ClientCreateOptionServerSideApply(false, false))
 	require.NoError(t, err)
 	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
-
-	err = c.WaitWithJobs(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, c.WaitWithJobs(resources, time.Second*30), "context canceled", "expected context canceled error")
 }
 
 func TestClientWaitForDeleteContextCancellationLegacy(t *testing.T) {
@@ -2007,9 +1939,7 @@ func TestClientWaitForDeleteContextCancellationLegacy(t *testing.T) {
 				return newResponse(http.StatusOK, &pod)
 			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				return newResponse(http.StatusOK, resources[0].Object)
 			default:
 				t.Logf("unexpected request: %s %s", req.Method, req.URL.Path)
@@ -2031,13 +1961,9 @@ func TestClientWaitForDeleteContextCancellationLegacy(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
 
-	if _, err := c.Delete(resources, metav1.DeletePropagationBackground); err != nil {
-		t.Fatal(err)
-	}
-
-	err = c.WaitForDelete(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	_, errs := c.Delete(resources, metav1.DeletePropagationBackground)
+	require.Nil(t, errs)
+	assert.ErrorContains(t, c.WaitForDelete(resources, time.Second*30), "context canceled", "expected context canceled error")
 }
 
 func TestClientWaitContextNilDoesNotPanic(t *testing.T) {
@@ -2067,9 +1993,7 @@ func TestClientWaitContextNilDoesNotPanic(t *testing.T) {
 				return newResponse(http.StatusOK, pod)
 			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				now := time.Now()
 				created = &now
 				return newResponse(http.StatusOK, resources[0].Object)
@@ -2092,10 +2016,7 @@ func TestClientWaitContextNilDoesNotPanic(t *testing.T) {
 		ClientCreateOptionServerSideApply(false, false))
 	require.NoError(t, err)
 	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
-
-	err = c.Wait(resources, time.Second*30)
-	require.NoError(t, err)
-
+	require.NoError(t, c.Wait(resources, time.Second*30))
 	assert.GreaterOrEqual(t, time.Since(*created), time.Second*2, "expected to wait at least 2 seconds")
 }
 
@@ -2119,9 +2040,7 @@ func TestClientWaitContextPreCancelledLegacy(t *testing.T) {
 				return newResponse(http.StatusOK, pod)
 			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				return newResponse(http.StatusOK, resources[0].Object)
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
@@ -2142,10 +2061,7 @@ func TestClientWaitContextPreCancelledLegacy(t *testing.T) {
 		ClientCreateOptionServerSideApply(false, false))
 	require.NoError(t, err)
 	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
-
-	err = c.Wait(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, c.Wait(resources, time.Second*30), "context canceled")
 }
 
 func TestClientWaitContextCancellationStatusWatcher(t *testing.T) {
@@ -2170,9 +2086,7 @@ metadata:
 
 	cancel()
 
-	err = c.Wait(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, c.Wait(resources, time.Second*30), "context canceled", "expected context canceled error")
 }
 
 func TestClientWaitWithJobsContextCancellationStatusWatcher(t *testing.T) {
@@ -2197,9 +2111,7 @@ metadata:
 
 	cancel()
 
-	err = c.WaitWithJobs(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, c.WaitWithJobs(resources, time.Second*30), "context canceled")
 }
 
 func TestClientWaitForDeleteContextCancellationStatusWatcher(t *testing.T) {
@@ -2229,9 +2141,7 @@ status:
 
 	cancel()
 
-	err = c.WaitForDelete(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, c.WaitForDelete(resources, time.Second*30), "context canceled")
 }
 
 // testStatusReader is a custom status reader for testing that returns a configurable status.
@@ -2305,8 +2215,7 @@ metadata:
 
 	// The pod has no Ready condition, but our custom reader returns CurrentStatus,
 	// so the wait should succeed immediately without timeout.
-	err = c.Wait(resources, time.Second*3)
-	require.NoError(t, err)
+	require.NoError(t, c.Wait(resources, time.Second*3))
 }
 
 func TestClientStatusReadersWithWaitWithJobs(t *testing.T) {
@@ -2347,8 +2256,7 @@ metadata:
 
 	// The job has no Complete condition, but our custom reader returns CurrentStatus,
 	// so the wait should succeed immediately without timeout.
-	err = c.WaitWithJobs(resources, time.Second*3)
-	require.NoError(t, err)
+	require.NoError(t, c.WaitWithJobs(resources, time.Second*3))
 }
 
 func createManifest(t *testing.T, manifest string,
@@ -2356,12 +2264,10 @@ func createManifest(t *testing.T, manifest string,
 	t.Helper()
 
 	m := make(map[string]any)
-	err := yaml.Unmarshal([]byte(manifest), &m)
-	require.NoError(t, err)
+	require.NoError(t, yaml.Unmarshal([]byte(manifest), &m))
 	obj := &unstructured.Unstructured{Object: m}
 	gvk := obj.GroupVersionKind()
 	mapping, err := fakeMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	require.NoError(t, err)
-	err = fakeClient.Tracker().Create(mapping.Resource, obj, obj.GetNamespace())
-	require.NoError(t, err)
+	require.NoError(t, fakeClient.Tracker().Create(mapping.Resource, obj, obj.GetNamespace()))
 }

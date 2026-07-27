@@ -200,11 +200,10 @@ sign:
 
 # The contents of the .sha256sum file are compatible with tools like
 # shasum. For example, using the following command will verify
-# the file helm-3.1.0-rc.1-darwin-amd64.tar.gz:
-#   shasum -a 256 -c helm-3.1.0-rc.1-darwin-amd64.tar.gz.sha256sum
+# the file helm-4.0.0-darwin-amd64.tar.gz:
+#   shasum -a 256 -c helm-4.0.0-darwin-amd64.tar.gz.sha256sum
 # The .sha256 files hold only the hash and are not compatible with
-# verification tools like shasum or sha256sum. This method and file can be
-# removed in Helm v4.
+# verification tools like shasum or sha256sum.
 .PHONY: checksum
 checksum:
 	for f in $$(ls _dist/*.{gz,zip} 2>/dev/null) ; do \

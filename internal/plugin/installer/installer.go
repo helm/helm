@@ -16,6 +16,7 @@ limitations under the License.
 package installer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -72,7 +73,7 @@ type VerificationResult struct {
 
 // InstallWithOptions installs a plugin with options.
 func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) {
-	if err := os.MkdirAll(filepath.Dir(i.Path()), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(i.Path()), 0o755); err != nil {
 		return nil, err
 	}
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
@@ -135,15 +136,16 @@ func Update(i Installer) error {
 
 // NewForSource determines the correct Installer for the given source.
 func NewForSource(source, version string) (installer Installer, err error) {
-	if strings.HasPrefix(source, registry.OCIScheme+"://") {
+	switch {
+	case strings.HasPrefix(source, registry.OCIScheme+"://"):
 		// Source is an OCI registry reference
 		installer, err = NewOCIInstaller(source)
-	} else if isLocalReference(source) {
+	case isLocalReference(source):
 		// Source is a local directory
 		installer, err = NewLocalInstaller(source)
-	} else if isRemoteHTTPArchive(source) {
+	case isRemoteHTTPArchive(source):
 		installer, err = NewHTTPInstaller(source)
-	} else {
+	default:
 		installer, err = NewVCSInstaller(source, version)
 	}
 
@@ -189,12 +191,17 @@ func isRemoteHTTPArchive(source string) bool {
 		}
 
 		// If no suffix match, try HEAD request to check content type
-		res, err := http.Head(source)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodHead, source, http.NoBody)
 		if err != nil {
 			// If we get an error at the network layer, we can't install it. So
 			// we return false.
 			return false
 		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return false
+		}
+		defer res.Body.Close()
 
 		// Next, we look for the content type or content disposition headers to see
 		// if they have matching extractors.

@@ -193,7 +193,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 	}
 
 	u.cfg.Logger().Debug("preparing upgrade", "name", name)
-	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(name, chrt, vals)
+	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(ctx, name, chrt, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
-func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[string]any) (*release.Release, *release.Release, bool, error) {
+func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv2.Chart, vals map[string]any) (*release.Release, *release.Release, bool, error) {
 	if chart == nil {
 		return nil, nil, false, errMissingChart
 	}
@@ -261,12 +261,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 			return nil, nil, false, cerr
 		}
 		if err != nil {
-			if errors.Is(err, driver.ErrNoDeployedReleases) &&
-				(lastRelease.Info.Status == rcommon.StatusFailed || lastRelease.Info.Status == rcommon.StatusSuperseded) {
-				currentRelease = lastRelease
-			} else {
+			if !errors.Is(err, driver.ErrNoDeployedReleases) ||
+				(lastRelease.Info.Status != rcommon.StatusFailed && lastRelease.Info.Status != rcommon.StatusSuperseded) {
 				return nil, nil, false, err
 			}
+			currentRelease = lastRelease
 		}
 	}
 
@@ -300,7 +299,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		return nil, nil, false, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret, u.PostRenderStrategy)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(ctx, chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret, u.PostRenderStrategy)
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -335,7 +334,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
 	}
 
-	if len(notesTxt) > 0 {
+	if notesTxt != "" {
 		upgradedRelease.Info.Notes = notesTxt
 	}
 	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
@@ -398,7 +397,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 
 	if isDryRun(u.DryRunStrategy) {
 		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)
-		if len(u.Description) > 0 {
+		if u.Description != "" {
 			upgradedRelease.Info.Description = u.Description
 		} else {
 			upgradedRelease.Info.Description = "Dry run complete"
@@ -516,7 +515,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	u.cfg.recordRelease(originalRelease)
 
 	upgradedRelease.Info.Status = rcommon.StatusDeployed
-	if len(u.Description) > 0 {
+	if u.Description != "" {
 		upgradedRelease.Info.Description = u.Description
 	} else {
 		upgradedRelease.Info.Description = "Upgrade complete"

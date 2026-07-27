@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -275,7 +276,7 @@ func splitAndDeannotate(postrendered, fallbackPrefix string) (map[string]string,
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool, postRenderStrategy PostRenderStrategy) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool, postRenderStrategy PostRenderStrategy) ([]*release.Hook, *bytes.Buffer, string, error) {
 	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
@@ -305,13 +306,13 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 		e.EnableDNS = enableDNS
 		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
 
-		files, err2 = e.Render(ch, values)
+		files, err2 = e.RenderWithContext(ctx, ch, values)
 	} else {
 		var e engine.Engine
 		e.EnableDNS = enableDNS
 		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
 
-		files, err2 = e.Render(ch, values)
+		files, err2 = e.RenderWithContext(ctx, ch, values)
 	}
 
 	if err2 != nil {
@@ -483,9 +484,9 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
+				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data), fileWritten[crd.Filename])
 				if err != nil {
 					return hs, b, "", err
 				}
@@ -550,12 +551,11 @@ func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 	// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
-		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
-			cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
-		} else {
+		if !discovery.IsGroupDiscoveryFailedError(err) {
 			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
+		cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
+		cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
 	}
 
 	cfg.Capabilities = &common.Capabilities{

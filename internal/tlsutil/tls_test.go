@@ -19,6 +19,8 @@ package tlsutil
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const tlsTestDir = "../../testdata"
@@ -32,9 +34,7 @@ const (
 func testfile(t *testing.T, file string) (path string) {
 	t.Helper()
 	path, err := filepath.Abs(filepath.Join(tlsTestDir, file))
-	if err != nil {
-		t.Fatalf("error getting absolute path to test file %q: %v", file, err)
-	}
+	require.NoError(t, err, "error getting absolute path to test file %q", file)
 	return path
 }
 
@@ -50,38 +50,22 @@ func TestNewTLSConfig(t *testing.T) {
 			WithCertKeyPairFiles(certFile, keyFile),
 			WithCAFile(caCertFile),
 		)
-		if err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, err)
 
-		if got := len(cfg.Certificates); got != 1 {
-			t.Fatalf("expecting 1 client certificates, got %d", got)
-		}
-		if cfg.InsecureSkipVerify {
-			t.Fatal("insecure skip verify mismatch, expecting false")
-		}
-		if cfg.RootCAs == nil {
-			t.Fatal("mismatch tls RootCAs, expecting non-nil")
-		}
+		require.Len(t, cfg.Certificates, 1)
+		require.False(t, cfg.InsecureSkipVerify, "insecure skip verify mismatch, expecting false")
+		require.NotNil(t, cfg.RootCAs, "mismatch tls RootCAs, expecting non-nil")
 	}
 	{
 		cfg, err := NewTLSConfig(
 			WithInsecureSkipVerify(insecureSkipTLSVerify),
 			WithCAFile(caCertFile),
 		)
-		if err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, err)
 
-		if got := len(cfg.Certificates); got != 0 {
-			t.Fatalf("expecting 0 client certificates, got %d", got)
-		}
-		if cfg.InsecureSkipVerify {
-			t.Fatal("insecure skip verify mismatch, expecting false")
-		}
-		if cfg.RootCAs == nil {
-			t.Fatal("mismatch tls RootCAs, expecting non-nil")
-		}
+		require.Empty(t, cfg.Certificates)
+		require.False(t, cfg.InsecureSkipVerify, "insecure skip verify mismatch, expecting false")
+		require.NotNil(t, cfg.RootCAs, "mismatch tls RootCAs, expecting non-nil")
 	}
 
 	{
@@ -89,18 +73,10 @@ func TestNewTLSConfig(t *testing.T) {
 			WithInsecureSkipVerify(insecureSkipTLSVerify),
 			WithCertKeyPairFiles(certFile, keyFile),
 		)
-		if err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, err)
 
-		if got := len(cfg.Certificates); got != 1 {
-			t.Fatalf("expecting 1 client certificates, got %d", got)
-		}
-		if cfg.InsecureSkipVerify {
-			t.Fatal("insecure skip verify mismatch, expecting false")
-		}
-		if cfg.RootCAs != nil {
-			t.Fatal("mismatch tls RootCAs, expecting nil")
-		}
+		require.Len(t, cfg.Certificates, 1)
+		require.False(t, cfg.InsecureSkipVerify, "insecure skip verify mismatch, expecting false")
+		require.Nil(t, cfg.RootCAs, "mismatch tls RootCAs, expecting nil")
 	}
 }

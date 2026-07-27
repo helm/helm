@@ -20,17 +20,20 @@ linters:
   # Keep sorted alphabetically
   enable:
     - bidichk
+    - contextcheck
     - depguard
     - dupl
     - errorlint
     - exhaustive
+    - fatcontext
     - gocritic
-    - gomodguard
+    - gomodguard_v2
     - govet
     - ineffassign
     - misspell
     - modernize
     - nakedret
+    - noctx
     - nolintlint
     - perfsprint
     - revive
@@ -44,7 +47,7 @@ linters:
     - whitespace
 
   exclusions:
-  
+
     generated: lax
 
     presets:
@@ -71,9 +74,9 @@ linters:
 
     errorlint:
       # Check for plain type assertions and type switches.
-      asserts: false
+      asserts: true
       # Check for plain error comparisons.
-      comparison: false
+      comparison: true
 
     exhaustive:
       default-signifies-exhaustive: true
@@ -81,51 +84,27 @@ linters:
     gocritic:
       disabled-checks:
         - appendAssign
-        - appendCombine
-        - assignOp
         - badCall
         - commentedOutCode
-        - commentFormatting
         - deferInLoop
-        - elseif
-        - emptyStringTest
         - exposedSyncMutex
-        - filepathJoin
-        - httpNoBody
         - hugeParam
-        - ifElseChain
         - importShadow
-        - nestingReduce
-        - nilValReturn
-        - octalLiteral
         - paramTypeCombine
-        - preferStringWriter
         - ptrToRefParam
         - rangeValCopy
-        - regexpSimplify
-        - singleCaseSwitch
-        - sloppyReassign
-        - sloppyLen
-        - sprintfQuotedString
-        - stringConcatSimplify
-        - stringsCompare
-        - stringXbytes
         - todoCommentWithoutDetail
         - tooManyResultsChecker
-        - typeAssertChain
         - uncheckedInlineErr
         - unnamedResult
-        - unnecessaryDefer
-        - unslice
         - whyNoLint
       enable-all: true
 
-    gomodguard:
+    gomodguard_v2:
       blocked:
-        modules:
-          - github.com/evanphx/json-patch:
-              recommendations:
-                - github.com/evanphx/json-patch/v5
+        - module: github.com/evanphx/json-patch
+          recommendations:
+            - github.com/evanphx/json-patch/v5
 
     nolintlint:
       require-specific: true
@@ -135,6 +114,16 @@ linters:
       enable-default-rules: true
       max-open-files: 2048
       rules:
+        - name: early-return
+          arguments:
+            - "preserve-scope"
+        - name: if-return
+        - name: indent-error-flow
+          arguments:
+            - "preserve-scope"
+        - name: superfluous-else
+          arguments:
+            - "preserve-scope"
         - name: unnecessary-format
         - name: var-naming
           arguments:
@@ -149,18 +138,6 @@ linters:
                   - models
 
     testifylint:
-      disable:
-        - empty
-        - encoded-compare
-        - equal-values
-        - expected-actual
-        - float-compare
-        - go-require
-        - len
-        - nil-compare
-        - require-error
-        - suite-dont-use-pkg
-        - suite-extra-assert-call
       # Intentionally enable all testifylint rules so new checks are adopted automatically.
       enable-all: true
 
