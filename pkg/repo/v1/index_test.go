@@ -19,6 +19,7 @@ package repo
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -288,6 +289,28 @@ func TestDownloadIndexFile(t *testing.T) {
 		b, err := os.ReadFile(idx)
 		require.NoErrorf(t, err, "error reading charts file")
 		verifyLocalChartsFile(t, b, i)
+	})
+
+	t.Run("should accept gzip-compressed index responses", func(t *testing.T) {
+		fileBytes, err := os.ReadFile(testfile)
+		require.NoError(t, err)
+		srv, err := startLocalServerForTests(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "gzip", r.Header.Get("Accept-Encoding"))
+			w.Header().Set("Content-Encoding", "gzip")
+			gz := gzip.NewWriter(w)
+			_, _ = gz.Write(fileBytes)
+			_ = gz.Close()
+		}))
+		require.NoError(t, err)
+		defer srv.Close()
+
+		r, err := NewChartRepository(&Entry{Name: testRepo, URL: srv.URL}, getter.All(&cli.EnvSettings{}))
+		require.NoError(t, err)
+		idx, err := r.DownloadIndexFile()
+		require.NoError(t, err)
+		i, err := LoadIndexFile(idx)
+		require.NoError(t, err)
+		verifyLocalIndex(t, i)
 	})
 }
 
