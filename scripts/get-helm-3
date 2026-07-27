@@ -114,8 +114,8 @@ verifySupported() {
 checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
     # Get tag from release URL
-    # Append a cache-busting query string to avoid CDN edge servers
-    # serving stale version files after a new release.
+    # The current CDN does not revalidate on the request no-cache directive,
+    # so use a unique query while retaining no-cache for compliant intermediaries.
     local latest_release_url="https://get.helm.sh/helm3-latest-version?ts=$(date +%s)"
     local latest_release_response=""
     if [ "${HAS_CURL}" == "true" ]; then
