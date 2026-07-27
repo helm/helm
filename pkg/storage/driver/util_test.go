@@ -14,14 +14,14 @@ limitations under the License.
 package driver
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetSystemLabel(t *testing.T) {
-	if output := GetSystemLabels(); !reflect.DeepEqual(systemLabels, output) {
-		t.Errorf("Expected {%v}, got {%v}", systemLabels, output)
-	}
+	output := GetSystemLabels()
+	assert.Equalf(t, systemLabels, output, "Expected {%v}, got {%v}", systemLabels, output)
 }
 
 func TestIsSystemLabel(t *testing.T) {
@@ -32,9 +32,8 @@ func TestIsSystemLabel(t *testing.T) {
 		"NaMe":  false,
 	}
 	for label, result := range tests {
-		if output := isSystemLabel(label); output != result {
-			t.Errorf("Output %t not equal to expected %t", output, result)
-		}
+		output := isSystemLabel(label)
+		assert.Equalf(t, output, result, "Output %t not equal to expected %t", output, result)
 	}
 }
 
@@ -68,9 +67,8 @@ func TestFilterSystemLabels(t *testing.T) {
 		}},
 	}
 	for _, test := range tests {
-		if output := filterSystemLabels(test[0]); !reflect.DeepEqual(test[1], output) {
-			t.Errorf("Expected {%v}, got {%v}", test[1], output)
-		}
+		output := filterSystemLabels(test[0])
+		assert.Equalf(t, test[1], output, "Expected {%v}, got {%v}", test[1], output)
 	}
 }
 
@@ -101,8 +99,7 @@ func TestContainsSystemLabels(t *testing.T) {
 		}, false},
 	}
 	for _, test := range tests {
-		if output := ContainsSystemLabels(test.input); !reflect.DeepEqual(test.output, output) {
-			t.Errorf("Expected {%v}, got {%v}", test.output, output)
-		}
+		output := ContainsSystemLabels(test.input)
+		assert.Equalf(t, test.output, output, "Expected {%v}, got {%v}", test.output, output)
 	}
 }

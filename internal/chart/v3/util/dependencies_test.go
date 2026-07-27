@@ -369,8 +369,7 @@ func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {
 
 	require.Len(t, c.Dependencies(), 2, "expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 
-	err := processDependencyEnabled(c, c.Values, "")
-	require.NoError(t, err, "expected no errors")
+	require.NoError(t, processDependencyEnabled(c, c.Values, ""), "expected no errors")
 	require.Len(t, c.Dependencies(), 2, "expected no changes in dependencies")
 }
 
@@ -381,8 +380,7 @@ func TestDependentChartWithSubChartsHelmignore(t *testing.T) {
 
 func TestDependentChartsWithSubChartsSymlink(t *testing.T) {
 	joonix := filepath.Join("testdata", "joonix")
-	err := os.Symlink(filepath.Join("..", "..", "frobnitz"), filepath.Join(joonix, "charts", "frobnitz"))
-	require.NoError(t, err, "failed to create symlink")
+	require.NoError(t, os.Symlink(filepath.Join("..", "..", "frobnitz"), filepath.Join(joonix, "charts", "frobnitz")), "failed to create symlink")
 	defer os.RemoveAll(filepath.Join(joonix, "charts", "frobnitz"))
 	c := loadChart(t, joonix)
 
@@ -394,12 +392,8 @@ func TestDependentChartsWithSubchartsAllSpecifiedInDependency(t *testing.T) {
 	c := loadChart(t, "testdata/dependent-chart-with-all-in-requirements-yaml")
 
 	require.Len(t, c.Dependencies(), 2, "expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
-
-	err := processDependencyEnabled(c, c.Values, "")
-	require.NoError(t, err, "expected no errors")
-
+	require.NoError(t, processDependencyEnabled(c, c.Values, ""), "expected no errors")
 	require.Len(t, c.Dependencies(), 2, "expected no changes in dependencies")
-
 	require.Len(t, c.Dependencies(), len(c.Metadata.Dependencies), "expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 }
 

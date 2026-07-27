@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util // import "helm.sh/helm/v4/internal/release/v2/util"
+package util
 
 import (
 	"testing"
@@ -143,7 +143,6 @@ metadata:
 
 	// This test will fail if 'six' or 'seven' was added.
 	assert.Len(t, generic, 2)
-
 	assert.Len(t, hs, 4)
 
 	for _, out := range hs {

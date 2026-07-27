@@ -56,8 +56,7 @@ func TestValidateValuesYamlNotDirectory(t *testing.T) {
 	_ = os.Mkdir(nonExistingValuesFilePath, os.ModePerm)
 	defer os.Remove(nonExistingValuesFilePath)
 
-	err := validateValuesFileExistence(nonExistingValuesFilePath)
-	assert.Error(t, err, "validateValuesFileExistence to return a linter error, got no error")
+	assert.Error(t, validateValuesFileExistence(nonExistingValuesFilePath), "validateValuesFileExistence to return a linter error, got no error")
 }
 
 func TestValidateValuesFileWellFormed(t *testing.T) {
@@ -150,7 +149,7 @@ func TestValidateValuesFile(t *testing.T) {
 				require.NoError(t, err, "Failed validation")
 			} else {
 				require.Error(t, err, "expected values file to fail parsing")
-				assert.ErrorContains(t, err, tt.errorMessage, "Failed with unexpected error")
+				assert.ErrorContains(t, err, tt.errorMessage)
 			}
 		})
 	}

@@ -16,13 +16,14 @@ limitations under the License.
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -42,21 +43,16 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	t.Logf("Listening on directory %s", srv.Root())
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	contentCache := t.TempDir()
 
 	ociChartName := "oci-depending-chart"
 	c := createTestingMetadataForOCI(ociChartName, ociSrv.RegistryURL)
-	if _, err := chartutil.Save(c, ociSrv.Dir); err != nil {
-		t.Fatal(err)
-	}
+	_, err = chartutil.Save(c, ociSrv.Dir)
+	require.NoError(t, err)
 	ociSrv.Run(t, repotest.WithDependingChart(c))
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	dir := func(p ...string) string {
 		return filepath.Join(append([]string{srv.Root()}, p...)...)
@@ -65,9 +61,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	chartname := "depup"
 	ch := createTestingMetadata(chartname, srv.URL())
 	md := ch.Metadata
-	if err := chartutil.SaveDir(ch, dir()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(ch, dir()))
 
 	_, out, err := executeActionCommand(
 		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --content-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir(), contentCache),
@@ -78,30 +72,22 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 
 	// This is written directly to stdout, so we have to capture as is.
-	if !strings.Contains(out, `update from the "test" chart repository`) {
-		t.Errorf("Repo did not get updated\n%s", out)
-	}
+	assert.Contains(t, out, `update from the "test" chart repository`, "Repo did not get updated\n%s", out)
 
 	// Make sure the actual file got downloaded.
 	expect := dir(chartname, "charts/reqtest-0.1.0.tgz")
-	if _, err := os.Stat(expect); err != nil {
-		t.Fatal(err)
-	}
+	_, err = os.Stat(expect)
+	require.NoError(t, err)
 
 	hash, err := provenance.DigestFile(expect)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	i, err := repo.LoadIndexFile(dir(helmpath.CacheIndexFile("test")))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	reqver := i.Entries["reqtest"][0]
-	if h := reqver.Digest; h != hash {
-		t.Errorf("Failed hash match: expected %s, got %s", hash, h)
-	}
+	h := reqver.Digest
+	assert.Equalf(t, h, hash, "Failed hash match: expected %s, got %s", hash, h)
 
 	// Now change the dependencies and update. This verifies that on update,
 	// old dependencies are cleansed and new dependencies are added.
@@ -109,9 +95,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
 		{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
 	}
-	if err := chartutil.SaveChartfile(dir(chartname, "Chart.yaml"), md); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveChartfile(dir(chartname, "Chart.yaml"), md))
 
 	_, out, err = executeActionCommand(fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --content-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir(), contentCache))
 	if err != nil {
@@ -122,18 +106,14 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	// In this second run, we should see compressedchart-0.3.0.tgz, and not
 	// the 0.1.0 version.
 	expect = dir(chartname, "charts/compressedchart-0.3.0.tgz")
-	if _, err := os.Stat(expect); err != nil {
-		t.Fatalf("Expected %q: %s", expect, err)
-	}
+	_, err = os.Stat(expect)
+	require.NoErrorf(t, err, "Expected %q", expect)
 	unexpected := dir(chartname, "charts/compressedchart-0.1.0.tgz")
-	if _, err := os.Stat(unexpected); err == nil {
-		t.Fatalf("Unexpected %q", unexpected)
-	}
+	_, err = os.Stat(unexpected)
+	require.Errorf(t, err, "Unexpected %q", unexpected)
 
 	// test for OCI charts
-	if err := chartutil.SaveDir(c, dir()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(c, dir()))
 	cmd := fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json --content-cache %s --plain-http",
 		dir(ociChartName),
 		dir("repositories.yaml"),
@@ -146,9 +126,8 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 	expect = dir(ociChartName, "charts/oci-dependent-chart-0.1.0.tgz")
-	if _, err := os.Stat(expect); err != nil {
-		t.Fatal(err)
-	}
+	_, err = os.Stat(expect)
+	require.NoError(t, err)
 }
 
 func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
@@ -162,9 +141,7 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	defer srv.Stop()
 	t.Logf("Listening on directory %s", srv.Root())
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	chartname := "depupdelete"
 
@@ -191,25 +168,18 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 
 	// Make sure charts dir still has dependencies
 	files, err := os.ReadDir(filepath.Join(dir(chartname), "charts"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	dependencies := []string{"compressedchart-0.1.0.tgz", "reqtest-0.1.0.tgz"}
 
-	if len(dependencies) != len(files) {
-		t.Fatalf("Expected %d chart dependencies, got %d", len(dependencies), len(files))
-	}
+	require.Len(t, dependencies, len(files), "Expected %d chart dependencies, got %d", len(dependencies), len(files))
 	for index, file := range files {
-		if dependencies[index] != file.Name() {
-			t.Fatalf("Chart dependency %s not matching %s", dependencies[index], file.Name())
-		}
+		require.Equal(t, file.Name(), dependencies[index], "Chart dependency %s not matching %s", dependencies[index], file.Name())
 	}
 
 	// Make sure tmpcharts-x is deleted
 	tmpPath := filepath.Join(dir(chartname), fmt.Sprintf("tmpcharts-%d", os.Getpid()))
-	if _, err := os.Stat(tmpPath); !errors.Is(err, fs.ErrNotExist) {
-		t.Fatal("tmpcharts dir still exists")
-	}
+	_, err = os.Stat(tmpPath)
+	require.ErrorIs(t, err, fs.ErrNotExist, "tmpcharts dir still exists")
 }
 
 func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
@@ -231,9 +201,7 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 	}
 	ch.Metadata.Dependencies = append(ch.Metadata.Dependencies, chartDependency)
 
-	if err := chartutil.SaveDir(ch, dir()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(ch, dir()))
 
 	contentCache := t.TempDir()
 
@@ -248,10 +216,8 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 	}
 
 	// This is written directly to stdout, so we have to capture as is
-	if !strings.Contains(out, `Getting updates for unmanaged Helm repositories...`) {
-		t.Errorf("No ‘unmanaged’ Helm repo used in test chartdependency or it doesn’t cause the creation "+
-			"of an ‘ad hoc’ repo index cache file\n%s", out)
-	}
+	assert.Contains(t, out, `Getting updates for unmanaged Helm repositories...`, "No ‘unmanaged’ Helm repo used in test chartdependency or it doesn’t cause the creation "+
+		"of an ‘ad hoc’ repo index cache file\n%s", out)
 }
 
 func setupMockRepoServer(t *testing.T) *repotest.Server {
@@ -263,9 +229,7 @@ func setupMockRepoServer(t *testing.T) *repotest.Server {
 
 	t.Logf("Listening on directory %s", srv.Root())
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	return srv
 }
@@ -306,7 +270,5 @@ func createTestingMetadataForOCI(name, registryURL string) *chart.Chart {
 func createTestingChart(t *testing.T, dest, name, baseURL string) {
 	t.Helper()
 	cfile := createTestingMetadata(name, baseURL)
-	if err := chartutil.SaveDir(cfile, dest); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(cfile, dest))
 }

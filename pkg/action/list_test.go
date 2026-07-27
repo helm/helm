@@ -44,9 +44,7 @@ func TestListStates(t *testing.T) {
 		"unknown":             ListUnknown,
 		"totally made up key": ListUnknown,
 	} {
-		if expect != expect.FromName(input) {
-			t.Errorf("Expected %d for %s", expect, input)
-		}
+		assert.Equal(t, expect.FromName(input), expect, "Expected %d for %s", expect, input)
 		// This is a cheap way to verify that ListAll actually allows everything but Unknown
 		if got := expect.FromName(input); got != ListUnknown && got&ListAll == 0 {
 			t.Errorf("Expected %s to match the ListAll filter", input)
@@ -54,12 +52,10 @@ func TestListStates(t *testing.T) {
 	}
 
 	filter := ListDeployed | ListPendingRollback
-	if status := filter.FromName("deployed"); filter&status == 0 {
-		t.Errorf("Expected %d to match mask %d", status, filter)
-	}
-	if status := filter.FromName("failed"); filter&status != 0 {
-		t.Errorf("Expected %d to fail to match mask %d", status, filter)
-	}
+	status := filter.FromName("deployed")
+	assert.NotEqualf(t, ListStates(0), filter&status, "Expected %d to match mask %d", status, filter)
+	status = filter.FromName("failed")
+	assert.Equalf(t, ListStates(0), filter&status, "Expected %d to fail to match mask %d", status, filter)
 }
 
 func TestList_Empty(t *testing.T) {
@@ -202,8 +198,7 @@ func TestList_StateMask(t *testing.T) {
 	}
 
 	one.SetStatus(common.StatusUninstalled, "uninstalled")
-	err = lister.cfg.Releases.Update(one)
-	req.NoError(err)
+	req.NoError(lister.cfg.Releases.Update(one))
 
 	res, err := lister.Run()
 	req.NoError(err)
@@ -277,9 +272,7 @@ func makeMeSomeReleasesWithStaleFailure(t *testing.T, store *storage.Storage) {
 	five.Version = 1
 
 	for _, rel := range []*release.Release{one, two, three, four, five} {
-		if err := store.Create(rel); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, store.Create(rel))
 	}
 
 	all, err := store.ListReleases()
@@ -328,9 +321,7 @@ func makeMeSomeReleases(t *testing.T, store *storage.Storage) {
 	three.Version = 3
 
 	for _, rel := range []*release.Release{one, two, three} {
-		if err := store.Create(rel); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, store.Create(rel))
 	}
 
 	all, err := store.ListReleases()
@@ -389,9 +380,7 @@ func TestSelectorList(t *testing.T) {
 
 	lister := newListFixture(t)
 	for _, rel := range []*release.Release{r1, r2, r3} {
-		if err := lister.cfg.Releases.Create(rel); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, lister.cfg.Releases.Create(rel))
 	}
 
 	t.Run("should fail selector parsing", func(t *testing.T) {

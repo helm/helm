@@ -21,6 +21,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSearchHubCmd(t *testing.T) {
@@ -42,14 +45,8 @@ func TestSearchHubCmd(t *testing.T) {
 	testcmd := "search hub --endpoint " + ts.URL + " maria"
 	storage := storageFixture()
 	_, out, err := executeActionCommandC(storage, testcmd)
-	if err != nil {
-		t.Errorf("unexpected error, %s", err)
-	}
-	if out != expected {
-		t.Error("expected and actual output did not match")
-		t.Log(out)
-		t.Log(expected)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expected, out, "expected and actual output did not match")
 }
 
 func TestSearchHubListRepoCmd(t *testing.T) {
@@ -71,14 +68,8 @@ func TestSearchHubListRepoCmd(t *testing.T) {
 	testcmd := "search hub --list-repo-url --endpoint " + ts.URL + " maria"
 	storage := storageFixture()
 	_, out, err := executeActionCommandC(storage, testcmd)
-	if err != nil {
-		t.Errorf("unexpected error, %s", err)
-	}
-	if out != expected {
-		t.Error("expected and actual output did not match")
-		t.Log(out)
-		t.Log(expected)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expected, out, "expected and actual output did not match")
 }
 
 func TestSearchHubOutputCompletion(t *testing.T) {
@@ -165,21 +156,14 @@ func TestSearchHubCmd_FailOnNoResponseTests(t *testing.T) {
 
 			_, out, err := executeActionCommandC(storage, tt.cmd)
 			if tt.wantErr {
-				if err == nil {
-					t.Error("expected error due to no record in response, got nil")
-				}
+				require.Error(t, err, "expected error due to no record in response, got nil")
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error, got %q", err)
-				}
+				require.NoError(t, err)
 			}
 
-			if out != tt.expected {
-				t.Errorf("expected and actual output did not match\n"+
-					"expected: %q\n"+
-					"actual  : %q",
-					tt.expected, out)
-			}
+			assert.Equal(t, tt.expected, out, "expected and actual output did not match\n"+
+				"expected: %q\n"+
+				"actual  : %q", tt.expected, out)
 		})
 	}
 }

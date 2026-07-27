@@ -66,7 +66,7 @@ func TestValidatePluginData(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			err := item.plug.Metadata().Validate()
 			if item.pass {
-				require.NoError(t, err, "failed to validate case %d: %s", i, err)
+				require.NoError(t, err, "failed to validate case %d", i)
 			} else {
 				require.Error(t, err, "expected case %d to fail", i)
 				assert.ErrorContains(t, err, item.errString, "expected case %d error to contain %q", i, item.errString)
@@ -97,8 +97,7 @@ func TestMetadataValidateVersion(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			m := mockSubprocessCLIPlugin(t, "testplugin")
 			m.metadata.Version = tc.version
-			err := m.Metadata().Validate()
-			assert.NoError(t, err)
+			assert.NoError(t, m.Metadata().Validate())
 		})
 	}
 
@@ -106,8 +105,7 @@ func TestMetadataValidateVersion(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			m := mockSubprocessCLIPlugin(t, "testplugin")
 			m.metadata.Version = tc.version
-			err := m.Metadata().Validate()
-			assert.ErrorContains(t, err, "invalid plugin version")
+			assert.ErrorContains(t, m.Metadata().Validate(), "invalid plugin version")
 		})
 	}
 }
@@ -139,7 +137,7 @@ func TestMetadataValidateMultipleErrors(t *testing.T) {
 	}
 
 	for _, expectedErr := range expectedErrors {
-		assert.Contains(t, errStr, expectedErr, "expected error to contain %q, but got: %v", expectedErr, errStr)
+		require.ErrorContains(t, err, expectedErr)
 	}
 
 	// Verify that the error contains the correct number of error messages

@@ -35,25 +35,18 @@ func TestCollectPlugins(t *testing.T) {
 	env.PluginsDirectory = pluginDir
 
 	p, err := collectGetterPlugins(env)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(p) != 2 {
-		t.Errorf("Expected 2 plugins, got %d: %v", len(p), p)
-	}
+	assert.Len(t, p, 2, "Expected 2 plugins, got %d: %v", len(p), p)
 
-	if _, err := p.ByScheme("test2"); err != nil {
-		t.Error(err)
-	}
+	_, err = p.ByScheme("test2")
+	require.NoError(t, err)
 
-	if _, err := p.ByScheme("test"); err != nil {
-		t.Error(err)
-	}
+	_, err = p.ByScheme("test")
+	require.NoError(t, err)
 
-	if _, err := p.ByScheme("nosuchthing"); err == nil {
-		t.Fatal("did not expect protocol handler for nosuchthing")
-	}
+	_, err = p.ByScheme("nosuchthing")
+	require.Error(t, err, "did not expect protocol handler for nosuchthing")
 }
 
 func TestConvertOptions(t *testing.T) {

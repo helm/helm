@@ -14,10 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestLabelsMatch(t *testing.T) {
@@ -42,8 +44,12 @@ func TestLabelsMatch(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if !tt.set1.match(tt.set2) && tt.expect {
-			t.Fatalf("Expected match '%s'\n", tt.desc)
-		}
+		t.Run(tt.desc, func(t *testing.T) {
+			if tt.expect {
+				require.True(t, tt.set1.match(tt.set2))
+			} else {
+				require.False(t, tt.set1.match(tt.set2))
+			}
+		})
 	}
 }

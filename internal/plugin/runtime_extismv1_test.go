@@ -59,8 +59,7 @@ func buildLoadExtismPlugin(t *testing.T, dir string) pluginRaw {
 
 func TestRuntimeConfigExtismV1Validate(t *testing.T) {
 	rc := RuntimeConfigExtismV1{}
-	err := rc.Validate()
-	assert.NoError(t, err, "expected no error for empty RuntimeConfigExtismV1")
+	assert.NoError(t, rc.Validate(), "expected no error for empty RuntimeConfigExtismV1")
 }
 
 func TestRuntimeExtismV1InvokePlugin(t *testing.T) {

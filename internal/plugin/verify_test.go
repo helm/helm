@@ -44,11 +44,9 @@ func TestVerifyPlugin(t *testing.T) {
 
 	// Create plugin directory
 	pluginDir := filepath.Join(tempDir, "verify-test-plugin")
-	err := os.MkdirAll(pluginDir, 0o755)
-	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 
-	err = os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644)
-	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644))
 
 	// Create tarball
 	tarballPath := filepath.Join(tempDir, "verify-test-plugin.tar.gz")
@@ -64,10 +62,9 @@ func TestVerifyPlugin(t *testing.T) {
 	// Sign the plugin with source directory
 	signer, err := provenance.NewFromKeyring(testKeyFile, "helm-test")
 	require.NoError(t, err)
-	err = signer.DecryptKey(func(_ string) ([]byte, error) {
+	require.NoError(t, signer.DecryptKey(func(_ string) ([]byte, error) {
 		return []byte(""), nil
-	})
-	require.NoError(t, err)
+	}))
 
 	// Read the tarball data
 	tarballData, err := os.ReadFile(tarballPath)
@@ -78,8 +75,7 @@ func TestVerifyPlugin(t *testing.T) {
 
 	// Write the signature to .prov file
 	provFile := tarballPath + ".prov"
-	err = os.WriteFile(provFile, []byte(sig), 0o644)
-	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(provFile, []byte(sig), 0o644))
 
 	// Read the files for verification
 	archiveData, err := os.ReadFile(tarballPath)
@@ -105,11 +101,9 @@ func TestVerifyPluginBadSignature(t *testing.T) {
 
 	// Create a plugin tarball
 	pluginDir := filepath.Join(tempDir, "bad-plugin")
-	err := os.MkdirAll(pluginDir, 0o755)
-	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 
-	err = os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644)
-	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644))
 
 	tarballPath := filepath.Join(tempDir, "bad-plugin.tar.gz")
 	tarFile, err := os.Create(tarballPath)
@@ -133,8 +127,7 @@ InvalidSignatureData
 -----END PGP SIGNATURE-----`
 
 	provFile := tarballPath + ".prov"
-	err = os.WriteFile(provFile, []byte(badSig), 0o644)
-	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(provFile, []byte(badSig), 0o644))
 
 	// Read the files
 	archiveData, err := os.ReadFile(tarballPath)
@@ -153,8 +146,7 @@ func TestVerifyPluginMissingProvenance(t *testing.T) {
 	tarballPath := filepath.Join(tempDir, "no-prov.tar.gz")
 
 	// Create a minimal tarball
-	err := os.WriteFile(tarballPath, []byte("dummy"), 0o644)
-	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(tarballPath, []byte("dummy"), 0o644))
 
 	// Read the tarball data
 	archiveData, err := os.ReadFile(tarballPath)
