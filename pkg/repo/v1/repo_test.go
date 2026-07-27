@@ -137,15 +137,17 @@ func TestUpdateRepository(t *testing.T) {
 		},
 	)
 	newRepoName := "sample"
-	sampleRepository.Update(&Entry{Name: newRepoName,
-		URL: "https://example.com/sample",
+	sampleRepository.Update(&Entry{
+		Name: newRepoName,
+		URL:  "https://example.com/sample",
 	})
 
 	assert.Truef(t, sampleRepository.Has(newRepoName), "expected repository %s not found", newRepoName)
 	repoCount := len(sampleRepository.Repositories)
 
-	sampleRepository.Update(&Entry{Name: newRepoName,
-		URL: "https://example.com/sample",
+	sampleRepository.Update(&Entry{
+		Name: newRepoName,
+		URL:  "https://example.com/sample",
 	})
 
 	assert.Lenf(t, sampleRepository.Repositories, repoCount, "invalid number of repositories found %d, expected number of repositories %d", len(sampleRepository.Repositories), repoCount)

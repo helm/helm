@@ -1278,6 +1278,7 @@ func TestTraceableError_SimpleForm(t *testing.T) {
 		assert.Equal(t, "error calling include", trace.message, "Expected %q, got %q", errString, trace.message)
 	}
 }
+
 func TestTraceableError_ExecutingForm(t *testing.T) {
 	testStrings := [][]string{
 		{"function_not_found/templates/secret.yaml:6:11: executing \"function_not_found/templates/secret.yaml\" at <include \"name\" .>: ", "function_not_found/templates/secret.yaml:6:11"},

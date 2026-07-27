@@ -59,6 +59,7 @@ func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 	is.Nil(res)
 	is.NoError(err)
 }
+
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)

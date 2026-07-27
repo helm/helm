@@ -73,7 +73,6 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			registryClient, err := newRegistryClient(
 				out, o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
 			)
-
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}

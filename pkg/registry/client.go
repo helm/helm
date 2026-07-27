@@ -329,7 +329,6 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(o *loginOperation) {
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
-
 		if err != nil {
 			panic(err)
 		}
@@ -909,7 +908,8 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 // tagManifest prepares and tags a manifest in memory storage
 func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
-	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
+	ociAnnotations map[string]string, parsedRef reference,
+) (ocispec.Descriptor, error) {
 	manifest := ocispec.Manifest{
 		Versioned:   specs.Versioned{SchemaVersion: 2},
 		Config:      configDescriptor,

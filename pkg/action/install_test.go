@@ -631,6 +631,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 
 	is.Equal(goroutines, instAction.getGoroutineCount())
 }
+
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -655,6 +656,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
 	is.Equal(goroutines, instAction.getGoroutineCount())
 }
+
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -722,6 +724,7 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 		is.ErrorContains(err, "an error occurred while uninstalling the release")
 	})
 }
+
 func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -754,6 +757,7 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
 	is.Equal(goroutines, instAction.getGoroutineCount())
 }
+
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please
