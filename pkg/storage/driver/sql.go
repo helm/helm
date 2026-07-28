@@ -281,7 +281,7 @@ type SQLReleaseCustomLabelWrapper struct {
 }
 
 // NewSQL initializes a new sql driver.
-func NewSQL(connectionString string, namespace string) (*SQL, error) {
+func NewSQL(connectionString, namespace string) (*SQL, error) {
 	db, err := sqlx.Connect(postgreSQLDialect, connectionString)
 	if err != nil {
 		return nil, err
@@ -690,7 +690,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 }
 
 // Get release custom labels from database
-func (s *SQL) getReleaseCustomLabels(key string, _ string) (map[string]string, error) {
+func (s *SQL) getReleaseCustomLabels(key, _ string) (map[string]string, error) {
 	query, args, err := s.statementBuilder.
 		Select(sqlCustomLabelsTableKeyColumn, sqlCustomLabelsTableValueColumn).
 		From(sqlCustomLabelsTableName).
