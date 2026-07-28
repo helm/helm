@@ -642,7 +642,7 @@ func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
 	_, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 	done()
 
-	is.Error(err)
+	req.Error(err)
 	is.Contains(err.Error(), "validation error")
 
 	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
