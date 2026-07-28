@@ -453,6 +453,7 @@ func TestInstallRelease_DryRunClient(t *testing.T) {
 
 func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
 
@@ -467,7 +468,7 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(withSampleTemplates()), vals)
 
-	is.Error(err)
+	req.Error(err)
 	is.Contains(err.Error(), "validation error")
 
 	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
@@ -479,9 +480,9 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	instAction2.DryRunStrategy = DryRunClient
 
 	resi, err := instAction2.Run(buildChart(withSampleTemplates()), vals)
-	is.NoError(err)
+	req.NoError(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("Dry run complete", res.Info.Description)
 }
 
