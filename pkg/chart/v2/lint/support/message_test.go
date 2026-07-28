@@ -27,7 +27,7 @@ import (
 var errLint = errors.New("lint failed")
 
 func TestRunLinterRule(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		Severity                int
 		LintError               error
 		ExpectedMessages        int

@@ -127,8 +127,10 @@ const (
 	FieldValidationDirectiveStrict FieldValidationDirective = "Strict"
 )
 
-type CreateApplyFunc func(target *resource.Info) error
-type UpdateApplyFunc func(original, target *resource.Info) error
+type (
+	CreateApplyFunc func(target *resource.Info) error
+	UpdateApplyFunc func(original, target *resource.Info) error
+)
 
 func init() {
 	// Add CRDs to the scheme. They are missing by default.

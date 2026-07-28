@@ -22,8 +22,10 @@ import (
 
 type ApplyMethod string
 
-const ApplyMethodClientSideApply ApplyMethod = "csa"
-const ApplyMethodServerSideApply ApplyMethod = "ssa"
+const (
+	ApplyMethodClientSideApply ApplyMethod = "csa"
+	ApplyMethodServerSideApply ApplyMethod = "ssa"
+)
 
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.

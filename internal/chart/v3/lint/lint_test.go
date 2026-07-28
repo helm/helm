@@ -30,14 +30,16 @@ import (
 
 const namespace = "testNamespace"
 
-const badChartDir = "rules/testdata/badchartfile"
-const badValuesFileDir = "rules/testdata/badvaluesfile"
-const badYamlFileDir = "rules/testdata/albatross"
-const badCrdFileDir = "rules/testdata/badcrdfile"
-const goodChartDir = "rules/testdata/goodone"
-const subChartValuesDir = "rules/testdata/withsubchart"
-const malformedTemplate = "rules/testdata/malformed-template"
-const invalidChartFileDir = "rules/testdata/invalidchartfile"
+const (
+	badChartDir         = "rules/testdata/badchartfile"
+	badValuesFileDir    = "rules/testdata/badvaluesfile"
+	badYamlFileDir      = "rules/testdata/albatross"
+	badCrdFileDir       = "rules/testdata/badcrdfile"
+	goodChartDir        = "rules/testdata/goodone"
+	subChartValuesDir   = "rules/testdata/withsubchart"
+	malformedTemplate   = "rules/testdata/malformed-template"
+	invalidChartFileDir = "rules/testdata/invalidchartfile"
+)
 
 func TestBadChartV3(t *testing.T) {
 	var values map[string]any

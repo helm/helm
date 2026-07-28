@@ -42,8 +42,10 @@ var (
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )
 
-var badChart, _ = chartutil.LoadChartfile(badChartFilePath)
-var badChartName, _ = chartutil.LoadChartfile(badChartNamePath)
+var (
+	badChart, _     = chartutil.LoadChartfile(badChartFilePath)
+	badChartName, _ = chartutil.LoadChartfile(badChartNamePath)
+)
 
 // Validation functions Test
 func TestValidateChartYamlNotDirectory(t *testing.T) {
@@ -63,7 +65,7 @@ func TestValidateChartName(t *testing.T) {
 }
 
 func TestValidateChartVersion(t *testing.T) {
-	var failTest = []struct {
+	failTest := []struct {
 		Version  string
 		ErrorMsg string
 	}{
@@ -73,7 +75,7 @@ func TestValidateChartVersion(t *testing.T) {
 		{"-3", "'-3' is not a valid SemVer"},
 	}
 
-	var successTest = []string{"0.0.1", "0.0.1+build", "0.0.1-beta"}
+	successTest := []string{"0.0.1", "0.0.1+build", "0.0.1-beta"}
 
 	for _, test := range failTest {
 		badChart.Version = test.Version
@@ -87,7 +89,7 @@ func TestValidateChartVersion(t *testing.T) {
 }
 
 func TestValidateChartVersionStrictSemVerV2(t *testing.T) {
-	var failTest = []struct {
+	failTest := []struct {
 		Version  string
 		ErrorMsg string
 	}{
@@ -96,7 +98,7 @@ func TestValidateChartVersionStrictSemVerV2(t *testing.T) {
 		{"1.1", "version '1.1' is not a valid SemVerV2"},
 	}
 
-	var successTest = []string{"1.1.1", "0.0.1+build", "0.0.1-beta"}
+	successTest := []string{"1.1.1", "0.0.1+build", "0.0.1-beta"}
 
 	for _, test := range failTest {
 		badChart.Version = test.Version
@@ -110,7 +112,7 @@ func TestValidateChartVersionStrictSemVerV2(t *testing.T) {
 }
 
 func TestValidateChartMaintainer(t *testing.T) {
-	var failTest = []struct {
+	failTest := []struct {
 		Name     string
 		Email    string
 		ErrorMsg string
@@ -120,7 +122,7 @@ func TestValidateChartMaintainer(t *testing.T) {
 		{"John Snow", "wrongFormatEmail.com", "invalid email"},
 	}
 
-	var successTest = []struct {
+	successTest := []struct {
 		Name  string
 		Email string
 	}{
@@ -144,8 +146,8 @@ func TestValidateChartMaintainer(t *testing.T) {
 }
 
 func TestValidateChartSources(t *testing.T) {
-	var failTest = []string{"", "RiverRun", "john@winterfell", "riverrun.io"}
-	var successTest = []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish"}
+	failTest := []string{"", "RiverRun", "john@winterfell", "riverrun.io"}
+	successTest := []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish"}
 	for _, test := range failTest {
 		badChart.Sources = []string{test}
 		require.ErrorContainsf(t, validateChartSources(badChart), "invalid source URL", "validateChartSources(%s) to return \"invalid source URL\", got no error", test)
@@ -174,8 +176,8 @@ func TestValidateChartIconPresence(t *testing.T) {
 }
 
 func TestValidateChartIconURL(t *testing.T) {
-	var failTest = []string{"RiverRun", "john@winterfell", "riverrun.io"}
-	var successTest = []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish.png"}
+	failTest := []string{"RiverRun", "john@winterfell", "riverrun.io"}
+	successTest := []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish.png"}
 	for _, test := range failTest {
 		badChart.Icon = test
 		require.ErrorContainsf(t, validateChartIconURL(badChart), "invalid icon URL", "validateChartIconURL(%s) to return \"invalid icon URL\", got no error", test)
