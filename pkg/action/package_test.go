@@ -19,6 +19,7 @@ package action
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"io"
 	"os"
 	"path"
@@ -180,15 +181,16 @@ func TestRunWithSourceDateEpochStampsLockGenerated(t *testing.T) {
 	require.NoError(t, err)
 	defer gr.Close()
 
+	const wantPath = "chart-with-lock/Chart.lock"
 	found := false
 	tr := tar.NewReader(gr)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err)
-		if path.Base(hdr.Name) != "Chart.lock" {
+		if hdr.Name != wantPath {
 			continue
 		}
 		found = true
@@ -200,6 +202,7 @@ func TestRunWithSourceDateEpochStampsLockGenerated(t *testing.T) {
 		wantGenerated := epoch.Format(time.RFC3339)
 		require.Contains(t, string(raw), wantGenerated,
 			"Chart.lock generated: field should contain normalized UTC timestamp")
+		break
 	}
-	require.True(t, found, "expected archive to contain a Chart.lock entry")
+	require.True(t, found, "expected archive to contain %q entry", wantPath)
 }
