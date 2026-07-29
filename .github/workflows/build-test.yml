@@ -28,6 +28,7 @@ jobs:
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
+          cache: false
       - name: Test source headers are present
         run: make test-source-headers
       - name: Check if go modules need to be tidied
