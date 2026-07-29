@@ -475,7 +475,6 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 	if namespace == "" {
 		namespace = defaultNamespace
 	}
-	s.namespace = namespace
 
 	body, err := encodeRelease(rls)
 	if err != nil {
@@ -525,7 +524,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 			Select(sqlReleaseTableKeyColumn).
 			From(sqlReleaseTableName).
 			Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
-			Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace}).
+			Where(sq.Eq{sqlReleaseTableNamespaceColumn: namespace}).
 			ToSql()
 		if buildErr != nil {
 			s.Logger().Debug("failed to build select query", "error", buildErr)
@@ -585,7 +584,6 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 	if namespace == "" {
 		namespace = defaultNamespace
 	}
-	s.namespace = namespace
 
 	body, err := encodeRelease(rls)
 	if err != nil {

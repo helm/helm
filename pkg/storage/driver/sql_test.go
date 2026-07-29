@@ -230,6 +230,147 @@ func TestSqlCreate(t *testing.T) {
 	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
 }
 
+// TestSqlCreateDoesNotMutateDriverNamespace is a regression test for helm/helm#32394 (item 5):
+// Create used to overwrite the driver's own namespace field with the namespace of whichever
+// release it last wrote, so any later Get/List/Query call on the same driver instance would be
+// silently scoped to that release's namespace instead of the namespace the driver was configured
+// with. This is also a data race, since List reads s.namespace while Create writes it
+// concurrently. The fix keeps the release's namespace as a local variable used only for that
+// call's own queries, leaving the driver's configured namespace untouched.
+func TestSqlCreateDoesNotMutateDriverNamespace(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	// The driver fixture below is configured for "default", but this release lives in a
+	// different namespace - simulating an SDK caller that shares one driver instance across
+	// namespaces.
+	otherNamespace := "other-ns"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, otherNamespace, common.StatusDeployed)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	require.Equal(t, "default", sqlDriver.namespace, "fixture should be configured for the default namespace")
+
+	body, _ := encodeRelease(rel)
+
+	insertQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(insertQuery)).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, otherNamespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	labelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(labelsQuery)).
+			WithArgs(key, otherNamespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	mock.ExpectCommit()
+
+	require.NoErrorf(t, sqlDriver.Create(key, rel), "failed to create release with key %s", key)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+
+	assert.Equal(t, "default", sqlDriver.namespace,
+		"Create must not mutate the driver's configured namespace based on the release being created")
+}
+
+// TestSqlCreateThenListUsesConfiguredNamespace is a black-box regression test for
+// helm/helm#32394 (item 5): after creating a release in a namespace other than the driver's
+// configured one, a subsequent List must still be scoped to the driver's configured namespace -
+// not the namespace of whichever release was last created. Before the fix, Create overwrote
+// s.namespace, so this List would have queried using "other-ns" instead of "default".
+func TestSqlCreateThenListUsesConfiguredNamespace(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	otherNamespace := "other-ns"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, otherNamespace, common.StatusDeployed)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	body, _ := encodeRelease(rel)
+
+	insertQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(insertQuery)).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, otherNamespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	labelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(labelsQuery)).
+			WithArgs(key, otherNamespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	mock.ExpectCommit()
+
+	require.NoErrorf(t, sqlDriver.Create(key, rel), "failed to create release with key %s", key)
+
+	// Now List - this must be scoped to "default" (the driver's configured namespace), not
+	// "other-ns" (the namespace of the release we just created).
+	listQuery := fmt.Sprintf(
+		"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+	mock.
+		ExpectQuery(regexp.QuoteMeta(listQuery)).
+		WithArgs(sqlReleaseDefaultOwner, "default").
+		WillReturnRows(mock.NewRows([]string{sqlReleaseTableBodyColumn}))
+
+	_, err := sqlDriver.List(func(release.Releaser) bool { return true })
+	require.NoError(t, err, "List must query using the driver's configured namespace, not the last-created release's namespace")
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met - List likely queried using the wrong namespace")
+}
+
 func TestSqlCreateAlreadyExists(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
@@ -316,6 +457,45 @@ func TestSqlUpdate(t *testing.T) {
 
 	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
 	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+// TestSqlUpdateDoesNotMutateDriverNamespace is a regression test for helm/helm#32394 (item 5):
+// see TestSqlCreateDoesNotMutateDriverNamespace for the full rationale. Update had the same bug.
+func TestSqlUpdateDoesNotMutateDriverNamespace(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	otherNamespace := "other-ns"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, otherNamespace, common.StatusDeployed)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	require.Equal(t, "default", sqlDriver.namespace, "fixture should be configured for the default namespace")
+
+	body, _ := encodeRelease(rel)
+
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4, %s = $5, %s = $6 WHERE %s = $7 AND %s = $8",
+		sqlReleaseTableName,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableModifiedAtColumn,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.
+		ExpectExec(regexp.QuoteMeta(query)).
+		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, otherNamespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+
+	assert.Equal(t, "default", sqlDriver.namespace,
+		"Update must not mutate the driver's configured namespace based on the release being updated")
 }
 
 func TestSqlQuery(t *testing.T) {
