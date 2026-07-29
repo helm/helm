@@ -2260,7 +2260,8 @@ metadata:
 }
 
 func createManifest(t *testing.T, manifest string,
-	fakeMapper meta.RESTMapper, fakeClient *dynamicfake.FakeDynamicClient) {
+	fakeMapper meta.RESTMapper, fakeClient *dynamicfake.FakeDynamicClient,
+) {
 	t.Helper()
 
 	m := make(map[string]any)

@@ -76,7 +76,7 @@ func TestRepoRemove(t *testing.T) {
 	assert.Falsef(t, f.Has(testRepoName), "%s was not successfully removed from repositories list", testRepoName)
 
 	// Test removal of multiple repos in one go
-	var testRepoNames = []string{"foo", "bar", "baz"}
+	testRepoNames := []string{"foo", "bar", "baz"}
 	cacheFiles := make(map[string][]string, len(testRepoNames))
 
 	// Add test repos
@@ -151,7 +151,7 @@ func TestRepoRemoveCompletion(t *testing.T) {
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 	repoCache := filepath.Join(rootDir, "cache")
 
-	var testRepoNames = []string{"foo", "bar", "baz"}
+	testRepoNames := []string{"foo", "bar", "baz"}
 
 	// Add test repos
 	for _, repoName := range testRepoNames {

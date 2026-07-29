@@ -34,7 +34,7 @@ func TestMemoryName(t *testing.T) {
 }
 
 func TestMemoryCreate(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		desc string
 		rls  *rspb.Release
 		err  bool
@@ -76,7 +76,7 @@ func TestMemoryCreate(t *testing.T) {
 }
 
 func TestMemoryGet(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		desc      string
 		key       string
 		namespace string
@@ -133,7 +133,7 @@ func TestMemoryList(t *testing.T) {
 }
 
 func TestMemoryQuery(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		desc      string
 		xlen      int
 		namespace string
@@ -164,7 +164,7 @@ func TestMemoryQuery(t *testing.T) {
 }
 
 func TestMemoryUpdate(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		desc string
 		key  string
 		rls  *rspb.Release
@@ -215,7 +215,7 @@ func TestMemoryUpdate(t *testing.T) {
 }
 
 func TestMemoryDelete(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		desc      string
 		key       string
 		namespace string

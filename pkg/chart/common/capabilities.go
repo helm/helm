@@ -47,7 +47,6 @@ var (
 			panic(fmt.Sprintf("failed to create default capabilities: %v", err))
 		}
 		return caps
-
 	}()
 )
 

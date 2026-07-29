@@ -106,6 +106,7 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	}
 	require.EqualErrorf(t, err, fmt.Sprintf("requested version %q does not exist for plugin %q", version, source), "expected error for version does not exists")
 }
+
 func TestVCSInstallerUpdate(t *testing.T) {
 	ensure.HelmHome(t)
 

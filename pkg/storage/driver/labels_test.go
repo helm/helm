@@ -23,7 +23,7 @@ import (
 )
 
 func TestLabelsMatch(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		desc   string
 		set1   labels
 		set2   labels

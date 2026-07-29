@@ -182,7 +182,8 @@ func TestLoadFiles_BadCases(t *testing.T) {
 					Data:    []byte(""),
 				},
 			},
-			expectError: "validation: chart.metadata.apiVersion is required"},
+			expectError: "validation: chart.metadata.apiVersion is required",
+		},
 	} {
 		_, err := LoadFiles(tt.bufferedFiles)
 		require.Error(t, err, "expected error when load illegal files")

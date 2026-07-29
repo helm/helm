@@ -252,7 +252,6 @@ func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList
 	configMap := &v1.ConfigMap{}
 
 	err := yaml.NewYAMLOrJSONDecoder(reader, 1000).Decode(configMap)
-
 	if err != nil {
 		return kube.ResourceList{}, err
 	}
@@ -358,10 +357,12 @@ data:
 						},
 					},
 				},
-			}, resource.Info{
+			},
+			resource.Info{
 				Name:      "build-config-2",
 				Namespace: "test",
-			}, []resource.Info{
+			},
+			[]resource.Info{
 				{
 					// This should be in the record for `before-hook-creation`
 					Name:      "build-config-1",
@@ -382,7 +383,8 @@ data:
 					Name:      "build-config-1",
 					Namespace: "test",
 				},
-			}, true,
+			},
+			true,
 		},
 	}
 

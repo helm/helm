@@ -232,7 +232,6 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		kube.ClientUpdateOptionServerSideApply(serverSideApply, r.ForceConflicts),
 		kube.ClientUpdateOptionThreeWayMergeForUnstructured(false),
 		kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
-
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		r.cfg.Logger().Warn(msg)
