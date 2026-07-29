@@ -170,7 +170,6 @@ $(GOIMPORTS):
 #  release
 
 .PHONY: build-cross
-build-cross: LDFLAGS += -extldflags "-static"
 build-cross: $(GORELEASER)
 	$(GORELEASER) build --snapshot --clean
 
