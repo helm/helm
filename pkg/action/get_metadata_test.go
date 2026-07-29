@@ -546,7 +546,7 @@ func TestMetadata_FormattedDepNames(t *testing.T) {
 }
 
 func convertDeps(deps []*chart.Dependency) []ci.Dependency {
-	var newDeps = make([]ci.Dependency, len(deps))
+	newDeps := make([]ci.Dependency, len(deps))
 	for i, c := range deps {
 		newDeps[i] = c
 	}

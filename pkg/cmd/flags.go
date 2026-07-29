@@ -152,7 +152,6 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 		sort.Strings(formatNames)
 		return formatNames, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

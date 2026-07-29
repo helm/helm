@@ -40,6 +40,7 @@ func (suite *RegistryScopeTestSuite) SetupSuite() {
 	// when the registry itself was reached over https.
 	setup(&suite.TestRegistry, false, false, "token")
 }
+
 func (suite *RegistryScopeTestSuite) TearDownSuite() {
 	teardown(&suite.TestRegistry)
 	os.RemoveAll(suite.WorkspaceDir)

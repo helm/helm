@@ -316,7 +316,8 @@ func TestParseLiteralInto(t *testing.T) {
 				"outer": map[string]any{
 					"inner1": "value1,outer.inner3=value3,outer.inner4=4",
 					"inner2": "value2",
-				}},
+				},
+			},
 			err: false,
 		},
 		{

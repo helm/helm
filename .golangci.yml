@@ -1,6 +1,7 @@
 formatters:
   enable:
     - gofmt
+    - gofumpt
     - goimports
 
   exclusions:
@@ -9,6 +10,10 @@ formatters:
   settings:
     gofmt:
       simplify: true
+
+    gofumpt:
+      module-path: helm.sh/helm/v4
+      extra-rules: false
 
     goimports:
       local-prefixes:

@@ -143,9 +143,11 @@ type renderable struct {
 	basePath string
 }
 
-const warnStartDelim = "HELM_ERR_START"
-const warnEndDelim = "HELM_ERR_END"
-const recursionMaxNums = 1000
+const (
+	warnStartDelim   = "HELM_ERR_START"
+	warnEndDelim     = "HELM_ERR_END"
+	recursionMaxNums = 1000
+)
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
