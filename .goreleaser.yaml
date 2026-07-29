@@ -55,8 +55,8 @@ builds:
       - goos: windows
         goarch: loong64
     main: ./cmd/helm
-    binary: helm
-    mod_timestamp: "{{ .CommitTimestamp }}"
+    no_unique_dist_dir: true
+    binary: "{{ .Os }}-{{ .Arch }}/helm"
     ldflags:
       - -w -s
       - -extldflags "-static"
