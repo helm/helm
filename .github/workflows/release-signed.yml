@@ -1,5 +1,5 @@
 #
-# PoC: signed release with SBOMs and build provenance.
+# Signed release with SBOMs and build provenance.
 # Modeled on https://github.com/goreleaser/example-secure
 #
 name: release-signed
@@ -32,6 +32,7 @@ jobs:
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
+          cache: false
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
