@@ -128,11 +128,13 @@ func TestSQLList(t *testing.T) {
 		)
 
 		rows := mock.NewRows([]string{
+			sqlReleaseTableKeyColumn,
+			sqlReleaseTableNamespaceColumn,
 			sqlReleaseTableBodyColumn,
 		})
 		for _, r := range releases {
 			body, _ := encodeRelease(r)
-			rows.AddRow(body)
+			rows.AddRow(testKey(r.Name, r.Version), r.Namespace, body)
 		}
 		mock.
 			ExpectQuery(regexp.QuoteMeta(query)).
@@ -140,7 +142,7 @@ func TestSQLList(t *testing.T) {
 			WillReturnRows(rows).RowsWillBeClosed()
 
 		for _, r := range releases {
-			mockGetReleaseCustomLabels(mock, "", r.Namespace, r.Labels)
+			mockGetReleaseCustomLabels(mock, testKey(r.Name, r.Version), r.Namespace, r.Labels)
 		}
 	}
 
@@ -176,6 +178,53 @@ func TestSQLList(t *testing.T) {
 	rls := convertReleaserToV1(t, ssd[0])
 	require.Contains(t, rls.Labels, "name", "Expected 'name' label in results, actual %v", rls.Labels)
 	require.Contains(t, rls.Labels, "key1", "Expected 'key1' label in results, actual %v", rls.Labels)
+}
+
+// TestSqlListAllNamespacesReturnsCustomLabels is a regression test for helm/helm#32394 (item 7):
+// getReleaseCustomLabels ignored the namespace argument passed to it by List/Query and used
+// s.namespace instead. In all-namespaces mode (s.namespace == ""), this meant the custom-labels
+// query filtered on an empty namespace and matched nothing, so every release listed across
+// namespaces silently came back with empty custom labels.
+func TestSqlListAllNamespacesReturnsCustomLabels(t *testing.T) {
+	sqlDriver, mock := newTestFixtureSQLWithNamespace(t, "")
+
+	rel := releaseStub("smug-pigeon", 1, "team-a", common.StatusDeployed)
+	key := testKey(rel.Name, 1)
+	body, _ := encodeRelease(rel)
+
+	listQuery := fmt.Sprintf(
+		"SELECT %s, %s, %s FROM %s WHERE %s = $1",
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableOwnerColumn,
+	)
+	mock.
+		ExpectQuery(regexp.QuoteMeta(listQuery)).
+		WithArgs(sqlReleaseDefaultOwner).
+		WillReturnRows(
+			mock.NewRows([]string{
+				sqlReleaseTableKeyColumn,
+				sqlReleaseTableNamespaceColumn,
+				sqlReleaseTableBodyColumn,
+			}).AddRow(key, rel.Namespace, body),
+		)
+
+	// The custom-labels lookup must be scoped to this release's own namespace ("team-a"),
+	// not the driver's all-namespaces configuration (""). mockGetReleaseCustomLabels asserts
+	// the query args match exactly, so this expectation fails if the fix regresses.
+	mockGetReleaseCustomLabels(mock, key, rel.Namespace, rel.Labels)
+
+	releases, err := sqlDriver.List(func(release.Releaser) bool { return true })
+	require.NoError(t, err)
+	require.Len(t, releases, 1)
+
+	got := convertReleaserToV1(t, releases[0])
+	for k, v := range filterSystemLabels(rel.Labels) {
+		assert.Equal(t, v, got.Labels[k], "custom label %q should be present when listing across all namespaces", k)
+	}
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
 }
 
 func TestSqlCreate(t *testing.T) {
@@ -540,6 +589,8 @@ func TestSqlQuery(t *testing.T) {
 		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "unknown", "default").
 		WillReturnRows(
 			mock.NewRows([]string{
+				sqlReleaseTableKeyColumn,
+				sqlReleaseTableNamespaceColumn,
 				sqlReleaseTableBodyColumn,
 			}),
 		).RowsWillBeClosed()
@@ -549,13 +600,15 @@ func TestSqlQuery(t *testing.T) {
 		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "deployed", "default").
 		WillReturnRows(
 			mock.NewRows([]string{
+				sqlReleaseTableKeyColumn,
+				sqlReleaseTableNamespaceColumn,
 				sqlReleaseTableBodyColumn,
 			}).AddRow(
-				deployedReleaseBody,
+				testKey(deployedRelease.Name, deployedRelease.Version), deployedRelease.Namespace, deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
 
-	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
+	mockGetReleaseCustomLabels(mock, testKey(deployedRelease.Name, deployedRelease.Version), deployedRelease.Namespace, deployedRelease.Labels)
 
 	query = fmt.Sprintf(
 		"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
@@ -573,16 +626,18 @@ func TestSqlQuery(t *testing.T) {
 		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "default").
 		WillReturnRows(
 			mock.NewRows([]string{
+				sqlReleaseTableKeyColumn,
+				sqlReleaseTableNamespaceColumn,
 				sqlReleaseTableBodyColumn,
 			}).AddRow(
-				supersededReleaseBody,
+				testKey(supersededRelease.Name, supersededRelease.Version), supersededRelease.Namespace, supersededReleaseBody,
 			).AddRow(
-				deployedReleaseBody,
+				testKey(deployedRelease.Name, deployedRelease.Version), deployedRelease.Namespace, deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
 
-	mockGetReleaseCustomLabels(mock, "", supersededRelease.Namespace, supersededRelease.Labels)
-	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
+	mockGetReleaseCustomLabels(mock, testKey(supersededRelease.Name, supersededRelease.Version), supersededRelease.Namespace, supersededRelease.Labels)
+	mockGetReleaseCustomLabels(mock, testKey(deployedRelease.Name, deployedRelease.Version), deployedRelease.Namespace, deployedRelease.Labels)
 
 	_, err := sqlDriver.Query(labelSetUnknown)
 	require.Errorf(t, err, "Expected error {%v}, got nil", ErrReleaseNotFound)
