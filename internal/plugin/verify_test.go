@@ -26,8 +26,10 @@ import (
 	"helm.sh/helm/v4/pkg/provenance"
 )
 
-const testKeyFile = "../../pkg/cmd/testdata/helm-test-key.secret"
-const testPubFile = "../../pkg/cmd/testdata/helm-test-key.pub"
+const (
+	testKeyFile = "../../pkg/cmd/testdata/helm-test-key.secret"
+	testPubFile = "../../pkg/cmd/testdata/helm-test-key.pub"
+)
 
 const testPluginYAML = `apiVersion: v1
 name: test-plugin

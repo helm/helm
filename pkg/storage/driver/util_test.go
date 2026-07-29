@@ -38,7 +38,7 @@ func TestIsSystemLabel(t *testing.T) {
 }
 
 func TestFilterSystemLabels(t *testing.T) {
-	var tests = [][2]map[string]string{
+	tests := [][2]map[string]string{
 		{nil, map[string]string{}},
 		{map[string]string{}, map[string]string{}},
 		{map[string]string{
@@ -73,7 +73,7 @@ func TestFilterSystemLabels(t *testing.T) {
 }
 
 func TestContainsSystemLabels(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input  map[string]string
 		output bool
 	}{

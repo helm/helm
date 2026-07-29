@@ -205,7 +205,6 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 		}
 		return compVersionFlag(args[0], toComplete)
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

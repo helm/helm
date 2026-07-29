@@ -59,7 +59,6 @@ func TestDependencyBuildCmd(t *testing.T) {
 
 	cmd := fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s --plain-http", filepath.Join(rootDir, chartname), repoFile, rootDir)
 	_, out, err := executeActionCommand(cmd)
-
 	// In the first pass, we basically want the same results as an update.
 	if err != nil {
 		t.Logf("Output: %s", out)
@@ -105,7 +104,6 @@ func TestDependencyBuildCmd(t *testing.T) {
 
 	skipRefreshCmd := fmt.Sprintf("dependency build '%s' --skip-refresh --repository-config %s --repository-cache %s --plain-http", filepath.Join(rootDir, chartname), repoFile, rootDir)
 	_, out, err = executeActionCommand(skipRefreshCmd)
-
 	// In this pass, we check --skip-refresh option becomes effective.
 	if err != nil {
 		t.Logf("Output: %s", out)
@@ -136,7 +134,6 @@ func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
 
 	cmd := fmt.Sprintf("dependency build '%s'", chartName)
 	_, out, err := executeActionCommand(cmd)
-
 	// Want to make sure the build can verify Helm v2 hash
 	if err != nil {
 		t.Logf("Output: %s", out)

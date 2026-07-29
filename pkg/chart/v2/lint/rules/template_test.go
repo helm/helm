@@ -35,11 +35,11 @@ import (
 const templateTestBasedir = "./testdata/albatross"
 
 func TestValidateAllowedExtension(t *testing.T) {
-	var failTest = []string{"/foo", "/test.toml"}
+	failTest := []string{"/foo", "/test.toml"}
 	for _, test := range failTest {
 		require.ErrorContainsf(t, validateAllowedExtension(test), "Valid extensions are .yaml, .yml, .tpl, or .txt", "validateAllowedExtension('%s') to return \"Valid extensions are .yaml, .yml, .tpl, or .txt\", got no error", test)
 	}
-	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml", "NOTES.txt"}
+	successTest := []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml", "NOTES.txt"}
 	for _, test := range successTest {
 		assert.NoError(t, validateAllowedExtension(test), "validateAllowedExtension('%s') to return no error", test)
 	}
@@ -62,8 +62,10 @@ func TestTemplateParsing(t *testing.T) {
 	assert.ErrorContains(t, res[0].Err, "deliberateSyntaxError")
 }
 
-var wrongTemplatePath = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
-var ignoredTemplatePath = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
+var (
+	wrongTemplatePath   = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
+	ignoredTemplatePath = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
+)
 
 // Test a template with all the existing features:
 // namespaces, partial templates
@@ -406,6 +408,7 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 	}
 	require.Empty(t, linter.Messages, "Expected 0 lint errors")
 }
+
 func TestValidateListAnnotations(t *testing.T) {
 	md := &k8sYamlStruct{
 		APIVersion: "v1",

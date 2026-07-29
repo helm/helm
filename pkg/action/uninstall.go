@@ -77,7 +77,6 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	if u.DryRun {
 		ri, err := u.cfg.releaseContent(name, 0)
-
 		if err != nil {
 			if u.IgnoreNotFound && errors.Is(err, driver.ErrReleaseNotFound) {
 				return nil, nil

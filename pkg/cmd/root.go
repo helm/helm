@@ -229,7 +229,6 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -253,7 +252,6 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -446,7 +444,6 @@ func newRegistryClientWithTLS(
 		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
 		tlsutil.WithCAFile(caFile),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 	}
