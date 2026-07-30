@@ -48,7 +48,11 @@ type FailingKubeClient struct {
 	WaitForDeleteError     error
 	WatchUntilReadyError   error
 	WaitDuration           time.Duration
-	// RecordedWaitOptions stores the WaitOptions passed to GetWaiter for testing
+	// RecordedCreateOptions stores the ClientCreateOptions passed to Create for testing.
+	RecordedCreateOptions []kube.ClientCreateOption
+	// RecordedUpdateOptions stores the ClientUpdateOptions passed to Update for testing.
+	RecordedUpdateOptions []kube.ClientUpdateOption
+	// RecordedWaitOptions stores the WaitOptions passed to GetWaiter for testing.
 	RecordedWaitOptions []kube.WaitOption
 	mu                  sync.Mutex
 }
@@ -67,6 +71,9 @@ type FailingKubeWaiter struct {
 
 // Create returns the configured error if set or prints
 func (f *FailingKubeClient) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+	f.mu.Lock()
+	f.RecordedCreateOptions = append(f.RecordedCreateOptions, options...)
+	f.mu.Unlock()
 	if f.CreateError != nil {
 		return nil, f.CreateError
 	}
@@ -125,6 +132,9 @@ func (f *FailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, d time.
 
 // Update returns the configured error if set or prints
 func (f *FailingKubeClient) Update(r, modified kube.ResourceList, options ...kube.ClientUpdateOption) (*kube.Result, error) {
+	f.mu.Lock()
+	f.RecordedUpdateOptions = append(f.RecordedUpdateOptions, options...)
+	f.mu.Unlock()
 	if f.UpdateError != nil {
 		return &kube.Result{}, f.UpdateError
 	}
