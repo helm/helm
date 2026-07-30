@@ -256,6 +256,12 @@ func withKube(version string) chartOption {
 	}
 }
 
+func withKubeFeatureGates(gates map[string]map[string]bool) chartOption {
+	return func(opts *chartOptions) {
+		opts.Metadata.KubeFeatureGates = gates
+	}
+}
+
 // releaseStub creates a release stub, complete with the chartStub as its chart.
 func releaseStub() *release.Release {
 	return namedReleaseStub("angry-panda", rcommon.StatusDeployed)

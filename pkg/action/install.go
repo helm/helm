@@ -315,6 +315,19 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		return nil, fmt.Errorf("chart dependencies processing failed: %w", err)
 	}
 
+	// Verified before CRDs are installed: CRDs are not rolled back on failure
+	// and no release is recorded, so a chart whose gates can't be satisfied
+	// must never get that far.
+	wantedFeatureGates, err := mergedKubeFeatureGates(chrt)
+	if err != nil {
+		return nil, err
+	}
+	if len(wantedFeatureGates) > 0 && interactWithServer(i.DryRunStrategy) {
+		if err := i.cfg.checkKubeFeatureGates(ctx, wantedFeatureGates); err != nil {
+			return nil, err
+		}
+	}
+
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
 	if crds := chrt.CRDObjects(); interactWithServer(i.DryRunStrategy) && !i.SkipCRDs && len(crds) > 0 {
