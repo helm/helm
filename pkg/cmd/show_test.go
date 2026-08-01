@@ -91,6 +91,39 @@ func TestShowPreReleaseChart(t *testing.T) {
 	}
 }
 
+func TestShowOCIChartDoesNotPrintRegistryPullMetadata(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
+	defer srv.Stop()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t)
+
+	contentTmp := t.TempDir()
+	outdir := srv.Root()
+	cmd := fmt.Sprintf("show chart oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --registry-config %s --content-cache %s --plain-http",
+		ociSrv.RegistryURL,
+		filepath.Join(outdir, "config.json"),
+		contentTmp,
+	)
+
+	_, out, err := executeActionCommand(cmd)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(out, "Pulled: ") || strings.Contains(out, "Digest: ") {
+		t.Fatalf("expected OCI show output to exclude registry pull metadata, got: %s", out)
+	}
+	if !strings.Contains(out, "apiVersion:") {
+		t.Fatalf("expected chart metadata in output, got: %s", out)
+	}
+}
+
 func TestShowVersionCompletion(t *testing.T) {
 	repoFile := "testdata/helmhome/helm/repositories.yaml"
 	repoCache := "testdata/helmhome/helm/repository"
