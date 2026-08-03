@@ -363,7 +363,18 @@ func loadKeyRing(ringpath string) (openpgp.EntityList, error) {
 		return nil, err
 	}
 	defer f.Close()
-	return openpgp.ReadKeyRing(f)
+
+	// Try reading as binary keyring first (legacy behavior)
+	ring, err := openpgp.ReadKeyRing(f)
+	if err == nil {
+		return ring, nil
+	}
+
+	// Reset file pointer and try reading as armored keyring (e.g. for bare public keys like .asc)
+	if _, err := f.Seek(0, 0); err != nil {
+		return nil, err
+	}
+	return openpgp.ReadArmoredKeyRing(f)
 }
 
 // DigestFile calculates a SHA256 hash (like Docker) for a given file.
