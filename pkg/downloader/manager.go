@@ -736,19 +736,16 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			// TODO: Where linting is skipped in this function we should
 			// refactor to remove naked returns while ensuring the same
 			// behavior
-			//nolint:nakedret
-			return
+			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		var ve *repo.ChartVersion
 		ve, err = findVersionedEntry(version, entry)
 		if err != nil {
-			//nolint:nakedret
-			return
+			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
 		if err != nil {
-			//nolint:nakedret
-			return
+			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		username = cr.Config.Username
 		password = cr.Config.Password
@@ -757,8 +754,8 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 		caFile = cr.Config.CAFile
 		certFile = cr.Config.CertFile
 		keyFile = cr.Config.KeyFile
-		//nolint:nakedret
-		return
+
+		return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {

@@ -276,7 +276,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
-func LoginOptBasicAuth(username string, password string) LoginOption {
+func LoginOptBasicAuth(username, password string) LoginOption {
 	return func(o *loginOperation) {
 		o.client.username = username
 		o.client.password = password

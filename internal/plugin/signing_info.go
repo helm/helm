@@ -111,7 +111,7 @@ func GetPluginSigningInfo(metadata Metadata) (*SigningInfo, error) {
 	}, nil
 }
 
-func validateProvenanceHash(blockContent string, tarballPath string) bool {
+func validateProvenanceHash(blockContent, tarballPath string) bool {
 	// Parse provenance to get the expected hash
 	_, sums, err := parsePluginMessageBlock([]byte(blockContent))
 	if err != nil {
