@@ -27,6 +27,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 func TestNewRollback(t *testing.T) {
@@ -45,6 +46,42 @@ func TestRollbackRun_UnreachableKubeClient(t *testing.T) {
 
 	client := NewRollback(config)
 	assert.Error(t, client.Run(""))
+}
+
+func TestRollbackRelease_CleanupOnFailSkipsEmptyCreated(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+	config := actionConfigFixture(t)
+
+	rel1 := releaseStub()
+	rel1.Name = "rollback-cleanup"
+	rel1.Version = 1
+	rel1.Info.Status = common.StatusSuperseded
+	rel1.ApplyMethod = "csa"
+	req.NoError(config.Releases.Create(rel1))
+
+	rel2 := releaseStub()
+	rel2.Name = "rollback-cleanup"
+	rel2.Version = 2
+	rel2.Info.Status = common.StatusDeployed
+	rel2.ApplyMethod = "csa"
+	req.NoError(config.Releases.Create(rel2))
+
+	failer := config.KubeClient.(*kubefake.FailingKubeClient)
+	failer.UpdateError = errors.New("update failed")
+	failer.DeleteError = errors.New("delete should not run")
+	config.KubeClient = failer
+
+	client := NewRollback(config)
+	client.Version = 1
+	client.CleanupOnFail = true
+	client.ServerSideApply = "auto"
+
+	err := client.Run("rollback-cleanup")
+	req.Error(err)
+	is.Contains(err.Error(), "update failed")
+	is.NotContains(err.Error(), "unable to cleanup resources")
+	is.NotContains(err.Error(), "delete should not run")
 }
 
 func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
