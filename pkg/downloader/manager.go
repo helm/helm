@@ -676,37 +676,74 @@ func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
 }
 
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
+	if len(repos) == 0 {
+		return nil
+	}
+
+	var mu sync.Mutex
 	var wg sync.WaitGroup
+
+	// Limit concurrency to prevent resource exhaustion
+	const maxConcurrent = 10
+	sem := make(chan struct{}, maxConcurrent)
 
 	localRepos := dedupeRepos(repos)
 
 	for _, c := range localRepos {
 		r, err := repo.NewChartRepository(c, m.Getters)
 		if err != nil {
-			return err
+			// Don't stop everything for one failure, print and continue
+			mu.Lock()
+			fmt.Fprintf(m.Out, "...Failed to create repository %s: %v\n", c.Name, err)
+			mu.Unlock()
+			continue
 		}
 		r.CachePath = m.RepositoryCache
+
+		// Capture config values before goroutine to avoid data race
+		name := r.Config.Name
+		url := r.Config.URL
+
 		wg.Add(1)
-		go func(r *repo.ChartRepository) {
-			if _, err := r.DownloadIndexFile(); err != nil {
-				// For those dependencies that are not known to helm and using a
-				// generated key name we display the repo url.
-				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
-					fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository:\n\t%s\n", r.Config.URL, err)
+		go func(r *repo.ChartRepository, name, url string) {
+			defer func() {
+				// Panic recovery
+				if r := recover(); r != nil {
+					mu.Lock()
+					fmt.Fprintf(m.Out, "...Panic updating %s: %v\n", name, r)
+					mu.Unlock()
+				}
+				wg.Done()
+			}()
+
+			// Acquire semaphore
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			// Perform download
+			_, err := r.DownloadIndexFile()
+
+			// Format message
+			var msg string
+			if strings.HasPrefix(name, managerKeyPrefix) {
+				if err != nil {
+					msg = fmt.Sprintf("...Unable to get an update from the %q chart repository:\n\t%s\n", url, err)
 				} else {
-					fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
+					msg = fmt.Sprintf("...Successfully got an update from the %q chart repository\n", url)
 				}
 			} else {
-				// For those dependencies that are not known to helm and using a
-				// generated key name we display the repo url.
-				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
-					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.URL)
+				if err != nil {
+					msg = fmt.Sprintf("...Unable to get an update from the %q chart repository (%s):\n\t%s\n", name, url, err)
 				} else {
-					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
+					msg = fmt.Sprintf("...Successfully got an update from the %q chart repository\n", name)
 				}
 			}
-			wg.Done()
-		}(r)
+
+			// Lock only for the write
+			mu.Lock()
+			fmt.Fprint(m.Out, msg)
+			mu.Unlock()
+		}(r, name, url)
 	}
 	wg.Wait()
 
