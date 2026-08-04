@@ -36,6 +36,7 @@ type OCIGetter struct {
 	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
+	digest    string
 }
 
 // Get performs a Get from repo.Getter and returns the body.
@@ -82,11 +83,17 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, err
 	}
+	g.digest = result.Manifest.Digest
 
 	if requestingProv {
 		return bytes.NewBuffer(result.Prov.Data), nil
 	}
 	return bytes.NewBuffer(result.Chart.Data), nil
+}
+
+// Digest returns the OCI manifest digest from the most recent pull.
+func (g *OCIGetter) Digest() string {
+	return g.digest
 }
 
 // NewOCIGetter constructs a valid http/https client as a Getter
