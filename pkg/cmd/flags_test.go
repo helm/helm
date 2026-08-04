@@ -17,7 +17,9 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"runtime"
 	"testing"
 	"time"
 
@@ -25,6 +27,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -99,22 +102,68 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 	runTestCmd(t, tests)
 }
 
-func TestPostRendererFlagSetOnce(t *testing.T) {
+func TestPostRendererFlagAllowsMultiple(t *testing.T) {
 	cfg := action.Configuration{}
 	client := action.NewInstall(&cfg)
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
-	str := postRendererString{
-		options: &postRendererOptions{
+	str := postRendererNameFlag{
+		postRendererChainOptions: &postRendererChainOptions{
 			renderer: &client.PostRenderer,
 			settings: settings,
 		},
 	}
-	// Set the plugin name once
+	// Setting the plugin name once is ok
 	require.NoError(t, str.Set("postrenderer-v1"))
+	require.NotNil(t, client.PostRenderer)
 
-	// Set the plugin name again to the same value is not ok
-	require.Error(t, str.Set("postrenderer-v1"))
+	// Setting a second plugin name chains it after the first
+	require.NoError(t, str.Set("postrenderer-v1-second"))
+	require.NotNil(t, client.PostRenderer)
+	require.IsType(t, &postrenderer.Chain{}, client.PostRenderer)
+}
 
-	// Set the plugin name again to a different value is not ok
-	require.Error(t, str.Set("cat"))
+func TestPostRendererArgs_WithoutPrecedingRendererErrors(t *testing.T) {
+	cfg := action.Configuration{}
+	client := action.NewInstall(&cfg)
+	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+	args := postRendererArgsFlag{
+		options: &postRendererChainOptions{
+			renderer: &client.PostRenderer,
+			settings: settings,
+		},
+	}
+	require.Error(t, args.Set("ARG1"))
+}
+
+func TestPostRendererChain_RunsInOrder(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on windows: test uses a sed-based plugin")
+	}
+	cfg := action.Configuration{}
+	client := action.NewInstall(&cfg)
+	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+
+	options := &postRendererChainOptions{
+		renderer: &client.PostRenderer,
+		settings: settings,
+	}
+	str := postRendererNameFlag{postRendererChainOptions: options}
+	argsFlag := postRendererArgsFlag{options: options}
+
+	// First renderer: FOOTEST -> BARTEST
+	require.NoError(t, str.Set("postrenderer-v1"))
+	// Second renderer: BARTEST -> BAZTEST
+	require.NoError(t, str.Set("postrenderer-v1-second"))
+
+	require.NotNil(t, client.PostRenderer)
+
+	out, err := client.PostRenderer.Run(bytes.NewBufferString("FOOTEST"))
+	require.NoError(t, err)
+	require.Contains(t, out.String(), "BAZTEST")
+
+	// Args apply to the most recently added renderer (the second one)
+	require.NoError(t, argsFlag.Set("CUSTOM"))
+	out, err = client.PostRenderer.Run(bytes.NewBufferString("FOOTEST"))
+	require.NoError(t, err)
+	require.Contains(t, out.String(), "CUSTOM")
 }

@@ -184,88 +184,123 @@ func (o *outputValue) Set(s string) error {
 	return nil
 }
 
-// TODO there is probably a better way to pass cobra settings than as a param
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrenderer.PostRenderer, settings *cli.EnvSettings) {
-	p := &postRendererOptions{varRef, "", []string{}, settings}
-	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the name of a postrenderer type plugin to be used for post rendering. If it exists, the plugin will be used")
-	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
+	o := &postRendererChainOptions{renderer: varRef, settings: settings}
+	cmd.Flags().Var(&postRendererNameFlag{o}, postRenderFlag, "the name of a postrenderer type plugin to be used for post rendering. If it exists, the plugin will be used. Can be specified multiple times to chain post-renderers; each renderer's output is piped into the next")
+	cmd.Flags().Var(&postRendererArgsFlag{o}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple). Applies to the most recently specified --post-renderer flag")
 }
 
 type postRendererOptions struct {
-	renderer   *postrenderer.PostRenderer
 	pluginName string
 	args       []string
-	settings   *cli.EnvSettings
 }
 
-type postRendererString struct {
-	options *postRendererOptions
+type postRendererChainOptions struct {
+	renderer      *postrenderer.PostRenderer
+	postRenderers []*postRendererOptions
+	settings      *cli.EnvSettings
 }
 
-func (p *postRendererString) String() string {
-	return p.options.pluginName
+func (o *postRendererChainOptions) rebuildRendererChain() error {
+	renderers := make([]postrenderer.PostRenderer, 0, len(o.postRenderers))
+	for _, e := range o.postRenderers {
+		renderer, err := postrenderer.NewPostRendererPlugin(o.settings, e.pluginName, e.args...)
+		if err != nil {
+			return err
+		}
+		renderers = append(renderers, renderer)
+	}
+
+	*o.renderer = postrenderer.NewChain(renderers...)
+	return nil
 }
 
-func (p *postRendererString) Type() string {
-	return "postRendererString"
+type postRendererNameFlag struct {
+	postRendererChainOptions *postRendererChainOptions
 }
 
-func (p *postRendererString) Set(val string) error {
+func (p *postRendererNameFlag) String() string {
+	names := make([]string, 0, len(p.postRendererChainOptions.postRenderers))
+	for _, renderer := range p.postRendererChainOptions.postRenderers {
+		names = append(names, renderer.pluginName)
+	}
+	return strings.Join(names, ",")
+}
+
+func (p *postRendererNameFlag) Type() string {
+	return "string"
+}
+
+func (p *postRendererNameFlag) Set(val string) error {
 	if val == "" {
 		return nil
 	}
-	if p.options.pluginName != "" {
-		return errors.New("cannot specify --post-renderer flag more than once")
+	p.postRendererChainOptions.postRenderers = append(p.postRendererChainOptions.postRenderers, &postRendererOptions{pluginName: val})
+	err := p.postRendererChainOptions.rebuildRendererChain()
+	return err
+}
+
+type postRendererArgsFlag struct {
+	options *postRendererChainOptions
+}
+
+// lastRenderer returns the most recently specified --post-renderer entry, to
+// which --post-renderer-args values are applied.
+func (p *postRendererArgsFlag) lastRenderer() (*postRendererOptions, error) {
+	if len(p.options.postRenderers) == 0 {
+		return nil, errors.New("--post-renderer-args must follow a --post-renderer flag")
 	}
-	p.options.pluginName = val
-	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)
+	return p.options.postRenderers[len(p.options.postRenderers)-1], nil
+}
+
+func (p *postRendererArgsFlag) String() string {
+	renderer, err := p.lastRenderer()
+	if err != nil {
+		return "[]"
+	}
+	return "[" + strings.Join(renderer.args, ",") + "]"
+}
+
+func (p *postRendererArgsFlag) Type() string {
+	return "args"
+}
+
+func (p *postRendererArgsFlag) Set(val string) error {
+	renderer, err := p.lastRenderer()
 	if err != nil {
 		return err
 	}
-	*p.options.renderer = pr
+
+	renderer.args = append(renderer.args, val)
+
+	err = p.options.rebuildRendererChain()
+	return err
+}
+
+func (p *postRendererArgsFlag) Append(val string) error {
+	renderer, err := p.lastRenderer()
+	if err != nil {
+		return err
+	}
+	renderer.args = append(renderer.args, val)
 	return nil
 }
 
-type postRendererArgsSlice struct {
-	options *postRendererOptions
+func (p *postRendererArgsFlag) Replace(val []string) error {
+	renderer, err := p.lastRenderer()
+	if err != nil {
+		return err
+	}
+	renderer.args = val
+	return nil
 }
 
-func (p *postRendererArgsSlice) String() string {
-	return "[" + strings.Join(p.options.args, ",") + "]"
-}
-
-func (p *postRendererArgsSlice) Type() string {
-	return "postRendererArgsSlice"
-}
-
-func (p *postRendererArgsSlice) Set(val string) error {
-	// a post-renderer defined by a user may accept empty arguments
-	p.options.args = append(p.options.args, val)
-
-	if p.options.pluginName == "" {
+func (p *postRendererArgsFlag) GetSlice() []string {
+	renderer, err := p.lastRenderer()
+	if err != nil {
 		return nil
 	}
-	// overwrite if already create PostRenderer by `post-renderer` flags
-	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)
-	if err != nil {
-		return err
-	}
-	*p.options.renderer = pr
-	return nil
-}
-
-func (p *postRendererArgsSlice) Append(val string) error {
-	p.options.args = append(p.options.args, val)
-	return nil
-}
-
-func (p *postRendererArgsSlice) Replace(val []string) error {
-	p.options.args = val
-	return nil
-}
-
-func (p *postRendererArgsSlice) GetSlice() []string {
-	return p.options.args
+	return renderer.args
 }
 
 func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirective) {
