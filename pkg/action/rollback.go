@@ -49,6 +49,9 @@ type Rollback struct {
 	//
 	// This should be used with caution.
 	ForceReplace bool
+	// FieldValidationDirective, when non-empty, overrides the Kubernetes client's
+	// default field validation directive for update operations.
+	FieldValidationDirective kube.FieldValidationDirective
 	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
 	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
 	ForceConflicts bool
@@ -225,13 +228,17 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return targetRelease, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
 	}
-	results, err := r.cfg.KubeClient.Update(
-		current,
-		target,
+	updateOpts := []kube.ClientUpdateOption{
 		kube.ClientUpdateOptionForceReplace(r.ForceReplace),
 		kube.ClientUpdateOptionServerSideApply(serverSideApply, r.ForceConflicts),
 		kube.ClientUpdateOptionThreeWayMergeForUnstructured(false),
-		kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(true),
+	}
+	if r.FieldValidationDirective != "" {
+		updateOpts = append(updateOpts, kube.ClientUpdateOptionFieldValidationDirective(r.FieldValidationDirective))
+	}
+	results, err := r.cfg.KubeClient.Update(current, target, updateOpts...)
+
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		r.cfg.Logger().Warn(msg)
