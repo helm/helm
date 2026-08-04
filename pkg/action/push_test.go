@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -57,10 +56,8 @@ func TestNewPushWithPlainHTTP(t *testing.T) {
 	assert.True(t, client.plainHTTP)
 }
 
-func TestNewPushWithPushOptWriter(t *testing.T) {
-	buf := new(bytes.Buffer)
-	client := NewPushWithOpts(WithPushOptWriter(buf))
-
-	assert.NotNil(t, client)
-	assert.Equal(t, buf, client.out)
+func TestPushRunNilConfigOCI(t *testing.T) {
+	p := NewPushWithOpts()
+	_, err := p.Run("testdata/testcharts/subchart-1.tgz", "oci://localhost:5000/test")
+	assert.EqualError(t, err, "missing action configuration: use WithPushConfig when constructing Push")
 }
