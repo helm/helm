@@ -279,7 +279,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 
 	tlsSrv2 := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Set("Content-Type", "text/plain")
-		rw.Write([]byte(srv2Resp))
+		_, _ = rw.Write([]byte(srv2Resp))
 	}))
 
 	tlsSrv2.TLS = tlsConf
@@ -390,7 +390,7 @@ func TestHTTPGetterTarDownload(t *testing.T) {
 		defer f.Close()
 
 		b := make([]byte, 512)
-		f.Read(b)
+		_, _ = f.Read(b)
 		// Get the file size
 		FileStat, _ := f.Stat()
 		FileSize := strconv.FormatInt(FileStat.Size(), 10)
@@ -400,8 +400,8 @@ func TestHTTPGetterTarDownload(t *testing.T) {
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Content-Length", FileSize)
 
-		f.Seek(0, 0)
-		io.Copy(w, f)
+		_, _ = f.Seek(0, 0)
+		_, _ = io.Copy(w, f)
 	}))
 
 	defer srv.Close()

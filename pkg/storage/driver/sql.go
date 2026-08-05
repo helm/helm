@@ -519,7 +519,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 	}
 
 	if _, err := transaction.Exec(insertQuery, args...); err != nil {
-		defer transaction.Rollback()
+		defer func() { _ = transaction.Rollback() }()
 
 		selectQuery, args, buildErr := s.statementBuilder.
 			Select(sqlReleaseTableKeyColumn).
@@ -559,18 +559,18 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 				v,
 			).ToSql()
 		if err != nil {
-			defer transaction.Rollback()
+			defer func() { _ = transaction.Rollback() }()
 			s.Logger().Debug("failed to build insert query", slog.Any("error", err))
 			return err
 		}
 
 		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
-			defer transaction.Rollback()
+			defer func() { _ = transaction.Rollback() }()
 			s.Logger().Debug("failed to write Labels", slog.Any("error", err))
 			return err
 		}
 	}
-	defer transaction.Commit()
+	defer func() { _ = transaction.Commit() }()
 
 	return nil
 }
@@ -646,10 +646,10 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 	release, err := decodeRelease(record.Body)
 	if err != nil {
 		s.Logger().Debug("failed to decode release", slog.String("key", key), slog.Any("error", err))
-		transaction.Rollback()
+		_ = transaction.Rollback()
 		return nil, err
 	}
-	defer transaction.Commit()
+	defer func() { _ = transaction.Commit() }()
 
 	deleteQuery, args, err := s.statementBuilder.
 		Delete(sqlReleaseTableName).

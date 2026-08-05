@@ -166,7 +166,9 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 // of this is invoking `helm template values.yaml mychart` which would otherwise produce a confusing error
 // if we didn't check for this.
 func EnsureArchive(name string, raw *os.File) error {
-	defer raw.Seek(0, 0) // reset read offset to allow archive loading to proceed.
+	defer func() {
+		_, _ = raw.Seek(0, 0) // reset read offset to allow archive loading to proceed.
+	}()
 
 	// Check the file format to give us a chance to provide the user with more actionable feedback.
 	buffer := make([]byte, 512)

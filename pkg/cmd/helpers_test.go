@@ -278,7 +278,7 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 			Use: "helm",
 		}
 		addDryRunFlag(cmd)
-		cmd.Flags().Parse([]string{"helm", tc.DryRunFlagArg})
+		require.NoError(t, cmd.Flags().Parse([]string{"helm", tc.DryRunFlagArg}))
 
 		t.Run(name, func(t *testing.T) {
 			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, tc.IsTemplate)

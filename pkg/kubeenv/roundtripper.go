@@ -59,7 +59,7 @@ func (rt *RetryingRoundTripper) roundTrip(req *http.Request, retry int, prevResp
 	var ke kubernetesError
 	r := bytes.NewReader(b)
 	err = json.NewDecoder(r).Decode(&ke)
-	r.Seek(0, io.SeekStart)
+	_, _ = r.Seek(0, io.SeekStart)
 	resp.Body = io.NopCloser(r)
 	if err != nil {
 		return resp, err

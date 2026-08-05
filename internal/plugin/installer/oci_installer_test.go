@@ -137,26 +137,26 @@ func mockOCIRegistryWithArtifactType(t *testing.T, pluginName string) (*httptest
 			w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("{}"))
+			_, _ = w.Write([]byte("{}"))
 
 		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/manifests/") && strings.Contains(r.URL.Path, pluginName):
 			// Return manifest
 			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
 			w.Header().Set("Docker-Content-Digest", manifestDigest)
 			w.WriteHeader(http.StatusOK)
-			w.Write(manifestData)
+			_, _ = w.Write(manifestData)
 
 		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blobs/"+layerDigest):
 			// Return layer data
 			w.Header().Set("Content-Type", "application/vnd.oci.image.layer.v1.tar")
 			w.WriteHeader(http.StatusOK)
-			w.Write(pluginData)
+			_, _ = w.Write(pluginData)
 
 		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blobs/"+configDigest):
 			// Return config data
 			w.Header().Set("Content-Type", "application/vnd.oci.empty.v1+json")
 			w.WriteHeader(http.StatusOK)
-			w.Write(configData)
+			_, _ = w.Write(configData)
 
 		default:
 			w.WriteHeader(http.StatusNotFound)

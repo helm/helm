@@ -316,7 +316,8 @@ icon: https://example.com/64x64.png
 	w.Close()
 
 	var text bytes.Buffer
-	io.Copy(&text, r)
+	_, err = io.Copy(&text, r)
+	require.NoError(t, err)
 	assert.Empty(t, text.String(), "Expected no message to Stderr, got %s", text.String())
 }
 

@@ -71,8 +71,8 @@ var (
 // namespaces, partial templates
 func TestTemplateIntegrationHappyPath(t *testing.T) {
 	// Rename file so it gets ignored by the linter
-	os.Rename(wrongTemplatePath, ignoredTemplatePath)
-	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
+	require.NoError(t, os.Rename(wrongTemplatePath, ignoredTemplatePath))
+	defer func() { _ = os.Rename(ignoredTemplatePath, wrongTemplatePath) }()
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
 	Templates(

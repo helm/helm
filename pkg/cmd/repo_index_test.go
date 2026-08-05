@@ -62,7 +62,7 @@ func TestRepoIndexCmd(t *testing.T) {
 
 	// Test with `--json`
 
-	c.ParseFlags([]string{"--json", "true"})
+	require.NoError(t, c.ParseFlags([]string{"--json", "true"}))
 	require.NoError(t, c.RunE(c, []string{dir}))
 
 	b, err = os.ReadFile(destIndex)
@@ -78,7 +78,7 @@ func TestRepoIndexCmd(t *testing.T) {
 	require.NoError(t, linkOrCopy("testdata/testcharts/reqtest-0.1.0.tgz", filepath.Join(dir, "reqtest-0.1.0.tgz")))
 	require.NoError(t, linkOrCopy("testdata/testcharts/compressedchart-0.3.0.tgz", filepath.Join(dir, "compressedchart-0.3.0.tgz")))
 
-	c.ParseFlags([]string{"--merge", destIndex})
+	require.NoError(t, c.ParseFlags([]string{"--merge", destIndex}))
 	require.NoError(t, c.RunE(c, []string{dir}))
 
 	index, err = repo.LoadIndexFile(destIndex)
@@ -95,7 +95,7 @@ func TestRepoIndexCmd(t *testing.T) {
 	// test that index.yaml gets generated on merge even when it doesn't exist
 	require.NoError(t, os.Remove(destIndex))
 
-	c.ParseFlags([]string{"--merge", destIndex})
+	require.NoError(t, c.ParseFlags([]string{"--merge", destIndex}))
 	require.NoError(t, c.RunE(c, []string{dir}))
 
 	index, err = repo.LoadIndexFile(destIndex)

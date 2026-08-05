@@ -69,7 +69,7 @@ func newDocsCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.docTypeString, "type", "markdown", "the type of documentation to generate (markdown, man, bash)")
 	f.BoolVar(&o.generateHeaders, "generate-headers", false, "generate standard headers for markdown files")
 
-	cmd.RegisterFlagCompletionFunc("type", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	_ = cmd.RegisterFlagCompletionFunc("type", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"bash", "man", "markdown"}, cobra.ShellCompDirectiveNoFileComp
 	})
 

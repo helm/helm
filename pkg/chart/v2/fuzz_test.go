@@ -30,7 +30,7 @@ func FuzzMetadataValidate(f *testing.F) {
 		if err != nil {
 			t.Skip()
 		}
-		md.Validate()
+		_ = md.Validate()
 	})
 }
 
@@ -43,6 +43,6 @@ func FuzzDependencyValidate(f *testing.F) {
 		if err != nil {
 			t.Skip()
 		}
-		d.Validate()
+		_ = d.Validate()
 	})
 }

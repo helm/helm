@@ -240,7 +240,7 @@ func initFakeRegistryTestServer() string {
 		switch r.URL.Path {
 		case "/v2/testrepo/image-index/manifests/0.1.0":
 			w.Header().Set("Content-Type", ocispec.MediaTypeImageIndex)
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
   "schemaVersion": 2,
   "mediaType": "application/vnd.oci.image.index.v1+json",
   "manifests": [
@@ -286,7 +286,7 @@ func initFakeRegistryTestServer() string {
 
 		case "/v2/testrepo/image-index/manifests/sha256:2771e37a12b7bcb2902456ecf3f29bf9ee11ec348e66e8eb322d9780ad7fc2df":
 			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
   "schemaVersion": 2,
   "mediaType": "application/vnd.oci.image.manifest.v1+json",
   "config": {
@@ -314,7 +314,7 @@ func initFakeRegistryTestServer() string {
 
 		case "/v2/testrepo/image-index/manifests/sha256:6b75187531c5e9b6a85c8946d5d82e4ef3801e051fbff338f382f3edfa60e3d2":
 			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
   "schemaVersion": 2,
   "mediaType": "application/vnd.oci.image.manifest.v1+json",
   "config": {
@@ -336,7 +336,7 @@ func initFakeRegistryTestServer() string {
 
 		case "/v2/testrepo/image-index/manifests/sha256:7fbdc47de56b45d092f8f419e8b6183adf0159d00e05574c01787231b54fe28f":
 			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
   "schemaVersion": 2,
   "config": {
     "mediaType": "application/vnd.cncf.helm.config.v1+json",
@@ -364,7 +364,7 @@ func initFakeRegistryTestServer() string {
 
 		case "/v2/testrepo/image-index/blobs/sha256:24de43e4a9f5ed9427479f27dd7bab9d158227abe593302a6f54d1e13a903ac3":
 			w.Header().Set("Content-Type", ConfigMediaType)
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
   "name":"signtest",
   "version":"0.1.0",
   "description":"A Helm chart for Kubernetes",
@@ -375,20 +375,20 @@ func initFakeRegistryTestServer() string {
 			data, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				_, _ = w.Write([]byte(err.Error()))
 			} else {
 				w.Header().Set("Content-Type", ProvLayerMediaType)
-				w.Write(data)
+				_, _ = w.Write(data)
 			}
 
 		case "/v2/testrepo/image-index/blobs/sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55":
 			data, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				_, _ = w.Write([]byte(err.Error()))
 			} else {
 				w.Header().Set("Content-Type", ChartLayerMediaType)
-				w.Write(data)
+				_, _ = w.Write(data)
 			}
 
 		default:

@@ -109,7 +109,9 @@ func (r *ReleaseTesting) Run(name string) (ri.Releaser, ExecuteShutdownFunc, err
 	shutdown, err := r.cfg.execHookWithDelayedShutdown(rel, release.HookTest, kube.StatusWatcherStrategy, r.WaitOptions, r.Timeout, serverSideApply)
 	if err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
-		r.cfg.Releases.Update(reli)
+		if updateErr := r.cfg.Releases.Update(reli); updateErr != nil {
+			return reli, shutdown, errors.Join(err, updateErr)
+		}
 		return reli, shutdown, err
 	}
 

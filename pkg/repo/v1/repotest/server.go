@@ -214,7 +214,9 @@ func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServ
 		fn(cfg)
 	}
 
-	go srv.ListenAndServe()
+	go func() {
+		_ = srv.ListenAndServe()
+	}()
 
 	credentialsFile := filepath.Join(srv.Dir, "config.json")
 

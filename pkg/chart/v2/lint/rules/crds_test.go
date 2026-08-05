@@ -42,23 +42,23 @@ func TestInvalidCrdsDir(t *testing.T) {
 func TestCrdWithEmptyDocument(t *testing.T) {
 	chartDir := t.TempDir()
 
-	os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte(
+	require.NoError(t, os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte(
 		`apiVersion: v1
 name: test
 version: 0.1.0
-`), 0o644)
+`), 0o644))
 
 	// CRD with comments before --- (creates empty document)
 	crdsDir := filepath.Join(chartDir, "crds")
-	os.Mkdir(crdsDir, 0o755)
-	os.WriteFile(filepath.Join(crdsDir, "test.yaml"), []byte(
+	require.NoError(t, os.Mkdir(crdsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(crdsDir, "test.yaml"), []byte(
 		`# Comments create empty document
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: test.example.io
-`), 0o644)
+`), 0o644))
 
 	linter := support.Linter{ChartDir: chartDir}
 	Crds(&linter)
