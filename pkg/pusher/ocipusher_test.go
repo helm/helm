@@ -24,6 +24,8 @@ import (
 	"strings"
 	"testing"
 
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/registry"
 )
 
@@ -581,6 +583,76 @@ func TestBuildOCIReference(t *testing.T) {
 			}
 			if relax != tt.wantRelax {
 				t.Errorf("buildOCIReference relaxStrictMode = %t, want %t", relax, tt.wantRelax)
+			}
+		})
+	}
+}
+
+// TestOCIPusher_Push_NormalizeVersion checks that push() acts on the values
+// returned by buildOCIReference: it must relax the registry client's strict mode
+// whenever the normalized tag no longer matches the raw chart version.
+//
+// The registry client performs its strict mode check before contacting the
+// registry, so an unreachable host is enough to observe the behaviour: if strict
+// mode was left enabled the push fails with the strict mode error, otherwise it
+// gets as far as the network and fails to connect.
+func TestOCIPusher_Push_NormalizeVersion(t *testing.T) {
+	// Port 1 is not a registry, so a push that clears the strict mode check
+	// fails while connecting rather than being rejected locally.
+	const href = "oci://127.0.0.1:1/charts"
+	const strictModeError = "strict mode enabled"
+
+	tests := []struct {
+		name                string
+		version             string
+		ociNormalizeVersion bool
+	}{
+		{
+			name:                "normalize disabled tags with the raw version",
+			version:             "v1.2.3",
+			ociNormalizeVersion: false,
+		},
+		{
+			name:                "normalize canonicalizes the tag and relaxes strict mode",
+			version:             "v1.2.3",
+			ociNormalizeVersion: true,
+		},
+		{
+			name:                "normalize completes a short version and relaxes strict mode",
+			version:             "1.2",
+			ociNormalizeVersion: true,
+		},
+		{
+			name:                "normalize leaves a canonical version untouched",
+			version:             "1.2.3",
+			ociNormalizeVersion: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chartPath, err := chartutil.Save(&chart.Chart{
+				Metadata: &chart.Metadata{
+					APIVersion: chart.APIVersionV2,
+					Name:       "normalizechart",
+					Version:    tt.version,
+				},
+			}, t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			pusher, err := NewOCIPusher(WithOCINormalizeVersion(tt.ociNormalizeVersion))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = pusher.Push(chartPath, href)
+			if err == nil {
+				t.Fatalf("Expected push to %s to fail", href)
+			}
+			if strings.Contains(err.Error(), strictModeError) {
+				t.Errorf("Expected push to clear the registry client's strict mode check, got %q", err.Error())
 			}
 		})
 	}
