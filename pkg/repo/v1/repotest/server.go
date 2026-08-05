@@ -17,6 +17,7 @@ package repotest
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -215,7 +216,9 @@ func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServ
 	}
 
 	go func() {
-		_ = srv.ListenAndServe()
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			t.Errorf("OCI test registry server failed: %v", err)
+		}
 	}()
 
 	credentialsFile := filepath.Join(srv.Dir, "config.json")

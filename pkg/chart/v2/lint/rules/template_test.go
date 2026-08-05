@@ -72,7 +72,9 @@ var (
 func TestTemplateIntegrationHappyPath(t *testing.T) {
 	// Rename file so it gets ignored by the linter
 	require.NoError(t, os.Rename(wrongTemplatePath, ignoredTemplatePath))
-	defer func() { _ = os.Rename(ignoredTemplatePath, wrongTemplatePath) }()
+	defer func() {
+		assert.NoError(t, os.Rename(ignoredTemplatePath, wrongTemplatePath))
+	}()
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
 	Templates(

@@ -489,6 +489,8 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 		return fmt.Errorf("error beginning transaction: %w", err)
 	}
 
+	defer func() { _ = transaction.Rollback() }()
+
 	insertQuery, args, err := s.statementBuilder.
 		Insert(sqlReleaseTableName).
 		Columns(
@@ -519,8 +521,6 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 	}
 
 	if _, err := transaction.Exec(insertQuery, args...); err != nil {
-		defer func() { _ = transaction.Rollback() }()
-
 		selectQuery, args, buildErr := s.statementBuilder.
 			Select(sqlReleaseTableKeyColumn).
 			From(sqlReleaseTableName).
@@ -559,20 +559,17 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 				v,
 			).ToSql()
 		if err != nil {
-			defer func() { _ = transaction.Rollback() }()
 			s.Logger().Debug("failed to build insert query", slog.Any("error", err))
 			return err
 		}
 
 		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
-			defer func() { _ = transaction.Rollback() }()
 			s.Logger().Debug("failed to write Labels", slog.Any("error", err))
 			return err
 		}
 	}
-	defer func() { _ = transaction.Commit() }()
 
-	return nil
+	return transaction.Commit()
 }
 
 // Update updates a release.
@@ -624,6 +621,9 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		s.Logger().Debug("failed to start SQL transaction", slog.Any("error", err))
 		return nil, fmt.Errorf("error beginning transaction: %w", err)
 	}
+	// Roll back the transaction on any early return. After a successful
+	// Commit this is a no-op that returns sql.ErrTxDone, which we ignore.
+	defer func() { _ = transaction.Rollback() }()
 
 	selectQuery, args, err := s.statementBuilder.
 		Select(sqlReleaseTableBodyColumn).
@@ -646,10 +646,8 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 	release, err := decodeRelease(record.Body)
 	if err != nil {
 		s.Logger().Debug("failed to decode release", slog.String("key", key), slog.Any("error", err))
-		_ = transaction.Rollback()
 		return nil, err
 	}
-	defer func() { _ = transaction.Commit() }()
 
 	deleteQuery, args, err := s.statementBuilder.
 		Delete(sqlReleaseTableName).
@@ -664,7 +662,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 	_, err = transaction.Exec(deleteQuery, args...)
 	if err != nil {
 		s.Logger().Debug("failed perform delete query", slog.Any("error", err))
-		return release, err
+		return nil, err
 	}
 
 	if release.Labels, err = s.getReleaseCustomLabels(key, s.namespace); err != nil {
@@ -685,8 +683,17 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		s.Logger().Debug("failed to build delete Labels query", slog.Any("error", err))
 		return nil, err
 	}
-	_, err = transaction.Exec(deleteCustomLabelsQuery, args...)
-	return release, err
+	if _, err = transaction.Exec(deleteCustomLabelsQuery, args...); err != nil {
+		s.Logger().Debug("failed to perform delete Labels query", slog.Any("error", err))
+		return nil, err
+	}
+
+	if err := transaction.Commit(); err != nil {
+		s.Logger().Debug("failed to commit delete transaction", slog.Any("error", err))
+		return nil, err
+	}
+
+	return release, nil
 }
 
 // Get release custom labels from database
