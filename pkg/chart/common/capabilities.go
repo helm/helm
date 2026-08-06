@@ -34,6 +34,8 @@ const (
 	kubeVersionMinorTesting = 20
 )
 
+//go:generate go run helm.sh/helm/v4/internal/cmd/gendefaultversions -output default_versions.go
+
 var (
 	DefaultCapabilities = func() *Capabilities {
 		caps, err := makeDefaultCapabilities()

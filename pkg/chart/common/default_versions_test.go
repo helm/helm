@@ -16,6 +16,7 @@ limitations under the License.
 package common
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,6 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -33,17 +33,23 @@ func TestDefaultVersionSetMatchesScheme(t *testing.T) {
 	require.NoError(t, apiextensionsv1beta1.AddToScheme(scheme))
 	require.NoError(t, apiextensionsv1.AddToScheme(scheme))
 
-	defaultVersionsByGroup := make(map[string][]string)
-	for _, apiVersion := range DefaultVersionSet {
-		groupVersion, err := schema.ParseGroupVersion(apiVersion)
-		require.NoErrorf(t, err, "invalid API version %q in DefaultVersionSet", apiVersion)
-		defaultVersionsByGroup[groupVersion.Group] = append(defaultVersionsByGroup[groupVersion.Group], groupVersion.Version)
-	}
-
-	schemeVersionsByGroup := make(map[string][]string)
+	groupSet := make(map[string]struct{})
 	for _, groupVersion := range scheme.PrioritizedVersionsAllGroups() {
-		schemeVersionsByGroup[groupVersion.Group] = append(schemeVersionsByGroup[groupVersion.Group], groupVersion.Version)
+		groupSet[groupVersion.Group] = struct{}{}
+	}
+	groups := make([]string, 0, len(groupSet))
+	for group := range groupSet {
+		groups = append(groups, group)
+	}
+	slices.Sort(groups)
+
+	schemeVersions := make(VersionSet, 0)
+	for _, group := range groups {
+		for _, groupVersion := range scheme.PrioritizedVersionsForGroup(group) {
+			schemeVersions = append(schemeVersions, groupVersion.String())
+		}
 	}
 
-	require.Equal(t, schemeVersionsByGroup, defaultVersionsByGroup, "DefaultVersionSet must stay in sync with the Kubernetes scheme")
+	require.Equal(t, schemeVersions, DefaultVersionSet,
+		"DefaultVersionSet must stay in sync with the Kubernetes scheme; run `go generate ./pkg/chart/common`")
 }
