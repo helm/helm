@@ -18,6 +18,7 @@ package repo
 
 import (
 	"bytes"
+	"compress/gzip"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -122,6 +123,47 @@ func TestConcurrencyDownloadIndex(t *testing.T) {
 		})
 	}
 	wg.Wait()
+}
+
+func TestDownloadIndexFileWithGzipContentEncoding(t *testing.T) {
+	fileBytes, err := os.ReadFile("testdata/local-index.yaml")
+	require.NoError(t, err)
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "gzip", r.Header.Get("Accept-Encoding"))
+
+		w.Header().Set("Content-Encoding", "gzip")
+		gzipWriter := gzip.NewWriter(w)
+		defer gzipWriter.Close()
+
+		_, err := gzipWriter.Write(fileBytes)
+		require.NoError(t, err)
+	})
+
+	srv, err := startLocalServerForTests(handler)
+	require.NoError(t, err)
+	defer srv.Close()
+
+	r, err := NewChartRepository(&Entry{
+		Name: testRepo,
+		URL:  srv.URL,
+	}, getter.All(&cli.EnvSettings{}))
+	require.NoError(t, err)
+
+	idx, err := r.DownloadIndexFile()
+	require.NoError(t, err)
+
+	i, err := LoadIndexFile(idx)
+	require.NoError(t, err)
+	verifyLocalIndex(t, i)
+
+	writtenIndex, err := os.ReadFile(idx)
+	require.NoError(t, err)
+	assert.Equal(t, fileBytes, writtenIndex)
+	assert.NotContains(t, string(writtenIndex), "\x1f\x8b")
+	assert.NotEmpty(t, writtenIndex)
+	assert.Equal(t, filepath.Base(idx), helmpath.CacheIndexFile(r.Config.Name))
+	assert.Equal(t, filepath.Dir(idx), r.CachePath)
 }
 
 // startLocalServerForTests Start the local helm server
