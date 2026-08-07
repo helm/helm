@@ -56,7 +56,7 @@ func mockSubprocessCLIPluginErrorExit(t *testing.T, pluginName string, exitCode 
 
 	data, err := yaml.Marshal(md)
 	require.NoError(t, err)
-	os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), data, 0o644)
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), data, 0o644))
 
 	return &SubprocessPluginRuntime{
 		metadata:      md,

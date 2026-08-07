@@ -32,7 +32,7 @@ import (
 func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 	t.Helper()
 	storage := storageFixture()
-	storage.Create(&release.Release{
+	require.NoError(t, storage.Create(&release.Release{
 		Name: "myrelease",
 		Info: &release.Info{Status: common.StatusDeployed},
 		Chart: &chart.Chart{
@@ -42,7 +42,7 @@ func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 			},
 		},
 		Version: 1,
-	})
+	}))
 
 	testcmd := fmt.Sprintf("__complete %s ''", cmdName)
 	_, out, err := executeActionCommandC(storage, testcmd)

@@ -132,7 +132,7 @@ func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 			return nil, err
 		}
 		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.Write(fileBytes)
+			_, _ = w.Write(fileBytes)
 		})
 	}
 
@@ -147,7 +147,7 @@ func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error)
 			return nil, err
 		}
 		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.Write(fileBytes)
+			_, _ = w.Write(fileBytes)
 		})
 	}
 

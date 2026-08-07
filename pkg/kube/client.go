@@ -1177,7 +1177,9 @@ func patchResourceClientSide(original runtime.Object, target *resource.Info, thr
 		return fmt.Errorf("cannot patch %q with kind %s: %w", target.Name, kind, err)
 	}
 
-	target.Refresh(obj, true)
+	if err := target.Refresh(obj, true); err != nil {
+		return fmt.Errorf("cannot refresh %q with kind %s: %w", target.Name, kind, err)
+	}
 
 	return nil
 }

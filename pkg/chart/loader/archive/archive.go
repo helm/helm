@@ -165,13 +165,20 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 // Sometimes users will provide a values.yaml for an argument where a chart is expected. One common occurrence
 // of this is invoking `helm template values.yaml mychart` which would otherwise produce a confusing error
 // if we didn't check for this.
-func EnsureArchive(name string, raw *os.File) error {
-	defer raw.Seek(0, 0) // reset read offset to allow archive loading to proceed.
+func EnsureArchive(name string, raw *os.File) (err error) {
+	defer func() {
+		// Reset the read offset so archive loading can proceed. If the rewind
+		// fails and the check itself succeeded, surface the seek error rather
+		// than letting callers hit confusing follow-on errors.
+		if _, seekErr := raw.Seek(0, 0); seekErr != nil && err == nil {
+			err = fmt.Errorf("file '%s' cannot be reset: %w", name, seekErr)
+		}
+	}()
 
 	// Check the file format to give us a chance to provide the user with more actionable feedback.
 	buffer := make([]byte, 512)
-	_, err := raw.Read(buffer)
-	if err != nil && err != io.EOF {
+	_, err = raw.Read(buffer)
+	if err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("file '%s' cannot be read: %w", name, err)
 	}
 

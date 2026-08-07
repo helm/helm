@@ -142,7 +142,9 @@ func (c *Client) SearchWithContext(ctx context.Context, term string) ([]SearchRe
 
 	result := &searchResponse{}
 
-	json.NewDecoder(res.Body).Decode(result)
+	if err := json.NewDecoder(res.Body).Decode(result); err != nil {
+		return nil, err
+	}
 
 	return result.Data, nil
 }

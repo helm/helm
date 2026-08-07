@@ -244,7 +244,7 @@ func TestUpgradeWithValue(t *testing.T) {
 
 	store := storageFixture()
 
-	store.Create(relMock(releaseName, 3, ch))
+	require.NoError(t, store.Create(relMock(releaseName, 3, ch)))
 
 	cmd := fmt.Sprintf("upgrade %s --set favoriteDrink=tea '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
@@ -266,7 +266,7 @@ func TestUpgradeWithStringValue(t *testing.T) {
 
 	store := storageFixture()
 
-	store.Create(relMock(releaseName, 3, ch))
+	require.NoError(t, store.Create(relMock(releaseName, 3, ch)))
 
 	cmd := fmt.Sprintf("upgrade %s --set-string favoriteDrink=coffee '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
@@ -288,7 +288,7 @@ func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
 
 	store := storageFixture()
 
-	store.Create(relMock(releaseName, 1, ch))
+	require.NoError(t, store.Create(relMock(releaseName, 1, ch)))
 
 	cmd := fmt.Sprintf("upgrade %s -i --render-subchart-notes '%s'", releaseName, "testdata/testcharts/chart-with-subchart-notes")
 	_, _, err := executeActionCommandC(store, cmd)
@@ -311,7 +311,7 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 
 	store := storageFixture()
 
-	store.Create(relMock(releaseName, 3, ch))
+	require.NoError(t, store.Create(relMock(releaseName, 3, ch)))
 
 	cmd := fmt.Sprintf("upgrade %s --values testdata/testcharts/upgradetest/values.yaml '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
@@ -333,7 +333,7 @@ func TestUpgradeWithValuesFromStdin(t *testing.T) {
 
 	store := storageFixture()
 
-	store.Create(relMock(releaseName, 3, ch))
+	require.NoError(t, store.Create(relMock(releaseName, 3, ch)))
 
 	in, err := os.Open("testdata/testcharts/upgradetest/values.yaml")
 	require.NoError(t, err)

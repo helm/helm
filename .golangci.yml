@@ -28,6 +28,7 @@ linters:
     - contextcheck
     - depguard
     - dupl
+    - errcheck
     - errorlint
     - exhaustive
     - fatcontext

@@ -208,7 +208,7 @@ func TestReadFile(t *testing.T) {
 				testData := []byte("stdin test data")
 				go func() {
 					defer w.Close()
-					w.Write(testData)
+					_, _ = w.Write(testData)
 				}()
 
 				// Test the function

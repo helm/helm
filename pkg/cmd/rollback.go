@@ -92,7 +92,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.Description, "description", "", fmt.Sprintf("add a custom description for the rollback (max %d characters)", action.MaxDescriptionLength))
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
-	f.MarkDeprecated("force", "use --force-replace instead")
+	_ = f.MarkDeprecated("force", "use --force-replace instead")
 	f.BoolVar(&client.ForceConflicts, "force-conflicts", false, "if set server-side apply will force changes against conflicts")
 	f.StringVar(&client.ServerSideApply, "server-side", "auto", "must be \"true\", \"false\" or \"auto\". Object updates run in the server instead of the client (\"auto\" defaults the value from the previous chart release's method)")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during rollback")

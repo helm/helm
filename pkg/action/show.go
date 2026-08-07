@@ -107,7 +107,9 @@ func (s *Show) Run(chartpath string) (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("error parsing jsonpath %s: %w", s.JSONPathTemplate, err)
 			}
-			printer.Execute(&out, s.chart.Values)
+			if err := printer.Execute(&out, s.chart.Values); err != nil {
+				return "", fmt.Errorf("error executing jsonpath %s: %w", s.JSONPathTemplate, err)
+			}
 		} else {
 			for _, f := range s.chart.Raw {
 				if f.Name == chartutil.ValuesfileName {

@@ -257,7 +257,7 @@ func TestDownloadIndexFile(t *testing.T) {
 		require.NoError(t, err)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.RawPath == chartRepoURLPath+"/index.yaml" {
-				w.Write(fileBytes)
+				_, _ = w.Write(fileBytes)
 			}
 		})
 		srv, err := startLocalServerForTests(handler)
@@ -444,7 +444,7 @@ func TestIndexWrite(t *testing.T) {
 	require.NoError(t, i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"))
 	dir := t.TempDir()
 	testpath := filepath.Join(dir, "test")
-	i.WriteFile(testpath, 0o600)
+	require.NoError(t, i.WriteFile(testpath, 0o600))
 
 	got, err := os.ReadFile(testpath)
 	require.NoError(t, err)
@@ -456,7 +456,7 @@ func TestIndexJSONWrite(t *testing.T) {
 	require.NoError(t, i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"))
 	dir := t.TempDir()
 	testpath := filepath.Join(dir, "test")
-	i.WriteJSONFile(testpath, 0o600)
+	require.NoError(t, i.WriteJSONFile(testpath, 0o600))
 
 	got, err := os.ReadFile(testpath)
 	require.NoError(t, err)

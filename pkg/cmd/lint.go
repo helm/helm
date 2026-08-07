@@ -66,7 +66,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 			if client.WithSubcharts {
 				for _, p := range paths {
-					filepath.Walk(filepath.Join(p, "charts"), func(path string, info os.FileInfo, _ error) error {
+					if err := filepath.Walk(filepath.Join(p, "charts"), func(path string, info os.FileInfo, _ error) error {
 						if info != nil {
 							if info.Name() == "Chart.yaml" {
 								paths = append(paths, filepath.Dir(path))
@@ -75,7 +75,9 @@ func newLintCmd(out io.Writer) *cobra.Command {
 							}
 						}
 						return nil
-					})
+					}); err != nil {
+						return err
+					}
 				}
 			}
 
