@@ -85,7 +85,10 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.KubeVersion = parsedKubeVersion
 			}
 
-			registryClient, err := newRegistryClient(out, client.CertFile, client.KeyFile, client.CaFile,
+			// Registry client diagnostic messages (e.g. "Pulled:", "Digest:") must not
+			// be written to the rendered manifest stream, otherwise they corrupt the
+			// YAML that `helm template` prints to stdout. Route them to stderr instead.
+			registryClient, err := newRegistryClient(cmd.ErrOrStderr(), client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
