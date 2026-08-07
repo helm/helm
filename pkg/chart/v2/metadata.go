@@ -17,11 +17,23 @@ package v2
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode"
 
 	"github.com/Masterminds/semver/v3"
 )
+
+// KubeFeatureGateComponents are the Kubernetes component names accepted as
+// top-level keys in Metadata.KubeFeatureGates.
+var KubeFeatureGateComponents = []string{
+	"apiserver",
+	"kubelet",
+	"scheduler",
+	"controllerManager",
+	"cloudControllerManager",
+	"kubeProxy",
+}
 
 // Maintainer describes a Chart maintainer.
 type Maintainer struct {
@@ -77,6 +89,8 @@ type Metadata struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// KubeVersion is a SemVer constraint specifying the version of Kubernetes required.
 	KubeVersion string `json:"kubeVersion,omitempty"`
+	// KubeFeatureGates specifies Kubernetes feature gates required for this chart.
+	KubeFeatureGates map[string]map[string]bool `json:"kubeFeatureGates,omitempty"`
 	// Dependencies are a list of dependencies for a chart.
 	Dependencies []*Dependency `json:"dependencies,omitempty"`
 	// Specifies the chart type: application or library
@@ -127,6 +141,17 @@ func (md *Metadata) Validate() error {
 	}
 	if !isValidChartType(md.Type) {
 		return ValidationError("chart.metadata.type must be application or library")
+	}
+
+	for component, gates := range md.KubeFeatureGates {
+		if !slices.Contains(KubeFeatureGateComponents, component) {
+			return ValidationErrorf("chart.metadata.kubeFeatureGates has unknown component %q, must be one of %s", component, strings.Join(KubeFeatureGateComponents, ", "))
+		}
+		for gate := range gates {
+			if gate == "" {
+				return ValidationErrorf("chart.metadata.kubeFeatureGates.%s has an empty feature gate name", component)
+			}
+		}
 	}
 
 	for _, m := range md.Maintainers {
