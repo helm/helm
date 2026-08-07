@@ -94,12 +94,20 @@ func WithStatusComputeWorkers(n int) WaitOption {
 	}
 }
 
+// WithCustomReadinessStatusReader enables custom readiness evaluation while waiting.
+func WithCustomReadinessStatusReader() WaitOption {
+	return func(wo *waitOptions) {
+		wo.enableCustomReadinessStatusReader = true
+	}
+}
+
 type waitOptions struct {
-	ctx                  context.Context
-	watchUntilReadyCtx   context.Context
-	waitCtx              context.Context
-	waitWithJobsCtx      context.Context
-	waitForDeleteCtx     context.Context
-	statusReaders        []engine.StatusReader
-	statusComputeWorkers int
+	ctx                               context.Context
+	watchUntilReadyCtx                context.Context
+	waitCtx                           context.Context
+	waitWithJobsCtx                   context.Context
+	waitForDeleteCtx                  context.Context
+	statusReaders                     []engine.StatusReader
+	statusComputeWorkers              int
+	enableCustomReadinessStatusReader bool
 }
