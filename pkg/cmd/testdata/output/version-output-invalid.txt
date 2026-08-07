@@ -1,0 +1,1 @@
+Error: invalid output format: "invalid" (valid formats: "go", "human")
