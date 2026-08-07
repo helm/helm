@@ -162,10 +162,18 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	// We do these one file at a time in the order they were read.
 	totalItems := []*resource.Info{}
 	for _, obj := range crds {
+		if obj.File == nil {
+			return fmt.Errorf("failed to install CRD %s: file is empty", obj.Name)
+		}
+
 		// Read in the resources
 		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
 		if err != nil {
 			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+		}
+
+		if len(res) == 0 {
+			return fmt.Errorf("failed to install CRD %s: resources are empty", obj.Name)
 		}
 
 		// Send them to Kube
