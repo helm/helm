@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -419,27 +420,31 @@ foo:
 	}
 }
 
-
 func TestLoadValuesEOFBoundary(t *testing.T) {
 	// Reproduces #32506: a single logical line whose length is a multiple of
 	// bufio's default buffer (4096) and has no trailing newline used to be
 	// dropped entirely by YAMLReader, yielding empty values.
-	prefix := []byte(`{"foo":"`)
-	suffix := []byte(`"}`)
-	pad := 4096 - len(prefix) - len(suffix)
-	data := make([]byte, 0, 4096)
-	data = append(data, prefix...)
-	data = append(data, bytes.Repeat([]byte("x"), pad)...)
-	data = append(data, suffix...)
-	if len(data) != 4096 {
-		t.Fatalf("test setup: want data length 4096, got %d", len(data))
-	}
+	// Also cover 8192 (2x buffer) so we do not only hit the single-buffer case.
+	for _, size := range []int{4096, 8192} {
+		t.Run(fmt.Sprintf("size_%d", size), func(t *testing.T) {
+			prefix := []byte(`{"foo":"`)
+			suffix := []byte(`"}`)
+			pad := size - len(prefix) - len(suffix)
+			data := make([]byte, 0, size)
+			data = append(data, prefix...)
+			data = append(data, bytes.Repeat([]byte("x"), pad)...)
+			data = append(data, suffix...)
+			if len(data) != size {
+				t.Fatalf("test setup: want data length %d, got %d", size, len(data))
+			}
 
-	values, err := LoadValues(bytes.NewReader(data))
-	require.NoError(t, err)
-	assert.Equal(t, map[string]any{
-		"foo": string(bytes.Repeat([]byte("x"), pad)),
-	}, values)
+			values, err := LoadValues(bytes.NewReader(data))
+			require.NoError(t, err)
+			assert.Equal(t, map[string]any{
+				"foo": string(bytes.Repeat([]byte("x"), pad)),
+			}, values)
+		})
+	}
 }
 
 func TestMergeValuesV3(t *testing.T) {
