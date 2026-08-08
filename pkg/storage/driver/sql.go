@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -525,7 +526,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 		return err
 	}
 
-	if _, err := transaction.Exec(insertQuery, args...); err != nil {
+	if _, err := transaction.ExecContext(context.Background(), insertQuery, args...); err != nil {
 		// The failed statement leaves the transaction in an aborted state -
 		// PostgreSQL rejects every subsequent statement on it with "current
 		// transaction is aborted" - so roll it back before checking whether the
@@ -577,7 +578,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 			return err
 		}
 
-		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
+		if _, err := transaction.ExecContext(context.Background(), insertLabelsQuery, args...); err != nil {
 			defer transaction.Rollback()
 			s.Logger().Debug("failed to write Labels", slog.Any("error", err))
 			return err
@@ -622,7 +623,7 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		return err
 	}
 
-	if _, err := s.db.Exec(query, args...); err != nil {
+	if _, err := s.db.ExecContext(context.Background(), query, args...); err != nil {
 		s.Logger().Debug("failed to update release in SQL database", slog.String("key", key), slog.Any("error", err))
 		return err
 	}
@@ -678,7 +679,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		return nil, err
 	}
 
-	_, err = transaction.Exec(deleteQuery, args...)
+	_, err = transaction.ExecContext(context.Background(), deleteQuery, args...)
 	if err != nil {
 		s.Logger().Debug("failed perform delete query", slog.Any("error", err))
 		return release, err
@@ -702,7 +703,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		s.Logger().Debug("failed to build delete Labels query", slog.Any("error", err))
 		return nil, err
 	}
-	_, err = transaction.Exec(deleteCustomLabelsQuery, args...)
+	_, err = transaction.ExecContext(context.Background(), deleteCustomLabelsQuery, args...)
 	return release, err
 }
 
