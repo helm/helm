@@ -419,6 +419,29 @@ foo:
 	}
 }
 
+
+func TestLoadValuesEOFBoundary(t *testing.T) {
+	// Reproduces #32506: a single logical line whose length is a multiple of
+	// bufio's default buffer (4096) and has no trailing newline used to be
+	// dropped entirely by YAMLReader, yielding empty values.
+	prefix := []byte(`{"foo":"`)
+	suffix := []byte(`"}`)
+	pad := 4096 - len(prefix) - len(suffix)
+	data := make([]byte, 0, 4096)
+	data = append(data, prefix...)
+	data = append(data, bytes.Repeat([]byte("x"), pad)...)
+	data = append(data, suffix...)
+	if len(data) != 4096 {
+		t.Fatalf("test setup: want data length 4096, got %d", len(data))
+	}
+
+	values, err := LoadValues(bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{
+		"foo": string(bytes.Repeat([]byte("x"), pad)),
+	}, values)
+}
+
 func TestMergeValuesV3(t *testing.T) {
 	nestedMap := map[string]any{
 		"foo": "bar",
