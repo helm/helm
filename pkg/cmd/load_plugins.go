@@ -191,6 +191,16 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		switch a := args[i]; a {
 		case "--debug":
 			known = append(known, a)
+		case "--kube-insecure-skip-tls-verify":
+			known = append(known, a)
+			// Boolean flags do not require a value. Only consume the next
+			// argument when it is an explicit boolean value.
+			if i+1 < len(args) {
+				if _, err := strconv.ParseBool(args[i+1]); err == nil {
+					known[len(known)-1] += "=" + args[i+1]
+					i++
+				}
+			}
 		case isKnown(a):
 			known = append(known, a)
 			i++
