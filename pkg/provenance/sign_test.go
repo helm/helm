@@ -143,6 +143,18 @@ func TestLoadKeyRing(t *testing.T) {
 	}
 }
 
+func TestLoadKeyRingArmored(t *testing.T) {
+	k, err := loadKeyRing(testPubfile + ".asc")
+	require.NoError(t, err)
+
+	assert.LessOrEqualf(t, len(k), 1, "Expected 1, got %d", len(k))
+
+	for _, e := range k {
+		ii, ok := e.Identities[testKeyName]
+		assert.Truef(t, ok, "Expected %s in %v", testKeyName, ii)
+	}
+}
+
 func TestDigest(t *testing.T) {
 	f, err := os.Open(testChartfile)
 	require.NoError(t, err)
