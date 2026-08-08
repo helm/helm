@@ -542,7 +542,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 			ToSql()
 		if buildErr != nil {
 			s.Logger().Debug("failed to build select query", "error", buildErr)
-			return err
+			return fmt.Errorf("failed to create release %q: %w", key, err)
 		}
 
 		var record SQLReleaseWrapper
@@ -552,7 +552,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 		}
 
 		s.Logger().Debug("failed to store release in SQL database", slog.String("key", key), slog.Any("error", err))
-		return err
+		return fmt.Errorf("failed to create release %q: %w", key, err)
 	}
 
 	// Filtering labels before insert cause in SQL storage driver system releases are stored in separate columns of release table

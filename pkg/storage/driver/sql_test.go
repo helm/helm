@@ -384,6 +384,63 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
 }
 
+func TestSqlCreateInsertFailureNotAlreadyExists(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	body, _ := encodeRelease(rel)
+
+	insertQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+
+	// The insert fails for a reason unrelated to a duplicate key, e.g. the
+	// database is unreachable.
+	insertErr := errors.New("connection refused")
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(insertQuery)).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp()).
+		WillReturnError(insertErr)
+
+	selectQuery := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.ExpectRollback()
+
+	// No row comes back, so the release does not already exist and the original
+	// insert error has to be surfaced instead of ErrReleaseExists.
+	mock.
+		ExpectQuery(selectQuery).
+		WithArgs(key, namespace).
+		WillReturnError(sql.ErrNoRows)
+
+	err := sqlDriver.Create(key, rel)
+	require.Errorf(t, err, "expected Create to fail when the insert fails with key %s", key)
+	require.NotErrorIs(t, err, ErrReleaseExists)
+	require.ErrorIs(t, err, insertErr)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
 func TestSqlUpdate(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
