@@ -1,0 +1,8 @@
+apiVersion: v3
+name: leaf
+version: 0.1.0
+dependencies:
+  - name: util
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: util.enabled
