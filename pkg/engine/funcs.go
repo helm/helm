@@ -19,6 +19,9 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"math"
+	"reflect"
 	"strings"
 	"text/template"
 
@@ -27,6 +30,8 @@ import (
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
+
+const maxSafeYAMLInteger = (1 << 53) - 1
 
 // funcMap returns a mapping of all of the functions that Engine has.
 //
@@ -95,13 +100,67 @@ func toYAMLPretty(v interface{}) string {
 	var data bytes.Buffer
 	encoder := goYaml.NewEncoder(&data)
 	encoder.SetIndent(2)
-	err := encoder.Encode(v)
+	closeEncoder := func() error {
+		if encoder == nil {
+			return nil
+		}
+		err := encoder.Close()
+		encoder = nil
+		return err
+	}
+	defer func() {
+		_ = closeEncoder()
+	}()
 
-	if err != nil {
+	if err := encoder.Encode(normalizeYAMLScalars(v)); err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	if err := closeEncoder(); err != nil {
 		// Swallow errors inside of a template.
 		return ""
 	}
 	return strings.TrimSuffix(data.String(), "\n")
+}
+
+func normalizeYAMLScalars(v any) any {
+	switch typedValue := v.(type) {
+	case map[string]any:
+		normalized := make(map[string]any, len(typedValue))
+		for key, value := range typedValue {
+			normalized[key] = normalizeYAMLScalars(value)
+		}
+		return normalized
+	case map[any]any:
+		normalized := make(map[any]any, len(typedValue))
+		for key, value := range typedValue {
+			normalized[normalizeYAMLMapKey(key)] = normalizeYAMLScalars(value)
+		}
+		return normalized
+	case []any:
+		normalized := make([]any, len(typedValue))
+		for index, value := range typedValue {
+			normalized[index] = normalizeYAMLScalars(value)
+		}
+		return normalized
+	case float64:
+		// sigs.k8s.io/yaml may unmarshal integer YAML values as float64.
+		if typedValue == math.Trunc(typedValue) && math.Abs(typedValue) <= maxSafeYAMLInteger {
+			return int64(typedValue)
+		}
+	}
+	return v
+}
+
+func normalizeYAMLMapKey(key any) any {
+	normalized := normalizeYAMLScalars(key)
+	if normalized == nil {
+		return normalized
+	}
+	if reflect.TypeOf(normalized).Comparable() {
+		return normalized
+	}
+	return fmt.Sprint(normalized)
 }
 
 // fromYAML converts a YAML document into a map[string]interface{}.
