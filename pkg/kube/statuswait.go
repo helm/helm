@@ -33,7 +33,9 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -140,16 +142,48 @@ func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Dur
 }
 
 func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resources := []object.ObjMetadata{}
 	for _, resource := range resourceList {
+		mapping := resource.Mapping
+		if mapping == nil {
+			gvk := resource.Object.GetObjectKind().GroupVersionKind()
+			var err error
+			mapping, err = w.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				return err
+			}
+		}
+
+		var resourceClient dynamic.ResourceInterface
+		if resource.Namespace != "" {
+			resourceClient = w.client.Resource(mapping.Resource).Namespace(resource.Namespace)
+		} else {
+			resourceClient = w.client.Resource(mapping.Resource)
+		}
+		_, err := resourceClient.Get(ctx, resource.Name, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+
 		obj, err := object.RuntimeToObjMeta(resource.Object)
 		if err != nil {
 			return err
 		}
 		resources = append(resources, obj)
 	}
+
+	if len(resources) == 0 {
+		return nil
+	}
+
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
@@ -243,11 +277,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 		var nonDesiredResources []*event.ResourceStatus
 		for _, rs := range statusCollector.ResourceStatuses {
 			if rs == nil {
-				continue
-			}
-			// If a resource is already deleted before waiting has started, it will show as unknown.
-			// This check ensures we don't wait forever for a resource that is already deleted.
-			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
 				continue
 			}
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
