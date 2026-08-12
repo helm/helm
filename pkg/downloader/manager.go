@@ -240,11 +240,26 @@ func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) 
 	return res.Resolve(req, repoNames)
 }
 
+// chartPathLocks serializes downloadAll calls per ChartPath, since concurrent
+// calls targeting the same path can race on the shared "charts/" directory.
+var chartPathLocks sync.Map // map[string]*sync.Mutex
+
+func lockForChartPath(chartPath string) *sync.Mutex {
+	lock, _ := chartPathLocks.LoadOrStore(chartPath, &sync.Mutex{})
+	return lock.(*sync.Mutex)
+}
+
 // downloadAll takes a list of dependencies and downloads them into charts/
 //
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
 func (m *Manager) downloadAll(deps []*chart.Dependency) error {
+	// safeMoveDeps below isn't safe against other calls targeting the same
+	// ChartPath, so serialize per-path here.
+	lock := lockForChartPath(m.ChartPath)
+	lock.Lock()
+	defer lock.Unlock()
+
 	repos, err := m.loadChartRepositories()
 	if err != nil {
 		return err
