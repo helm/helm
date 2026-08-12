@@ -333,8 +333,8 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		// Callers that reuse the same cfg for a later real install must
 		// still observe the original client and storage. See #11463.
 		//
-		// Copy fields explicitly: Configuration embeds sync.Mutex and
-		// logging.LogHolder (atomic.Pointer), which must not be copied
+		// Copy exported fields only. Configuration has an unexported mutex and
+		// embeds logging.LogHolder (atomic.Pointer); both must not be copied
 		// by value (govet copylocks).
 		origCfg := i.cfg
 		cfgCopy := &Configuration{
