@@ -17,6 +17,7 @@ package downloader
 
 import (
 	"bytes"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -305,6 +306,87 @@ func TestDownloadAllConcurrent(t *testing.T) {
 	for _, entry := range entries {
 		assert.False(t, strings.HasPrefix(entry.Name(), "tmpcharts-"), "leftover tmp dir: %s", entry.Name())
 	}
+}
+
+// TestDownloadAllConcurrentVersionChurn guards the race fixed by serializing
+// downloadAll per ChartPath. safeMoveDeps snapshots the destination charts/
+// directory, moves in files matching its own deps (by filename, which
+// embeds the version), then deletes any dest file from that snapshot that
+// isn't one of those filenames - including older versions of a dependency
+// it just replaced.
+//
+// This is racy when concurrent downloadAll calls for the same ChartPath
+// resolve the same dependency to different versions between calls (e.g. a
+// caller like Skaffold repeatedly rendering a chart while the upstream repo
+// index is being updated). Call A moves in dep-2.0.0.tgz; call B's
+// destination snapshot predates A's write and still expects dep-1.0.0.tgz,
+// so once B commits, its own delete-check treats A's freshly written
+// dep-2.0.0.tgz as a stranger and removes it - even though a "dep" chart is
+// still one of B's deps, just resolved to a different version.
+//
+// Each goroutine here resolves the same dependency name to a distinct
+// version, so if the race occurs, later versions written by other
+// goroutines end up deleted, leaving fewer than `concurrency` chart files
+// (or the wrong one) in charts/ afterward.
+func TestDownloadAllConcurrentVersionChurn(t *testing.T) {
+	chartPath := t.TempDir()
+
+	const concurrency = 8
+	const depName = "churn-dep"
+	deps := make([]*chart.Dependency, concurrency)
+	for i := 0; i < concurrency; i++ {
+		version := fmt.Sprintf("0.1.%d", i)
+		src := &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       depName,
+				Version:    version,
+				APIVersion: "v2",
+			},
+		}
+		srcParent := filepath.Join(chartPath, fmt.Sprintf("src-%d", i))
+		require.NoError(t, os.MkdirAll(srcParent, 0o755))
+		require.NoError(t, chartutil.SaveDir(src, srcParent))
+
+		deps[i] = &chart.Dependency{
+			Name:       depName,
+			Repository: fmt.Sprintf("file://./src-%d/%s", i, depName),
+			Version:    version,
+		}
+	}
+
+	errs := make([]error, concurrency)
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			m := &Manager{
+				Out:              new(bytes.Buffer),
+				RepositoryConfig: repoConfig,
+				RepositoryCache:  repoCache,
+				ChartPath:        chartPath,
+			}
+			errs[i] = m.downloadAll([]*chart.Dependency{deps[i]})
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		assert.NoError(t, err, "concurrent downloadAll call %d failed", i)
+	}
+
+	// Exactly one version of depName should remain: whichever call's
+	// safeMoveDeps ran last should have left its own version behind, and no
+	// call should have raced another's write out of existence.
+	entries, err := os.ReadDir(filepath.Join(chartPath, "charts"))
+	require.NoError(t, err)
+	var found []string
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), depName+"-") {
+			found = append(found, entry.Name())
+		}
+	}
+	assert.Len(t, found, 1, "expected exactly one version of %s in charts/, found %v", depName, found)
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {
