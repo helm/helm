@@ -272,7 +272,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	// callers race on the same directory.
 	tmpPath, err := os.MkdirTemp(m.ChartPath, fmt.Sprintf("tmpcharts-%d-*", os.Getpid()))
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create temporary directory in '%s': %w", m.ChartPath, err)
 	}
 	defer os.RemoveAll(tmpPath)
 
