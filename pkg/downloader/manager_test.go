@@ -297,7 +297,7 @@ func TestDownloadAllConcurrent(t *testing.T) {
 	}
 
 	_, err = os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz"))
-	require.NotErrorIs(t, err, fs.ErrNotExist)
+	require.NoError(t, err)
 
 	// No leftover tmpcharts-* directories from any of the concurrent calls.
 	entries, err := os.ReadDir(chartPath)
