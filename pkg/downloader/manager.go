@@ -251,7 +251,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
-	tmpPath := filepath.Join(m.ChartPath, fmt.Sprintf("tmpcharts-%d", os.Getpid()))
 
 	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
@@ -266,8 +265,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		return fmt.Errorf("unable to retrieve file info for '%s': %w", destPath, err)
 	}
 
-	// Prepare tmpPath
-	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
+	// Prepare tmpPath. Use MkdirTemp rather than a PID-derived name: multiple
+	// downloadAll calls can run concurrently as goroutines within the same
+	// process (e.g. a caller rendering several profiles against one chart
+	// path in parallel), in which case a PID-only suffix is not unique and
+	// callers race on the same directory.
+	tmpPath, err := os.MkdirTemp(m.ChartPath, fmt.Sprintf("tmpcharts-%d-*", os.Getpid()))
+	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpPath)

@@ -20,6 +20,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -230,6 +232,79 @@ version: 0.1.0`
 		Version:    "0.1.0",
 	}
 	require.Error(t, m.downloadAll([]*chart.Dependency{badLocalDep}), "Expected error for bad dependency name")
+}
+
+// TestDownloadAllConcurrent reproduces a race that isn't covered by the
+// os.Getpid()-suffixed tmpcharts fix for #13110: multiple goroutines calling
+// downloadAll for the *same* chart path from within a single process (e.g. a
+// caller like Skaffold rendering several profiles against one chart in
+// parallel) all shared a PID, so they used to race on the same
+// "tmpcharts-<pid>" directory. One goroutine's `defer os.RemoveAll(tmpPath)`
+// could delete the directory out from under another goroutine's in-flight
+// download, surfacing as "lstat .../tmpcharts-<pid>: no such file or
+// directory". Each call must get its own unique tmp directory regardless of
+// PID.
+func TestDownloadAllConcurrent(t *testing.T) {
+	chartPath := t.TempDir()
+
+	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"))
+	require.NoError(t, err)
+	require.NoError(t, chartutil.SaveDir(signtest, filepath.Join(chartPath, "testdata")))
+
+	local, err := loader.LoadDir(filepath.Join("testdata", "local-subchart"))
+	require.NoError(t, err)
+	require.NoError(t, chartutil.SaveDir(local, filepath.Join(chartPath, "charts")))
+
+	// Each goroutine gets its own *chart.Dependency instances: downloadAll
+	// mutates dep.Version in place, so sharing pointers across concurrent
+	// calls would race on that unrelated field and mask the tmpPath race
+	// this test targets.
+	newDeps := func() []*chart.Dependency {
+		return []*chart.Dependency{
+			{
+				Name:       signtest.Name(),
+				Repository: "file://./testdata/signtest",
+				Version:    signtest.Metadata.Version,
+			},
+			{
+				Name:       local.Name(),
+				Repository: "",
+				Version:    local.Metadata.Version,
+			},
+		}
+	}
+
+	const concurrency = 8
+	errs := make([]error, concurrency)
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			m := &Manager{
+				Out:              new(bytes.Buffer),
+				RepositoryConfig: repoConfig,
+				RepositoryCache:  repoCache,
+				ChartPath:        chartPath,
+			}
+			errs[i] = m.downloadAll(newDeps())
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		assert.NoError(t, err, "concurrent downloadAll call %d failed", i)
+	}
+
+	_, err = os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz"))
+	require.NotErrorIs(t, err, fs.ErrNotExist)
+
+	// No leftover tmpcharts-* directories from any of the concurrent calls.
+	entries, err := os.ReadDir(chartPath)
+	require.NoError(t, err)
+	for _, entry := range entries {
+		assert.False(t, strings.HasPrefix(entry.Name(), "tmpcharts-"), "leftover tmp dir: %s", entry.Name())
+	}
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {
