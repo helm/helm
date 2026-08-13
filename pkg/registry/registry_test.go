@@ -129,6 +129,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 
 	// Registry config
 	config := &configuration.Configuration{}
+	lnCfg := net.ListenConfig{}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	suite.Nil(err, "no error finding free port for test registry")
 	defer func() { _ = ln.Close() }()
