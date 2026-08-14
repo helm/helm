@@ -568,6 +568,11 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	// Build allowed media types for chart pull
 	allowedMediaTypes := []string{
 		ocispec.MediaTypeImageManifest,
+		// A chart converted between registries comes back written to the Docker
+		// schema, which describes the same manifest. Copying it is what selecting it
+		// out of an index is for; leaving the type out drops the manifest the copy
+		// was pointed at and fails the pull on a blob it never stored.
+		dockerManifestMediaType,
 		ConfigMediaType,
 	}
 	if operation.withChart {

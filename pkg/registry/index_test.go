@@ -70,8 +70,17 @@ func TestPullFromImageIndex(t *testing.T) {
 	chartManifestBytes, _ := json.Marshal(chartManifest)
 	chartManifestDigest := digest.FromBytes(chartManifestBytes)
 
-	// Container manifest (we won't actually serve the blobs, just need valid structure)
-	containerManifestDigest := digest.Digest("sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	// The container manifest beside the chart, served like the registry serves it,
+	// since selection reads the config of an entry whose declaration did not match.
+	containerManifestBytes, _ := json.Marshal(ocispec.Manifest{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Config: ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageConfig,
+			Digest:    digest.FromString("container-config"),
+			Size:      10,
+		},
+	})
+	containerManifestDigest := digest.FromBytes(containerManifestBytes)
 
 	// Image Index containing both chart and container manifests
 	imageIndex := ocispec.Index{
@@ -80,7 +89,7 @@ func TestPullFromImageIndex(t *testing.T) {
 			{
 				MediaType:    ocispec.MediaTypeImageManifest,
 				Digest:       containerManifestDigest,
-				Size:         500,
+				Size:         int64(len(containerManifestBytes)),
 				ArtifactType: "application/vnd.oci.image.config.v1+json",
 				Platform: &ocispec.Platform{
 					Architecture: "amd64",
@@ -118,6 +127,13 @@ func TestPullFromImageIndex(t *testing.T) {
 			w.Header().Set("Docker-Content-Digest", imageIndexDigest.String())
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(imageIndexBytes)
+
+		// Serve the container manifest by digest
+		case path == "/v2/testrepo/multichart/manifests/"+containerManifestDigest.String():
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Header().Set("Docker-Content-Digest", containerManifestDigest.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(containerManifestBytes)
 
 		// Serve chart manifest by digest
 		case path == "/v2/testrepo/multichart/manifests/"+chartManifestDigest.String():
@@ -441,6 +457,42 @@ func serveMultiChartIndex(indexBytes []byte, indexDigest digest.Digest, charts .
 	}))
 }
 
+type rawBlob struct {
+	mediaType string
+	data      []byte
+}
+
+// serveAlso answers for extra blobs by digest and delegates the rest to base. Index
+// trees need it: everything a nested index lists has to be fetchable, or the pass
+// over it is incomplete for a reason the fixture invented.
+func serveAlso(base *httptest.Server, extras map[digest.Digest]rawBlob) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for d, blob := range extras {
+			if strings.Contains(r.URL.Path, d.Encoded()) {
+				w.Header().Set("Content-Type", blob.mediaType)
+				w.Header().Set("Docker-Content-Digest", d.String())
+				_, _ = w.Write(blob.data)
+				return
+			}
+		}
+		base.Config.Handler.ServeHTTP(w, r)
+	}))
+}
+
+// indexHolding builds an index over the given entries and returns it as a blob.
+func indexHolding(entries ...ocispec.Descriptor) (ocispec.Descriptor, rawBlob) {
+	body, _ := json.Marshal(ocispec.Index{MediaType: ocispec.MediaTypeImageIndex, Manifests: entries})
+	d := digest.FromBytes(body)
+	return ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageIndex,
+			Digest:    d,
+			Size:      int64(len(body)),
+		}, rawBlob{
+			mediaType: ocispec.MediaTypeImageIndex,
+			data:      body,
+		}
+}
+
 func TestPullFromImageIndexSelectsByName(t *testing.T) {
 	alpha := newTestChart("alpha", "1.0.0")
 	beta := newTestChart("beta", "1.0.0")
@@ -496,6 +548,9 @@ func TestPullFromImageIndexNoChartWithRequestedName(t *testing.T) {
 	assert.Contains(t, err.Error(), "none is named")
 	assert.Contains(t, err.Error(), "alpha")
 	assert.Contains(t, err.Error(), "beta")
+	// Selection runs inside the copy, so every message it produces reaches the caller
+	// wrapped in the copy's own error unless that wrapper is undone.
+	assert.NotContains(t, err.Error(), "MapRoot")
 }
 
 func TestPullFromImageIndexSelectsPlatformStampedChart(t *testing.T) {
@@ -1174,4 +1229,575 @@ func TestPullFromImageIndexLegacySelectsByName(t *testing.T) {
 	result, err := client.Pull(host + "/testrepo/beta:1.0.0")
 	require.NoError(t, err)
 	assertSelected(t, beta, result)
+}
+
+func TestPullFromImageIndexNestedIndexIsNotACandidate(t *testing.T) {
+	// An index entry may itself be an index, and nothing stops it from declaring the
+	// chart artifact type and the chart's identity. Taken as a candidate it would be
+	// handed to a copy that cannot root itself at an index; the chart it points at is
+	// what the pull has to come back with.
+	alpha := newTestChart("alpha", "1.0.0")
+
+	innerDesc, innerBlob := indexHolding(alpha.indexDescriptor())
+	innerDesc.ArtifactType = ChartArtifactType
+	innerDesc.Annotations = map[string]string{
+		ocispec.AnnotationTitle:   alpha.name,
+		ocispec.AnnotationVersion: alpha.version,
+	}
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{innerDesc, alpha.indexDescriptor()},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	charts := serveMultiChartIndex(indexBytes, indexDigest, alpha)
+	defer charts.Close()
+	s := serveAlso(charts, map[digest.Digest]rawBlob{innerDesc.Digest: innerBlob})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	result, err := client.Pull(host + "/testrepo/alpha:1.0.0")
+	require.NoError(t, err)
+	assertSelected(t, alpha, result)
+}
+
+func TestPullFromImageIndexFindsRequestedChartInsideNestedIndex(t *testing.T) {
+	// The requested chart is reachable only through an entry that is an index. Left
+	// unsearched it is a chart that is not there, and the chart beside it answers in
+	// its place.
+	alpha := newTestChart("alpha", "1.0.0")
+	beta := newTestChart("beta", "1.0.0")
+
+	innerDesc, innerBlob := indexHolding(alpha.indexDescriptor())
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{innerDesc, beta.indexDescriptor()},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	charts := serveMultiChartIndex(indexBytes, indexDigest, alpha, beta)
+	defer charts.Close()
+	s := serveAlso(charts, map[digest.Digest]rawBlob{innerDesc.Digest: innerBlob})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	result, err := client.Pull(host + "/testrepo/alpha:1.0.0")
+	require.NoError(t, err)
+	assertSelected(t, alpha, result)
+}
+
+func TestPullFromImageIndexFindsRequestedVersionInsideNestedIndex(t *testing.T) {
+	// Same search, one axis over: the requested version is the one nested away, and
+	// the version left in plain sight carries the requested name.
+	wanted := newTestChart("app", "2.0.0")
+	older := newTestChart("app", "1.0.0")
+	other := newTestChart("other", "1.0.0")
+
+	innerDesc, innerBlob := indexHolding(wanted.indexDescriptor())
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{innerDesc, older.indexDescriptor(), other.indexDescriptor()},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	charts := serveMultiChartIndex(indexBytes, indexDigest, wanted, older, other)
+	defer charts.Close()
+	s := serveAlso(charts, map[digest.Digest]rawBlob{innerDesc.Digest: innerBlob})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	result, err := client.Pull(host + "/testrepo/app:2.0.0")
+	require.NoError(t, err)
+	assertSelected(t, wanted, result)
+}
+
+func TestPullFromImageIndexUnreadableNestedIndexIsNotAnAbsentChart(t *testing.T) {
+	// A nested index that cannot be fetched is the case the search cannot complete.
+	// The chart beside it is then not the only chart in the index, it is the only one
+	// that could be read, and answering with it would state a fact about the read.
+	beta := newTestChart("beta", "1.0.0")
+
+	unreachable := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString("unreachable"),
+		Size:      2,
+	}
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{unreachable, beta.indexDescriptor()},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	s := serveMultiChartIndex(indexBytes, indexDigest, beta)
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	_, err = client.Pull(host + "/testrepo/alpha:1.0.0")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "could not be read")
+}
+
+func TestPullFromImageIndexChartNamedUnlikeItsRepositoryBesideNestedIndex(t *testing.T) {
+	// Publishing a chart under a repository named after something else is legal, and
+	// the sole chart in an index answers whatever name was asked for. A multi-arch
+	// image sitting beside it is an index, and searching it must not turn the name
+	// this pull never knew into grounds for refusing the chart.
+	chart := newTestChart("testchart", "1.0.0")
+
+	imageConfig := []byte(`{"architecture":"amd64","os":"linux"}`)
+	imageConfigDigest := digest.FromBytes(imageConfig)
+	imageManifest, _ := json.Marshal(ocispec.Manifest{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Config: ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageConfig,
+			Digest:    imageConfigDigest,
+			Size:      int64(len(imageConfig)),
+		},
+	})
+	imageDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromBytes(imageManifest),
+		Size:      int64(len(imageManifest)),
+		Platform:  &ocispec.Platform{OS: "linux", Architecture: "amd64"},
+	}
+	innerDesc, innerBlob := indexHolding(imageDesc)
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{chart.indexDescriptor(), innerDesc},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	charts := serveMultiChartIndex(indexBytes, indexDigest, chart)
+	defer charts.Close()
+	s := serveAlso(charts, map[digest.Digest]rawBlob{
+		innerDesc.Digest: innerBlob,
+		imageDesc.Digest: {mediaType: ocispec.MediaTypeImageManifest, data: imageManifest},
+	})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	result, err := client.Pull(host + "/testrepo/multichart:1.0.0")
+	require.NoError(t, err)
+	assertSelected(t, chart, result)
+}
+
+func TestPullFromImageIndexSelectsVersionCarryingBuildMetadata(t *testing.T) {
+	// A version with build metadata reaches the registry with the plus sign encoded
+	// as an underscore, while the chart's own annotation keeps the plus, so selection
+	// has to undo the encoding before the two can be compared.
+	withMetadata := newTestChart("app", "1.0.0+build")
+	plain := newTestChart("app", "2.0.0")
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{plain.indexDescriptor(), withMetadata.indexDescriptor()},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	s := serveMultiChartIndex(indexBytes, indexDigest, plain, withMetadata)
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	result, err := client.Pull(host + "/testrepo/app:1.0.0+build")
+	require.NoError(t, err)
+	assertSelected(t, withMetadata, result)
+}
+
+// nestedChain wraps desc in levels indexes, each holding the one below, and returns
+// the outermost of them together with every body the chain needs served.
+func nestedChain(desc ocispec.Descriptor, levels int) (ocispec.Descriptor, map[digest.Digest]rawBlob) {
+	blobs := map[digest.Digest]rawBlob{}
+	for range levels {
+		wrapper, blob := indexHolding(desc)
+		blobs[wrapper.Digest] = blob
+		desc = wrapper
+	}
+	return desc, blobs
+}
+
+func TestPullFromImageIndexStopsAtTheNestingLimit(t *testing.T) {
+	// The chart is reachable only by following indexes, so how deep the search goes
+	// is the only thing that decides whether it is found. At the limit it is; one
+	// index further down it is not, and the pull says which entry it left unread
+	// rather than reporting a chart that is not there.
+	alpha := newTestChart("alpha", "1.0.0")
+
+	pull := func(t *testing.T, levels int) (*PullResult, error) {
+		t.Helper()
+		outermost, chain := nestedChain(alpha.indexDescriptor(), levels)
+		index := ocispec.Index{
+			MediaType: ocispec.MediaTypeImageIndex,
+			Manifests: []ocispec.Descriptor{outermost},
+		}
+		indexBytes, _ := json.Marshal(index)
+		indexDigest := digest.FromBytes(indexBytes)
+
+		charts := serveMultiChartIndex(indexBytes, indexDigest, alpha)
+		defer charts.Close()
+		s := serveAlso(charts, chain)
+		defer s.Close()
+		u, _ := url.Parse(s.URL)
+
+		client, err := NewClient(ClientOptPlainHTTP())
+		require.NoError(t, err)
+		return client.Pull("localhost:" + u.Port() + "/testrepo/alpha:1.0.0")
+	}
+
+	result, err := pull(t, maxIndexDepth)
+	require.NoError(t, err)
+	assertSelected(t, alpha, result)
+
+	_, err = pull(t, maxIndexDepth+1)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "indexes deep and was not searched")
+}
+
+func TestPullFromImageIndexEntryDeclaringTheWrongTypeStillResolves(t *testing.T) {
+	// A builder that sets artifactType to something other than the chart type has
+	// broken the descriptor the same way one that omits it has, and in both cases the
+	// config the manifest carries is where the artifact says what it is.
+	alpha := newTestChart("alpha", "1.0.0")
+	desc := alpha.indexDescriptor()
+	desc.ArtifactType = ocispec.MediaTypeImageManifest
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{desc},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	s := serveMultiChartIndex(indexBytes, indexDigest, alpha)
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	result, err := client.Pull(host + "/testrepo/alpha:1.0.0")
+	require.NoError(t, err)
+	assertSelected(t, alpha, result)
+}
+
+func TestPullFromImageIndexUnreadableNeighbourIsConfirmedAgainstOrNamed(t *testing.T) {
+	// An entry declaring a type of its own is read for the config its manifest
+	// carries, so a registry that will not serve it leaves the pass incomplete. What
+	// the sole chart is then worth depends on whether its identity can be confirmed
+	// against the reference: confirmed it answers, unconfirmed the entry that could
+	// not be read is named, since it is the one that might have held the request.
+	unreadable := ocispec.Descriptor{
+		MediaType:    ocispec.MediaTypeImageManifest,
+		Digest:       digest.FromString("neighbour the registry will not serve"),
+		Size:         12,
+		ArtifactType: "application/vnd.oci.image.config.v1+json",
+	}
+
+	pull := func(t *testing.T, repository string) (*PullResult, error) {
+		t.Helper()
+		alpha := newTestChart("alpha", "1.0.0")
+		index := ocispec.Index{
+			MediaType: ocispec.MediaTypeImageIndex,
+			// Without annotations the declared entry announces no identity, so the
+			// entries that did not match are read and the neighbour is reached.
+			Manifests: []ocispec.Descriptor{alpha.declaredWithoutAnnotations(), unreadable},
+		}
+		indexBytes, _ := json.Marshal(index)
+		indexDigest := digest.FromBytes(indexBytes)
+
+		s := serveMultiChartIndex(indexBytes, indexDigest, alpha)
+		defer s.Close()
+		u, _ := url.Parse(s.URL)
+
+		client, err := NewClient(ClientOptPlainHTTP())
+		require.NoError(t, err)
+		return client.Pull("localhost:" + u.Port() + "/" + repository + ":1.0.0")
+	}
+
+	t.Run("identity confirmed", func(t *testing.T) {
+		result, err := pull(t, "testrepo/alpha")
+		require.NoError(t, err)
+		assertSelected(t, newTestChart("alpha", "1.0.0"), result)
+	})
+
+	t.Run("identity not confirmed", func(t *testing.T) {
+		_, err := pull(t, "testrepo/somethingelse")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), unreadable.Digest.String())
+	})
+}
+
+func TestPullFromImageIndexRepeatedEntryIsReadOnce(t *testing.T) {
+	// An index may list the same manifest twice, and the repeat is not read again.
+	// The count in the message says how many entries were looked at, so it has to
+	// come from the reading rather than from the length of the queue.
+	image, _ := json.Marshal(ocispec.Manifest{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Config: ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageConfig,
+			Digest:    digest.FromString("image config"),
+			Size:      10,
+		},
+	})
+	imageDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromBytes(image),
+		Size:      int64(len(image)),
+	}
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{imageDesc, imageDesc},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	base := serveMultiChartIndex(indexBytes, indexDigest)
+	defer base.Close()
+	s := serveAlso(base, map[digest.Digest]rawBlob{
+		imageDesc.Digest: {mediaType: ocispec.MediaTypeImageManifest, data: image},
+	})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	_, err = client.Pull("localhost:" + u.Port() + "/testrepo/alpha:1.0.0")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "the manifest of the one other entry was read")
+}
+
+func TestPullFromImageIndexFindsChartInsideDockerManifestList(t *testing.T) {
+	// Docker Hub and older buildx write a manifest list where the OCI spec writes an
+	// index. It lists manifests the same way, so an entry carrying it is searched the
+	// same way; treated as an ordinary manifest it holds no config, and the chart
+	// inside it becomes a chart the index is said not to hold.
+	const dockerManifestList = "application/vnd.docker.distribution.manifest.list.v2+json"
+	alpha := newTestChart("alpha", "1.0.0")
+
+	inner, _ := json.Marshal(ocispec.Index{
+		MediaType: dockerManifestList,
+		Manifests: []ocispec.Descriptor{alpha.indexDescriptor()},
+	})
+	innerDigest := digest.FromBytes(inner)
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{{
+			MediaType: dockerManifestList,
+			Digest:    innerDigest,
+			Size:      int64(len(inner)),
+		}},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	base := serveMultiChartIndex(indexBytes, indexDigest, alpha)
+	defer base.Close()
+	s := serveAlso(base, map[digest.Digest]rawBlob{
+		innerDigest: {mediaType: dockerManifestList, data: inner},
+	})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	result, err := client.Pull("localhost:" + u.Port() + "/testrepo/alpha:1.0.0")
+	require.NoError(t, err)
+	assertSelected(t, alpha, result)
+}
+
+func TestPullFromImageIndexOversizedEntryIsNotRead(t *testing.T) {
+	// The size on an index entry is the index's claim about content the registry
+	// serves. A manifest that large is not a manifest, so the entry is left unread
+	// and named rather than streamed into memory to be discarded.
+	alpha := newTestChart("alpha", "1.0.0")
+
+	oversized := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromString("oversized neighbour"),
+		Size:      maxEntryBytes + 1,
+	}
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{alpha.declaredWithoutAnnotations(), oversized},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	// The oversized entry is served, so a pull that reads it succeeds in reading it;
+	// only the size gate keeps the body out.
+	served := make([]byte, 0)
+	s := serveAlso(serveMultiChartIndex(indexBytes, indexDigest, alpha), map[digest.Digest]rawBlob{
+		oversized.Digest: {mediaType: ocispec.MediaTypeImageManifest, data: served},
+	})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	// Asked for by its own name, the chart still resolves: the unread entry makes the
+	// pass incomplete, and the identity of what is left is confirmed against the
+	// reference before it answers.
+	result, err := client.Pull(host + "/testrepo/alpha:1.0.0")
+	require.NoError(t, err)
+	assertSelected(t, alpha, result)
+
+	// Asked for by another name, the entry that was not read is named, since it is
+	// the one that might have held the chart.
+	_, err = client.Pull(host + "/testrepo/somethingelse:1.0.0")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "more than a manifest is")
+	assert.Contains(t, err.Error(), oversized.Digest.String())
+}
+
+func TestPullFromImageIndexEntryHoldingSomethingElseIsNotSilentlyDropped(t *testing.T) {
+	// An index body parses cleanly into a manifest and a manifest body parses cleanly
+	// into an index, because neither shape has a field the other rejects. An entry
+	// whose body does not hold what it declared is therefore read as neither, and
+	// saying so is what keeps the chart beside it from answering unchallenged.
+	beta := newTestChart("beta", "1.0.0")
+	foo := newTestChart("foo", "1.0.0")
+
+	// An index body, listed under a manifest media type.
+	mislabelled, _ := json.Marshal(ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{foo.indexDescriptor()},
+	})
+	mislabelledDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromBytes(mislabelled),
+		Size:      int64(len(mislabelled)),
+	}
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{mislabelledDesc, beta.declaredWithoutAnnotations()},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	s := serveAlso(serveMultiChartIndex(indexBytes, indexDigest, beta, foo), map[digest.Digest]rawBlob{
+		mislabelledDesc.Digest: {mediaType: ocispec.MediaTypeImageManifest, data: mislabelled},
+	})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	host := "localhost:" + u.Port()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	_, err = client.Pull(host + "/testrepo/foo:1.0.0")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), mislabelledDesc.Digest.String())
+}
+
+func TestPullFromImageIndexChartWrittenToTheDockerSchema(t *testing.T) {
+	// A chart copied between registries by tooling that writes the Docker schema
+	// carries the Docker manifest media type while describing the same config and
+	// layers. Selecting it and then refusing to copy it fails the pull on a blob
+	// nothing stored, so the type the copy accepts has to cover what selection picks.
+	alpha := newTestChart("alpha", "1.0.0")
+	desc := alpha.indexDescriptor()
+	desc.MediaType = dockerManifestMediaType
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{desc},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	// The registry answers for that manifest with the type the descriptor declares,
+	// which is what a registry holding a converted chart does.
+	base := serveMultiChartIndex(indexBytes, indexDigest, alpha)
+	defer base.Close()
+	s := serveAlso(base, map[digest.Digest]rawBlob{
+		alpha.manifestDigest: {mediaType: dockerManifestMediaType, data: alpha.manifestBytes},
+	})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	result, err := client.Pull("localhost:" + u.Port() + "/testrepo/alpha:1.0.0")
+	require.NoError(t, err)
+	assertSelected(t, alpha, result)
+}
+
+func TestPullFromImageIndexChartTheCopyCannotStoreIsNamed(t *testing.T) {
+	// Selection matches on the artifact type and the config, neither of which says
+	// how the manifest itself is written. A chart written in a form this pull does
+	// not copy has to be named by selection, which knows what it picked and why,
+	// rather than left to surface as a blob the copy never stored.
+	alpha := newTestChart("alpha", "1.0.0")
+	desc := alpha.indexDescriptor()
+	const artifactManifest = "application/vnd.oci.artifact.manifest.v1+json"
+	desc.MediaType = artifactManifest
+
+	index := ocispec.Index{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{desc},
+	}
+	indexBytes, _ := json.Marshal(index)
+	indexDigest := digest.FromBytes(indexBytes)
+
+	base := serveMultiChartIndex(indexBytes, indexDigest, alpha)
+	defer base.Close()
+	s := serveAlso(base, map[digest.Digest]rawBlob{
+		alpha.manifestDigest: {mediaType: artifactManifest, data: alpha.manifestBytes},
+	})
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	_, err = client.Pull("localhost:" + u.Port() + "/testrepo/alpha:1.0.0")
+	require.Error(t, err)
+	// Named by selection, which knows the entry and the reason. Left to the copy, the
+	// same shape comes back as a count of descriptors that were not collected, which
+	// names neither the entry that was picked nor why nothing came of it.
+	assert.Contains(t, err.Error(), "which this pull does not accept")
+	assert.Contains(t, err.Error(), artifactManifest)
+	assert.NotContains(t, err.Error(), "not found")
 }

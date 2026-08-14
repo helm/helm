@@ -111,6 +111,57 @@ func NewGenericClient(client *Client) *GenericClient {
 	}
 }
 
+// maxIndexDepth is how many indexes deep the search follows, counting from the one
+// the reference resolves to. A multi-arch image listed beside a chart is depth one,
+// which is what tooling produces today, and an index aggregating such indexes is
+// depth two. Three leaves a level beyond anything a publisher assembles. Past that
+// the cost is one sequential request per level against a chain the registry is free
+// to make up as it is walked.
+const maxIndexDepth = 3
+
+// nestedIndex is an index listed inside another one, carried with the depth it was
+// found at, since that is what the limit above is applied to.
+type nestedIndex struct {
+	desc  ocispec.Descriptor
+	depth int
+}
+
+// dockerManifestListMediaType is what Docker Hub and older buildx write where the
+// OCI spec writes an image index. It lists manifests the same way, so an entry
+// carrying it holds artifacts the same way too.
+const dockerManifestListMediaType = "application/vnd.docker.distribution.manifest.list.v2+json"
+
+// dockerManifestMediaType is the same story one level down: a manifest copied
+// between registries by tooling that writes the Docker schema describes its config
+// and layers exactly as an image manifest does.
+const dockerManifestMediaType = "application/vnd.docker.distribution.manifest.v2+json"
+
+// listsManifests reports whether an entry holds other entries rather than an
+// artifact. Such an entry is never a candidate, since an artifact is identified by
+// the config blob its manifest carries and a list has none, and it is searched
+// rather than dropped, since it can hold the artifact that was asked for.
+func listsManifests(mediaType string) bool {
+	return mediaType == ocispec.MediaTypeImageIndex || mediaType == dockerManifestListMediaType
+}
+
+// maxEntryBytes bounds what the pass below reads out of an entry it was not asked
+// for. The size is the index's own claim about content the registry serves, and a
+// manifest that large is not a manifest, so an entry declaring more is left unread
+// instead of streamed. The figure is what oras allows a manifest to be. Reading a
+// candidate's own identity is bounded by oras instead, which caps what it allocates
+// ahead of the content and verifies size and digest against it.
+const maxEntryBytes = 4 * 1024 * 1024
+
+// entryBody is what an entry turns out to hold once read, which is what decides how
+// it is treated: a config makes it an artifact and a list of manifests makes it a
+// container of artifacts. An entry declared as a manifest that holds no config is
+// read as neither; one declared as a list that holds a config is too, while a list
+// that holds nothing is a list, and searching it finds nothing to find.
+type entryBody struct {
+	Config    ocispec.Descriptor   `json:"config"`
+	Manifests []ocispec.Descriptor `json:"manifests"`
+}
+
 // resolveFromIndex selects one manifest from an OCI Image Index by artifactType.
 // When nothing matches on artifactType it retries over the entries that declare
 // none, matching their config mediaType instead, which is how indexes written
@@ -134,48 +185,126 @@ func resolveFromIndex(ctx context.Context, fetcher content.Fetcher, indexDesc oc
 	// that stamps a platform on every index entry would otherwise hide the artifact.
 	var candidates []ocispec.Descriptor
 	var availableTypes []string
-	var undeclared []ocispec.Descriptor
+	var unmatched []ocispec.Descriptor
+	var nested []nestedIndex
+	var skipped []error
 	for _, manifest := range index.Manifests {
-		switch {
-		case manifest.ArtifactType == artifactType:
-			candidates = append(candidates, manifest)
-		case manifest.ArtifactType != "":
-			availableTypes = append(availableTypes, manifest.ArtifactType)
-		default:
-			undeclared = append(undeclared, manifest)
+		// Set aside to be searched, per listsManifests: taken as a candidate the pull
+		// fails on a manifest it never stored, dropped it takes the chart it holds with
+		// it, and the chart beside it answers instead.
+		if listsManifests(manifest.MediaType) {
+			nested = append(nested, nestedIndex{desc: manifest, depth: 1})
+			continue
 		}
+		if manifest.ArtifactType == artifactType {
+			candidates = append(candidates, manifest)
+			continue
+		}
+		if manifest.ArtifactType != "" {
+			availableTypes = append(availableTypes, manifest.ArtifactType)
+		}
+		unmatched = append(unmatched, manifest)
 	}
 
 	wantName := selectors[ocispec.AnnotationTitle]
 	wantVersion := selectors[ocispec.AnnotationVersion]
 
-	// Second pass: entries that declare no type at all, matched on the config
-	// mediaType instead, which is how an index written before artifactType existed
-	// stays resolvable. It runs when the first pass found nothing, and also when
-	// no single entry it found announces the whole requested name and version:
-	// narrowing the candidates before either is checked is how a mixed index answers
-	// with the wrong chart. Entries carrying a platform are fetched here too, at one
-	// fetch per undeclared entry. That cost is not confined to failures: an index
-	// builder may set artifactType without copying the manifest annotations onto the
-	// descriptor, and then the declared entries announce nothing, so pulls that go on
-	// to succeed pay it as well.
+	// Second pass: the indexes an entry points at, and every entry whose declaration
+	// did not match, read for the config mediaType its manifest carries. An index
+	// written before artifactType existed declares nothing, and a builder that sets
+	// the field wrongly declares something else; both leave the config as the only
+	// place the artifact says what it is, so both are read here rather than only the
+	// first. It runs when the first pass found nothing, and also when no single entry
+	// it found announces the whole requested name and version: narrowing the
+	// candidates before either is checked is how a mixed index answers with the wrong
+	// chart. The cost is one fetch per entry that is not already a candidate, and it
+	// is not confined to failures: an index builder may set artifactType without
+	// copying the manifest annotations onto the descriptor, and then the declared
+	// entries announce nothing, so pulls that go on to succeed pay it as well.
 	configCache := map[string]ocispec.Descriptor{}
-	var skipped []error
+	// Counted rather than taken from the length of the queue: an index may list the
+	// same manifest twice and the repeats are not read again, so the queue says how
+	// many entries were queued and this says how many were looked at.
+	read := 0
 	if len(candidates) == 0 || !announcesChart(candidates, wantName, wantVersion) {
-		for _, candidate := range undeclared {
+		// An index an entry points at is searched the same way the top one is, so a
+		// chart keeps its place wherever the publisher nested it. Entries already seen
+		// are not read twice, which is also what stops an index that lists itself.
+		seen := map[string]bool{indexDesc.Digest.String(): true}
+		for i := 0; i < len(nested); i++ {
+			entry := nested[i]
+			if seen[entry.desc.Digest.String()] {
+				continue
+			}
+			seen[entry.desc.Digest.String()] = true
+			if entry.depth > maxIndexDepth {
+				skipped = append(skipped, fmt.Errorf(
+					"%s: nested more than %d indexes deep and was not searched", entry.desc.Digest, maxIndexDepth))
+				continue
+			}
+			if entry.desc.Size > maxEntryBytes {
+				skipped = append(skipped, fmt.Errorf(
+					"%s: entry declares %d bytes, more than a manifest is, and was not read", entry.desc.Digest, entry.desc.Size))
+				continue
+			}
+			indexData, err := content.FetchAll(ctx, fetcher, entry.desc)
+			if err != nil {
+				skipped = append(skipped, fmt.Errorf("%s: %w", entry.desc.Digest, err))
+				continue
+			}
+			var sub entryBody
+			if err := json.Unmarshal(indexData, &sub); err != nil {
+				skipped = append(skipped, fmt.Errorf("%s: %w", entry.desc.Digest, err))
+				continue
+			}
+			if len(sub.Manifests) == 0 && sub.Config.MediaType != "" {
+				skipped = append(skipped, fmt.Errorf(
+					"%s: entry declares a list of manifests and holds a config instead, and was searched as neither", entry.desc.Digest))
+				continue
+			}
+			for _, manifest := range sub.Manifests {
+				switch {
+				case listsManifests(manifest.MediaType):
+					nested = append(nested, nestedIndex{desc: manifest, depth: entry.depth + 1})
+				case manifest.ArtifactType == artifactType:
+					candidates = append(candidates, manifest)
+				default:
+					if manifest.ArtifactType != "" {
+						availableTypes = append(availableTypes, manifest.ArtifactType)
+					}
+					unmatched = append(unmatched, manifest)
+				}
+			}
+		}
+		for _, candidate := range unmatched {
+			if seen[candidate.Digest.String()] {
+				continue
+			}
+			seen[candidate.Digest.String()] = true
+			if candidate.Size > maxEntryBytes {
+				skipped = append(skipped, fmt.Errorf(
+					"%s: entry declares %d bytes, more than a manifest is, and was not read", candidate.Digest, candidate.Size))
+				continue
+			}
 			manifestData, err := content.FetchAll(ctx, fetcher, candidate)
 			if err != nil {
 				skipped = append(skipped, fmt.Errorf("%s: %w", candidate.Digest, err))
 				continue
 			}
-			var manifest ocispec.Manifest
-			if err := json.Unmarshal(manifestData, &manifest); err != nil {
+			var body entryBody
+			if err := json.Unmarshal(manifestData, &body); err != nil {
 				skipped = append(skipped, fmt.Errorf("%s: %w", candidate.Digest, err))
 				continue
 			}
-			if manifest.Config.MediaType == artifactType {
+			if body.Config.MediaType == "" {
+				skipped = append(skipped, fmt.Errorf(
+					"%s: entry declares a manifest and holds no config, and was read as neither", candidate.Digest))
+				continue
+			}
+			read++
+			if body.Config.MediaType == artifactType {
 				candidates = append(candidates, candidate)
-				configCache[candidate.Digest.String()] = manifest.Config
+				configCache[candidate.Digest.String()] = body.Config
 			}
 		}
 	}
@@ -205,9 +334,13 @@ func resolveFromIndex(ctx context.Context, fetcher content.Fetcher, indexDesc oc
 				"no manifest with artifactType %q found in image index; available types: %v; %d entries could not be read: %v",
 				artifactType, availableTypes, len(skipped), skipped)
 		}
+		readNote := fmt.Sprintf("the manifests of %d other entries were read and none declares a chart config", read)
+		if read == 1 {
+			readNote = "the manifest of the one other entry was read and it declares no chart config"
+		}
 		return ocispec.Descriptor{}, fmt.Errorf(
-			"no manifest with artifactType %q found in image index; available types: %v; %d entries declared none",
-			artifactType, availableTypes, len(undeclared))
+			"no manifest with artifactType %q found in image index; available types: %v; %s",
+			artifactType, availableTypes, readNote)
 	case 1:
 		// One candidate is taken without checking the name against it. Requiring a
 		// match would break publishing a chart under a repository named differently
@@ -278,7 +411,7 @@ func resolveFromIndex(ctx context.Context, fetcher content.Fetcher, indexDesc oc
 		if len(skipped) > 0 && wantVersion != "" && named[0].version != wantVersion {
 			if named[0].idErr != nil {
 				return ocispec.Descriptor{}, fmt.Errorf(
-					"the version of the only chart named %q could not be read: %w; %d entries could not be read either: %v",
+					"the version of the only chart named %q could not be read: %w; %d entries could not be read: %v",
 					wantName, named[0].idErr, len(skipped), skipped)
 			}
 			return ocispec.Descriptor{}, fmt.Errorf(
@@ -505,7 +638,22 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 			if root.MediaType != ocispec.MediaTypeImageIndex {
 				return root, nil
 			}
-			return resolveFromIndex(ctx, src, root, options.ArtifactType, options.Selectors, options.ParseIdentity)
+			selected, err := resolveFromIndex(ctx, src, root, options.ArtifactType, options.Selectors, options.ParseIdentity)
+			if err != nil {
+				return ocispec.Descriptor{}, err
+			}
+			// The copy about to start filters on the same media types the caller
+			// allowed, and a root it will not store is dropped without an error of its
+			// own: the pull then fails on a blob nothing ever wrote, naming neither the
+			// entry nor why. Selection knows both, so it says so here instead.
+			if len(allowedMediaTypes) > 0 {
+				if i := sort.SearchStrings(allowedMediaTypes, selected.MediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != selected.MediaType {
+					return ocispec.Descriptor{}, fmt.Errorf(
+						"the chart selected from the image index is a %s, which this pull does not accept: %s",
+						selected.MediaType, selected.Digest)
+				}
+			}
+			return selected, nil
 		}
 	}
 
