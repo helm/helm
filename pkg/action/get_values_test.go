@@ -177,8 +177,7 @@ func TestGetValues_Run_UnreachableKubeClient(t *testing.T) {
 	client := NewGetValues(cfg)
 
 	_, err := client.Run("test-release")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "connection refused")
+	assert.ErrorContains(t, err, "connection refused")
 }
 
 func TestGetValues_Run_ReleaseNotFound(t *testing.T) {
@@ -186,8 +185,7 @@ func TestGetValues_Run_ReleaseNotFound(t *testing.T) {
 	client := NewGetValues(cfg)
 
 	_, err := client.Run("non-existent-release")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
+	assert.ErrorContains(t, err, "not found")
 }
 
 func TestGetValues_Run_NilConfig(t *testing.T) {

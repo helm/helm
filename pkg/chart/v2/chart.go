@@ -143,6 +143,7 @@ func (ch *Chart) AppVersion() string {
 }
 
 // CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
+//
 // Deprecated: use CRDObjects()
 func (ch *Chart) CRDs() []*common.File {
 	files := []*common.File{}
@@ -174,6 +175,37 @@ func (ch *Chart) CRDObjects() []CRD {
 		crds = append(crds, dep.CRDObjects()...)
 	}
 	return crds
+}
+
+// StampModTimes sets timestamps on the chart (and dependencies) to epoch.
+// This is used for reproducible builds via SOURCE_DATE_EPOCH.
+func (ch *Chart) StampModTimes(epoch time.Time) {
+	ch.ModTime = epoch
+	if len(ch.Schema) > 0 {
+		ch.SchemaModTime = epoch
+	}
+	if ch.Lock != nil {
+		ch.Lock.Generated = epoch
+	}
+
+	for _, f := range ch.Raw {
+		if f != nil {
+			f.ModTime = epoch
+		}
+	}
+	for _, f := range ch.Templates {
+		if f != nil {
+			f.ModTime = epoch
+		}
+	}
+	for _, f := range ch.Files {
+		if f != nil {
+			f.ModTime = epoch
+		}
+	}
+	for _, dep := range ch.Dependencies() {
+		dep.StampModTimes(epoch)
+	}
 }
 
 func hasManifestExtension(fname string) bool {

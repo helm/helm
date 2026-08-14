@@ -185,29 +185,27 @@ func TestInstallRelease(t *testing.T) {
 	vals := map[string]any{}
 	ctx, done := context.WithCancel(t.Context())
 	resi, err := instAction.RunWithContext(ctx, buildChart(), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
-	is.Equal(res.Name, "test-install-release", "Expected release name.")
-	is.Equal(res.Namespace, "spaced")
+	req.NoError(err)
+	is.Equal("test-install-release", res.Name, "Expected release name.")
+	is.Equal("spaced", res.Namespace)
 
 	r, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 
 	rel, err := releaserToV1Release(r)
-	is.NoError(err)
+	req.NoError(err)
 
 	is.Len(rel.Hooks, 1)
-	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
-	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
-	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+	is.Equal(manifestWithHook, rel.Hooks[0].Manifest)
+	is.Equal(release.HookPostInstall, rel.Hooks[0].Events[0])
+	is.Equal(release.HookPreDelete, rel.Hooks[0].Events[1], "Expected event 0 is pre-delete")
 
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
-	is.Equal(rel.Info.Description, "Install complete")
+	is.Equal("Install complete", rel.Info.Description)
 
 	// Detecting previous bug where context termination after successful release
 	// caused release to fail.
@@ -216,8 +214,8 @@ func TestInstallRelease(t *testing.T) {
 	lastRelease, err := instAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
 	lrel, err := releaserToV1Release(lastRelease)
-	is.NoError(err)
-	is.Equal(lrel.Info.Status, rcommon.StatusDeployed)
+	req.NoError(err)
+	is.Equal(rcommon.StatusDeployed, lrel.Info.Status)
 }
 
 func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
@@ -231,62 +229,62 @@ func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
 	// "Client{Namespace: namespace, kubeClient: k8sfake.NewClientset()}"
 
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Resource list from cluster is NOT owned by helm chart
 	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
 	instAction := installActionWithConfig(config)
 	instAction.TakeOwnership = true
 	resi, err := instAction.Run(buildChart(), nil)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
 	r, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 
 	rel, err := releaserToV1Release(r)
-	is.NoError(err)
+	req.NoError(err)
 
-	is.Equal(rel.Info.Description, "Install complete")
+	is.Equal("Install complete", rel.Info.Description)
 }
 
 func TestInstallReleaseWithTakeOwnership_ResourceOwned(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Resource list from cluster is owned by helm chart
 	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
 	instAction := installActionWithConfig(config)
 	instAction.TakeOwnership = false
 	resi, err := instAction.Run(buildChart(), nil)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	r, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 
 	rel, err := releaserToV1Release(r)
-	is.NoError(err)
+	req.NoError(err)
 
-	is.Equal(rel.Info.Description, "Install complete")
+	is.Equal("Install complete", rel.Info.Description)
 }
 
 func TestInstallReleaseWithTakeOwnership_ResourceOwnedNoFlag(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Resource list from cluster is NOT owned by helm chart
 	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
 	instAction := installActionWithConfig(config)
 	_, err := instAction.Run(buildChart(), nil)
-	is.Error(err)
-	is.Contains(err.Error(), "unable to continue with install")
+	req.Error(err)
+	is.ErrorContains(err, "unable to continue with install")
 }
 
 func TestInstallReleaseWithValues(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	userVals := map[string]any{
 		"nestedKey": map[string]any{
@@ -299,27 +297,25 @@ func TestInstallReleaseWithValues(t *testing.T) {
 		},
 	}
 	resi, err := instAction.Run(buildChart(withSampleValues()), userVals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
-	is.Equal(res.Name, "test-install-release", "Expected release name.")
-	is.Equal(res.Namespace, "spaced")
+	req.NoError(err)
+	is.Equal("test-install-release", res.Name, "Expected release name.")
+	is.Equal("spaced", res.Namespace)
 
 	r, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 
 	rel, err := releaserToV1Release(r)
-	is.NoError(err)
+	req.NoError(err)
 
 	is.Len(rel.Hooks, 1)
-	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
-	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
-	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+	is.Equal(manifestWithHook, rel.Hooks[0].Manifest)
+	is.Equal(release.HookPostInstall, rel.Hooks[0].Events[0])
+	is.Equal(release.HookPreDelete, rel.Hooks[0].Events[1], "Expected event 0 is pre-delete")
 
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal("Install complete", rel.Info.Description)
 	is.Equal(expectedUserValues, rel.Config)
@@ -330,126 +326,116 @@ func TestInstallRelease_NoName(t *testing.T) {
 	instAction.ReleaseName = ""
 	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(), vals)
-	if err == nil {
-		t.Fatal("expected failure when no name is specified")
-	}
-	assert.Contains(t, err.Error(), "no name provided")
+	assert.ErrorContains(t, err, "no name provided")
 }
 
 func TestInstallRelease_WithNotes(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
 	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withNotes("note here")), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
-	is.Equal(res.Name, "with-notes")
-	is.Equal(res.Namespace, "spaced")
+	is.Equal("with-notes", res.Name)
+	is.Equal("spaced", res.Namespace)
 
 	r, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 	rel, err := releaserToV1Release(r)
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(rel.Hooks, 1)
-	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
-	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
-	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.Equal(manifestWithHook, rel.Hooks[0].Manifest)
+	is.Equal(release.HookPostInstall, rel.Hooks[0].Events[0])
+	is.Equal(release.HookPreDelete, rel.Hooks[0].Events[1], "Expected event 0 is pre-delete")
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
-	is.Equal(rel.Info.Description, "Install complete")
+	is.Equal("Install complete", rel.Info.Description)
 
-	is.Equal(rel.Info.Notes, "note here")
+	is.Equal("note here", rel.Info.Notes)
 }
 
 func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
 	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withNotes("got-{{.Release.Name}}")), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
 	r, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 	rel, err := releaserToV1Release(r)
-	is.NoError(err)
+	req.NoError(err)
 
 	expectedNotes := "got-" + res.Name
 	is.Equal(expectedNotes, rel.Info.Notes)
-	is.Equal(rel.Info.Description, "Install complete")
+	is.Equal("Install complete", rel.Info.Description)
 }
 
 func TestInstallRelease_WithChartAndDependencyParentNotes(t *testing.T) {
 	// Regression: Make sure that the child's notes don't override the parent's
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
 	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withNotes("parent"), withDependency(withNotes("child"))), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
 	r, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 	rel, err := releaserToV1Release(r)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("with-notes", rel.Name)
 	is.Equal("parent", rel.Info.Notes)
-	is.Equal(rel.Info.Description, "Install complete")
+	is.Equal("Install complete", rel.Info.Description)
 }
 
 func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 	// Regression: Make sure that the child's notes don't override the parent's
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
 	instAction.SubNotes = true
 	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withNotes("parent"), withDependency(withNotes("child"))), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
 	r, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 	rel, err := releaserToV1Release(r)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("with-notes", rel.Name)
 	// test run can return as either 'parent\nchild' or 'child\nparent'
-	if !strings.Contains(rel.Info.Notes, "parent") && !strings.Contains(rel.Info.Notes, "child") {
-		t.Fatalf("Expected 'parent\nchild' or 'child\nparent', got '%s'", rel.Info.Notes)
-	}
-	is.Equal(rel.Info.Description, "Install complete")
+	req.True(strings.Contains(rel.Info.Notes, "parent") || strings.Contains(rel.Info.Notes, "child"), "Expected 'parent\nchild' or 'child\nparent', got '%s'", rel.Info.Notes)
+	is.Equal("Install complete", rel.Info.Description)
 }
 
 func TestInstallRelease_DryRunClient(t *testing.T) {
 	for _, dryRunStrategy := range []DryRunStrategy{DryRunClient, DryRunServer} {
 		is := assert.New(t)
+		req := require.New(t)
 		instAction := installAction(t)
 		instAction.DryRunStrategy = dryRunStrategy
 
 		vals := map[string]any{}
 		resi, err := instAction.Run(buildChart(withSampleTemplates()), vals)
-		if err != nil {
-			t.Fatalf("Failed install: %s", err)
-		}
+		req.NoError(err, "Failed install")
 		res, err := releaserToV1Release(resi)
-		is.NoError(err)
+		req.NoError(err)
 
 		is.Contains(res.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 		is.Contains(res.Manifest, "---\n# Source: hello/templates/goodbye\ngoodbye: world")
@@ -458,60 +444,56 @@ func TestInstallRelease_DryRunClient(t *testing.T) {
 		is.NotContains(res.Manifest, "empty")
 
 		_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
-		is.Error(err)
+		req.Error(err)
 		is.Len(res.Hooks, 1)
-		is.True(res.Hooks[0].LastRun.CompletedAt.IsZero(), "expect hook to not be marked as run")
-		is.Equal(res.Info.Description, "Dry run complete")
+		is.Zero(res.Hooks[0].LastRun.CompletedAt, "expect hook to not be marked as run")
+		is.Equal("Dry run complete", res.Info.Description)
 	}
 }
 
 func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 
 	// First perform a normal dry-run with the secret and confirm its presence.
 	instAction.DryRunStrategy = DryRunClient
 	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(res.Manifest, "---\n# Source: hello/templates/secret.yaml\napiVersion: v1\nkind: Secret")
 
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Error(err)
-	is.Equal(res.Info.Description, "Dry run complete")
+	req.Error(err)
+	is.Equal("Dry run complete", res.Info.Description)
 
 	// Perform a dry-run where the secret should not be present
 	instAction.HideSecret = true
 	vals = map[string]any{}
 	res2i, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res2, err := releaserToV1Release(res2i)
-	is.NoError(err)
+	req.NoError(err)
 
 	is.NotContains(res2.Manifest, "---\n# Source: hello/templates/secret.yaml\napiVersion: v1\nkind: Secret")
 
 	_, err = instAction.cfg.Releases.Get(res2.Name, res2.Version)
-	is.Error(err)
-	is.Equal(res2.Info.Description, "Dry run complete")
+	req.Error(err)
+	is.Equal("Dry run complete", res2.Info.Description)
 
 	// Ensure there is an error when HideSecret True but not in a dry-run mode
 	instAction.DryRunStrategy = DryRunNone
 	vals = map[string]any{}
 	_, err = instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
-	if err == nil {
-		t.Fatal("Did not get the expected error when dry-run is false and hide secret is true")
-	}
+	req.Error(err, "Did not get the expected error when dry-run is false and hide secret is true")
 }
 
 // Regression test for #7955
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.DryRunStrategy = DryRunNone
 	vals := map[string]any{}
@@ -524,17 +506,16 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	})
 
 	resi, err := instAction.Run(mockChart, vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
 	is.Contains(res.Manifest, "goodbye: map[]")
 }
 
 func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.DryRunStrategy = DryRunNone
 	vals := map[string]any{}
@@ -542,32 +523,30 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	expectedErr := `hello/templates/incorrect:1:10
   executing "hello/templates/incorrect" at <.Values.bad.doh>:
     nil pointer evaluating interface {}.doh`
-	if err == nil {
-		t.Fatalf("Install should fail containing error: %s", expectedErr)
-	}
-	is.Contains(err.Error(), expectedErr)
+	req.Error(err, "Install should fail containing error: %s", expectedErr)
+	is.ErrorContains(err, expectedErr)
 }
 
 func TestInstallRelease_NoHooks(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.DisableHooks = true
 	instAction.ReleaseName = "no-hooks"
-	require.NoError(t, instAction.cfg.Releases.Create(releaseStub()))
+	req.NoError(instAction.cfg.Releases.Create(releaseStub()))
 
 	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
-	is.True(res.Hooks[0].LastRun.CompletedAt.IsZero(), "hooks should not run with no-hooks")
+	is.Zero(res.Hooks[0].LastRun.CompletedAt, "hooks should not run with no-hooks")
 }
 
 func TestInstallRelease_FailedHooks(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -578,58 +557,61 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 
 	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(), vals)
-	is.Error(err)
+	req.Error(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(res.Info.Description, "failed post-install")
-	is.Equal("", outBuffer.String())
+	is.Empty(outBuffer.String())
 	is.Equal(rcommon.StatusFailed, res.Info.Status)
 }
 
 func TestInstallRelease_ReplaceRelease(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.Replace = true
 
 	rel := releaseStub()
 	rel.Info.Status = rcommon.StatusUninstalled
-	require.NoError(t, instAction.cfg.Releases.Create(rel))
+	req.NoError(instAction.cfg.Releases.Create(rel))
 	instAction.ReleaseName = rel.Name
 
 	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(), vals)
-	is.NoError(err)
+	req.NoError(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
 	// This should have been auto-incremented
 	is.Equal(2, res.Version)
 	is.Equal(res.Name, rel.Name)
 
 	r, err := instAction.cfg.Releases.Get(rel.Name, res.Version)
-	is.NoError(err)
+	req.NoError(err)
 	getres, err := releaserToV1Release(r)
-	is.NoError(err)
-	is.Equal(getres.Info.Status, rcommon.StatusDeployed)
+	req.NoError(err)
+	is.Equal(rcommon.StatusDeployed, getres.Info.Status)
 }
 
 func TestInstallRelease_KubeVersion(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(withKube(">=0.0.0")), vals)
-	is.NoError(err)
+	req.NoError(err)
 
 	// This should fail for a few hundred years
 	instAction.ReleaseName = "should-fail"
 	vals = map[string]any{}
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
-	is.Error(err)
-	is.Contains(err.Error(), "chart requires kubeVersion: >=99.0.0 which is incompatible with Kubernetes v1.20.")
+	req.Error(err)
+	is.ErrorContains(err, "chart requires kubeVersion: >=99.0.0 which is incompatible with Kubernetes v1.20.")
 }
 
 func TestInstallRelease_Wait(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "come-fail-away"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -641,16 +623,18 @@ func TestInstallRelease_Wait(t *testing.T) {
 	goroutines := instAction.getGoroutineCount()
 
 	resi, err := instAction.Run(buildChart(), vals)
-	is.Error(err)
+	req.Error(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, rcommon.StatusFailed)
+	is.Equal(rcommon.StatusFailed, res.Info.Status)
 
 	is.Equal(goroutines, instAction.getGoroutineCount())
 }
+
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "interrupted-release"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -665,15 +649,19 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	goroutines := instAction.getGoroutineCount()
 
 	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
-	is.Error(err)
-	is.Contains(err.Error(), "context canceled")
+	req.Error(err)
+	req.ErrorContains(err, "context canceled")
 
 	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
-	is.Equal(goroutines, instAction.getGoroutineCount())
+	// Poll until the background installation goroutine has finished.
+	is.Eventually(func() bool {
+		return instAction.getGoroutineCount() == goroutines
+	}, 30*time.Second, 10*time.Millisecond)
 }
+
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "come-fail-away"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -684,17 +672,17 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChart(), vals)
-	is.Error(err)
+	req.Error(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, rcommon.StatusFailed)
+	is.Equal(rcommon.StatusFailed, res.Info.Status)
 }
 
 func TestInstallRelease_RollbackOnFailure(t *testing.T) {
-	is := assert.New(t)
-
 	t.Run("rollback-on-failure uninstall succeeds", func(t *testing.T) {
+		is := assert.New(t)
+		req := require.New(t)
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -707,19 +695,21 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 		vals := map[string]any{}
 
 		resi, err := instAction.Run(buildChart(), vals)
-		is.Error(err)
-		is.Contains(err.Error(), "I timed out")
-		is.Contains(err.Error(), "rollback-on-failure")
+		req.Error(err)
+		req.ErrorContains(err, "I timed out")
+		req.ErrorContains(err, "rollback-on-failure")
 
 		res, err := releaserToV1Release(resi)
-		is.NoError(err)
+		req.NoError(err)
 		// Now make sure it isn't in storage anymore
 		_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
-		is.Error(err)
+		req.Error(err)
 		is.Equal(err, driver.ErrReleaseNotFound)
 	})
 
 	t.Run("rollback-on-failure uninstall fails", func(t *testing.T) {
+		is := assert.New(t)
+		req := require.New(t)
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away-with-me"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -730,14 +720,16 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 		vals := map[string]any{}
 
 		_, err := instAction.Run(buildChart(), vals)
-		is.Error(err)
-		is.Contains(err.Error(), "I timed out")
-		is.Contains(err.Error(), "uninstall fail")
-		is.Contains(err.Error(), "an error occurred while uninstalling the release")
+		req.Error(err)
+		req.ErrorContains(err, "I timed out")
+		req.ErrorContains(err, "uninstall fail")
+		is.ErrorContains(err, "an error occurred while uninstalling the release")
 	})
 }
+
 func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "interrupted-release"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -752,21 +744,24 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	goroutines := instAction.getGoroutineCount()
 
 	resi, err := instAction.RunWithContext(ctx, buildChart(), vals)
-	is.Error(err)
-	is.Contains(err.Error(), "context canceled")
-	is.Contains(err.Error(), "rollback-on-failure")
-	is.Contains(err.Error(), "uninstalled")
+	req.Error(err)
+	req.ErrorContains(err, "context canceled")
+	req.ErrorContains(err, "rollback-on-failure")
+	req.ErrorContains(err, "uninstalled")
 
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	// Now make sure it isn't in storage anymore
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Error(err)
+	req.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
 	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
-	is.Equal(goroutines, instAction.getGoroutineCount())
+	// Poll until the background installation goroutine has finished.
+	is.Eventually(func() bool {
+		return instAction.getGoroutineCount() == goroutines
+	}, 30*time.Second, 10*time.Millisecond)
 }
+
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please
@@ -802,41 +797,29 @@ func TestNameTemplate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		n, err := TemplateName(tc.tpl)
-		if err != nil {
+		t.Run(tc.tpl, func(t *testing.T) {
+			n, err := TemplateName(tc.tpl)
 			if tc.expectedErrorStr == "" {
-				t.Errorf("Was not expecting error, but got: %v", err)
-				continue
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				re, compErr := regexp.Compile(tc.expectedErrorStr)
+				require.NoError(t, compErr, "Expected error string failed to compile")
+				assert.True(t, re.MatchString(err.Error()), "Error didn't match for %s expected %s", tc.tpl, tc.expectedErrorStr)
 			}
-			re, compErr := regexp.Compile(tc.expectedErrorStr)
-			if compErr != nil {
-				t.Errorf("Expected error string failed to compile: %v", compErr)
-				continue
-			}
-			if !re.MatchString(err.Error()) {
-				t.Errorf("Error didn't match for %s expected %s but got %v", tc.tpl, tc.expectedErrorStr, err)
-				continue
-			}
-		}
-		if err == nil && tc.expectedErrorStr != "" {
-			t.Errorf("Was expecting error %s but didn't get an error back", tc.expectedErrorStr)
-		}
 
-		if tc.expected != "" {
-			re, err := regexp.Compile(tc.expected)
-			if err != nil {
-				t.Errorf("Expected string failed to compile: %v", err)
-				continue
+			if tc.expected != "" {
+				re, err := regexp.Compile(tc.expected)
+				require.NoError(t, err)
+				assert.True(t, re.MatchString(n), "Returned name didn't match for %s expected %s but got %s", tc.tpl, tc.expected, n)
 			}
-			if !re.MatchString(n) {
-				t.Errorf("Returned name didn't match for %s expected %s but got %s", tc.tpl, tc.expected, n)
-			}
-		}
+		})
 	}
 }
 
 func TestInstallReleaseOutputDir(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	vals := map[string]any{}
 
@@ -845,30 +828,29 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	instAction.OutputDir = dir
 
 	_, err := instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/goodbye"))
-	is.NoError(err)
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "goodbye"))
+	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/hello"))
-	is.NoError(err)
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "hello"))
+	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/with-partials"))
-	is.NoError(err)
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "with-partials"))
+	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/rbac"))
-	is.NoError(err)
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "rbac"))
+	req.NoError(err)
 
-	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
+	test.AssertGoldenFile(t, filepath.Join(dir, "hello", "templates", "rbac"), "rbac.txt")
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
+	_, err = os.Stat(filepath.Join(dir, "hello", "templates", "empty"))
 	is.ErrorIs(err, fs.ErrNotExist)
 }
 
 func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	vals := map[string]any{}
 
@@ -881,70 +863,59 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	newDir := filepath.Join(dir, instAction.ReleaseName)
 
 	_, err := instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/goodbye"))
-	is.NoError(err)
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "goodbye"))
+	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/hello"))
-	is.NoError(err)
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "hello"))
+	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/with-partials"))
-	is.NoError(err)
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "with-partials"))
+	req.NoError(err)
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/rbac"))
-	is.NoError(err)
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "rbac"))
+	req.NoError(err)
 
-	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
+	test.AssertGoldenFile(t, filepath.Join(newDir, "hello", "templates", "rbac"), "rbac.txt")
 
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
+	_, err = os.Stat(filepath.Join(newDir, "hello", "templates", "empty"))
 	is.ErrorIs(err, fs.ErrNotExist)
 }
 
 func TestNameAndChart(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	chartName := "./foo"
 
 	name, chrt, err := instAction.NameAndChart([]string{chartName})
-	if err != nil {
-		t.Fatal(err)
-	}
+	req.NoError(err)
 	is.Equal(instAction.ReleaseName, name)
 	is.Equal(chartName, chrt)
 
 	instAction.GenerateName = true
 	_, _, err = instAction.NameAndChart([]string{"foo", chartName})
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-	is.Equal("cannot set --generate-name and also specify a name", err.Error())
+	req.Error(err, "expected an error")
+	req.EqualError(err, "cannot set --generate-name and also specify a name")
 
 	instAction.GenerateName = false
 	instAction.NameTemplate = "{{ . }}"
 	_, _, err = instAction.NameAndChart([]string{"foo", chartName})
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-	is.Equal("cannot set --name-template and also specify a name", err.Error())
+	req.Error(err, "expected an error")
+	req.EqualError(err, "cannot set --name-template and also specify a name")
 
 	instAction.NameTemplate = ""
 	instAction.ReleaseName = ""
 	_, _, err = instAction.NameAndChart([]string{chartName})
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-	is.Equal("must either provide a name or specify --generate-name", err.Error())
+	req.Error(err, "expected an error")
+	req.EqualError(err, "must either provide a name or specify --generate-name")
 
 	instAction.NameTemplate = ""
 	instAction.ReleaseName = ""
 	_, _, err = instAction.NameAndChart([]string{"foo", chartName, "bar"})
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-	is.Equal("expected at most two arguments, unexpected arguments: bar", err.Error())
+	req.Error(err, "expected an error")
+	is.EqualError(err, "expected at most two arguments, unexpected arguments: bar")
 }
 
 func TestNameAndChartGenerateName(t *testing.T) {
@@ -996,9 +967,7 @@ func TestNameAndChartGenerateName(t *testing.T) {
 			t.Parallel()
 
 			name, chrt, err := instAction.NameAndChart([]string{tc.Chart})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			is.Equal(tc.ExpectedName, name)
 			is.Equal(tc.Chart, chrt)
@@ -1008,34 +977,31 @@ func TestNameAndChartGenerateName(t *testing.T) {
 
 func TestInstallWithLabels(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.Labels = map[string]string{
 		"key1": "val1",
 		"key2": "val2",
 	}
 	resi, err := instAction.Run(buildChart(), nil)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
+	req.NoError(err, "Failed install")
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 
 	is.Equal(instAction.Labels, res.Labels)
 }
 
 func TestInstallWithSystemLabels(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.Labels = map[string]string{
 		"owner": "val1",
 		"key2":  "val2",
 	}
 	_, err := instAction.Run(buildChart(), nil)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-
-	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+	req.Error(err, "expected an error")
+	is.EqualError(err, fmt.Sprintf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()))
 }
 
 func TestUrlEqual(t *testing.T) {
@@ -1090,13 +1056,9 @@ func TestUrlEqual(t *testing.T) {
 			t.Parallel()
 
 			u1, err := url.Parse(tc.url1)
-			if err != nil {
-				t.Fatalf("Failed to parse URL1 %s: %v", tc.url1, err)
-			}
+			require.NoError(t, err, "Failed to parse URL1 %s", tc.url1)
 			u2, err := url.Parse(tc.url2)
-			if err != nil {
-				t.Fatalf("Failed to parse URL2 %s: %v", tc.url2, err)
-			}
+			require.NoError(t, err, "Failed to parse URL2 %s", tc.url2)
 
 			is.Equal(tc.expected, urlEqual(u1, u2))
 		})
@@ -1140,7 +1102,7 @@ func TestInstallCRDs(t *testing.T) {
 	mockChart := buildChart(withFile(mockFile))
 	crdsToInstall := mockChart.CRDObjects()
 
-	assert.Len(t, crdsToInstall, 1)
+	require.Len(t, crdsToInstall, 1)
 	assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
 	require.NoError(t, instAction.installCRDs(crdsToInstall))
 }
@@ -1264,17 +1226,14 @@ func TestInstallCRDs_CheckNilErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			instAction := installAction(t)
-
-			err := instAction.installCRDs(tt.input)
-			if err == nil {
-				t.Error("got nil expected err")
-			}
+			assert.Error(t, instAction.installCRDs(tt.input), "got nil expected err")
 		})
 	}
 }
 
 func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	instAction := installAction(t)
 	instAction.ReleaseName = "wait-options-test"
@@ -1289,7 +1248,7 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 
 	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(), vals)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")

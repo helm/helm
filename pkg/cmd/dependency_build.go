@@ -55,7 +55,11 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+			sourceDateEpoch, err := sourceDateEpochFromEnv()
+			if err != nil {
+				return err
+			}
+			registryClient, err := newRegistryClient(out, client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -72,6 +76,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 				RepositoryCache:  settings.RepositoryCache,
 				ContentCache:     settings.ContentCache,
 				Debug:            settings.Debug,
+				SourceDateEpoch:  sourceDateEpoch,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible

@@ -20,6 +20,9 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -193,21 +196,15 @@ func TestKindSorter(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
-			if got, want := len(test.expected), len(manifests); got != want {
-				t.Fatalf("Expected %d names in order, got %d", want, got)
-			}
+			require.Len(t, manifests, len(test.expected), "Expected %d names in order", len(manifests))
 			defer buf.Reset()
 			orig := manifests
 			for _, r := range sortManifestsByKind(manifests, test.order) {
 				buf.WriteString(r.Name)
 			}
-			if got := buf.String(); got != test.expected {
-				t.Errorf("Expected %q, got %q", test.expected, got)
-			}
+			assert.Equal(t, test.expected, buf.String())
 			for i, manifest := range orig {
-				if manifest != manifests[i] {
-					t.Fatal("Expected input to sortManifestsByKind to stay the same")
-				}
+				require.Equal(t, manifest, manifests[i], "Expected input to sortManifestsByKind to stay the same")
 			}
 		})
 	}
@@ -267,9 +264,7 @@ func TestKindSorterKeepOriginalOrder(t *testing.T) {
 			for _, r := range sortManifestsByKind(manifests, test.order) {
 				buf.WriteString(r.Name)
 			}
-			if got := buf.String(); got != test.expected {
-				t.Errorf("Expected %q, got %q", test.expected, got)
-			}
+			assert.Equal(t, test.expected, buf.String())
 		})
 	}
 }
@@ -289,9 +284,7 @@ func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
 
 	expectedOrder := []Manifest{namespace, unknown}
 	for i, manifest := range manifests {
-		if expectedOrder[i].Name != manifest.Name {
-			t.Errorf("Expected %s, got %s", expectedOrder[i].Name, manifest.Name)
-		}
+		assert.Equal(t, expectedOrder[i].Name, manifest.Name)
 	}
 }
 
@@ -326,22 +319,16 @@ func TestKindSorterForHooks(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
-			if got, want := len(test.expected), len(hooks); got != want {
-				t.Fatalf("Expected %d names in order, got %d", want, got)
-			}
+			require.Len(t, hooks, len(test.expected), "Expected %d names in order", len(hooks))
 			defer buf.Reset()
 			orig := hooks
 			for _, r := range sortHooksByKind(hooks, test.order) {
 				buf.WriteString(r.Name)
 			}
 			for i, hook := range orig {
-				if hook != hooks[i] {
-					t.Fatal("Expected input to sortHooksByKind to stay the same")
-				}
+				require.Equal(t, hook, hooks[i], "Expected input to sortHooksByKind to stay the same")
 			}
-			if got := buf.String(); got != test.expected {
-				t.Errorf("Expected %q, got %q", test.expected, got)
-			}
+			assert.Equal(t, test.expected, buf.String())
 		})
 	}
 }

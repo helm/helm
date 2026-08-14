@@ -18,6 +18,9 @@ package registry
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetPluginName(t *testing.T) {
@@ -74,19 +77,10 @@ func TestGetPluginName(t *testing.T) {
 			pluginName, err := GetPluginName(tt.source)
 
 			if tt.expectErr {
-				if err == nil {
-					t.Error("expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				return
-			}
-
-			if pluginName != tt.expected {
-				t.Errorf("expected plugin name %q, got %q", tt.expected, pluginName)
+				assert.Error(t, err, "expected error but got none")
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, pluginName)
 			}
 		})
 	}

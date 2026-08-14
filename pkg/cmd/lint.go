@@ -59,7 +59,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			if kubeVersion != "" {
 				parsedKubeVersion, err := common.ParseKubeVersion(kubeVersion)
 				if err != nil {
-					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
+					return fmt.Errorf("invalid kube version '%s': %w", kubeVersion, err)
 				}
 				client.KubeVersion = parsedKubeVersion
 			}

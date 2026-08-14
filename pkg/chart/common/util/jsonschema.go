@@ -18,6 +18,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -41,7 +42,7 @@ type HTTPURLLoader http.Client
 func (l *HTTPURLLoader) Load(urlStr string) (any, error) {
 	client := (*http.Client)(l)
 
-	req, err := http.NewRequest(http.MethodGet, urlStr, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, urlStr, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request for %s: %w", urlStr, err)
 	}

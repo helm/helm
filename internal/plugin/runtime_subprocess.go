@@ -18,6 +18,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -96,14 +97,14 @@ func (r *SubprocessPluginRuntime) Metadata() Metadata {
 	return r.metadata
 }
 
-func (r *SubprocessPluginRuntime) Invoke(_ context.Context, input *Input) (*Output, error) {
+func (r *SubprocessPluginRuntime) Invoke(ctx context.Context, input *Input) (*Output, error) {
 	switch input.Message.(type) {
 	case schema.InputMessageCLIV1:
-		return r.runCLI(input)
+		return r.runCLI(ctx, input)
 	case schema.InputMessageGetterV1:
-		return r.runGetter(input)
+		return r.runGetter(ctx, input)
 	case schema.InputMessagePostRendererV1:
-		return r.runPostrenderer(input)
+		return r.runPostrenderer(ctx, input)
 	default:
 		return nil, fmt.Errorf("unsupported subprocess plugin type %q", r.metadata.Type)
 	}
@@ -113,7 +114,7 @@ func (r *SubprocessPluginRuntime) Invoke(_ context.Context, input *Input) (*Outp
 // This method allows execution with different command/args than the plugin's default
 func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	mainCmdExp := os.ExpandEnv(main)
-	cmd := exec.Command(mainCmdExp, argv...)
+	cmd := exec.CommandContext(context.Background(), mainCmdExp, argv...)
 	cmd.Env = slices.Clone(os.Environ())
 	cmd.Env = append(
 		cmd.Env,
@@ -125,11 +126,7 @@ func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env 
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
-		return err
-	}
-
-	return nil
+	return executeCmd(cmd, r.metadata.Name)
 }
 
 func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
@@ -149,14 +146,15 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 		return err
 	}
 
-	cmd := exec.Command(main, argv...)
+	cmd := exec.CommandContext(context.Background(), main, argv...)
 	cmd.Env = FormatEnv(env)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	slog.Debug("executing plugin hook command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
 	if err := cmd.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
+		var eerr *exec.ExitError
+		if errors.As(err, &eerr) {
 			os.Stderr.Write(eerr.Stderr)
 			return fmt.Errorf("plugin %s hook for %q exited with error", event, r.metadata.Name)
 		}
@@ -170,7 +168,8 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 // then replace the other three with a call to this func
 func executeCmd(prog *exec.Cmd, pluginName string) error {
 	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
+		var eerr *exec.ExitError
+		if errors.As(err, &eerr) {
 			slog.Debug(
 				"plugin execution failed",
 				slog.String("pluginName", pluginName),
@@ -189,7 +188,7 @@ func executeCmd(prog *exec.Cmd, pluginName string) error {
 	return nil
 }
 
-func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
+func (r *SubprocessPluginRuntime) runCLI(ctx context.Context, input *Input) (*Output, error) {
 	if _, ok := input.Message.(schema.InputMessageCLIV1); !ok {
 		return nil, fmt.Errorf("plugin %q input message does not implement InputMessageCLIV1", r.metadata.Name)
 	}
@@ -209,7 +208,7 @@ func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 		return nil, fmt.Errorf("failed to prepare plugin command: %w", err)
 	}
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Env = FormatEnv(env)
 
 	cmd.Stdin = input.Stdin
@@ -226,7 +225,7 @@ func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 	}, nil
 }
 
-func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error) {
+func (r *SubprocessPluginRuntime) runPostrenderer(ctx context.Context, input *Input) (*Output, error) {
 	if _, ok := input.Message.(schema.InputMessagePostRendererV1); !ok {
 		return nil, fmt.Errorf("plugin %q input message does not implement InputMessagePostRendererV1", r.metadata.Name)
 	}
@@ -244,7 +243,8 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 		return nil, fmt.Errorf("failed to prepare plugin command: %w", err)
 	}
 
-	cmd := exec.Command(
+	cmd := exec.CommandContext(
+		ctx,
 		command,
 		args...)
 

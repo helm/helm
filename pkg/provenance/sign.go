@@ -218,7 +218,6 @@ func (s *Signatory) ClearSign(archiveData []byte, filename string, metadataBytes
 	}
 
 	_, err = io.Copy(w, b)
-
 	if err != nil {
 		// NB: We intentionally don't call `w.Close()` here! `w.Close()` is the method which
 		// actually does the PGP signing, and therefore is the part which uses the private key.
@@ -388,7 +387,7 @@ func DigestFile(filename string) (string, error) {
 func Digest(in io.Reader) (string, error) {
 	hash := crypto.SHA256.New()
 	if _, err := io.Copy(hash, in); err != nil {
-		return "", nil
+		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }

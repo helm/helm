@@ -185,7 +185,8 @@ func TestStatusCompletion(t *testing.T) {
 					Version: "1.2.3-prerelease",
 				},
 			},
-		}}
+		},
+	}
 
 	tests := []cmdTestCase{{
 		name:   "completion for status",

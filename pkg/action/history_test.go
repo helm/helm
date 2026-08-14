@@ -50,9 +50,7 @@ func TestHistoryRun(t *testing.T) {
 	client.Max = 3
 	client.cfg.Releases.MaxHistory = 3
 	for _, rel := range []*release.Release{simpleRelease, updatedRelease} {
-		if err := client.cfg.Releases.Create(rel); err != nil {
-			t.Fatal(err, "Could not add releases to Config")
-		}
+		require.NoError(t, client.cfg.Releases.Create(rel), "Could not add releases to Config")
 	}
 
 	releases, err := config.Releases.ListReleases()

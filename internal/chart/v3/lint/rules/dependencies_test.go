@@ -19,6 +19,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/lint/support"
 	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
@@ -63,17 +66,13 @@ func chartWithBadDependencies() chart.Chart {
 func TestValidateDependencyInChartsDir(t *testing.T) {
 	c := chartWithBadDependencies()
 
-	if err := validateDependencyInChartsDir(&c); err == nil {
-		t.Error("chart should have been flagged for missing deps in chart directory")
-	}
+	assert.Error(t, validateDependencyInChartsDir(&c), "chart should have been flagged for missing deps in chart directory")
 }
 
 func TestValidateDependencyInMetadata(t *testing.T) {
 	c := chartWithBadDependencies()
 
-	if err := validateDependencyInMetadata(&c); err == nil {
-		t.Error("chart should have been flagged for missing deps in chart metadata")
-	}
+	assert.Error(t, validateDependencyInMetadata(&c), "chart should have been flagged for missing deps in chart metadata")
 }
 
 func TestValidateDependenciesUnique(t *testing.T) {
@@ -131,9 +130,7 @@ func TestValidateDependenciesUnique(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if err := validateDependenciesUnique(&tt.chart); err == nil {
-			t.Error("chart should have been flagged for dependency shadowing")
-		}
+		assert.Error(t, validateDependenciesUnique(&tt.chart), "chart should have been flagged for dependency shadowing")
 	}
 }
 
@@ -141,15 +138,11 @@ func TestDependencies(t *testing.T) {
 	tmp := t.TempDir()
 
 	c := chartWithBadDependencies()
-	err := chartutil.SaveDir(&c, tmp)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, chartutil.SaveDir(&c, tmp))
 	linter := support.Linter{ChartDir: filepath.Join(tmp, c.Metadata.Name)}
 
 	Dependencies(&linter)
-	if l := len(linter.Messages); l != 2 {
-		t.Errorf("expected 2 linter errors for bad chart dependencies. Got %d.", l)
+	if !assert.Len(t, linter.Messages, 2, "expected 2 linter errors for bad chart dependencies") {
 		for i, msg := range linter.Messages {
 			t.Logf("Message: %d, Error: %#v", i, msg)
 		}

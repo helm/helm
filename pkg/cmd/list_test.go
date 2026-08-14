@@ -20,6 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -348,13 +351,8 @@ func TestReleaseListWriter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			writer := newReleaseListWriter(tt.releases, tt.timeFormat, tt.noHeaders, tt.noColor)
 
-			if writer == nil {
-				t.Error("Expected writer to be non-nil")
-			} else {
-				if len(writer.releases) != len(tt.releases) {
-					t.Errorf("Expected %d releases, got %d", len(tt.releases), len(writer.releases))
-				}
-			}
+			require.NotNil(t, writer, "Expected writer to be non-nil")
+			assert.Len(t, writer.releases, len(tt.releases), "Expected %d releases, got %d", len(tt.releases), len(writer.releases))
 		})
 	}
 }
@@ -428,20 +426,9 @@ func TestReleaseListWriterMethods(t *testing.T) {
 			var buf []byte
 			out := &bytesWriter{buf: &buf}
 
-			err := writer.WriteJSON(out)
-			if err != nil {
-				t.Errorf("WriteJSON failed: %v", err)
-			}
-
-			err = writer.WriteYAML(out)
-			if err != nil {
-				t.Errorf("WriteYAML failed: %v", err)
-			}
-
-			err = writer.WriteTable(out)
-			if err != nil {
-				t.Errorf("WriteTable failed: %v", err)
-			}
+			require.NoError(t, writer.WriteJSON(out), "WriteJSON failed")
+			require.NoError(t, writer.WriteYAML(out), "WriteYAML failed")
+			assert.NoError(t, writer.WriteTable(out), "WriteTable failed")
 		})
 	}
 
@@ -450,20 +437,9 @@ func TestReleaseListWriterMethods(t *testing.T) {
 	var buf []byte
 	out := &bytesWriter{buf: &buf}
 
-	err := writer.WriteJSON(out)
-	if err != nil {
-		t.Errorf("WriteJSON failed: %v", err)
-	}
-
-	err = writer.WriteYAML(out)
-	if err != nil {
-		t.Errorf("WriteYAML failed: %v", err)
-	}
-
-	err = writer.WriteTable(out)
-	if err != nil {
-		t.Errorf("WriteTable failed: %v", err)
-	}
+	require.NoError(t, writer.WriteJSON(out), "WriteJSON failed")
+	require.NoError(t, writer.WriteYAML(out), "WriteYAML failed")
+	assert.NoError(t, writer.WriteTable(out), "WriteTable failed")
 }
 
 func TestFilterReleases(t *testing.T) {
@@ -514,9 +490,7 @@ func TestFilterReleases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := filterReleases(tt.releases, tt.ignoredReleaseNames)
-			if len(result) != tt.expectedCount {
-				t.Errorf("Expected %d releases, got %d", tt.expectedCount, len(result))
-			}
+			assert.Len(t, result, tt.expectedCount, "Expected %d releases, got %d", tt.expectedCount, len(result))
 		})
 	}
 }
@@ -605,13 +579,9 @@ func TestListStatusMapping(t *testing.T) {
 			}
 
 			writer := newReleaseListWriter(releaseFixture, "", false, false)
-			if len(writer.releases) != 1 {
-				t.Errorf("Expected 1 release, got %d", len(writer.releases))
-			}
+			assert.Len(t, writer.releases, 1, "Expected 1 release, got %d", len(writer.releases))
 
-			if writer.releases[0].Status != tc.status.String() {
-				t.Errorf("Expected status %s, got %s", tc.status.String(), writer.releases[0].Status)
-			}
+			assert.Equal(t, tc.status.String(), writer.releases[0].Status, "Expected status %s, got %s", tc.status.String(), writer.releases[0].Status)
 		})
 	}
 }

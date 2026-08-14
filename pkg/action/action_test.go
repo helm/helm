@@ -58,9 +58,7 @@ func actionConfigFixtureWithDummyResources(t *testing.T, dummyResources kube.Res
 	slog.SetDefault(logger)
 
 	registryClient, err := registry.NewClient()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
@@ -358,10 +356,9 @@ func TestConfiguration_Init(t *testing.T) {
 
 			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
-				assert.Error(t, actualErr)
-				assert.Contains(t, actualErr.Error(), tt.errMsg)
+				require.ErrorContains(t, actualErr, tt.errMsg)
 			} else {
-				assert.NoError(t, actualErr)
+				require.NoError(t, actualErr)
 				assert.IsType(t, tt.expectedDriverType, cfg.Releases.Driver)
 			}
 		})
@@ -372,16 +369,10 @@ func TestGetVersionSet(t *testing.T) {
 	client := fakeclientset.NewClientset()
 
 	vs, err := GetVersionSet(client.Discovery())
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
-	if !vs.Has("v1") {
-		t.Error("Expected supported versions to at least include v1.")
-	}
-	if vs.Has("nosuchversion/v1") {
-		t.Error("Non-existent version is reported found.")
-	}
+	assert.True(t, vs.Has("v1"), "Expected supported versions to at least include v1.")
+	assert.False(t, vs.Has("nosuchversion/v1"), "Non-existent version is reported found.")
 }
 
 // Mock PostRenderer for testing
@@ -1199,9 +1190,9 @@ data:
 `,
 		},
 
-		// Multi-doc tests: block scalar doc is NOT the last document.
-		// SplitManifests' regex consumes \s*\n before ---, so trailing
-		// newlines from non-last docs are always stripped.
+		// Multi-doc block scalar tests where the block scalar document is NOT the last:
+		// the separator regex does not consume trailing newlines, so YAML chomping
+		// indicators (|, |+, |-) are respected.
 
 		// | (clip) in multi-doc (first doc)
 		{
@@ -1230,7 +1221,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1270,7 +1261,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1311,7 +1302,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1474,7 +1465,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1514,8 +1505,9 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |+
     hello
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -1555,8 +1547,10 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |+
     hello
+
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -1575,10 +1569,9 @@ data:
 			merged, err := annotateAndMerge(tt.files)
 
 			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.ErrorContains(t, err, tt.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, merged)
 				assert.Equal(t, tt.expected, merged)
 			}
@@ -1738,11 +1731,10 @@ data:
 			files, err := splitAndDeannotate(tt.input, "test")
 
 			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				require.ErrorContains(t, err, tt.expectedError)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, len(tt.expectedFiles), len(files))
+				require.NoError(t, err)
+				assert.Len(t, files, len(tt.expectedFiles))
 
 				for expectedFile, expectedContent := range tt.expectedFiles {
 					actualContent, exists := files[expectedFile]
@@ -1793,7 +1785,7 @@ data:
 	require.NoError(t, err)
 
 	// Compare the results
-	assert.Equal(t, len(originalFiles), len(reconstructed))
+	assert.Len(t, reconstructed, len(originalFiles))
 	for filename, originalContent := range originalFiles {
 		reconstructedContent, exists := reconstructed[filename]
 		assert.True(t, exists, "File %s should exist in reconstructed files", filename)
@@ -1823,14 +1815,14 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes)
+	assert.Empty(t, notes)
 	expectedBuf := `---
 # Source: yellow/templates/foodpie
 foodpie: world
@@ -1870,12 +1862,11 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error while running post render on files")
+	assert.ErrorContains(t, err, "error while running post render on files")
 }
 
 func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
@@ -1898,12 +1889,12 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error merging manifests")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "error merging manifests")
 }
 
 func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
@@ -1920,12 +1911,11 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
+	assert.ErrorContains(t, err, "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
 }
 
 func TestRenderResources_PostRenderer_Integration(t *testing.T) {
@@ -1941,14 +1931,14 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes) // Notes should be empty for this test
+	assert.Empty(t, notes) // Notes should be empty for this test
 
 	// Verify that the post-renderer modifications are present in the output
 	output := buf.String()
@@ -1980,14 +1970,14 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		nil, false, false, false, PostRenderStrategyCombined,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes)
+	assert.Empty(t, notes)
 }
 
 func TestRenderResources_PostRenderer_DuplicateResourceInHookAndTemplate(t *testing.T) {
@@ -2033,19 +2023,17 @@ spec:
 	mockPR := &mockPostRenderer{
 		transform: func(content string) string {
 			count := strings.Count(content, "kind: ServiceAccount")
-			if count > 1 {
-				t.Errorf("post-renderer received %d ServiceAccount resources in a single stream, expected at most 1", count)
-			}
+			assert.LessOrEqualf(t, count, 1, "post-renderer received %d ServiceAccount resources in a single stream, expected at most 1", count)
 			return content
 		},
 	}
 
 	hooks, buf, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategySeparate,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, hooks, 1)
 	assert.Equal(t, "my-app", hooks[0].Name)
 	assert.Contains(t, buf.String(), "kind: Deployment")
@@ -2083,11 +2071,11 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, calls, "combined strategy should invoke the post-renderer exactly once")
 	assert.Contains(t, lastInput, "hook-cm")
 	assert.Contains(t, lastInput, "template-cm")
@@ -2119,11 +2107,11 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategy(""),
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, calls, "unset strategy must preserve backwards-compatible combined behavior")
 }
 
@@ -2153,11 +2141,11 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategySeparate,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, inputs, 2, "separate strategy should invoke the post-renderer twice when both hooks and templates exist")
 	for _, in := range inputs {
 		hasHook := strings.Contains(in, "hook-cm")
@@ -2187,11 +2175,11 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategySeparate,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, calls, "separate strategy should skip the empty hook group and invoke the post-renderer only once")
 }
 
@@ -2221,11 +2209,11 @@ metadata:
 	}
 
 	hooks, manifestDoc, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyNoHooks,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, inputs, 1, "nohooks strategy should invoke the post-renderer exactly once (for templates only)")
 	assert.NotContains(t, inputs[0], "hook-cm", "hooks must not be sent to the post-renderer")
 	assert.Contains(t, inputs[0], "template-cm", "templates must be sent to the post-renderer")
@@ -2258,11 +2246,11 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyNoHooks,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, calls, "nohooks strategy should not invoke the post-renderer when the chart only has hooks")
 }
 
@@ -2280,13 +2268,12 @@ metadata:
 	mockPR := &mockPostRenderer{}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategy("bogus"),
 	)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown post-render strategy")
-	assert.Contains(t, err.Error(), "bogus")
+	require.ErrorContains(t, err, "unknown post-render strategy")
+	assert.ErrorContains(t, err, "bogus")
 }
 
 func TestDetermineReleaseSSAApplyMethod(t *testing.T) {

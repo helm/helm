@@ -132,7 +132,6 @@ func toYAMLPretty(v any) string {
 	encoder := goYaml.NewEncoder(&data)
 	encoder.SetIndent(2)
 	err := encoder.Encode(v)
-
 	if err != nil {
 		// Swallow errors inside of a template.
 		return ""
