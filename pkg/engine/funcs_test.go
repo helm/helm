@@ -162,52 +162,6 @@ keyInElement1 = "valueInElement1"`,
 		tpl    string
 		expect any
 		vars   any
-<<<<<<< HEAD
-	}{{
-		tpl:  `{{ mustToYaml . }}`,
-		vars: loopMap,
-	}, {
-		tpl:  `{{ mustToJson . }}`,
-		vars: loopMap,
-	}, {
-		tpl:  `{{ mustToPrettyRawJson . }}`,
-		vars: loopMap, // circular reference must panic
-	}, {
-		tpl:    `{{ mustToPrettyRawJson . }}`,
-		expect: "{\n  \"foo\": \"bar\"\n}",
-		vars:   map[string]any{"foo": "bar"},
-	}, {
-		tpl:    `{{ toPrettyRawJson . }}`,
-		expect: "", // circular reference must swallow error and return ""
-		vars:   loopMap,
-	}, {
-		tpl:    `{{ mustToDuration 30 }}`,
-		expect: `30s`,
-		vars:   nil,
-	}, {
-		tpl:    `{{ mustToDuration "1m30s" }}`,
-		expect: `1m30s`,
-		vars:   nil,
-	}, {
-		tpl:  `{{ mustToDuration "foo" }}`,
-		vars: nil,
-	}, {
-		tpl:    `{{ toYaml . }}`,
-		expect: "", // should return empty string and swallow error
-		vars:   loopMap,
-	}, {
-		tpl:    `{{ toJson . }}`,
-		expect: "", // should return empty string and swallow error
-		vars:   loopMap,
-	}, {
-		tpl:  `{{ mustToToml . }}`,
-		vars: map[int]string{1: "one"}, // non-string key is invalid in TOML
-	}, {
-		tpl:    `{{ mustToToml . }}`,
-		expect: "foo = \"bar\"\n", // should succeed and return TOML string
-		vars:   map[string]string{"foo": "bar"},
-	},
-=======
 	}{
 		{
 			tpl:  `{{ mustToYaml . }}`,
@@ -215,6 +169,17 @@ keyInElement1 = "valueInElement1"`,
 		}, {
 			tpl:  `{{ mustToJson . }}`,
 			vars: loopMap,
+		}, {
+			tpl:  `{{ mustToPrettyRawJson . }}`,
+			vars: loopMap, // circular reference must panic
+		}, {
+			tpl:    `{{ mustToPrettyRawJson . }}`,
+			expect: "{\n  \"foo\": \"bar\"\n}",
+			vars:   map[string]any{"foo": "bar"},
+		}, {
+			tpl:    `{{ toPrettyRawJson . }}`,
+			expect: "", // circular reference must swallow error and return ""
+			vars:   loopMap,
 		}, {
 			tpl:    `{{ mustToDuration 30 }}`,
 			expect: `30s`,
@@ -242,7 +207,6 @@ keyInElement1 = "valueInElement1"`,
 			expect: "foo = \"bar\"\n", // should succeed and return TOML string
 			vars:   map[string]string{"foo": "bar"},
 		},
->>>>>>> f3d68cdbea3076a0283cbd1e3ec44a409ad48a43
 	}
 
 	for _, tt := range mustFuncsTests {
