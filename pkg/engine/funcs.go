@@ -55,14 +55,14 @@ func funcMap() template.FuncMap {
 
 	// Add some extra functionality
 	extra := template.FuncMap{
-		"toToml":           toTOML,
-		"mustToToml":       mustToTOML,
-		"fromToml":         fromTOML,
-		"toYaml":           toYAML,
-		"mustToYaml":       mustToYAML,
-		"toYamlPretty":     toYAMLPretty,
-		"fromYaml":         fromYAML,
-		"fromYamlArray":    fromYAMLArray,
+		"toToml":              toTOML,
+		"mustToToml":          mustToTOML,
+		"fromToml":            fromTOML,
+		"toYaml":              toYAML,
+		"mustToYaml":          mustToYAML,
+		"toYamlPretty":        toYAMLPretty,
+		"fromYaml":            fromYAML,
+		"fromYamlArray":       fromYAMLArray,
 		"toJson":              toJSON,
 		"mustToJson":          mustToJSON,
 		"toPrettyRawJson":     toPrettyRawJSON,
