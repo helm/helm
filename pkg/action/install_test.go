@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -177,6 +178,48 @@ func installAction(t *testing.T) *Install {
 	return instAction
 }
 
+type namespaceKubeClient struct {
+	kubefake.FailingKubeClient
+	namespace   string
+	getStatus   int
+	createCalls int
+}
+
+func (c *namespaceKubeClient) Build(_ io.Reader, _ bool) (kube.ResourceList, error) {
+	obj := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: c.namespace,
+		},
+	}
+
+	body := kuberuntime.EncodeOrDie(corev1Codec, obj)
+	if c.getStatus != http.StatusOK {
+		body = fmt.Sprintf(`{"apiVersion":"v1","kind":"Status","status":"Failure","reason":"%s","code":%d}`,
+			http.StatusText(c.getStatus), c.getStatus)
+	}
+
+	return kube.ResourceList{{
+		Name: c.namespace,
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Version: "v1", Resource: "namespaces"},
+			GroupVersionKind: schema.GroupVersionKind{Version: "v1", Kind: "Namespace"},
+			Scope:            meta.RESTScopeRoot,
+		},
+		Object: obj,
+		Client: fakeClientWith(c.getStatus, coreV1GV, body),
+	}}, nil
+}
+
+func (c *namespaceKubeClient) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+	c.createCalls++
+	return c.FailingKubeClient.Create(resources, options...)
+}
+
+var (
+	coreV1GV    = schema.GroupVersion{Version: "v1"}
+	corev1Codec = scheme.Codecs.CodecForVersions(scheme.Codecs.LegacyCodec(coreV1GV), scheme.Codecs.UniversalDecoder(coreV1GV), coreV1GV, coreV1GV)
+)
+
 func TestInstallRelease(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -216,6 +259,38 @@ func TestInstallRelease(t *testing.T) {
 	lrel, err := releaserToV1Release(lastRelease)
 	req.NoError(err)
 	is.Equal(rcommon.StatusDeployed, lrel.Info.Status)
+}
+
+func TestInstallCreateReleaseNamespaceAlreadyExists(t *testing.T) {
+	config := actionConfigFixture(t)
+	kubeClient := &namespaceKubeClient{
+		FailingKubeClient: kubefake.FailingKubeClient{
+			PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+		},
+		namespace: "spaced",
+		getStatus: http.StatusOK,
+	}
+	config.KubeClient = kubeClient
+	instAction := installActionWithConfig(config)
+
+	require.NoError(t, instAction.createReleaseNamespace())
+	assert.Zero(t, kubeClient.createCalls)
+}
+
+func TestInstallCreateReleaseNamespaceNotFound(t *testing.T) {
+	config := actionConfigFixture(t)
+	kubeClient := &namespaceKubeClient{
+		FailingKubeClient: kubefake.FailingKubeClient{
+			PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+		},
+		namespace: "spaced",
+		getStatus: http.StatusNotFound,
+	}
+	config.KubeClient = kubeClient
+	instAction := installActionWithConfig(config)
+
+	require.NoError(t, instAction.createReleaseNamespace())
+	assert.Equal(t, 1, kubeClient.createCalls)
 }
 
 func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
