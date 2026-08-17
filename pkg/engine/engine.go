@@ -143,9 +143,11 @@ type renderable struct {
 	basePath string
 }
 
-const warnStartDelim = "HELM_ERR_START"
-const warnEndDelim = "HELM_ERR_END"
-const recursionMaxNums = 1000
+const (
+	warnStartDelim   = "HELM_ERR_START"
+	warnEndDelim     = "HELM_ERR_END"
+	recursionMaxNums = 1000
+)
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
@@ -437,7 +439,7 @@ func parseTemplateSimpleErrorString(remainder string) (TraceableError, bool) {
 // Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
 func parseTemplateExecutingAtErrorType(remainder string) (TraceableError, bool) {
 	if templateName, after, found := strings.Cut(remainder, ": executing "); found {
-		if len(after) == 0 || after[0] != '"' {
+		if after == "" || after[0] != '"' {
 			return TraceableError{}, false
 		}
 		// find closing quote for function name
@@ -539,7 +541,7 @@ func (p byPathLen) Less(i, j int) bool {
 	a, b := p[i], p[j]
 	ca, cb := strings.Count(a, "/"), strings.Count(b, "/")
 	if ca == cb {
-		return strings.Compare(a, b) == -1
+		return a < b
 	}
 	return ca < cb
 }

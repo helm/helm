@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/util/homedir"
 
 	"helm.sh/helm/v4/pkg/helmpath/xdg"
@@ -35,52 +36,37 @@ func TestDataPath(t *testing.T) {
 	os.Unsetenv(xdg.DataHomeEnvVar)
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", appName, testFile)
+	assert.Equal(t, expected, lazy.dataPath(testFile))
 
-	if lazy.dataPath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.dataPath(testFile))
-	}
+	tmpDir := t.TempDir()
+	t.Setenv(xdg.DataHomeEnvVar, tmpDir)
 
-	t.Setenv(xdg.DataHomeEnvVar, "/tmp")
-
-	expected = filepath.Join("/tmp", appName, testFile)
-
-	if lazy.dataPath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.dataPath(testFile))
-	}
+	expected = filepath.Join(tmpDir, appName, testFile)
+	assert.Equal(t, expected, lazy.dataPath(testFile))
 }
 
 func TestConfigPath(t *testing.T) {
 	os.Unsetenv(xdg.ConfigHomeEnvVar)
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", "Preferences", appName, testFile)
+	assert.Equal(t, expected, lazy.configPath(testFile))
 
-	if lazy.configPath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.configPath(testFile))
-	}
+	tmpDir := t.TempDir()
+	t.Setenv(xdg.ConfigHomeEnvVar, tmpDir)
 
-	t.Setenv(xdg.ConfigHomeEnvVar, "/tmp")
-
-	expected = filepath.Join("/tmp", appName, testFile)
-
-	if lazy.configPath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.configPath(testFile))
-	}
+	expected = filepath.Join(tmpDir, appName, testFile)
+	assert.Equal(t, expected, lazy.configPath(testFile))
 }
 
 func TestCachePath(t *testing.T) {
 	os.Unsetenv(xdg.CacheHomeEnvVar)
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", "Caches", appName, testFile)
+	assert.Equal(t, expected, lazy.cachePath(testFile))
 
-	if lazy.cachePath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.cachePath(testFile))
-	}
+	tmpDir := t.TempDir()
+	t.Setenv(xdg.CacheHomeEnvVar, tmpDir)
 
-	t.Setenv(xdg.CacheHomeEnvVar, "/tmp")
-
-	expected = filepath.Join("/tmp", appName, testFile)
-
-	if lazy.cachePath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.cachePath(testFile))
-	}
+	expected = filepath.Join(tmpDir, appName, testFile)
+	assert.Equal(t, expected, lazy.cachePath(testFile))
 }

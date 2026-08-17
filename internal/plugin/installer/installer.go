@@ -73,7 +73,7 @@ type VerificationResult struct {
 
 // InstallWithOptions installs a plugin with options.
 func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) {
-	if err := os.MkdirAll(filepath.Dir(i.Path()), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(i.Path()), 0o755); err != nil {
 		return nil, err
 	}
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
@@ -136,15 +136,16 @@ func Update(i Installer) error {
 
 // NewForSource determines the correct Installer for the given source.
 func NewForSource(source, version string) (installer Installer, err error) {
-	if strings.HasPrefix(source, registry.OCIScheme+"://") {
+	switch {
+	case strings.HasPrefix(source, registry.OCIScheme+"://"):
 		// Source is an OCI registry reference
 		installer, err = NewOCIInstaller(source)
-	} else if isLocalReference(source) {
+	case isLocalReference(source):
 		// Source is a local directory
 		installer, err = NewLocalInstaller(source)
-	} else if isRemoteHTTPArchive(source) {
+	case isRemoteHTTPArchive(source):
 		installer, err = NewHTTPInstaller(source)
-	} else {
+	default:
 		installer, err = NewVCSInstaller(source, version)
 	}
 

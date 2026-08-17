@@ -484,9 +484,9 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
+				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data), fileWritten[crd.Filename])
 				if err != nil {
 					return hs, b, "", err
 				}
@@ -551,12 +551,11 @@ func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 	// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
-		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
-			cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
-		} else {
+		if !discovery.IsGroupDiscoveryFailedError(err) {
 			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
+		cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
+		cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
 	}
 
 	cfg.Capabilities = &common.Capabilities{

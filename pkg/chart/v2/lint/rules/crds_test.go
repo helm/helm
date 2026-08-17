@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 )
@@ -33,7 +34,7 @@ func TestInvalidCrdsDir(t *testing.T) {
 	Crds(&linter)
 	res := linter.Messages
 
-	assert.Len(t, res, 1)
+	require.Len(t, res, 1)
 	assert.ErrorContains(t, res[0].Err, "not a directory")
 }
 
@@ -45,11 +46,11 @@ func TestCrdWithEmptyDocument(t *testing.T) {
 		`apiVersion: v1
 name: test
 version: 0.1.0
-`), 0644)
+`), 0o644)
 
 	// CRD with comments before --- (creates empty document)
 	crdsDir := filepath.Join(chartDir, "crds")
-	os.Mkdir(crdsDir, 0755)
+	os.Mkdir(crdsDir, 0o755)
 	os.WriteFile(filepath.Join(crdsDir, "test.yaml"), []byte(
 		`# Comments create empty document
 ---
@@ -57,7 +58,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: test.example.io
-`), 0644)
+`), 0o644)
 
 	linter := support.Linter{ChartDir: chartDir}
 	Crds(&linter)

@@ -25,6 +25,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -130,8 +131,8 @@ func TestRequireAdoption(t *testing.T) {
 
 	// Verify that a resource that lacks labels/annotations can be adopted
 	found, err := requireAdoption(resources)
-	assert.NoError(t, err)
-	assert.Len(t, found, 1)
+	require.NoError(t, err)
+	require.Len(t, found, 1)
 	assert.Equal(t, found[0], existing)
 	assert.NotSame(t, found[0], existing)
 }
@@ -155,8 +156,8 @@ func TestExistingResourceConflict(t *testing.T) {
 
 	// Verify only existing resources are returned
 	found, err := existingResourceConflict(resources, releaseName, releaseNamespace)
-	assert.NoError(t, err)
-	assert.Len(t, found, 1)
+	require.NoError(t, err)
+	require.Len(t, found, 1)
 	assert.Equal(t, found[0], existing)
 	assert.NotSame(t, found[0], existing)
 
@@ -170,45 +171,38 @@ func TestCheckOwnership(t *testing.T) {
 	deployFoo := newDeploymentResource("foo", "ns-a", "")
 
 	// Verify that a resource that lacks labels/annotations is not owned
-	err := checkOwnership(deployFoo.Object, "rel-a", "ns-a")
-	assert.EqualError(t, err, `invalid ownership metadata; label validation error: missing key "app.kubernetes.io/managed-by": must be set to "Helm"; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "rel-a"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "ns-a"`)
+	require.EqualError(t, checkOwnership(deployFoo.Object, "rel-a", "ns-a"), `invalid ownership metadata; label validation error: missing key "app.kubernetes.io/managed-by": must be set to "Helm"; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "rel-a"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "ns-a"`)
 
 	// Set managed by label and verify annotation error message
 	_ = accessor.SetLabels(deployFoo.Object, map[string]string{
 		appManagedByLabel: appManagedByHelm,
 	})
-	err = checkOwnership(deployFoo.Object, "rel-a", "ns-a")
-	assert.EqualError(t, err, `invalid ownership metadata; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "rel-a"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "ns-a"`)
+	require.EqualError(t, checkOwnership(deployFoo.Object, "rel-a", "ns-a"), `invalid ownership metadata; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "rel-a"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "ns-a"`)
 
 	// Set only the release name annotation and verify missing release namespace error message
 	_ = accessor.SetAnnotations(deployFoo.Object, map[string]string{
 		helmReleaseNameAnnotation: "rel-a",
 	})
-	err = checkOwnership(deployFoo.Object, "rel-a", "ns-a")
-	assert.EqualError(t, err, `invalid ownership metadata; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "ns-a"`)
+	require.EqualError(t, checkOwnership(deployFoo.Object, "rel-a", "ns-a"), `invalid ownership metadata; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "ns-a"`)
 
 	// Set both release name and namespace annotations and verify no ownership errors
 	_ = accessor.SetAnnotations(deployFoo.Object, map[string]string{
 		helmReleaseNameAnnotation:      "rel-a",
 		helmReleaseNamespaceAnnotation: "ns-a",
 	})
-	err = checkOwnership(deployFoo.Object, "rel-a", "ns-a")
-	assert.NoError(t, err)
+	require.NoError(t, checkOwnership(deployFoo.Object, "rel-a", "ns-a"))
 
 	// Verify ownership error for wrong release name
-	err = checkOwnership(deployFoo.Object, "rel-b", "ns-a")
-	assert.EqualError(t, err, `invalid ownership metadata; annotation validation error: key "meta.helm.sh/release-name" must equal "rel-b": current value is "rel-a"`)
+	require.EqualError(t, checkOwnership(deployFoo.Object, "rel-b", "ns-a"), `invalid ownership metadata; annotation validation error: key "meta.helm.sh/release-name" must equal "rel-b": current value is "rel-a"`)
 
 	// Verify ownership error for wrong release namespace
-	err = checkOwnership(deployFoo.Object, "rel-a", "ns-b")
-	assert.EqualError(t, err, `invalid ownership metadata; annotation validation error: key "meta.helm.sh/release-namespace" must equal "ns-b": current value is "ns-a"`)
+	require.EqualError(t, checkOwnership(deployFoo.Object, "rel-a", "ns-b"), `invalid ownership metadata; annotation validation error: key "meta.helm.sh/release-namespace" must equal "ns-b": current value is "ns-a"`)
 
 	// Verify ownership error for wrong manager label
 	_ = accessor.SetLabels(deployFoo.Object, map[string]string{
 		appManagedByLabel: "helm",
 	})
-	err = checkOwnership(deployFoo.Object, "rel-a", "ns-a")
-	assert.EqualError(t, err, `invalid ownership metadata; label validation error: key "app.kubernetes.io/managed-by" must equal "Helm": current value is "helm"`)
+	assert.EqualError(t, checkOwnership(deployFoo.Object, "rel-a", "ns-a"), `invalid ownership metadata; label validation error: key "app.kubernetes.io/managed-by" must equal "Helm": current value is "helm"`)
 }
 
 func TestVerifyOwnershipBeforeDelete(t *testing.T) {
@@ -235,7 +229,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		resources := kube.ResourceList{owned1, owned2}
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, ownedList, 2)
 		assert.Empty(t, unownedList)
 	})
@@ -247,9 +241,9 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		resources := kube.ResourceList{owned, unowned}
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
-		assert.NoError(t, err)
-		assert.Len(t, ownedList, 1)
-		assert.Len(t, unownedList, 1)
+		require.NoError(t, err)
+		require.Len(t, ownedList, 1)
+		require.Len(t, unownedList, 1)
 		assert.Equal(t, "owned", ownedList[0].Name)
 		assert.Equal(t, "unowned", unownedList[0].Name)
 	})
@@ -260,7 +254,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		resources := kube.ResourceList{missing}
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, ownedList)
 		assert.Empty(t, unownedList)
 	})
@@ -271,7 +265,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		resources := kube.ResourceList{noMeta}
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, ownedList)
 		assert.Len(t, unownedList, 1)
 	})
@@ -282,7 +276,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		resources := kube.ResourceList{otherRelease}
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, ownedList)
 		assert.Len(t, unownedList, 1)
 	})
@@ -295,9 +289,9 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		resources := kube.ResourceList{owned, unowned, missing}
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
-		assert.NoError(t, err)
-		assert.Len(t, ownedList, 1)
-		assert.Len(t, unownedList, 1)
+		require.NoError(t, err)
+		require.Len(t, ownedList, 1)
+		require.Len(t, unownedList, 1)
 		assert.Equal(t, "owned", ownedList[0].Name)
 		assert.Equal(t, "unowned", unownedList[0].Name)
 	})
@@ -305,33 +299,26 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 
 func TestSetMetadataVisitor(t *testing.T) {
 	var (
-		err       error
 		deployFoo = newDeploymentResource("foo", "ns-a", "")
 		deployBar = newDeploymentResource("bar", "ns-a-system", "")
 		resources = kube.ResourceList{deployFoo, deployBar}
 	)
 
 	// Set release tracking metadata and verify no error
-	err = resources.Visit(setMetadataVisitor("rel-a", "ns-a", true))
-	assert.NoError(t, err)
+	require.NoError(t, resources.Visit(setMetadataVisitor("rel-a", "ns-a", true)))
 
 	// Verify that release "b" cannot take ownership of "a"
-	err = resources.Visit(setMetadataVisitor("rel-b", "ns-a", false))
-	assert.Error(t, err)
+	require.Error(t, resources.Visit(setMetadataVisitor("rel-b", "ns-a", false)))
 
 	// Force release "b" to take ownership
-	err = resources.Visit(setMetadataVisitor("rel-b", "ns-a", true))
-	assert.NoError(t, err)
+	require.NoError(t, resources.Visit(setMetadataVisitor("rel-b", "ns-a", true)))
 
 	// Check that there is now no ownership error when setting metadata without force
-	err = resources.Visit(setMetadataVisitor("rel-b", "ns-a", false))
-	assert.NoError(t, err)
+	require.NoError(t, resources.Visit(setMetadataVisitor("rel-b", "ns-a", false)))
 
 	// Add a new resource that is missing ownership metadata and verify error
 	resources.Append(newDeploymentResource("baz", "default", ""))
-	err = resources.Visit(setMetadataVisitor("rel-b", "ns-a", false))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), `Deployment "baz" in namespace "" cannot be owned`)
+	assert.ErrorContains(t, resources.Visit(setMetadataVisitor("rel-b", "ns-a", false)), `Deployment "baz" in namespace "" cannot be owned`)
 }
 
 func TestValidateNameAndGenerateName(t *testing.T) {
@@ -368,10 +355,9 @@ func TestValidateNameAndGenerateName(t *testing.T) {
 			skip, err := validateNameAndGenerateName(tc.info)
 
 			if tc.wantErr {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errContains)
+				require.ErrorContains(t, err, tc.errContains)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			assert.Equal(t, tc.wantSkip, skip)

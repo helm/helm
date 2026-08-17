@@ -65,8 +65,7 @@ func TestGetMetadata_Run_BasicMetadata(t *testing.T) {
 		Namespace: "default",
 	}
 
-	err := cfg.Releases.Create(rel)
-	require.NoError(t, err)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -508,8 +507,7 @@ func TestGetMetadata_Run_UnreachableKubeClient(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	_, err := client.Run("test-release")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "connection refused")
+	assert.ErrorContains(t, err, "connection refused")
 }
 
 func TestGetMetadata_Run_ReleaseNotFound(t *testing.T) {
@@ -517,8 +515,7 @@ func TestGetMetadata_Run_ReleaseNotFound(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	_, err := client.Run("non-existent-release")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
+	assert.ErrorContains(t, err, "not found")
 }
 
 func TestGetMetadata_Run_EmptyAppVersion(t *testing.T) {
@@ -614,7 +611,7 @@ func TestMetadata_FormattedDepNames(t *testing.T) {
 }
 
 func convertDeps(deps []*chart.Dependency) []ci.Dependency {
-	var newDeps = make([]ci.Dependency, len(deps))
+	newDeps := make([]ci.Dependency, len(deps))
 	for i, c := range deps {
 		newDeps[i] = c
 	}
@@ -712,11 +709,10 @@ func TestGetMetadata_Labels(t *testing.T) {
 	rel.Labels = customLabels
 
 	metaGetter := NewGetMetadata(actionConfigFixture(t))
-	err := metaGetter.cfg.Releases.Create(rel)
-	assert.NoError(t, err)
+	require.NoError(t, metaGetter.cfg.Releases.Create(rel))
 
 	metadata, err := metaGetter.Run(rel.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, metadata.Name, rel.Name)
 	assert.Equal(t, metadata.Labels, customLabels)

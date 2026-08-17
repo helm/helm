@@ -16,8 +16,9 @@
 package helmpath
 
 import (
-	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v4/pkg/helmpath/xdg"
 )
@@ -26,20 +27,13 @@ func TestHelmHome(t *testing.T) {
 	t.Setenv(xdg.CacheHomeEnvVar, "/cache")
 	t.Setenv(xdg.ConfigHomeEnvVar, "/config")
 	t.Setenv(xdg.DataHomeEnvVar, "/data")
-	isEq := func(t *testing.T, got, expected string) {
-		t.Helper()
-		if expected != got {
-			t.Error(runtime.GOOS)
-			t.Errorf("Expected %q, got %q", expected, got)
-		}
-	}
 
-	isEq(t, CachePath(), "/cache/helm")
-	isEq(t, ConfigPath(), "/config/helm")
-	isEq(t, DataPath(), "/data/helm")
+	assert.Equal(t, "/cache/helm", CachePath())
+	assert.Equal(t, "/config/helm", ConfigPath())
+	assert.Equal(t, "/data/helm", DataPath())
 
 	// test to see if lazy-loading environment variables at runtime works
 	t.Setenv(xdg.CacheHomeEnvVar, "/cache2")
 
-	isEq(t, CachePath(), "/cache2/helm")
+	assert.Equal(t, "/cache2/helm", CachePath())
 }

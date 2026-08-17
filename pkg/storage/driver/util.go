@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"bytes"
@@ -49,7 +49,7 @@ func encodeRelease(rls *rspb.Release) (string, error) {
 		w.Close()
 		return "", err
 	}
-	if err = w.Close(); err != nil {
+	if err := w.Close(); err != nil {
 		return "", err
 	}
 

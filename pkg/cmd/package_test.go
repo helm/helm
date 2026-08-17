@@ -23,6 +23,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/internal/test/ensure"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
@@ -105,21 +108,17 @@ func TestPackage(t *testing.T) {
 	}
 
 	origDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			ensure.HelmHome(t)
 
-			if err := os.MkdirAll("toot", 0o777); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, os.MkdirAll("toot", 0o777))
 
 			// This is an unfortunate byproduct of the tmpdir
-			if v, ok := tt.flags["keyring"]; ok && len(v) > 0 {
+			if v, ok := tt.flags["keyring"]; ok && v != "" {
 				tt.flags["keyring"] = filepath.Join(origDir, v)
 			}
 
@@ -140,26 +139,21 @@ func TestPackage(t *testing.T) {
 				}
 			}
 			_, _, err = executeActionCommand(strings.Join(cmd, " "))
-			if err != nil {
-				if tt.err && re.MatchString(err.Error()) {
-					return
+			if tt.err {
+				require.Error(t, err)
+				require.True(t, re.MatchString(err.Error()))
+			} else {
+				require.NoError(t, err)
+				if tt.hasfile != "" {
+					fi, err := os.Stat(tt.hasfile)
+					require.NoErrorf(t, err, "%q: expected file %q", tt.name, tt.hasfile)
+					assert.NotEqualf(t, 0, fi.Size(), "%q: file %q has zero bytes.", tt.name, tt.hasfile)
 				}
-				t.Fatalf("%q: expected error %q, got %q", tt.name, tt.expect, err)
-			}
 
-			if len(tt.hasfile) > 0 {
-				if fi, err := os.Stat(tt.hasfile); err != nil {
-					t.Errorf("%q: expected file %q, got err %q", tt.name, tt.hasfile, err)
-				} else if fi.Size() == 0 {
-					t.Errorf("%q: file %q has zero bytes.", tt.name, tt.hasfile)
-				}
-			}
-
-			if v, ok := tt.flags["sign"]; ok && v == "1" {
-				if fi, err := os.Stat(tt.hasfile + ".prov"); err != nil {
-					t.Errorf("%q: expected provenance file", tt.name)
-				} else if fi.Size() == 0 {
-					t.Errorf("%q: provenance file is empty", tt.name)
+				if v, ok := tt.flags["sign"]; ok && v == "1" {
+					fi, err := os.Stat(tt.hasfile + ".prov")
+					require.NoErrorf(t, err, "%q: expected provenance file", tt.name)
+					assert.NotEqualf(t, 0, fi.Size(), "%q: provenance file is empty", tt.name)
 				}
 			}
 		})
@@ -178,18 +172,12 @@ func TestSetAppVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	chartPath := filepath.Join(dir, "alpine-0.1.0.tgz")
-	if fi, err := os.Stat(chartPath); err != nil {
-		t.Errorf("expected file %q, got err %q", chartPath, err)
-	} else if fi.Size() == 0 {
-		t.Errorf("file %q has zero bytes.", chartPath)
-	}
+	fi, err := os.Stat(chartPath)
+	require.NoErrorf(t, err, "expected file %q", chartPath)
+	assert.NotEqualf(t, 0, fi.Size(), "file %q has zero bytes.", chartPath)
 	ch, err = loader.Load(chartPath)
-	if err != nil {
-		t.Fatalf("unexpected error loading packaged chart: %v", err)
-	}
-	if ch.Metadata.AppVersion != expectedAppVersion {
-		t.Errorf("expected app-version %q, found %q", expectedAppVersion, ch.Metadata.AppVersion)
-	}
+	require.NoError(t, err, "unexpected error loading packaged chart")
+	assert.Equal(t, expectedAppVersion, ch.Metadata.AppVersion, "expected app-version %q, found %q", expectedAppVersion, ch.Metadata.AppVersion)
 }
 
 func TestPackageFileCompletion(t *testing.T) {

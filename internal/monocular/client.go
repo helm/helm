@@ -26,7 +26,6 @@ var ErrHostnameNotProvided = errors.New("no hostname provided")
 
 // Client represents a client capable of communicating with the Monocular API.
 type Client struct {
-
 	// The base URL for requests
 	BaseURL string
 }

@@ -40,7 +40,7 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:   "check values files",
-			cmd:    fmt.Sprintf("template '%s' --values '%s'", chartPath, filepath.Join(chartPath, "/charts/subchartA/values.yaml")),
+			cmd:    fmt.Sprintf("template '%s' --values '%s'", chartPath, filepath.Join(chartPath, "charts", "subchartA", "values.yaml")),
 			golden: "output/template-values-files.txt",
 		},
 		{
