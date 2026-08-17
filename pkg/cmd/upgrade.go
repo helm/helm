@@ -163,6 +163,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						instClient.Replace = true
 					}
 
+					printWaitMessage(out, outfmt, instClient.WaitStrategy, instClient.Timeout)
+
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
 						return err
@@ -256,6 +258,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
 				cancel()
 			}()
+
+			printWaitMessage(out, outfmt, client.WaitStrategy, client.Timeout)
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {

@@ -38,6 +38,7 @@ import (
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -156,6 +157,8 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 			client.DryRunStrategy = dryRunStrategy
+
+			printWaitMessage(out, outfmt, client.WaitStrategy, client.Timeout)
 
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
@@ -368,6 +371,13 @@ func checkIfInstallable(ch chart.Accessor) error {
 		return nil
 	}
 	return fmt.Errorf("%s charts are not installable", meta["Type"])
+}
+
+func printWaitMessage(out io.Writer, outfmt output.Format, strategy kube.WaitStrategy, timeout time.Duration) {
+	if outfmt != output.Table || strategy == kube.HookOnlyStrategy {
+		return
+	}
+	fmt.Fprintf(out, "Waiting for resources to become ready (timeout: %s)\n", timeout)
 }
 
 // Provide dynamic auto-completion for the install and template commands
