@@ -38,6 +38,7 @@ type Push struct {
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
 	out                   io.Writer
+	pushResultHandler     func(*registry.PushResult)
 }
 
 // PushOpt is a type of function that sets options for a push action.
@@ -80,6 +81,14 @@ func WithPushOptWriter(out io.Writer) PushOpt {
 	}
 }
 
+// WithPushResultHandler sets a handler on the push configuration object which
+// is called with the result of a successful push.
+func WithPushResultHandler(handler func(result *registry.PushResult)) PushOpt {
+	return func(p *Push) {
+		p.pushResultHandler = handler
+	}
+}
+
 // NewPushWithOpts creates a new push, with configuration options.
 func NewPushWithOpts(opts ...PushOpt) *Push {
 	p := &Push{}
@@ -100,6 +109,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
 			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSVerify),
 			pusher.WithPlainHTTP(p.plainHTTP),
+			pusher.WithPushResultHandler(p.pushResultHandler),
 		},
 	}
 
