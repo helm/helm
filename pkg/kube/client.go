@@ -572,7 +572,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		transformRequests)
 }
 
-func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateApplyFunc, updateApplyFunc UpdateApplyFunc) (*Result, error) {
+func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateApplyFunc, updateApplyFunc UpdateApplyFunc, dryRun bool) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
@@ -655,7 +655,7 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 	}
 
 	for _, info := range originals.Difference(targets) {
-		c.Logger().Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
+		c.Logger().Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "dryRun", dryRun)
 
 		if err := info.Get(); err != nil {
 			c.Logger().Debug(
@@ -681,7 +681,7 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 			c.Logger().Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
-		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
+		if err := deleteResource(info, metav1.DeletePropagationBackground, dryRun); err != nil {
 			c.Logger().Debug(
 				"failed to delete resource",
 				slog.String("namespace", info.Namespace),
@@ -902,7 +902,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		}
 	}
 
-	return c.update(originals, targets, createApplyFunc, makeUpdateApplyFunc())
+	return c.update(originals, targets, createApplyFunc, makeUpdateApplyFunc(), updateOptions.dryRun)
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -915,7 +915,7 @@ func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagatio
 	mtx := sync.Mutex{}
 	err := perform(resources, func(target *resource.Info) error {
 		c.Logger().Debug("starting delete resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(target, policy)
+		err := deleteResource(target, policy, false)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
 				c.Logger().Debug(
@@ -1062,11 +1062,14 @@ func createResource(info *resource.Info) error {
 		})
 }
 
-func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
+func deleteResource(info *resource.Info, policy metav1.DeletionPropagation, dryRun bool) error {
 	return retry.RetryOnConflict(
 		retry.DefaultRetry,
 		func() error {
 			opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
+			if dryRun {
+				opts.DryRun = []string{metav1.DryRunAll}
+			}
 			_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
 			return err
 		})
