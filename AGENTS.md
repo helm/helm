@@ -41,18 +41,6 @@ Major packages:
 
 ## Development
 
-### Compatibility
-
-Changes are required to maintain backward compatibility as described in [HIP-0004: Document backwards-compatibility rules](https://github.com/helm/community/blob/main/hips/hip-0004.md).
-
-Typically this means that:
-
-- the signatures of public APIs, i.e., those in the `pkg/` directory should not change
-- CLI commands and parameters should not be removed or changed in a way that would break existing scripts or workflows
-- functional behaviour (as implied or documented) must not be modified in a way that would break existing users' expectations
-
-An exception to the above is where incompatible changes are needed to fix a security vulnerability, where minimal breaking changes may be made to address the issue.
-
 ### Code standards
 
 - Use table-driven tests with testify
@@ -85,7 +73,6 @@ Release branches:
 
 - **Actions**: High-level operations live in `pkg/action/`, typically using a shared Configuration
 - **Chart versions**: Charts v2 (stable) in `pkg/chart/v2`, v3 (under development) in `internal/chart/v3`
-- **Plugins and extensibility**: Enabling additional functionality via plugins and extension points, such as custom template functions or storage backends is preferred over incorporating into Helm's codebase
 
 ---
 
