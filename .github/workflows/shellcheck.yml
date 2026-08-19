@@ -1,0 +1,24 @@
+name: shellcheck
+
+on:
+  push:
+    branches:
+      - "main"
+      - "dev-v3"
+  pull_request:
+    branches:
+      - "main"
+      - "dev-v3"
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - name: Run ShellCheck
+        run: |
+          find . -type f -name "*.sh" ! -path "./.git/*" -exec shellcheck {} +
