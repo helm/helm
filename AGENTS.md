@@ -129,7 +129,7 @@ In practice:
 
 For an agent reviewing a PR, this means: raise these principles as prompts for a human reviewer and as guidance for the author, never as automated rejections. Tone is not a nicety here. It is the difference between review that helps and review that drives contributors away.
 
-The Tier 3 narratives (the values-templating and post-render refusals, the automated-review discussion) show this posture in maintainers' own words.
+The field notes in `philosophy-appendix.md` (the values-templating and post-render refusals, the automated-review discussion) show this posture in maintainers' own words.
 
 ---
 
