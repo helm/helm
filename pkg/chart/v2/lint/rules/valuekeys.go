@@ -83,6 +83,8 @@ func walkKeys(n *yaml.Node, path string, found *[]booleanLikeKey) {
 		for i, c := range n.Content {
 			walkKeys(c, fmt.Sprintf("%s[%d]", path, i), found)
 		}
+	default:
+		// Scalar, alias and document nodes carry no mapping keys to check.
 	}
 }
 
