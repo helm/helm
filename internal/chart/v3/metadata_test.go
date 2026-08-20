@@ -16,6 +16,7 @@ limitations under the License.
 package v3
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -189,6 +190,47 @@ func TestValidate(t *testing.T) {
 			"version invalid",
 			&Metadata{APIVersion: "3", Name: "test", Version: "1.2.3.4"},
 			ValidationError("chart.metadata.version \"1.2.3.4\" is invalid"),
+		},
+		{
+			"kubeFeatureGates with unknown component",
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v3",
+				Version:    "1.0",
+				Type:       "application",
+				KubeFeatureGates: map[string]map[string]bool{
+					"unknownComponent": {"SomeGate": true},
+				},
+			},
+			ValidationErrorf("chart.metadata.kubeFeatureGates has unknown component %q, must be one of %s", "unknownComponent", strings.Join(KubeFeatureGateComponents, ", ")),
+		},
+		{
+			"kubeFeatureGates with empty gate name",
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v3",
+				Version:    "1.0",
+				Type:       "application",
+				KubeFeatureGates: map[string]map[string]bool{
+					"apiserver": {"": true},
+				},
+			},
+			ValidationErrorf("chart.metadata.kubeFeatureGates.%s has an empty feature gate name", "apiserver"),
+		},
+		{
+			"kubeFeatureGates valid across multiple components",
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v3",
+				Version:    "1.0",
+				Type:       "application",
+				KubeFeatureGates: map[string]map[string]bool{
+					"apiserver": {"ConstrainedImpersonation": true},
+					"kubelet":   {"SidecarContainers": true},
+					"scheduler": {"ComponentFlagz": false},
+				},
+			},
+			nil,
 		},
 	}
 
