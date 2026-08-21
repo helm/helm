@@ -206,7 +206,7 @@ func TestHTTPURLLoader_Load(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"type": "object", "properties": {"name": {"type": "string"}}}`))
+			_, _ = w.Write([]byte(`{"type": "object", "properties": {"name": {"type": "string"}}}`))
 		}))
 		defer server.Close()
 

@@ -131,7 +131,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	defer cancel()
 	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
 	if err == nil && locked {
-		defer fileLock.Unlock()
+		defer func() { _ = fileLock.Unlock() }()
 	}
 	if err != nil {
 		return err

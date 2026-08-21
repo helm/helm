@@ -131,7 +131,7 @@ func TestEnvSettings(t *testing.T) {
 
 			settings := New()
 			settings.AddFlags(flags)
-			flags.Parse(strings.Split(tt.args, " "))
+			require.NoError(t, flags.Parse(strings.Split(tt.args, " ")))
 
 			assert.Equal(t, tt.debug, settings.Debug, "debug")
 			assert.Equal(t, tt.ns, settings.Namespace(), "namespace")

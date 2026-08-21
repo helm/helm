@@ -105,7 +105,7 @@ func TestCreateStarterCmd(t *testing.T) {
 
 			// Create a starter using the appropriate chartutil
 			starterchart := helmpath.DataPath("starters")
-			os.MkdirAll(starterchart, 0o755)
+			require.NoError(t, os.MkdirAll(starterchart, 0o755))
 			var err error
 			var dest string
 			if tt.chartAPIVersion == "v3" {

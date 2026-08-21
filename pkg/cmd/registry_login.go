@@ -143,8 +143,10 @@ func readLine(prompt string, silent bool) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		term.DisableEcho(fd, state)
-		defer term.RestoreTerminal(fd, state)
+		if err := term.DisableEcho(fd, state); err != nil {
+			return "", err
+		}
+		defer func() { _ = term.RestoreTerminal(fd, state) }()
 	}
 
 	reader := bufio.NewReader(os.Stdin)

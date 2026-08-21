@@ -387,13 +387,15 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil, fmt.Errorf("unable to continue with update: %w", err)
 	}
 
-	toBeUpdated.Visit(func(r *resource.Info, err error) error {
+	if err := toBeUpdated.Visit(func(r *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
 		current.Append(r)
 		return nil
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	if isDryRun(u.DryRunStrategy) {
 		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)

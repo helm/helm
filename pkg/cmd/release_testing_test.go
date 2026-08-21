@@ -57,7 +57,7 @@ func TestReleaseTestNotesHandling(t *testing.T) {
 
 	// Set up storage
 	store := storageFixture()
-	store.Create(rel)
+	require.NoError(t, store.Create(rel))
 
 	// Set up action configuration properly
 	actionConfig := &action.Configuration{

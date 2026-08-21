@@ -250,7 +250,7 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 				require.NoError(t, os.Chmod(tempChart, 0o000))
 
 				return tempChart, func() {
-					os.Chmod(tempChart, 0o644) // Restore permissions for cleanup
+					_ = os.Chmod(tempChart, 0o644) // Restore permissions for cleanup
 				}
 			},
 			href:          "oci://localhost:5000/test",

@@ -1136,7 +1136,7 @@ type createPatchTestCase struct {
 
 func (c createPatchTestCase) run(t *testing.T) {
 	scheme := runtime.NewScheme()
-	v1.AddToScheme(scheme)
+	require.NoError(t, v1.AddToScheme(scheme))
 	encoder := jsonserializer.NewSerializerWithOptions(
 		jsonserializer.DefaultMetaFactory, scheme, scheme, jsonserializer.SerializerOptions{
 			Yaml: false, Pretty: false, Strict: true,

@@ -100,11 +100,9 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 				switch outputFlag.Value.String() {
 				case "json":
-					output.EncodeJSON(out, names)
-					return nil
+					return output.EncodeJSON(out, names)
 				case "yaml":
-					output.EncodeYAML(out, names)
-					return nil
+					return output.EncodeYAML(out, names)
 				case "table":
 					for _, res := range results {
 						fmt.Fprintln(out, res.Name)

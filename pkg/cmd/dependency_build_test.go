@@ -38,7 +38,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 	defer srv.Stop()
 
 	rootDir := srv.Root()
-	srv.LinkIndices()
+	require.NoError(t, srv.LinkIndices())
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
 	require.NoError(t, err)

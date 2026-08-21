@@ -106,7 +106,7 @@ func TestCreate_Overwrite(t *testing.T) {
 	dir := filepath.Join(tdir, "foo")
 
 	tplname := filepath.Join(dir, "templates", "hpa.yaml")
-	writeFile(tplname, []byte("FOO"))
+	require.NoError(t, writeFile(tplname, []byte("FOO")))
 
 	// Now re-run the create
 	Stderr = &errlog

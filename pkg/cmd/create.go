@@ -88,7 +88,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&o.chartAPIVersion, "chart-api-version", chart.APIVersionV2, "chart API version to use (v2 or v3)")
 
 	if !gates.ChartV3.IsEnabled() {
-		cmd.Flags().MarkHidden("chart-api-version")
+		_ = cmd.Flags().MarkHidden("chart-api-version")
 	}
 
 	return cmd

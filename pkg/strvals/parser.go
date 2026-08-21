@@ -448,7 +448,7 @@ func (t *parser) emptyVal() (bool, error) {
 			return true, nil
 		}
 		if !unicode.IsSpace(r) {
-			t.sc.UnreadRune()
+			_ = t.sc.UnreadRune()
 			return false, nil
 		}
 	}
@@ -467,7 +467,7 @@ func (t *parser) valList() ([]any, error) {
 	}
 
 	if r != '{' {
-		t.sc.UnreadRune()
+		_ = t.sc.UnreadRune()
 		return []any{}, ErrNotList
 	}
 
@@ -483,7 +483,7 @@ func (t *parser) valList() ([]any, error) {
 		case last == '}':
 			// If this is followed by ',', consume it.
 			if r, _, e := t.sc.ReadRune(); e == nil && r != ',' {
-				t.sc.UnreadRune()
+				_ = t.sc.UnreadRune()
 			}
 			v, e := t.reader(rs)
 			list = append(list, v)
