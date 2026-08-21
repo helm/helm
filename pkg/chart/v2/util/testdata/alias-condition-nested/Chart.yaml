@@ -1,0 +1,9 @@
+apiVersion: v2
+name: parentchart
+version: 0.1.0
+dependencies:
+  - name: mid
+    repository: http://localhost:10191
+    version: 0.1.0
+    alias: midchart
+    condition: midchart.enabled
