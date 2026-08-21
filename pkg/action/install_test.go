@@ -1147,9 +1147,31 @@ func TestInstallCRDs_KubeClient_BuildError(t *testing.T) {
 	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
 }
 
+func TestInstallCRDs_KubeClient_EmptyResources(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{
+		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+		DummyResources:     kube.ResourceList{},
+	}
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	require.EqualError(t, instAction.installCRDs(crdsToInstall), "failed to install CRD crds/foo.yaml: resources are empty")
+}
+
 func TestInstallCRDs_KubeClient_CreateError(t *testing.T) {
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{
+		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+		BuildDummy:         true,
+	}
 	failingKubeClient.CreateError = errors.New("create error")
 	config.KubeClient = &failingKubeClient
 	instAction := NewInstall(config)
@@ -1161,7 +1183,7 @@ func TestInstallCRDs_KubeClient_CreateError(t *testing.T) {
 	mockChart := buildChart(withFile(mockFile))
 	crdsToInstall := mockChart.CRDObjects()
 
-	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
+	require.ErrorContains(t, instAction.installCRDs(crdsToInstall), "create error")
 }
 
 func TestInstallCRDs_WaiterError(t *testing.T) {
