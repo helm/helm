@@ -177,34 +177,41 @@ func (ch *Chart) CRDObjects() []CRD {
 	return crds
 }
 
-// StampModTimes sets timestamps on the chart (and dependencies) to epoch.
-// This is used for reproducible builds via SOURCE_DATE_EPOCH.
-func (ch *Chart) StampModTimes(epoch time.Time) {
-	ch.ModTime = epoch
+// StampModTimes sets timestamps on the chart (and dependencies) to t,
+// normalized to UTC and truncated to whole seconds.
+//
+// Normalization is required because Chart.lock's generated: field is written
+// by yaml.Marshal from Lock.Generated. Without UTC/truncate, a caller
+// supplying a local-zone or sub-second time.Time produces a generated: value
+// with a timezone offset or fractional seconds, making the lock file content
+// non-reproducible across machines even when the same SOURCE_DATE_EPOCH is used.
+func (ch *Chart) StampModTimes(t time.Time) {
+	t = t.UTC().Truncate(time.Second)
+	ch.ModTime = t
 	if len(ch.Schema) > 0 {
-		ch.SchemaModTime = epoch
+		ch.SchemaModTime = t
 	}
 	if ch.Lock != nil {
-		ch.Lock.Generated = epoch
+		ch.Lock.Generated = t
 	}
 
 	for _, f := range ch.Raw {
 		if f != nil {
-			f.ModTime = epoch
+			f.ModTime = t
 		}
 	}
 	for _, f := range ch.Templates {
 		if f != nil {
-			f.ModTime = epoch
+			f.ModTime = t
 		}
 	}
 	for _, f := range ch.Files {
 		if f != nil {
-			f.ModTime = epoch
+			f.ModTime = t
 		}
 	}
 	for _, dep := range ch.Dependencies() {
-		dep.StampModTimes(epoch)
+		dep.StampModTimes(t)
 	}
 }
 
