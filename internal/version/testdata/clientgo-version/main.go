@@ -14,31 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version
+package main
 
 import (
-	"errors"
-	"runtime/debug"
-	"slices"
+	"fmt"
+	"os"
 
-	_ "k8s.io/client-go/pkg/version" // Force the k8s.io/client-go module version into build info
+	"helm.sh/helm/v4/internal/version"
 )
 
-func K8sIOClientGoModVersion() (string, error) {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "", errors.New("failed to read build info")
+func main() {
+	clientGoVersion, err := version.K8sIOClientGoModVersion()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
-	idx := slices.IndexFunc(info.Deps, func(m *debug.Module) bool {
-		return m.Path == "k8s.io/client-go"
-	})
-
-	if idx == -1 {
-		return "", errors.New("k8s.io/client-go not found in build info")
-	}
-
-	m := info.Deps[idx]
-
-	return m.Version, nil
+	fmt.Print(clientGoVersion)
 }
