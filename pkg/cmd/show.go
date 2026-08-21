@@ -82,9 +82,9 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              showAllDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
-			err := addRegistryClient(out, client)
+			err := addRegistryClient(cmd.ErrOrStderr(), client)
 			if err != nil {
 				return err
 			}
@@ -103,9 +103,9 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              showValuesDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
-			err := addRegistryClient(out, client)
+			err := addRegistryClient(cmd.ErrOrStderr(), client)
 			if err != nil {
 				return err
 			}
@@ -124,9 +124,9 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              showChartDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
-			err := addRegistryClient(out, client)
+			err := addRegistryClient(cmd.ErrOrStderr(), client)
 			if err != nil {
 				return err
 			}
@@ -145,9 +145,9 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              readmeChartDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
-			err := addRegistryClient(out, client)
+			err := addRegistryClient(cmd.ErrOrStderr(), client)
 			if err != nil {
 				return err
 			}
@@ -166,9 +166,9 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              showCRDsDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowCRDs
-			err := addRegistryClient(out, client)
+			err := addRegistryClient(cmd.ErrOrStderr(), client)
 			if err != nil {
 				return err
 			}
