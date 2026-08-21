@@ -421,6 +421,34 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 	// Bail out here if it is a dry run
 	if isDryRun(i.DryRunStrategy) {
+		// For server-side dry-run, validate resources against the API server.
+		// Force server-side apply in this path because kube dry-run semantics are
+		// only honored by the server-side apply create/update code paths.
+		if i.DryRunStrategy == DryRunServer {
+			serverSideDryRun := true
+			var err error
+			if len(toBeAdopted) == 0 && len(resources) > 0 {
+				_, err = i.cfg.KubeClient.Create(
+					resources,
+					kube.ClientCreateOptionServerSideApply(serverSideDryRun, false),
+					kube.ClientCreateOptionDryRun(true),
+				)
+			} else if len(resources) > 0 {
+				updateThreeWayMergeForUnstructured := i.TakeOwnership && !serverSideDryRun
+				_, err = i.cfg.KubeClient.Update(
+					toBeAdopted,
+					resources,
+					kube.ClientUpdateOptionForceReplace(i.ForceReplace),
+					kube.ClientUpdateOptionServerSideApply(serverSideDryRun, i.ForceConflicts),
+					kube.ClientUpdateOptionDryRun(true),
+					kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
+					kube.ClientUpdateOptionUpgradeClientSideFieldManager(true),
+				)
+			}
+			if err != nil {
+				return rel, err
+			}
+		}
 		rel.Info.Description = "Dry run complete"
 		return rel, nil
 	}
