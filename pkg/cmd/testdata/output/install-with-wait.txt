@@ -1,3 +1,4 @@
+Waiting for resources to become ready (timeout: 5m0s)
 NAME: apollo
 LAST DEPLOYED: Fri Sep  2 22:04:05 1977
 NAMESPACE: default
