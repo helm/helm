@@ -264,13 +264,21 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 			}
 		} else {
 			// If the key is not in v, copy it from nv.
-			// When coalescing, skip chart default nils and clean nils from
-			// nested maps so they don't shadow globals or produce %!s(<nil>).
+			// When coalescing, skip chart default nils so they don't shadow
+			// globals or produce %!s(<nil>). We intentionally do NOT run
+			// cleanNilValues on the copied map when the key names a subchart:
+			// in that case the value is a subchart override (e.g. parent
+			// values.yaml `grafana:`) that may contain an explicit `null` the
+			// user set to erase a subchart default. Stripping that nil would
+			// lose the nullification signal and let the subchart silently
+			// re-inject its default (helm/helm#32522). For ordinary chart
+			// default maps, however, we still clean nils so chart-default
+			// nils don't leak (helm/helm#31919, #31971).
 			if !merge {
 				if val == nil {
 					continue
 				}
-				if sub, ok := val.(map[string]any); ok {
+				if sub, ok := val.(map[string]any); ok && !childChartMergeTrue(c, key, merge) {
 					cleanNilValues(sub)
 				}
 			}
@@ -340,9 +348,16 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 		switch {
 		case ok && !merge && dv == nil && srcOriginalNonNil[key]:
 			// When coalescing (not merging), if dst has nil and src has a non-nil
-			// value, the user is nullifying a chart default - remove the key.
-			// But if src also has nil (or key not in src), preserve the nil
-			delete(dst, key)
+			// value, the user is nullifying a chart default. Keep the key as nil
+			// (rather than deleting it) so that the nullification signal survives
+			// the recursive descent into subcharts: a subchart that receives this
+			// value as its override will see dst[key] == nil (ok == true) and
+			// therefore will NOT re-inject its own chart default via the `!ok`
+			// branch below. Deleting the key here would let the subchart silently
+			// bring the default back (helm/helm#32522). The nil is equivalent to
+			// an absent key for rendering (both produce no value), and
+			// cleanNilValues strips it from chart defaults so it does not leak.
+			dst[key] = nil
 		case !ok:
 			dst[key] = val
 		case istable(val):
