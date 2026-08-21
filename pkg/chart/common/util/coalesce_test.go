@@ -825,3 +825,36 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 	_, ok = keyMapping["password"]
 	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
 }
+
+// TestCoalesceValuesTopLevelNullsPreserved tests that null values defined directly in
+// the top-level chart's own values.yaml are preserved in the coalesced result.
+// Regression test for issue #32530.
+func TestCoalesceValuesTopLevelNullsPreserved(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "test"},
+		Values: map[string]any{
+			"stuff": map[string]any{
+				"foo": "bar",
+				"baz": nil,
+			},
+			"foobar": nil,
+		},
+	}
+
+	v, err := CoalesceValues(c, map[string]any{})
+	req.NoError(err)
+
+	// The top-level null key should be preserved.
+	is.Contains(v, "foobar", "Expected top-level null key foobar to be preserved")
+	is.Nil(v["foobar"], "Expected foobar to be nil")
+
+	// The nested null key should be preserved.
+	stuff, ok := v["stuff"].(map[string]any)
+	is.True(ok, "stuff should be a map")
+	is.Contains(stuff, "baz", "Expected nested null key stuff.baz to be preserved")
+	is.Nil(stuff["baz"], "Expected stuff.baz to be nil")
+	is.Equal("bar", stuff["foo"], "Expected stuff.foo to be preserved")
+}
