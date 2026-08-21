@@ -293,6 +293,22 @@ func TestInstallCreateReleaseNamespaceNotFound(t *testing.T) {
 	assert.Equal(t, 1, kubeClient.createCalls)
 }
 
+func TestInstallCreateReleaseNamespaceForbidden(t *testing.T) {
+	config := actionConfigFixture(t)
+	kubeClient := &namespaceKubeClient{
+		FailingKubeClient: kubefake.FailingKubeClient{
+			PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+		},
+		namespace: "spaced",
+		getStatus: http.StatusForbidden,
+	}
+	config.KubeClient = kubeClient
+	instAction := installActionWithConfig(config)
+
+	require.NoError(t, instAction.createReleaseNamespace())
+	assert.Equal(t, 1, kubeClient.createCalls)
+}
+
 func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
 	// This test will test checking ownership of a resource
 	// returned by the fake client. If the resource is not
