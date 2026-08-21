@@ -1,0 +1,6 @@
+Chart: sequenced-isolated-chart
+  Subchart batches: (none)
+  Resource-group batches:
+    Batch 1: alpha
+    Batch 2: beta
+  Unsequenced (deployed last): ConfigMap/cm-gamma, ConfigMap/cm-plain

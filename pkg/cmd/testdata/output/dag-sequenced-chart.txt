@@ -1,0 +1,11 @@
+Chart: sequenced-chart
+  Subchart batches:
+    Batch 1: worker
+  Resource-group batches:
+    Batch 1: databases
+    Batch 2: app
+  Unsequenced (deployed last): ConfigMap/unsequenced-config
+  Chart: sequenced-chart/charts/worker
+    Subchart batches: (none)
+    Resource-group batches:
+      Batch 1: bootstrap
