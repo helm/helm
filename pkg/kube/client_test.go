@@ -2272,3 +2272,99 @@ func createManifest(t *testing.T, manifest string,
 	require.NoError(t, err)
 	require.NoError(t, fakeClient.Tracker().Create(mapping.Resource, obj, obj.GetNamespace()))
 }
+
+func TestCreateFieldValidationDirective(t *testing.T) {
+	c := newTestClient(t)
+	pods := newPodList("whale")
+	seenRequest := false
+
+	client := NewRequestResponseLogClient(t, func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+		assert.Equal(t, http.MethodPatch, req.Method)
+		assert.Equal(t, string(FieldValidationDirectiveWarn), req.URL.Query().Get("fieldValidation"))
+		seenRequest = true
+		return newResponse(http.StatusOK, &pods.Items[0])
+	})
+
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client:               fake.CreateHTTPClient(client.Do),
+	}
+
+	resources, err := c.Build(objBody(&pods), false)
+	require.NoError(t, err)
+
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(true, false),
+		ClientCreateOptionFieldValidationDirective(FieldValidationDirectiveWarn),
+	)
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 1)
+	assert.True(t, seenRequest, "expected a server-side apply request")
+}
+
+func TestUpdateFieldValidationDirective(t *testing.T) {
+	tests := []struct {
+		name            string
+		serverSideApply bool
+		forceReplace    bool
+		expectedMethod  string
+	}{
+		{
+			name:            "server-side apply",
+			serverSideApply: true,
+			expectedMethod:  http.MethodPatch,
+		},
+		{
+			name:           "force replace",
+			forceReplace:   true,
+			expectedMethod: http.MethodPut,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newTestClient(t)
+			originalPods := newPodList("starfish")
+			targetPods := newPodList("starfish")
+			targetPods.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+			seenUpdateRequest := false
+
+			client := NewRequestResponseLogClient(t, func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				switch req.Method {
+				case http.MethodGet:
+					return newResponse(http.StatusOK, &originalPods.Items[0])
+				case tt.expectedMethod:
+					assert.Equal(t, string(FieldValidationDirectiveWarn), req.URL.Query().Get("fieldValidation"))
+					seenUpdateRequest = true
+					return newResponse(http.StatusOK, &targetPods.Items[0])
+				default:
+					t.Fatalf("unexpected request: %s %s", req.Method, req.URL.String())
+					return nil, nil
+				}
+			})
+
+			c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			originals, err := c.Build(objBody(&originalPods), false)
+			require.NoError(t, err)
+			targets, err := c.Build(objBody(&targetPods), false)
+			require.NoError(t, err)
+
+			result, err := c.Update(
+				originals,
+				targets,
+				ClientUpdateOptionForceReplace(tt.forceReplace),
+				ClientUpdateOptionServerSideApply(tt.serverSideApply, false),
+				ClientUpdateOptionUpgradeClientSideFieldManager(false),
+				ClientUpdateOptionFieldValidationDirective(FieldValidationDirectiveWarn),
+			)
+			require.NoError(t, err)
+			assert.Len(t, result.Updated, 1)
+			assert.True(t, seenUpdateRequest, "expected a %s update request", tt.expectedMethod)
+		})
+	}
+}
