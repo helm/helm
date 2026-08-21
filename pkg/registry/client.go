@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"sort"
 	"strings"
 
@@ -566,8 +567,12 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	// Build allowed media types for chart pull
 	allowedMediaTypes := []string{
-		ocispec.MediaTypeImageIndex,
 		ocispec.MediaTypeImageManifest,
+		// A chart converted between registries comes back written to the Docker
+		// schema, which describes the same manifest. Copying it is what selecting it
+		// out of an index is for; leaving the type out drops the manifest the copy
+		// was pointed at and fails the pull on a blob it never stored.
+		dockerManifestMediaType,
 		ConfigMediaType,
 	}
 	if operation.withChart {
@@ -577,10 +582,29 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
 	}
 
+	// An Image Index may hold several chart manifests. Name them, so selection can
+	// pick the requested one instead of whichever descriptor happens to arrive last.
+	// The chart name is the reference's last path segment; the version, when the
+	// reference carries a tag, breaks a tie between same-named charts.
+	var selectors map[string]string
+	if parsed, perr := newReference(ref); perr == nil {
+		if name := path.Base(parsed.Repository); name != "" && name != "." {
+			selectors = map[string]string{ocispec.AnnotationTitle: name}
+			if parsed.Tag != "" {
+				// newReference stores "+" as "_" in a tag; undo it to compare against
+				// the chart's own version annotation.
+				selectors[ocispec.AnnotationVersion] = strings.ReplaceAll(parsed.Tag, "_", "+")
+			}
+		}
+	}
+
 	// Use generic client for the pull operation
 	genericClient := c.Generic()
 	genericResult, err := genericClient.PullGeneric(ref, GenericPullOptions{
 		AllowedMediaTypes: allowedMediaTypes,
+		ArtifactType:      ChartArtifactType,
+		Selectors:         selectors,
+		ParseIdentity:     parseChartIdentity,
 	})
 	if err != nil {
 		return nil, err
@@ -903,6 +927,19 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 	// desc, err := c.Resolve(u.Path)
 
 	return "", u, err
+}
+
+// parseChartIdentity reads a chart's name and version out of its config blob,
+// which is Chart.yaml serialised as JSON.
+func parseChartIdentity(config []byte) (name, version string, err error) {
+	var meta struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(config, &meta); err != nil {
+		return "", "", err
+	}
+	return meta.Name, meta.Version, nil
 }
 
 // tagManifest prepares and tags a manifest in memory storage
