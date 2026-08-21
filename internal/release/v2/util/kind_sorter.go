@@ -114,45 +114,57 @@ var UninstallOrder KindSortOrder = []string{
 	"PriorityClass",
 }
 
+type KindOrderMap map[string]int
+
+func NewKindOrderMap(ordering KindSortOrder) KindOrderMap {
+	orderMap := make(KindOrderMap, len(ordering))
+	for i, kind := range ordering {
+		orderMap[kind] = i
+	}
+	return orderMap
+}
+
 // sort manifests by kind.
-//
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
 func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
+	orderMap := NewKindOrderMap(ordering)
 	sort.SliceStable(manifests, func(i, j int) bool {
-		return lessByKind(manifests[i], manifests[j], manifests[i].Head.Kind, manifests[j].Head.Kind, ordering)
+		return orderMap.Less(
+			manifests[i].Head.Kind,
+			manifests[j].Head.Kind,
+		)
 	})
 
 	return manifests
 }
 
-// sort hooks by kind, using an out-of-place sort to preserve the input parameters.
+// sort hooks by kind.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
 func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
-	h := hooks
-	sort.SliceStable(h, func(i, j int) bool {
-		return lessByKind(h[i], h[j], h[i].Kind, h[j].Kind, ordering)
+	orderMap := NewKindOrderMap(ordering)
+	sort.SliceStable(hooks, func(i, j int) bool {
+		return orderMap.Less(
+			hooks[i].Kind,
+			hooks[j].Kind,
+		)
 	})
 
-	return h
+	return hooks
 }
 
-func lessByKind(_ any, _ any, kindA string, kindB string, o KindSortOrder) bool {
-	ordering := make(map[string]int, len(o))
-	for v, k := range o {
-		ordering[k] = v
-	}
-
-	first, aok := ordering[kindA]
-	second, bok := ordering[kindB]
+func (k KindOrderMap) Less(kindA, kindB string) bool {
+	first, aok := k[kindA]
+	second, bok := k[kindB]
 
 	if !aok && !bok {
 		// if both are unknown then sort alphabetically by kind, keep original order if same kind
 		if kindA != kindB {
 			return kindA < kindB
 		}
-		return first < second
+		return false
 	}
+
 	// unknown kind is last
 	if !aok {
 		return false
@@ -160,6 +172,7 @@ func lessByKind(_ any, _ any, kindA string, kindB string, o KindSortOrder) bool 
 	if !bok {
 		return true
 	}
+
 	// sort different kinds, keep original order if same priority
 	return first < second
 }
