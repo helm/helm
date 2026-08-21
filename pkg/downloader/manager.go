@@ -240,18 +240,32 @@ func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) 
 	return res.Resolve(req, repoNames)
 }
 
+// chartPathLocks serializes downloadAll calls per ChartPath, since concurrent
+// calls targeting the same path can race on the shared "charts/" directory.
+var chartPathLocks sync.Map // map[string]*sync.Mutex
+
+func lockForChartPath(chartPath string) *sync.Mutex {
+	lock, _ := chartPathLocks.LoadOrStore(chartPath, &sync.Mutex{})
+	return lock.(*sync.Mutex)
+}
+
 // downloadAll takes a list of dependencies and downloads them into charts/
 //
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
 func (m *Manager) downloadAll(deps []*chart.Dependency) error {
+	// safeMoveDeps below isn't safe against other calls targeting the same
+	// ChartPath, so serialize per-path here.
+	lock := lockForChartPath(m.ChartPath)
+	lock.Lock()
+	defer lock.Unlock()
+
 	repos, err := m.loadChartRepositories()
 	if err != nil {
 		return err
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
-	tmpPath := filepath.Join(m.ChartPath, fmt.Sprintf("tmpcharts-%d", os.Getpid()))
 
 	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
@@ -266,9 +280,14 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		return fmt.Errorf("unable to retrieve file info for '%s': %w", destPath, err)
 	}
 
-	// Prepare tmpPath
-	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
-		return err
+	// Prepare tmpPath. Use MkdirTemp rather than a PID-derived name: multiple
+	// downloadAll calls can run concurrently as goroutines within the same
+	// process (e.g. a caller rendering several profiles against one chart
+	// path in parallel), in which case a PID-only suffix is not unique and
+	// callers race on the same directory.
+	tmpPath, err := os.MkdirTemp(m.ChartPath, fmt.Sprintf("tmpcharts-%d-*", os.Getpid()))
+	if err != nil {
+		return fmt.Errorf("unable to create temporary directory in '%s': %w", m.ChartPath, err)
 	}
 	defer os.RemoveAll(tmpPath)
 
