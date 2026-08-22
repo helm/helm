@@ -38,6 +38,34 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 	assert.NoErrorf(t, ValidateAgainstSingleSchema(values, schema), "Error validating Values against Schema")
 }
 
+func TestValidateAgainstSingleSchemaDistinctEnumTypes(t *testing.T) {
+	schema := []byte(`{
+		"$schema": "http://json-schema.org/draft-07/schema#",
+		"type": "object",
+		"properties": {
+			"value": {
+				"enum": ["0", "0%", 0]
+			}
+		}
+	}`)
+
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{name: "numeric string", value: "0"},
+		{name: "percentage string", value: "0%"},
+		{name: "number", value: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			values := common.Values{"value": tt.value}
+			require.NoError(t, ValidateAgainstSingleSchema(values, schema))
+		})
+	}
+}
+
 func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	values, err := common.ReadValuesFile("./testdata/test-values.yaml")
 	require.NoError(t, err, "Error reading YAML file")
