@@ -41,7 +41,7 @@ func (fn FilterFunc) Filter(rels []*v2.Release) (rets []*v2.Release) {
 			rets = append(rets, rel)
 		}
 	}
-	return
+	return rets
 }
 
 // Any returns a FilterFunc that filters a list of releases
