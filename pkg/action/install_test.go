@@ -631,6 +631,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 
 	is.Equal(goroutines, instAction.getGoroutineCount())
 }
+
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -652,9 +653,12 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	req.ErrorContains(err, "context canceled")
 
 	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
-	is.Equal(goroutines, instAction.getGoroutineCount())
+	// Poll until the background installation goroutine has finished.
+	is.Eventually(func() bool {
+		return instAction.getGoroutineCount() == goroutines
+	}, 30*time.Second, 10*time.Millisecond)
 }
+
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -722,6 +726,7 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 		is.ErrorContains(err, "an error occurred while uninstalling the release")
 	})
 }
+
 func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -751,9 +756,12 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	req.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
 	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
-	is.Equal(goroutines, instAction.getGoroutineCount())
+	// Poll until the background installation goroutine has finished.
+	is.Eventually(func() bool {
+		return instAction.getGoroutineCount() == goroutines
+	}, 30*time.Second, 10*time.Millisecond)
 }
+
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please

@@ -31,7 +31,7 @@ func TestRecordsAdd(t *testing.T) {
 		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
-	var tests = []struct {
+	tests := []struct {
 		desc string
 		key  string
 		ok   bool
@@ -62,7 +62,7 @@ func TestRecordsAdd(t *testing.T) {
 }
 
 func TestRecordsRemove(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		desc string
 		key  string
 		ok   bool
@@ -112,7 +112,7 @@ func TestRecordsGet(t *testing.T) {
 		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
-	var tests = []struct {
+	tests := []struct {
 		desc string
 		key  string
 		rec  *record
@@ -141,7 +141,7 @@ func TestRecordsIndex(t *testing.T) {
 		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
-	var tests = []struct {
+	tests := []struct {
 		desc string
 		key  string
 		sort int
@@ -170,7 +170,7 @@ func TestRecordsExists(t *testing.T) {
 		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
-	var tests = []struct {
+	tests := []struct {
 		desc string
 		key  string
 		ok   bool
@@ -199,7 +199,7 @@ func TestRecordsReplace(t *testing.T) {
 		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
-	var tests = []struct {
+	tests := []struct {
 		desc     string
 		key      string
 		rec      *record
