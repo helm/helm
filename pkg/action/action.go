@@ -473,7 +473,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, strings.TrimRight(content, "\n"))
 		}
 		return hs, b, "", err
 	}
