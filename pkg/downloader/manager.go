@@ -733,9 +733,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 		var entry repo.ChartVersions
 		entry, err = findEntryByName(name, cr)
 		if err != nil {
-			// TODO: Where linting is skipped in this function we should
-			// refactor to remove naked returns while ensuring the same
-			// behavior
+			// TODO: Consider refactoring this function to reduce the number of returned values while preserving behavior.
 			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		var ve *repo.ChartVersion

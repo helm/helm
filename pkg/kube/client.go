@@ -1237,7 +1237,7 @@ func upgradeClientSideFieldManager(info *resource.Info, dryRun bool, fieldValida
 	return patched, err
 }
 
-// Patch reource using server-side apply
+// Patch resource using server-side apply
 func patchResourceServerSide(target *resource.Info, dryRun, forceConflicts bool, fieldValidationDirective FieldValidationDirective) error {
 	helper := resource.NewHelper(
 		target.Client,
