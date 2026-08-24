@@ -36,10 +36,21 @@ func newBase(source string) base {
 	}
 }
 
+// pluginsDir returns the directory where plugins should be installed. When
+// HELM_PLUGINS contains a list of directories (separated by the OS path list
+// separator), the first directory is the default install target.
+func (b *base) pluginsDir() string {
+	dirs := filepath.SplitList(b.PluginsDirectory)
+	if len(dirs) == 0 {
+		return b.PluginsDirectory
+	}
+	return dirs[0]
+}
+
 // Path is where the plugin will be installed.
 func (b *base) Path() string {
 	if b.Source == "" {
 		return ""
 	}
-	return filepath.Join(b.PluginsDirectory, filepath.Base(b.Source))
+	return filepath.Join(b.pluginsDir(), filepath.Base(b.Source))
 }
