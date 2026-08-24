@@ -183,8 +183,20 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 // The reader is expected to contain one or more YAML documents, the values of which are merged.
 // And the values can be either a chart's default values or user-supplied values.
 func LoadValues(data io.Reader) (map[string]any, error) {
+	// Read fully first. YAMLReader/LineReader can drop a final unterminated
+	// line when its length is an exact multiple of bufio.Reader's default
+	// buffer (4096). Appending a trailing newline avoids that case.
+	// See https://github.com/helm/helm/issues/32506
+	b, err := io.ReadAll(data)
+	if err != nil {
+		return nil, err
+	}
+	if len(b) > 0 && b[len(b)-1] != '\n' {
+		b = append(b, '\n')
+	}
+
 	values := map[string]any{}
-	reader := utilyaml.NewYAMLReader(bufio.NewReader(data))
+	reader := utilyaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
 	for {
 		currentMap := map[string]any{}
 		raw, err := reader.Read()
