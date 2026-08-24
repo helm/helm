@@ -14,6 +14,8 @@ limitations under the License.
 package installer
 
 import (
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,6 +34,10 @@ func TestPath(t *testing.T) {
 		}, {
 			source:         "https://github.com/jkroepke/helm-secrets",
 			helmPluginsDir: "/helm/data/plugins",
+			expectPath:     "/helm/data/plugins/helm-secrets",
+		}, {
+			source:         "https://github.com/jkroepke/helm-secrets",
+			helmPluginsDir: strings.Join([]string{"/helm/data/plugins", "/helm/data/extra"}, string(filepath.ListSeparator)),
 			expectPath:     "/helm/data/plugins/helm-secrets",
 		},
 	}
