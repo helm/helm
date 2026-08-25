@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
 
+	chartcommon "helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -331,6 +332,35 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			},
 		}
 		is.Equal(expectedValues, updatedRes.Config)
+	})
+
+	t.Run("nulling a previously set value with reuse-values takes effect on the first upgrade", func(t *testing.T) {
+		is := assert.New(t)
+		req := require.New(t)
+		upAction := upgradeAction(t)
+
+		imageTemplate := &chartcommon.File{
+			Name:    "templates/image",
+			ModTime: time.Now(),
+			Data:    []byte("image: {{ .Values.image | default \"chart-default\" }}"),
+		}
+		ch := buildChartWithTemplates([]*chartcommon.File{imageTemplate})
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = common.StatusDeployed
+		rel.Chart = ch
+		rel.Config = map[string]any{"image": "old-image"}
+		req.NoError(upAction.cfg.Releases.Create(rel))
+
+		upAction.ReuseValues = true
+		resi, err := upAction.Run(rel.Name, ch, map[string]any{"image": nil})
+		req.NoError(err)
+		res, err := releaserToV1Release(resi)
+		req.NoError(err)
+
+		is.NotContains(res.Config, "image", "explicit null should remove the key from the persisted config")
+		is.Contains(res.Manifest, "image: chart-default", "nulling a reused value should fall back to the chart default on the first upgrade, not the second")
 	})
 }
 
