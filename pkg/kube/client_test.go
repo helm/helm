@@ -79,7 +79,6 @@ func newPodWithStatus(name string, status v1.PodStatus, namespace string) v1.Pod
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
-			SelfLink:  "/api/v1/namespaces/default/pods/" + name,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{

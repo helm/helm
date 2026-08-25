@@ -17,14 +17,20 @@ limitations under the License.
 package version
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestK8sClientGoModVersion(t *testing.T) {
-	// Unfortunately, test builds don't include debug info / module info
-	// So we expect "K8sIOClientGoModVersion" to return error
-	_, err := K8sIOClientGoModVersion()
-	require.ErrorContains(t, err, "k8s.io/client-go not found in build info")
+	// Whether module info is embedded in a test binary depends on the Go
+	// release: builds before Go 1.27 omit it, so the lookup fails. Accept
+	// either outcome, but require that a successful lookup returns a version.
+	v, err := K8sIOClientGoModVersion()
+	if err != nil {
+		require.ErrorContains(t, err, "k8s.io/client-go not found in build info")
+		return
+	}
+	require.True(t, strings.HasPrefix(v, "v"), "expected a semver-like version, got %q", v)
 }
