@@ -79,6 +79,43 @@ func TestManuallyProcessArgs(t *testing.T) {
 	}
 }
 
+func TestManuallyProcessArgsBooleanFlag(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         []string
+		expectKnown   []string
+		expectUnknown []string
+	}{
+		{
+			name:          "bare boolean flag",
+			input:         []string{"--kube-insecure-skip-tls-verify", "--version", "1.0.3"},
+			expectKnown:   []string{"--kube-insecure-skip-tls-verify"},
+			expectUnknown: []string{"--version", "1.0.3"},
+		},
+		{
+			name:          "separate boolean value",
+			input:         []string{"--kube-insecure-skip-tls-verify", "false", "--version", "1.0.3"},
+			expectKnown:   []string{"--kube-insecure-skip-tls-verify=false"},
+			expectUnknown: []string{"--version", "1.0.3"},
+		},
+		{
+			name:          "inline boolean value",
+			input:         []string{"--kube-insecure-skip-tls-verify=true", "--version", "1.0.3"},
+			expectKnown:   []string{"--kube-insecure-skip-tls-verify=true"},
+			expectUnknown: []string{"--version", "1.0.3"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			known, unknown := manuallyProcessArgs(tt.input)
+
+			assert.Equal(t, tt.expectKnown, known)
+			assert.Equal(t, tt.expectUnknown, unknown)
+		})
+	}
+}
+
 func TestLoadCLIPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repositories.yaml"
