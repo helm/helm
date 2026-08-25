@@ -334,7 +334,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.Equal(expectedValues, updatedRes.Config)
 	})
 
-	t.Run("nulling a previously set value with reuse-values takes effect on the first upgrade", func(t *testing.T) {
+	t.Run("nulling a previously set nested value with reuse-values takes effect on the first upgrade", func(t *testing.T) {
 		is := assert.New(t)
 		req := require.New(t)
 		upAction := upgradeAction(t)
@@ -342,7 +342,8 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		imageTemplate := &chartcommon.File{
 			Name:    "templates/image",
 			ModTime: time.Now(),
-			Data:    []byte("image: {{ .Values.image | default \"chart-default\" }}"),
+			Data: []byte(`image: {{ .Values.services.myservice.image | default "chart-default" }}
+tag: {{ .Values.services.myservice.tag }}`),
 		}
 		ch := buildChartWithTemplates([]*chartcommon.File{imageTemplate})
 
@@ -350,17 +351,37 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		rel.Name = "nuketown"
 		rel.Info.Status = common.StatusDeployed
 		rel.Chart = ch
-		rel.Config = map[string]any{"image": "old-image"}
+		rel.Config = map[string]any{
+			"services": map[string]any{
+				"myservice": map[string]any{
+					"image": "old-image",
+				},
+			},
+		}
 		req.NoError(upAction.cfg.Releases.Create(rel))
 
 		upAction.ReuseValues = true
-		resi, err := upAction.Run(rel.Name, ch, map[string]any{"image": nil})
+		resi, err := upAction.Run(rel.Name, ch, map[string]any{
+			"services": map[string]any{
+				"myservice": map[string]any{
+					"image": nil,
+					"tag":   "1.0.0",
+				},
+			},
+		})
 		req.NoError(err)
 		res, err := releaserToV1Release(resi)
 		req.NoError(err)
 
-		is.NotContains(res.Config, "image", "explicit null should remove the key from the persisted config")
-		is.Contains(res.Manifest, "image: chart-default", "nulling a reused value should fall back to the chart default on the first upgrade, not the second")
+		services, ok := res.Config["services"].(map[string]any)
+		req.True(ok, "expected services key in persisted config")
+		myservice, ok := services["myservice"].(map[string]any)
+		req.True(ok, "expected services.myservice key in persisted config")
+		is.NotContains(myservice, "image", "explicit null should remove the nested key from the persisted config, at whatever depth it appears")
+		is.Equal("1.0.0", myservice["tag"])
+
+		is.Contains(res.Manifest, "image: chart-default", "nulling a reused nested value should fall back to the chart default on the first upgrade, not the second")
+		is.Contains(res.Manifest, "tag: 1.0.0")
 	})
 }
 
