@@ -158,7 +158,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.DryRunStrategy = dryRunStrategy
 
-			printWaitMessage(out, outfmt, client.WaitStrategy, client.Timeout)
+			printWaitMessage(out, outfmt, client.WaitStrategy, client.DryRunStrategy, client.Timeout)
 
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
@@ -373,8 +373,8 @@ func checkIfInstallable(ch chart.Accessor) error {
 	return fmt.Errorf("%s charts are not installable", meta["Type"])
 }
 
-func printWaitMessage(out io.Writer, outfmt output.Format, strategy kube.WaitStrategy, timeout time.Duration) {
-	if outfmt != output.Table || strategy == kube.HookOnlyStrategy {
+func printWaitMessage(out io.Writer, outfmt output.Format, strategy kube.WaitStrategy, dryRun action.DryRunStrategy, timeout time.Duration) {
+	if outfmt != output.Table || strategy == kube.HookOnlyStrategy || dryRun != action.DryRunNone {
 		return
 	}
 	fmt.Fprintf(out, "Waiting for resources to become ready (timeout: %s)\n", timeout)
