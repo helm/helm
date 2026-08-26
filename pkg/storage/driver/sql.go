@@ -593,6 +593,12 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		return err
 	}
 
+	transaction, err := s.db.Beginx()
+	if err != nil {
+		s.Logger().Debug("failed to start SQL transaction", slog.Any("error", err))
+		return fmt.Errorf("error beginning transaction: %w", err)
+	}
+
 	query, args, err := s.statementBuilder.
 		Update(sqlReleaseTableName).
 		Set(sqlReleaseTableBodyColumn, body).
@@ -605,12 +611,64 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		Where(sq.Eq{sqlReleaseTableNamespaceColumn: namespace}).
 		ToSql()
 	if err != nil {
+		transaction.Rollback()
 		s.Logger().Debug("failed to build update query", slog.Any("error", err))
 		return err
 	}
 
-	if _, err := s.db.Exec(query, args...); err != nil {
+	if _, err := transaction.Exec(query, args...); err != nil {
+		transaction.Rollback()
 		s.Logger().Debug("failed to update release in SQL database", slog.String("key", key), slog.Any("error", err))
+		return err
+	}
+
+	deleteQuery, args, err := s.statementBuilder.
+		Delete(sqlCustomLabelsTableName).
+		Where(sq.Eq{sqlCustomLabelsTableReleaseKeyColumn: key}).
+		Where(sq.Eq{sqlCustomLabelsTableReleaseNamespaceColumn: namespace}).
+		ToSql()
+	if err != nil {
+		transaction.Rollback()
+		s.Logger().Debug("failed to build delete Labels query", slog.Any("error", err))
+		return err
+	}
+
+	if _, err := transaction.Exec(deleteQuery, args...); err != nil {
+		transaction.Rollback()
+		s.Logger().Debug("failed to delete Labels", slog.Any("error", err))
+		return err
+	}
+
+	for k, v := range filterSystemLabels(rls.Labels) {
+		insertLabelsQuery, args, err := s.statementBuilder.
+			Insert(sqlCustomLabelsTableName).
+			Columns(
+				sqlCustomLabelsTableReleaseKeyColumn,
+				sqlCustomLabelsTableReleaseNamespaceColumn,
+				sqlCustomLabelsTableKeyColumn,
+				sqlCustomLabelsTableValueColumn,
+			).
+			Values(
+				key,
+				namespace,
+				k,
+				v,
+			).ToSql()
+		if err != nil {
+			transaction.Rollback()
+			s.Logger().Debug("failed to build insert query", slog.Any("error", err))
+			return err
+		}
+
+		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
+			transaction.Rollback()
+			s.Logger().Debug("failed to write Labels", slog.Any("error", err))
+			return err
+		}
+	}
+
+	if err := transaction.Commit(); err != nil {
+		s.Logger().Debug("failed to commit transaction", slog.Any("error", err))
 		return err
 	}
 
