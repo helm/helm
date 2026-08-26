@@ -163,7 +163,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						instClient.Replace = true
 					}
 
-					printWaitMessage(out, outfmt, instClient.WaitStrategy, instClient.Timeout)
+					printWaitMessage(out, outfmt, instClient.WaitStrategy, instClient.DryRunStrategy, instClient.Timeout)
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -259,7 +259,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				cancel()
 			}()
 
-			printWaitMessage(out, outfmt, client.WaitStrategy, client.Timeout)
+			printWaitMessage(out, outfmt, client.WaitStrategy, client.DryRunStrategy, client.Timeout)
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
