@@ -1777,3 +1777,70 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 		})
 	}
 }
+
+// TestWatchUntilReadyHookDeletedWhileWaiting covers a Job hook that sets
+// .spec.ttlSecondsAfterFinished: the TTL controller removes the Job as soon as
+// it completes, so the hook can disappear while Helm is still waiting for it.
+// The wait has to end there instead of running until the timeout expires.
+func TestWatchUntilReadyHookDeletedWhileWaiting(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 3 * time.Second
+	timeUntilJobDelete := 500 * time.Millisecond
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		batchv1.SchemeGroupVersion.WithKind("Job"),
+	)
+	statusWaiter := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	// The Job never reports completion, so only its deletion can end the wait.
+	objs := getRuntimeObjFromManifests(t, []string{jobNoStatusManifest})
+	u := objs[0].(*unstructured.Unstructured)
+	gvr := getGVR(t, fakeMapper, u)
+	require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+	go func() {
+		time.Sleep(timeUntilJobDelete)
+		assert.NoError(t, fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
+	}()
+
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+	start := time.Now()
+	require.NoError(t, statusWaiter.WatchUntilReady(resourceList, timeout))
+	assert.Less(t, time.Since(start), timeout, "wait should end when the hook is deleted, not on timeout")
+}
+
+// TestStatusWaitDeletedResourceStillFails makes sure the hook behaviour above
+// does not leak into Wait, where a resource that goes away is still an error.
+func TestStatusWaitDeletedResourceStillFails(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		batchv1.SchemeGroupVersion.WithKind("Job"),
+	)
+	statusWaiter := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	statusWaiter.SetLogger(slog.Default().Handler())
+
+	objs := getRuntimeObjFromManifests(t, []string{jobNoStatusManifest})
+	u := objs[0].(*unstructured.Unstructured)
+	gvr := getGVR(t, fakeMapper, u)
+	require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		assert.NoError(t, fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
+	}()
+
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+	err := statusWaiter.Wait(resourceList, time.Second)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "resource Job/qual/test not ready. status: NotFound")
+}
