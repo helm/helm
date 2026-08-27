@@ -587,3 +587,34 @@ func TestUpgradeInstallServerSideApply(t *testing.T) {
 		})
 	}
 }
+
+func TestUpgradeImplicitWaitProgress(t *testing.T) {
+	tests := []struct {
+		name    string
+		install bool
+	}{
+		{name: "upgrade"},
+		{name: "upgrade install", install: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer resetEnv()()
+
+			releaseName := "implicit-wait"
+			relMock, ch, chartPath := prepareMockRelease(t, releaseName)
+			store := storageFixture()
+			installFlag := ""
+			if tt.install {
+				installFlag = "--install"
+			} else {
+				require.NoError(t, store.Create(relMock(releaseName, 1, ch)))
+			}
+
+			cmd := fmt.Sprintf("upgrade %s %s --rollback-on-failure '%s'", releaseName, installFlag, chartPath)
+			_, out, err := executeActionCommandC(store, cmd)
+			require.NoError(t, err)
+			assert.Contains(t, out, "Waiting for resources to become ready (timeout: 5m0s)\n")
+		})
+	}
+}
