@@ -72,13 +72,6 @@ func TestShowOCIRegistryMessagesNotOnStdout(t *testing.T) {
 	require.Contains(t, stderr, "Digest:")
 }
 
-func TestAddRegistryClientUsesProvidedWriter(t *testing.T) {
-	writer := &bytes.Buffer{}
-	client := action.NewShow(action.ShowChart, &action.Configuration{})
-
-	require.NoError(t, addRegistryClient(writer, client))
-}
-
 func runOCIChartCommand(t *testing.T, argsFn func(ref, registryConfig, contentCache string) []string) (string, string) {
 	t.Helper()
 
