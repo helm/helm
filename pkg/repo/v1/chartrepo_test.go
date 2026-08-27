@@ -134,10 +134,10 @@ func TestDownloadIndexFileWithGzipContentEncoding(t *testing.T) {
 
 		w.Header().Set("Content-Encoding", "gzip")
 		gzipWriter := gzip.NewWriter(w)
-		defer gzipWriter.Close()
 
 		_, err := gzipWriter.Write(fileBytes)
 		require.NoError(t, err)
+		require.NoError(t, gzipWriter.Close())
 	})
 
 	srv, err := startLocalServerForTests(handler)
