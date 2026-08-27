@@ -1826,15 +1826,12 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	expectedBuf := `---
 # Source: yellow/templates/foodpie
 foodpie: world
-
 ---
 # Source: yellow/templates/with-partials
 yellow: Earth
-
 ---
 # Source: yellow/templates/yellow
 yellow: world
-
 `
 	expectedHook := `kind: ConfigMap
 metadata:
@@ -1946,17 +1943,14 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 # Source: hello/templates/goodbye
 goodbye: world
 color: blue
-
 ---
 # Source: hello/templates/hello
 hello: world
 color: blue
-
 ---
 # Source: hello/templates/with-partials
 hello: Earth
 color: blue
-
 `
 	assert.Contains(t, output, "color: blue")
 	assert.Equal(t, 3, strings.Count(output, "color: blue"))
@@ -1978,6 +1972,50 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
 	assert.Empty(t, notes)
+}
+
+func TestRenderResources_StdoutHasNoExtraBlankLineBeforeDocumentSeparator(t *testing.T) {
+	cfg := actionConfigFixture(t)
+	modTime := time.Now()
+
+	// Reproduces https://github.com/helm/helm/issues/32565: a template that
+	// already ends with a newline must not gain a blank line before the next ---.
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/one.yaml", ModTime: modTime, Data: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: one\n")},
+		{Name: "templates/two.yaml", ModTime: modTime, Data: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: two")},
+	})
+
+	_, buf, _, err := cfg.renderResources(
+		t.Context(), ch, map[string]any{}, "test-release", "", false, false, false,
+		nil, false, false, false, PostRenderStrategyCombined,
+	)
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.NotContains(t, out, "\n\n---", "helm template stdout must not insert a blank line before ---")
+	assert.Contains(t, out, "name: one\n---\n")
+	assert.True(t, strings.HasSuffix(out, "name: two\n"), "final document should end with a single newline")
+}
+
+func TestRenderResources_StdoutPreservesExtraTrailingNewlines(t *testing.T) {
+	cfg := actionConfigFixture(t)
+	modTime := time.Now()
+
+	// YAML |+ keep relies on extra trailing newlines surviving in non-final
+	// documents (issue 32326). Trim only the printer's extra \n, not all of them.
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/keep.yaml", ModTime: modTime, Data: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: keep\ndata:\n  key: |+\n    hello\n\n\n")},
+		{Name: "templates/zlast.yaml", ModTime: modTime, Data: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: zlast")},
+	})
+
+	_, buf, _, err := cfg.renderResources(
+		t.Context(), ch, map[string]any{}, "test-release", "", false, false, false,
+		nil, false, false, false, PostRenderStrategyCombined,
+	)
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "    hello\n\n\n---\n", "extra trailing newlines from |+ must be preserved")
 }
 
 func TestRenderResources_PostRenderer_DuplicateResourceInHookAndTemplate(t *testing.T) {

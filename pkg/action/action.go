@@ -270,6 +270,14 @@ func splitAndDeannotate(postrendered, fallbackPrefix string) (map[string]string,
 	return reconstructed, nil
 }
 
+// writeSourceManifest writes a YAML document with a --- separator and source
+// comment. One trailing newline is trimmed from content so the format's final
+// \n does not create a blank line before the next --- (issue 32565). Extra
+// trailing newlines, such as those required by YAML |+ chomping, are kept.
+func writeSourceManifest(w io.Writer, name, content string) {
+	fmt.Fprintf(w, "---\n# Source: %s\n%s\n", name, strings.TrimSuffix(content, "\n"))
+}
+
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
@@ -355,7 +363,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 					if strings.TrimSpace(content) == "" {
 						continue
 					}
-					fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+					writeSourceManifest(b, name, content)
 				}
 				return hs, b, "", err
 			}
@@ -473,7 +481,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+			writeSourceManifest(b, name, content)
 		}
 		return hs, b, "", err
 	}
@@ -484,7 +492,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data))
+				writeSourceManifest(b, crd.Filename, string(crd.File.Data))
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data), fileWritten[crd.Filename])
 				if err != nil {
@@ -500,7 +508,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
 				fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
 			} else {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+				writeSourceManifest(b, m.Name, m.Content)
 			}
 		} else {
 			newDir := outputDir
