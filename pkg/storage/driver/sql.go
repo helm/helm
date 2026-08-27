@@ -668,6 +668,7 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 	}
 
 	if err := transaction.Commit(); err != nil {
+		transaction.Rollback()
 		s.Logger().Debug("failed to commit transaction", slog.Any("error", err))
 		return err
 	}
