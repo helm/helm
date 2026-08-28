@@ -1196,6 +1196,27 @@ func TestCheckDependencies_MissingDependency(t *testing.T) {
 	assert.ErrorContains(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}), "missing in charts")
 }
 
+func TestCheckDependencies_MatchingVersion(t *testing.T) {
+	dependency := chart.Dependency{Name: "hello", Version: "0.1.0"}
+	mockChart := buildChart(withDependency())
+
+	assert.NoError(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
+}
+
+func TestCheckDependencies_MismatchedVersion(t *testing.T) {
+	mismatched := chart.Dependency{Name: "hello", Version: "0.2.0"}
+	mockChart := buildChart(withDependency())
+
+	assert.ErrorContains(t, CheckDependencies(mockChart, []ci.Dependency{&mismatched}), "missing in charts")
+}
+
+func TestCheckDependencies_WithoutVersionConstraint(t *testing.T) {
+	dependency := chart.Dependency{Name: "hello"}
+	mockChart := buildChart(withDependency())
+
+	assert.NoError(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
+}
+
 func TestInstallCRDs_CheckNilErrors(t *testing.T) {
 	tests := []struct {
 		name  string
