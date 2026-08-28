@@ -176,7 +176,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	// This call is required to gather configuration information prior to
 	// execution.
 	flags.ParseErrorsAllowlist.UnknownFlags = true
-	flags.Parse(args)
+	_ = flags.Parse(args)
 
 	logSetup(settings.Debug)
 

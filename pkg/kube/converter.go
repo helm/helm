@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
 )
@@ -61,11 +62,11 @@ func convertWithMapper(obj runtime.Object, mapping *meta.RESTMapping) runtime.Ob
 func kubernetesNativeScheme() *runtime.Scheme {
 	k8sNativeSchemeOnce.Do(func() {
 		k8sNativeScheme = runtime.NewScheme()
-		scheme.AddToScheme(k8sNativeScheme)
+		utilruntime.Must(scheme.AddToScheme(k8sNativeScheme))
 		// API extensions are not in the above scheme set,
 		// and must thus be added separately.
-		apiextensionsv1beta1.AddToScheme(k8sNativeScheme)
-		apiextensionsv1.AddToScheme(k8sNativeScheme)
+		utilruntime.Must(apiextensionsv1beta1.AddToScheme(k8sNativeScheme))
+		utilruntime.Must(apiextensionsv1.AddToScheme(k8sNativeScheme))
 	})
 	return k8sNativeScheme
 }

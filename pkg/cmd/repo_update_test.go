@@ -101,7 +101,7 @@ func TestUpdateCmdInvalid(t *testing.T) {
 func TestUpdateCustomCacheCmd(t *testing.T) {
 	rootDir := t.TempDir()
 	cachePath := filepath.Join(rootDir, "updcustomcache")
-	os.Mkdir(cachePath, os.ModePerm)
+	require.NoError(t, os.Mkdir(cachePath, os.ModePerm))
 
 	ts := repotest.NewTempServer(
 		t,
@@ -137,7 +137,7 @@ func TestUpdateCharts(t *testing.T) {
 	require.NoError(t, err)
 
 	b := bytes.NewBuffer(nil)
-	updateCharts([]*repo.ChartRepository{r}, b)
+	require.NoError(t, updateCharts([]*repo.ChartRepository{r}, b))
 
 	got := b.String()
 	assert.NotContains(t, got, "Unable to get an update", "Failed to get a repo: %q", got)

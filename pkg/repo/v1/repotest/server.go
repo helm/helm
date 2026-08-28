@@ -17,6 +17,7 @@ package repotest
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -214,7 +215,11 @@ func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServ
 		fn(cfg)
 	}
 
-	go srv.ListenAndServe()
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			t.Errorf("OCI test registry server failed: %v", err)
+		}
+	}()
 
 	// NewOCIServer released the port it reserved so the registry could claim
 	// it, and ListenAndServe binds asynchronously. Wait for the port to accept

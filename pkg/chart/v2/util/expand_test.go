@@ -55,7 +55,8 @@ func makeTestChartArchive(t *testing.T, chartName, sourceDir string) *bytes.Buff
 
 		data, err := fs.ReadFile(dir, relPath)
 		require.NoError(t, err)
-		tw.Write(data)
+		_, err = tw.Write(data)
+		require.NoError(t, err)
 	}
 
 	require.NoError(t, fs.WalkDir(dir, ".", func(path string, d os.DirEntry, walkErr error) error {

@@ -253,7 +253,9 @@ func (r *SubprocessPluginRuntime) runPostrenderer(ctx context.Context, input *In
 
 	go func() {
 		defer stdin.Close()
-		io.Copy(stdin, msg.Manifests)
+		if _, err := io.Copy(stdin, msg.Manifests); err != nil {
+			slog.Debug("failed to copy manifests to plugin stdin", slog.String("pluginName", r.metadata.Name), slog.String("error", err.Error()))
+		}
 	}()
 
 	postRendered := &bytes.Buffer{}
