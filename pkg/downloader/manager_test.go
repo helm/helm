@@ -235,16 +235,10 @@ version: 0.1.0`
 	require.Error(t, m.downloadAll([]*chart.Dependency{badLocalDep}), "Expected error for bad dependency name")
 }
 
-// TestDownloadAllConcurrent reproduces a race that isn't covered by the
-// os.Getpid()-suffixed tmpcharts fix for #13110: multiple goroutines calling
-// downloadAll for the *same* chart path from within a single process (e.g. a
-// caller like Skaffold rendering several profiles against one chart in
-// parallel) all shared a PID, so they used to race on the same
-// "tmpcharts-<pid>" directory. One goroutine's `defer os.RemoveAll(tmpPath)`
-// could delete the directory out from under another goroutine's in-flight
-// download, surfacing as "lstat .../tmpcharts-<pid>: no such file or
-// directory". Each call must get its own unique tmp directory regardless of
-// PID.
+// TestDownloadAllConcurrent verifies concurrent downloadAll calls for the same
+// chart path complete without error and leave no leftover tmpcharts-* dirs.
+// Per-path serialization is provided by withChartPathLock; see
+// TestTmpChartsDirConcurrent for the MkdirTemp uniqueness guarantee.
 func TestDownloadAllConcurrent(t *testing.T) {
 	chartPath := t.TempDir()
 
@@ -387,6 +381,46 @@ func TestDownloadAllConcurrentVersionChurn(t *testing.T) {
 		}
 	}
 	assert.Len(t, found, 1, "expected exactly one version of %s in charts/, found %v", depName, found)
+}
+
+func TestTmpChartsDirConcurrent(t *testing.T) {
+	chartPath := t.TempDir()
+
+	const concurrency = 32
+	paths := make([]string, concurrency)
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			path, err := tmpChartsDir(chartPath)
+			require.NoError(t, err)
+			paths[i] = path
+			require.NoError(t, os.RemoveAll(path))
+		}(i)
+	}
+	wg.Wait()
+
+	seen := make(map[string]struct{}, concurrency)
+	for _, path := range paths {
+		require.NotEmpty(t, path)
+		_, dup := seen[path]
+		require.False(t, dup, "duplicate tmp dir: %s", path)
+		seen[path] = struct{}{}
+	}
+}
+
+func TestLockForChartPathEquivalentPaths(t *testing.T) {
+	chartPath := t.TempDir()
+	linkPath := filepath.Join(filepath.Dir(chartPath), "chart-link")
+	require.NoError(t, os.Symlink(chartPath, linkPath))
+
+	lockA := lockForChartPath(chartPath)
+	lockB := lockForChartPath(linkPath)
+	lockC := lockForChartPath(filepath.Join(chartPath, "..", filepath.Base(chartPath)))
+
+	require.Same(t, lockA, lockB)
+	require.Same(t, lockA, lockC)
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {

@@ -89,6 +89,10 @@ type Manager struct {
 //
 // If SkipUpdate is set, this will not update the repository.
 func (m *Manager) Build() error {
+	return m.withChartPathLock(m.build)
+}
+
+func (m *Manager) build() error {
 	c, err := m.loadChartDir()
 	if err != nil {
 		return err
@@ -98,7 +102,7 @@ func (m *Manager) Build() error {
 	// an update.
 	lock := c.Lock
 	if lock == nil {
-		return m.Update()
+		return m.update()
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
@@ -146,7 +150,7 @@ func (m *Manager) Build() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	return m.downloadAll(lock.Dependencies)
+	return m.downloadAllUnlocked(lock.Dependencies)
 }
 
 // Update updates a local charts directory.
@@ -155,6 +159,10 @@ func (m *Manager) Build() error {
 // negotiate versions based on that. It will download the versions
 // from remote chart repositories unless SkipUpdate is true.
 func (m *Manager) Update() error {
+	return m.withChartPathLock(m.update)
+}
+
+func (m *Manager) update() error {
 	c, err := m.loadChartDir()
 	if err != nil {
 		return err
@@ -202,7 +210,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies); err != nil {
+	if err := m.downloadAllUnlocked(lock.Dependencies); err != nil {
 		return err
 	}
 
@@ -240,13 +248,39 @@ func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) 
 	return res.Resolve(req, repoNames)
 }
 
-// chartPathLocks serializes downloadAll calls per ChartPath, since concurrent
-// calls targeting the same path can race on the shared "charts/" directory.
+// chartPathLocks serializes Manager operations per chart directory. Concurrent
+// Build/Update/downloadAll calls targeting the same path can race on the
+// shared "charts/" directory and on the lockfile.
 var chartPathLocks sync.Map // map[string]*sync.Mutex
 
+func normalizeChartPath(chartPath string) string {
+	abs, err := filepath.Abs(chartPath)
+	if err != nil {
+		return filepath.Clean(chartPath)
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return abs
+	}
+	return resolved
+}
+
 func lockForChartPath(chartPath string) *sync.Mutex {
-	lock, _ := chartPathLocks.LoadOrStore(chartPath, &sync.Mutex{})
+	key := normalizeChartPath(chartPath)
+	lock, _ := chartPathLocks.LoadOrStore(key, &sync.Mutex{})
 	return lock.(*sync.Mutex)
+}
+
+func (m *Manager) withChartPathLock(fn func() error) error {
+	lock := lockForChartPath(m.ChartPath)
+	lock.Lock()
+	defer lock.Unlock()
+	return fn()
+}
+
+// tmpChartsDir allocates a unique scratch directory for a downloadAll call.
+func tmpChartsDir(chartPath string) (string, error) {
+	return os.MkdirTemp(chartPath, fmt.Sprintf("tmpcharts-%d-*", os.Getpid()))
 }
 
 // downloadAll takes a list of dependencies and downloads them into charts/
@@ -254,12 +288,12 @@ func lockForChartPath(chartPath string) *sync.Mutex {
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
 func (m *Manager) downloadAll(deps []*chart.Dependency) error {
-	// safeMoveDeps below isn't safe against other calls targeting the same
-	// ChartPath, so serialize per-path here.
-	lock := lockForChartPath(m.ChartPath)
-	lock.Lock()
-	defer lock.Unlock()
+	return m.withChartPathLock(func() error {
+		return m.downloadAllUnlocked(deps)
+	})
+}
 
+func (m *Manager) downloadAllUnlocked(deps []*chart.Dependency) error {
 	repos, err := m.loadChartRepositories()
 	if err != nil {
 		return err
@@ -285,7 +319,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	// process (e.g. a caller rendering several profiles against one chart
 	// path in parallel), in which case a PID-only suffix is not unique and
 	// callers race on the same directory.
-	tmpPath, err := os.MkdirTemp(m.ChartPath, fmt.Sprintf("tmpcharts-%d-*", os.Getpid()))
+	tmpPath, err := tmpChartsDir(m.ChartPath)
 	if err != nil {
 		return fmt.Errorf("unable to create temporary directory in '%s': %w", m.ChartPath, err)
 	}
