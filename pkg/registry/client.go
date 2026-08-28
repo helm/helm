@@ -231,7 +231,7 @@ type (
 // Returns true if the host contains a path component (i.e., contains a '/').
 func warnIfHostHasPath(host string) bool {
 	if strings.Contains(host, "/") {
-		registryHost := strings.Split(host, "/")[0]
+		registryHost, _, _ := strings.Cut(host, "/")
 		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
 		return true
 	}
@@ -321,6 +321,11 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 	case transport.TLSClientConfig == nil:
 		transport.TLSClientConfig = &tls.Config{}
 	}
+
+	// Idle connections were established under the previous TLS configuration.
+	// Drop them so the settings being applied here take effect on the next
+	// request instead of being bypassed by a pooled connection.
+	transport.CloseIdleConnections()
 
 	return transport.TLSClientConfig, nil
 }

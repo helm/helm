@@ -216,6 +216,19 @@ func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServ
 
 	go srv.ListenAndServe()
 
+	// NewOCIServer released the port it reserved so the registry could claim
+	// it, and ListenAndServe binds asynchronously. Wait for the port to accept
+	// connections so the login below does not race the listener coming up.
+	dialer := &net.Dialer{Timeout: time.Second}
+	require.Eventually(t, func() bool {
+		conn, err := dialer.DialContext(t.Context(), "tcp", srv.RegistryURL)
+		if err != nil {
+			return false
+		}
+		conn.Close()
+		return true
+	}, 30*time.Second, 20*time.Millisecond, "test registry never started listening on %s", srv.RegistryURL)
+
 	credentialsFile := filepath.Join(srv.Dir, "config.json")
 
 	// init test client

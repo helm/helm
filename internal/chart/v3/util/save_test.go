@@ -231,13 +231,10 @@ func TestSaveDir(t *testing.T) {
 }
 
 func TestRepeatableSave(t *testing.T) {
-	tmp := t.TempDir()
-	defer os.RemoveAll(tmp)
 	modTime := time.Date(2021, 9, 1, 20, 34, 58, 651387237, time.UTC)
 	tests := []struct {
 		name  string
 		chart *chart.Chart
-		want  string
 	}{
 		{
 			name: "Package 1 file",
@@ -258,7 +255,6 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "5bfea18cc3c8cbc265744bc32bffa9489a4dbe87d6b51b90f4255e4839d35e03",
 		},
 		{
 			name: "Package 2 files",
@@ -280,20 +276,26 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "a240365c21e0a2f4a57873132a9b686566a612d08bcb3f20c9446bfff005ccce",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// create package
-			dest := path.Join(tmp, "newdir")
-			where, err := Save(test.chart, dest)
+			// Package the same chart twice, into separate directories so the
+			// second Save does not simply overwrite the first.
+			first, err := Save(test.chart, t.TempDir())
 			require.NoError(t, err, "Failed to save")
-			// get shasum for package
-			result, err := sha256Sum(where)
+			second, err := Save(test.chart, t.TempDir())
+			require.NoError(t, err, "Failed to save")
+
+			firstSum, err := sha256Sum(first)
 			require.NoError(t, err, "Failed to check shasum")
-			// assert that the package SHA is what we wanted.
-			assert.Equal(t, test.want, result, "FormatName() result = %v, want %v", result, test.want)
+			secondSum, err := sha256Sum(second)
+			require.NoError(t, err, "Failed to check shasum")
+
+			// Packaging a chart must be reproducible. The digest itself is not
+			// pinned here because the bytes depend on the compression
+			// implementation of the Go release Helm is built with.
+			assert.Equal(t, firstSum, secondSum, "Save() is not repeatable")
 		})
 	}
 }

@@ -482,8 +482,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 	// If it can parse out details from that error message such as the line number, template it failed on,
 	// and error description, then it will construct a new error that displays these details in a structured way.
 	// If there are issues with parsing the error message, the err passed into the function should return instead.
-	var execError template.ExecError
-	if !errors.As(err, &execError) {
+	if _, ok := errors.AsType[template.ExecError](err); !ok {
 		return err
 	}
 
