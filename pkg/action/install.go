@@ -100,12 +100,14 @@ type Install struct {
 	Devel            bool
 	DependencyUpdate bool
 	Timeout          time.Duration
-	Namespace        string
-	ReleaseName      string
-	GenerateName     bool
-	NameTemplate     string
-	Description      string
-	OutputDir        string
+	// WaitProgress is called immediately before waiting for resources.
+	WaitProgress func(time.Duration)
+	Namespace    string
+	ReleaseName  string
+	GenerateName bool
+	NameTemplate string
+	Description  string
+	OutputDir    string
 	// RollbackOnFailure enables rolling back (uninstalling) the release on failure if set
 	RollbackOnFailure        bool
 	SkipCRDs                 bool
@@ -541,6 +543,10 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 	if err != nil {
 		return rel, fmt.Errorf("failed to get waiter: %w", err)
+	}
+
+	if i.WaitProgress != nil {
+		i.WaitProgress(i.Timeout)
 	}
 
 	if i.WaitForJobs {

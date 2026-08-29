@@ -158,7 +158,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.DryRunStrategy = dryRunStrategy
 
-			printWaitMessage(out, outfmt, client.WaitStrategy, client.RollbackOnFailure, client.DryRunStrategy, client.Timeout)
+			configureWaitProgress(client, out, outfmt)
 
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
@@ -373,9 +373,19 @@ func checkIfInstallable(ch chart.Accessor) error {
 	return fmt.Errorf("%s charts are not installable", meta["Type"])
 }
 
+func configureWaitProgress(client *action.Install, out io.Writer, outfmt output.Format) {
+	if outfmt != output.Table || client.DryRunStrategy != action.DryRunNone {
+		return
+	}
+	if client.WaitStrategy == kube.HookOnlyStrategy && !client.RollbackOnFailure {
+		return
+	}
+	client.WaitProgress = func(timeout time.Duration) {
+		printWaitMessage(out, outfmt, kube.StatusWatcherStrategy, false, action.DryRunNone, timeout)
+	}
+}
+
 func printWaitMessage(out io.Writer, outfmt output.Format, strategy kube.WaitStrategy, rollbackOnFailure bool, dryRun action.DryRunStrategy, timeout time.Duration) {
-	// Rollback-on-failure implicitly enables watcher waits in the action layer.
-	// Account for that here, before the action mutates its WaitStrategy.
 	if strategy == kube.HookOnlyStrategy && rollbackOnFailure {
 		strategy = kube.StatusWatcherStrategy
 	}

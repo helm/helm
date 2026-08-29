@@ -76,6 +76,8 @@ type Upgrade struct {
 	WaitOptions []kube.WaitOption
 	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
 	WaitForJobs bool
+	// WaitProgress is called immediately before waiting for resources.
+	WaitProgress func(time.Duration)
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
 	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
@@ -489,6 +491,10 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
 		return
 	}
+	if u.WaitProgress != nil {
+		u.WaitProgress(u.Timeout)
+	}
+
 	if u.WaitForJobs {
 		if err := waiter.WaitWithJobs(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
