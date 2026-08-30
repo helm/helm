@@ -88,6 +88,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
+	var namespaceLabels map[string]string
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -133,6 +134,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 					instClient := action.NewInstall(cfg)
 					instClient.CreateNamespace = createNamespace
+					instClient.NamespaceLabels = namespaceLabels
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.ForceReplace = client.ForceReplace
 					instClient.DryRunStrategy = client.DryRunStrategy
@@ -278,6 +280,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
+	f.StringToStringVar(&namespaceLabels, "namespace-labels", nil, "labels to apply to the namespace when --create-namespace is set. Comma-separated key=value pairs. When not set the default label name=<namespace> is applied.")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
