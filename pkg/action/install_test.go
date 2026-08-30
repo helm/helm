@@ -455,14 +455,19 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
 
+	// Server dry-run with adoption: resources already exist on the cluster;
+	// TakeOwnership bypasses the ownership check and puts them into toBeAdopted,
+	// so the dry-run block exercises the Update path with DryRun=true.
 	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
+	fakeClient := config.KubeClient.(*kubefake.FailingKubeClient)
 
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
 	instAction.ReleaseName = "test-server-dry-run"
+	instAction.TakeOwnership = true
 
 	expectedErr := errors.New("validation error: unknown field in spec")
-	config.KubeClient.(*kubefake.FailingKubeClient).CreateError = expectedErr
+	fakeClient.UpdateError = expectedErr
 	instAction.DryRunStrategy = DryRunServer
 
 	vals := map[string]any{}
@@ -470,9 +475,13 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 
 	req.Error(err)
 	is.Contains(err.Error(), "validation error")
+	// Verify the Update call included DryRun so no real resources are modified.
+	is.True(fakeClient.RecordedUpdateOptions.DryRun, "server dry-run must pass DryRun option to Update")
 
+	// Client dry-run must not reach the kube client at all even when UpdateError is set.
 	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
-	config2.KubeClient.(*kubefake.FailingKubeClient).CreateError = expectedErr
+	fakeClient2 := config2.KubeClient.(*kubefake.FailingKubeClient)
+	fakeClient2.UpdateError = expectedErr
 
 	instAction2 := NewInstall(config2)
 	instAction2.Namespace = "spaced"
@@ -484,6 +493,7 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	res, err := releaserToV1Release(resi)
 	req.NoError(err)
 	is.Equal("Dry run complete", res.Info.Description)
+	is.False(fakeClient2.RecordedUpdateOptions.DryRun, "client dry-run must not call Update")
 }
 
 func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {

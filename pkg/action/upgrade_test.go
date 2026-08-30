@@ -627,14 +627,17 @@ func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
 
 	upAction := NewUpgrade(config)
 	upAction.Namespace = "spaced"
+	upAction.ServerSideApply = "true"
 
 	rel := releaseStub()
 	rel.Name = "test-server-dry-run"
 	rel.Info.Status = common.StatusDeployed
+	rel.ApplyMethod = "ssa"
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
 	expectedErr := errors.New("validation error: unknown field in spec")
-	config.KubeClient.(*kubefake.FailingKubeClient).UpdateError = expectedErr
+	fakeClient := config.KubeClient.(*kubefake.FailingKubeClient)
+	fakeClient.UpdateError = expectedErr
 	upAction.DryRunStrategy = DryRunServer
 
 	vals := map[string]any{}
@@ -644,6 +647,8 @@ func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
 
 	req.Error(err)
 	is.Contains(err.Error(), "validation error")
+	// Verify the Update call included DryRun so no real resources are modified.
+	is.True(fakeClient.RecordedUpdateOptions.DryRun, "server dry-run must pass DryRun option to Update")
 
 	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
 	config2.KubeClient.(*kubefake.FailingKubeClient).UpdateError = expectedErr
@@ -666,6 +671,9 @@ func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
 	res, err := releaserToV1Release(resi)
 	req.NoError(err)
 	is.Equal("Dry run complete", res.Info.Description)
+	// Client dry-run must not reach the kube client Update at all.
+	is.False(config2.KubeClient.(*kubefake.FailingKubeClient).RecordedUpdateOptions.DryRun,
+		"client dry-run must not call Update")
 }
 
 func TestGetUpgradeServerSideValue(t *testing.T) {
