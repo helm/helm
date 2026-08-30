@@ -57,6 +57,17 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
+// findNamespaceBuildInput returns the first Build input that contains a Namespace kind,
+// or empty string if none is found.
+func findNamespaceBuildInput(inputs [][]byte) string {
+	for _, b := range inputs {
+		if strings.Contains(string(b), "kind: Namespace") {
+			return string(b)
+		}
+	}
+	return ""
+}
+
 type nameTemplateTestCase struct {
 	tpl              string
 	expected         string
@@ -216,6 +227,80 @@ func TestInstallRelease(t *testing.T) {
 	lrel, err := releaserToV1Release(lastRelease)
 	req.NoError(err)
 	is.Equal(rcommon.StatusDeployed, lrel.Info.Status)
+}
+
+func TestInstallRelease_CreateNamespace_DefaultLabels(t *testing.T) {
+	req := require.New(t)
+	is := assert.New(t)
+
+	config := actionConfigFixture(t)
+	instAction := NewInstall(config)
+	instAction.Namespace = "mynamespace"
+	instAction.ReleaseName = "test-ns-labels"
+	instAction.CreateNamespace = true
+
+	vals := map[string]any{}
+	ctx, done := context.WithCancel(t.Context())
+	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	done()
+	req.NoError(err)
+
+	fakeClient := config.KubeClient.(*kubefake.FailingKubeClient)
+	nsYAML := findNamespaceBuildInput(fakeClient.RecordedBuildInputs)
+	req.NotEmpty(nsYAML, "expected Build to be called for namespace creation")
+	is.Contains(nsYAML, "name: mynamespace", "expected default label name=<namespace>")
+	is.NotContains(nsYAML, "custom", "expected no custom labels")
+}
+
+func TestInstallRelease_CreateNamespace_CustomLabels(t *testing.T) {
+	req := require.New(t)
+	is := assert.New(t)
+
+	config := actionConfigFixture(t)
+	instAction := NewInstall(config)
+	instAction.Namespace = "mynamespace"
+	instAction.ReleaseName = "test-ns-custom-labels"
+	instAction.CreateNamespace = true
+	instAction.NamespaceLabels = map[string]string{
+		"env":  "production",
+		"team": "platform",
+	}
+
+	vals := map[string]any{}
+	ctx, done := context.WithCancel(t.Context())
+	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	done()
+	req.NoError(err)
+
+	fakeClient := config.KubeClient.(*kubefake.FailingKubeClient)
+	nsYAML := findNamespaceBuildInput(fakeClient.RecordedBuildInputs)
+	req.NotEmpty(nsYAML, "expected Build to be called for namespace creation")
+	is.Contains(nsYAML, "env: production")
+	is.Contains(nsYAML, "team: platform")
+	// The default label key "name" must not appear indented under labels (4 spaces).
+	is.NotContains(nsYAML, "    name: mynamespace", "custom labels should replace the default, not add to it")
+}
+
+func TestInstallRelease_CreateNamespace_LabelsIgnoredWithoutCreateNamespace(t *testing.T) {
+	req := require.New(t)
+
+	config := actionConfigFixture(t)
+	instAction := NewInstall(config)
+	instAction.Namespace = "mynamespace"
+	instAction.ReleaseName = "test-ns-labels-ignored"
+	instAction.CreateNamespace = false
+	instAction.NamespaceLabels = map[string]string{"env": "production"}
+
+	vals := map[string]any{}
+	ctx, done := context.WithCancel(t.Context())
+	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	done()
+	req.NoError(err)
+
+	fakeClient := config.KubeClient.(*kubefake.FailingKubeClient)
+	for _, input := range fakeClient.RecordedBuildInputs {
+		req.NotContains(string(input), "kind: Namespace", "Build should not be called for namespace when CreateNamespace is false")
+	}
 }
 
 func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
