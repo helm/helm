@@ -86,6 +86,9 @@ type Install struct {
 	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 	ServerSideApply bool
 	CreateNamespace bool
+	// NamespaceLabels are extra labels applied to the namespace when it is created via CreateNamespace.
+	// When nil the default label {"name": <namespace>} is used. When set, it replaces the default entirely.
+	NamespaceLabels map[string]string
 	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
 	DryRunStrategy DryRunStrategy
 	// HideSecret can be set to true when DryRun is enabled in order to hide
@@ -436,13 +439,15 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 
 	if i.CreateNamespace {
+		nsLabels := i.NamespaceLabels
+		if nsLabels == nil {
+			nsLabels = map[string]string{"name": i.Namespace}
+		}
 		ns := &v1.Namespace{
 			APIVersion: "v1",
 			Kind:       "Namespace",
 			Name:       i.Namespace,
-			Labels: map[string]string{
-				"name": i.Namespace,
-			},
+			Labels: nsLables,
 		}
 		buf, err := yaml.Marshal(ns)
 		if err != nil {
