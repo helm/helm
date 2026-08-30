@@ -153,7 +153,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			}
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
-			cname := strings.SplitN(fname, "/", 2)[0]
+			cname, _, _ := strings.Cut(fname, "/")
 			subcharts[cname] = append(subcharts[cname], &archive.BufferedFile{Name: fname, ModTime: f.ModTime, Data: f.Data})
 		default:
 			c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
