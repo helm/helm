@@ -796,6 +796,43 @@ func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManag
 	}
 }
 
+// ParsedCreateOptions holds the resolved values of ClientCreateOption varargs.
+// Intended for use in tests that need to assert which options were passed.
+type ParsedCreateOptions struct {
+	DryRun          bool
+	ServerSideApply bool
+	ForceConflicts  bool
+}
+
+// ParseCreateOptions applies opts and returns the resolved values.
+func ParseCreateOptions(opts []ClientCreateOption) (ParsedCreateOptions, error) {
+	o := clientCreateOptions{serverSideApply: true, fieldValidationDirective: FieldValidationDirectiveStrict}
+	errs := make([]error, 0, len(opts))
+	for _, fn := range opts {
+		errs = append(errs, fn(&o))
+	}
+	return ParsedCreateOptions{DryRun: o.dryRun, ServerSideApply: o.serverSideApply, ForceConflicts: o.forceConflicts}, errors.Join(errs...)
+}
+
+// ParsedUpdateOptions holds the resolved values of ClientUpdateOption varargs.
+// Intended for use in tests that need to assert which options were passed.
+type ParsedUpdateOptions struct {
+	DryRun          bool
+	ServerSideApply bool
+	ForceReplace    bool
+	ForceConflicts  bool
+}
+
+// ParseUpdateOptions applies opts and returns the resolved values.
+func ParseUpdateOptions(opts []ClientUpdateOption) (ParsedUpdateOptions, error) {
+	o := clientUpdateOptions{serverSideApply: true, fieldValidationDirective: FieldValidationDirectiveStrict}
+	errs := make([]error, 0, len(opts))
+	for _, fn := range opts {
+		errs = append(errs, fn(&o))
+	}
+	return ParsedUpdateOptions{DryRun: o.dryRun, ServerSideApply: o.serverSideApply, ForceReplace: o.forceReplace, ForceConflicts: o.forceConflicts}, errors.Join(errs...)
+}
+
 // Update takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
