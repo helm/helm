@@ -831,6 +831,10 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		return &Result{}, errors.New("invalid operation: cannot use server-side apply and force replace together")
 	}
 
+	if updateOptions.dryRun && !updateOptions.serverSideApply {
+		return &Result{}, errors.New("invalid operation: dry run requires server-side apply")
+	}
+
 	createApplyFunc := c.makeCreateApplyFunc(
 		updateOptions.serverSideApply,
 		updateOptions.forceConflicts,
