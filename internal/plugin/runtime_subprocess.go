@@ -74,7 +74,7 @@ func (r *RuntimeSubprocess) CreatePlugin(pluginDir string, metadata *Metadata) (
 	return &SubprocessPluginRuntime{
 		metadata:      *metadata,
 		pluginDir:     pluginDir,
-		RuntimeConfig: *(metadata.RuntimeConfig.(*RuntimeConfigSubprocess)),
+		RuntimeConfig: *metadata.RuntimeConfig.(*RuntimeConfigSubprocess),
 		EnvVars:       maps.Clone(r.EnvVars),
 	}, nil
 }
@@ -153,8 +153,7 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 
 	slog.Debug("executing plugin hook command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
 	if err := cmd.Run(); err != nil {
-		var eerr *exec.ExitError
-		if errors.As(err, &eerr) {
+		if eerr, ok := errors.AsType[*exec.ExitError](err); ok {
 			os.Stderr.Write(eerr.Stderr)
 			return fmt.Errorf("plugin %s hook for %q exited with error", event, r.metadata.Name)
 		}
@@ -168,8 +167,7 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 // then replace the other three with a call to this func
 func executeCmd(prog *exec.Cmd, pluginName string) error {
 	if err := prog.Run(); err != nil {
-		var eerr *exec.ExitError
-		if errors.As(err, &eerr) {
+		if eerr, ok := errors.AsType[*exec.ExitError](err); ok {
 			slog.Debug(
 				"plugin execution failed",
 				slog.String("pluginName", pluginName),
