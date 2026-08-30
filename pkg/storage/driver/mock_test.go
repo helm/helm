@@ -255,13 +255,20 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 // newTestFixtureSQL mocks the SQL database (for testing purposes)
 func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
 	t.Helper()
+	return newTestFixtureSQLWithNamespace(t, "default")
+}
+
+// newTestFixtureSQLWithNamespace is like newTestFixtureSQL but lets the caller configure the
+// driver's namespace - in particular, pass "" to simulate all-namespaces mode.
+func newTestFixtureSQLWithNamespace(t *testing.T, namespace string) (*SQL, sqlmock.Sqlmock) {
+	t.Helper()
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err, "error when opening stub database connection")
 
 	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
 	return &SQL{
 		db:               sqlxDB,
-		namespace:        "default",
+		namespace:        namespace,
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, mock
 }
