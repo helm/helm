@@ -84,15 +84,16 @@ which can contain sensitive values. To hide Kubernetes Secrets use the
 `
 
 func configureUpgradeWaitProgress(client *action.Upgrade, out io.Writer, outfmt output.Format) {
+	client.SetWaitProgress(nil)
 	if outfmt != output.Table || client.DryRunStrategy != action.DryRunNone {
 		return
 	}
 	if client.WaitStrategy == kube.HookOnlyStrategy && !client.RollbackOnFailure {
 		return
 	}
-	client.WaitProgress = func(timeout time.Duration) {
+	client.SetWaitProgress(func(timeout time.Duration) {
 		printWaitMessage(out, outfmt, kube.StatusWatcherStrategy, false, action.DryRunNone, timeout)
-	}
+	})
 }
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

@@ -76,8 +76,8 @@ type Upgrade struct {
 	WaitOptions []kube.WaitOption
 	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
 	WaitForJobs bool
-	// WaitProgress is called immediately before waiting for resources.
-	WaitProgress func(time.Duration)
+	// waitProgress is called immediately before waiting for resources.
+	waitProgress func(time.Duration)
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
 	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
@@ -160,6 +160,11 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 // SetRegistryClient sets the registry client to use when fetching charts.
 func (u *Upgrade) SetRegistryClient(client *registry.Client) {
 	u.registryClient = client
+}
+
+// SetWaitProgress configures a callback invoked immediately before waiting for resources.
+func (u *Upgrade) SetWaitProgress(waitProgress func(time.Duration)) {
+	u.waitProgress = waitProgress
 }
 
 // Run executes the upgrade on the given release.
@@ -491,8 +496,8 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
 		return
 	}
-	if u.WaitProgress != nil {
-		u.WaitProgress(u.Timeout)
+	if u.waitProgress != nil {
+		u.waitProgress(u.Timeout)
 	}
 
 	if u.WaitForJobs {

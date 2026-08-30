@@ -100,8 +100,8 @@ type Install struct {
 	Devel            bool
 	DependencyUpdate bool
 	Timeout          time.Duration
-	// WaitProgress is called immediately before waiting for resources.
-	WaitProgress func(time.Duration)
+	// waitProgress is called immediately before waiting for resources.
+	waitProgress func(time.Duration)
 	Namespace    string
 	ReleaseName  string
 	GenerateName bool
@@ -182,6 +182,11 @@ func (i *Install) SetRegistryClient(registryClient *registry.Client) {
 // GetRegistryClient get the registry client.
 func (i *Install) GetRegistryClient() *registry.Client {
 	return i.registryClient
+}
+
+// SetWaitProgress configures a callback invoked immediately before waiting for resources.
+func (i *Install) SetWaitProgress(waitProgress func(time.Duration)) {
+	i.waitProgress = waitProgress
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {
@@ -545,8 +550,8 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, fmt.Errorf("failed to get waiter: %w", err)
 	}
 
-	if i.WaitProgress != nil {
-		i.WaitProgress(i.Timeout)
+	if i.waitProgress != nil {
+		i.waitProgress(i.Timeout)
 	}
 
 	if i.WaitForJobs {

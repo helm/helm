@@ -94,6 +94,11 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	failer.WaitError = errors.New("I timed out")
 	upAction.cfg.KubeClient = failer
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
+	progressCalls := 0
+	upAction.SetWaitProgress(func(timeout time.Duration) {
+		assert.Equal(t, upAction.Timeout, timeout)
+		progressCalls++
+	})
 	vals := map[string]any{}
 
 	resi, err := upAction.Run(rel.Name, buildChart(), vals)
@@ -102,6 +107,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	req.NoError(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(common.StatusFailed, res.Info.Status)
+	is.Equal(1, progressCalls)
 }
 
 func TestUpgradeRelease_WaitForJobs(t *testing.T) {

@@ -374,15 +374,16 @@ func checkIfInstallable(ch chart.Accessor) error {
 }
 
 func configureWaitProgress(client *action.Install, out io.Writer, outfmt output.Format) {
+	client.SetWaitProgress(nil)
 	if outfmt != output.Table || client.DryRunStrategy != action.DryRunNone {
 		return
 	}
 	if client.WaitStrategy == kube.HookOnlyStrategy && !client.RollbackOnFailure {
 		return
 	}
-	client.WaitProgress = func(timeout time.Duration) {
+	client.SetWaitProgress(func(timeout time.Duration) {
 		printWaitMessage(out, outfmt, kube.StatusWatcherStrategy, false, action.DryRunNone, timeout)
-	}
+	})
 }
 
 func printWaitMessage(out io.Writer, outfmt output.Format, strategy kube.WaitStrategy, rollbackOnFailure bool, dryRun action.DryRunStrategy, timeout time.Duration) {
