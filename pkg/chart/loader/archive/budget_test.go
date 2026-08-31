@@ -29,7 +29,7 @@ func TestReadFileWithBudget(t *testing.T) {
 	writeFile := func(t *testing.T, name string, size int) string {
 		t.Helper()
 		p := filepath.Join(dir, name)
-		if err := os.WriteFile(p, make([]byte, size), 0644); err != nil {
+		if err := os.WriteFile(p, make([]byte, size), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		return p

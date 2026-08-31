@@ -13,7 +13,8 @@ formatters:
 
     gofumpt:
       module-path: helm.sh/helm/v4
-      extra-rules: true
+      extra:
+        group-params: true
 
     goimports:
       local-prefixes:
