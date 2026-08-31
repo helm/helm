@@ -214,7 +214,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 
 	// For `helm template`, these notes flags are legacy, unused, and should not show in help, but
 	// must remain accepted for backwards compatibility in Helm 4. Deprecate and hide them for now
-	// TODO remove these from template command in Helm 5
+	// TODO Helm v5: remove these from template command
 	if cmd.Name() == "template" {
 		if err := cmd.Flags().MarkDeprecated("hide-notes", "this flag has no effect for 'helm template' and will be removed in Helm 5"); err != nil {
 			log.Fatal(err)
