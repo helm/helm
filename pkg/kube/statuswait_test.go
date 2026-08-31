@@ -375,6 +375,47 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	assert.NoError(t, statusWaiter.WaitForDelete(resourceList, timeout))
 }
 
+func TestStatusWaitForDeleteClusterScopedReturnsPromptly(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	// The timeout is deliberately generous: the regression this test guards
+	// against (#32224) made WaitForDelete block for the entire timeout, so
+	// completion well before this timeout is what separates correct behavior
+	// from the regression.
+	timeout := time.Second * 60
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		schema.GroupVersion{Group: "rbac.authorization.k8s.io", Version: "v1"}.WithKind("ClusterRole"),
+	)
+	statusWaiter := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	statusWaiter.SetLogger(slog.Default().Handler())
+	// The ClusterRole is intentionally never created. waitForDelete watches
+	// with RESTScopeNamespace, so a cluster-scoped resource can receive no
+	// status events and stay UnknownStatus for the entire wait. An
+	// Unknown-only set must aggregate to NotFound so the wait returns
+	// promptly. In v4.2.1, 360d4835d deferred cancellation until a real
+	// status event arrived, which made this scenario block for the full
+	// timeout; pre-install hooks with cluster-scoped resources were then
+	// never created (#32224). The commit was reverted in b05881cf9, and
+	// #32261 tracks re-attempting it without reintroducing this hang.
+	objManifest := getRuntimeObjFromManifests(t, []string{clusterRoleManifest})
+	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- statusWaiter.WaitForDelete(resourceList, timeout)
+	}()
+	select {
+	case err := <-errCh:
+		assert.NoError(t, err)
+	case <-time.After(time.Second * 10):
+		t.Fatal("WaitForDelete blocked on a cluster-scoped resource that receives no status events; it must return promptly instead of waiting out the timeout")
+	}
+}
+
 func TestStatusWait(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
