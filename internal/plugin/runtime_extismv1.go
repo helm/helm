@@ -212,7 +212,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 	return output, nil
 }
 
-func buildManifest(pluginDir string, tmpDir string, rc *RuntimeConfigExtismV1) (extism.Manifest, error) {
+func buildManifest(pluginDir, tmpDir string, rc *RuntimeConfigExtismV1) (extism.Manifest, error) {
 	wasmFile := filepath.Join(pluginDir, ExtismV1WasmBinaryFilename)
 
 	allowedHosts := rc.AllowedHosts

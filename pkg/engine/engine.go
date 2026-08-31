@@ -413,7 +413,7 @@ func parseTemplateExecErrorString(s string) (TraceableError, bool) {
 
 // Special case: "template: no template %q associated with template %q"
 // Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
-func parseTemplateNoTemplateError(s string, remainder string) (TraceableError, bool) {
+func parseTemplateNoTemplateError(s, remainder string) (TraceableError, bool) {
 	if strings.HasPrefix(remainder, "no template ") {
 		return TraceableError{message: s}, true
 	}

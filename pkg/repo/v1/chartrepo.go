@@ -172,7 +172,7 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) FindChartInRepoURLOpt
 
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
-func FindChartInRepoURL(repoURL string, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
+func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
 	opts := findChartInRepoURLOptions{}
 	for _, option := range options {
 		option(&opts)

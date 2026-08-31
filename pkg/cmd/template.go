@@ -238,7 +238,7 @@ func isTestHook(h *release.Hook) bool {
 // bug introduced by #8156. As part of the todo to refactor renderResources
 // this duplicate code should be removed. It is added here so that the API
 // surface area is as minimally impacted as possible in fixing the issue.
-func writeToFile(outputDir string, name string, data string, appendData bool) error {
+func writeToFile(outputDir, name, data string, appendData bool) error {
 	outfileName := outputDir + string(filepath.Separator) + name
 
 	err := ensureDirectoryForFile(outfileName)
