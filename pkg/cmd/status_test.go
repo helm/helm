@@ -17,6 +17,8 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +26,32 @@ import (
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
+
+// Regression test for #31902: status table timestamps must be rendered in
+// the local timezone (derived from TZ), not the zone they were stored with.
+func TestStatusTableUsesLocalTime(t *testing.T) {
+	originalLocal := time.Local
+	time.Local = time.FixedZone("UTC+2", 2*60*60)
+	defer func() { time.Local = originalLocal }()
+
+	rel := &release.Release{
+		Name:      "tz-release",
+		Namespace: "default",
+		Info: &release.Info{
+			LastDeployed: time.Date(2026, 3, 4, 14, 38, 52, 0, time.UTC),
+			Status:       common.StatusDeployed,
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := (statusPrinter{release: rel}).WriteTable(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(buf.String(), "LAST DEPLOYED: Wed Mar  4 16:38:52 2026") {
+		t.Fatalf("expected LAST DEPLOYED rendered in local zone (UTC+2), got:\n%s", buf.String())
+	}
+}
 
 func TestStatusCmd(t *testing.T) {
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
