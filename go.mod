@@ -19,7 +19,7 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/fluxcd/cli-utils v1.2.2
 	github.com/foxcpp/go-mockdns v1.2.0
-	github.com/gobwas/glob v0.2.3
+	github.com/gobwas/glob v1.0.0
 	github.com/gofrs/flock v0.13.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/jmoiron/sqlx v1.4.0
