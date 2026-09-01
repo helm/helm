@@ -32,8 +32,16 @@ func newBase(source string) base {
 	settings := cli.New()
 	return base{
 		Source:           source,
-		PluginsDirectory: settings.PluginsDirectory,
+		PluginsDirectory: firstPluginDir(settings.PluginsDirectory),
 	}
+}
+
+func firstPluginDir(pluginsDirectory string) string {
+	paths := filepath.SplitList(pluginsDirectory)
+	if len(paths) == 0 {
+		return pluginsDirectory
+	}
+	return paths[0]
 }
 
 // Path is where the plugin will be installed.
