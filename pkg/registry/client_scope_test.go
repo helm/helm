@@ -21,7 +21,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -31,6 +30,28 @@ import (
 
 type RegistryScopeTestSuite struct {
 	TestRegistry
+}
+
+// authRequest captures the fields of a token request that the test auth server
+// receives. The oras-go v3 auth client may issue the request either as a GET
+// (query params) or as an OAuth2 POST (form body); reading the parsed form
+// covers both.
+type authRequest struct {
+	path    string
+	service string
+	scope   string
+}
+
+func captureAuthRequest(requests chan<- authRequest) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		requests <- authRequest{
+			path:    r.URL.Path,
+			service: r.Form.Get("service"),
+			scope:   r.Form.Get("scope"),
+		}
+		w.WriteHeader(http.StatusOK)
+	}
 }
 
 func (suite *RegistryScopeTestSuite) SetupSuite() {
@@ -47,22 +68,12 @@ func (suite *RegistryScopeTestSuite) TearDownSuite() {
 }
 
 func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
-	requestURL := make(chan string, 1)
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Capture only the first auth request; never block the handler if the
-		// client happens to retry, so the auth server always responds and the
-		// push/pull flow can't deadlock waiting on us.
-		select {
-		case requestURL <- r.URL.String():
-		default:
-		}
-		w.WriteHeader(http.StatusOK)
-	})
+	requests := make(chan authRequest, 1)
 	lnCfg := net.ListenConfig{}
 	listener, err := lnCfg.Listen(suite.T().Context(), "tcp", suite.AuthServerHost)
 	suite.Require().NoError(err, "no error creating server listener")
 
-	ts := httptest.NewUnstartedServer(handler)
+	ts := httptest.NewUnstartedServer(captureAuthRequest(requests))
 	ts.Listener = listener
 	ts.Start()
 	defer ts.Close()
@@ -79,41 +90,26 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
 	// check the url that authentication server received
 	select {
-	case urlStr := <-requestURL:
-		u, err := url.Parse(urlStr)
-		suite.Require().NoError(err, "no error parsing requested URL")
-
-		suite.Equal("/auth", u.Path)
-		suite.Equal("testservice", u.Query().Get("service"))
-		scope := u.Query().Get("scope")
-		suite.Contains(scope, "repository:testrepo/local-subchart:pull,push")
+	case req := <-requests:
+		suite.Equal("/auth", req.path)
+		suite.Equal("testservice", req.service)
+		suite.Contains(req.scope, "repository:testrepo/local-subchart:pull,push")
 	case <-time.After(5 * time.Second):
 		suite.T().Fatal("timeout waiting for auth request")
 	}
 }
 
 func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
-	requestURL := make(chan string, 1)
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Capture only the first auth request; never block the handler if the
-		// client happens to retry, so the auth server always responds and the
-		// push/pull flow can't deadlock waiting on us.
-		select {
-		case requestURL <- r.URL.String():
-		default:
-		}
-		w.WriteHeader(http.StatusOK)
-	})
+	requests := make(chan authRequest, 1)
 	lnCfg := net.ListenConfig{}
 	listener, err := lnCfg.Listen(suite.T().Context(), "tcp", suite.AuthServerHost)
 	suite.Require().NoError(err, "no error creating server listener")
 
-	ts := httptest.NewUnstartedServer(handler)
+	ts := httptest.NewUnstartedServer(captureAuthRequest(requests))
 	ts.Listener = listener
 	ts.Start()
 	defer ts.Close()
 
-	// Load test chart (to build ref pushed in previous test)
 	// Simple pull, chart only
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Require().NoError(err, "no error loading test chart")
@@ -125,14 +121,10 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 
 	// check the url that authentication server received
 	select {
-	case urlStr := <-requestURL:
-		u, err := url.Parse(urlStr)
-		suite.Require().NoError(err, "no error parsing requested URL")
-
-		suite.Equal("/auth", u.Path)
-		suite.Equal("testservice", u.Query().Get("service"))
-		scope := u.Query().Get("scope")
-		suite.Contains(scope, "repository:testrepo/local-subchart:pull")
+	case req := <-requests:
+		suite.Equal("/auth", req.path)
+		suite.Equal("testservice", req.service)
+		suite.Contains(req.scope, "repository:testrepo/local-subchart:pull")
 	case <-time.After(5 * time.Second):
 		suite.T().Fatal("timeout waiting for auth request")
 	}
