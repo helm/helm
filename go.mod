@@ -17,7 +17,7 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/foxcpp/go-mockdns v1.2.0
 	github.com/gobwas/glob v1.0.0
-	github.com/gofrs/flock v0.13.0
+	github.com/gofrs/flock v0.13.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jmoiron/sqlx v1.4.0
