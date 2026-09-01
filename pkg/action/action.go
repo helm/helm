@@ -483,10 +483,11 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
+			crdData := trimLeadingDocumentSeparator(string(crd.File.Data))
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data))
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, crdData)
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data), fileWritten[crd.Filename])
+				err = writeToFile(outputDir, crd.Filename, crdData, fileWritten[crd.Filename])
 				if err != nil {
 					return hs, b, "", err
 				}
@@ -520,6 +521,40 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	}
 
 	return hs, b, notes, nil
+}
+
+// trimLeadingDocumentSeparator removes a leading YAML document separator from
+// the raw contents of a chart file.
+//
+// Helm writes its own "---" separator and "# Source:" comment ahead of every
+// file it renders. A file that already starts with a separator is therefore
+// preceded by a document holding nothing but the comment, and consumers of the
+// rendered output see an extra, empty document. Removing the separator the file
+// supplies keeps the comment attached to the manifest it describes.
+//
+// Blank lines and comments ahead of the separator are preserved. A line only
+// counts as a separator when it consists solely of "---", so indented markers,
+// "----", and separators that follow content or a YAML directive are left
+// alone.
+func trimLeadingDocumentSeparator(data string) string {
+	for offset := 0; offset < len(data); {
+		line, next := data[offset:], len(data)
+		if i := strings.IndexByte(line, '\n'); i >= 0 {
+			line, next = line[:i], offset+i+1
+		}
+
+		switch content := strings.TrimRight(line, " \t\r"); {
+		case content == "---":
+			return data[:offset] + data[next:]
+		case content == "" || strings.HasPrefix(strings.TrimLeft(content, " \t"), "#"):
+			// A separator may still follow a blank line or a comment.
+			offset = next
+		default:
+			return data
+		}
+	}
+
+	return data
 }
 
 // RESTClientGetter gets the rest client
