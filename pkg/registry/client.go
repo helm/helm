@@ -428,17 +428,6 @@ type (
 	}
 )
 
-// warnIfHostHasPath checks if the host contains a repository path and logs a warning if it does.
-// Returns true if the host contains a path component (i.e., contains a '/').
-func warnIfHostHasPath(host string) bool {
-	if strings.Contains(host, "/") {
-		registryHost, _, _ := strings.Cut(host, "/")
-		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
-		return true
-	}
-	return false
-}
-
 // noopStore is a credentials.Store that performs no persistence. It is used
 // during namespaced login to verify credentials with a registry ping without
 // causing remote.Login to store credentials under the hostname-only key.
