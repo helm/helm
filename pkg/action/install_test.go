@@ -42,6 +42,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
 
 	ci "helm.sh/helm/v4/pkg/chart"
@@ -607,6 +608,86 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
 	req.Error(err)
 	is.ErrorContains(err, "chart requires kubeVersion: >=99.0.0 which is incompatible with Kubernetes v1.20.")
+}
+
+func TestInstallRelease_KubeFeatureGates(t *testing.T) {
+	req := require.New(t)
+
+	// A chart declaring only a component Helm cannot yet actively verify
+	// (see supportedKubeFeatureGateComponents) must never block install, even
+	// though the default test fixture has no RESTClientGetter configured.
+	instAction := installAction(t)
+	vals := map[string]any{}
+	_, err := instAction.Run(buildChart(withKubeFeatureGates(map[string]map[string]bool{
+		"scheduler": {"ComponentFlagz": false},
+	})), vals)
+	req.NoError(err, "unsupported components must warn, not block")
+
+	// A supported component that Helm cannot reach (no cluster configured)
+	// blocks install, since Helm cannot positively confirm the chart's
+	// requirement is satisfied.
+	instAction = installAction(t)
+	instAction.ReleaseName = "should-fail-unreachable"
+	_, err = instAction.Run(buildChart(withKubeFeatureGates(map[string]map[string]bool{
+		"apiserver": {"SidecarContainers": true},
+	})), vals)
+	req.Error(err)
+	req.ErrorContains(err, "apiserver: could not verify feature gates")
+
+	// With a reachable apiserver reporting the requested gates, a match
+	// installs cleanly and a mismatch blocks with a clear error.
+	server := newFeatureGateTestServer(t)
+	cfg := actionConfigFixture(t)
+	cfg.RESTClientGetter = &fakeRESTClientGetter{restConfig: &rest.Config{Host: server.URL}}
+
+	matchAction := installActionWithConfig(cfg)
+	_, err = matchAction.Run(buildChart(withKubeFeatureGates(map[string]map[string]bool{
+		"apiserver": {"SidecarContainers": true, "ClusterTrustBundle": false},
+	})), vals)
+	req.NoError(err, "matching gate state must install cleanly")
+
+	mismatchAction := installActionWithConfig(cfg)
+	mismatchAction.ReleaseName = "should-also-fail"
+	_, err = mismatchAction.Run(buildChart(withKubeFeatureGates(map[string]map[string]bool{
+		"apiserver": {"ClusterTrustBundle": true},
+	})), vals)
+	req.Error(err)
+	req.ErrorContains(err, "apiserver.ClusterTrustBundle=true (cluster reports false)")
+}
+
+func TestInstallRelease_KubeFeatureGates_RespectsInteractWithRemote(t *testing.T) {
+	req := require.New(t)
+
+	instAction := installAction(t)
+	instAction.cfg.RESTClientGetter = &poisonRESTClientGetter{t: t}
+	instAction.DryRunStrategy = DryRunClient
+
+	_, err := instAction.Run(buildChart(withKubeFeatureGates(map[string]map[string]bool{
+		"apiserver": {"SidecarContainers": true},
+	})), map[string]any{})
+	req.NoError(err)
+}
+
+func TestInstallRelease_KubeFeatureGates_RunsBeforeCRDInstall(t *testing.T) {
+	req := require.New(t)
+
+	cfg := actionConfigFixture(t)
+	failer := cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.CreateError = errors.New("CRD create should not have been attempted")
+	cfg.KubeClient = failer
+
+	crdFile := common.File{
+		Name: "crds/example.yaml",
+		Data: []byte("apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  name: examples.example.com\n"),
+	}
+	ch := buildChart(withFile(crdFile), withKubeFeatureGates(map[string]map[string]bool{
+		"apiserver": {"SidecarContainers": true},
+	}))
+
+	_, err := installActionWithConfig(cfg).Run(ch, map[string]any{})
+	req.Error(err)
+	req.ErrorContains(err, "apiserver: could not verify feature gates")
+	req.NotErrorIs(err, failer.CreateError)
 }
 
 func TestInstallRelease_Wait(t *testing.T) {

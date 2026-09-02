@@ -299,6 +299,16 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 		return nil, nil, false, err
 	}
 
+	wantedFeatureGates, err := mergedKubeFeatureGates(chart)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if len(wantedFeatureGates) > 0 && interactWithServer(u.DryRunStrategy) {
+		if err := u.cfg.checkKubeFeatureGates(ctx, wantedFeatureGates); err != nil {
+			return nil, nil, false, err
+		}
+	}
+
 	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(ctx, chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret, u.PostRenderStrategy)
 	if err != nil {
 		return nil, nil, false, err
