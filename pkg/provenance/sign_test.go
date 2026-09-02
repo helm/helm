@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"crypto"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -198,6 +199,77 @@ func TestLoadKeyRingArmoredMultiBlock(t *testing.T) {
 	}
 	assert.Contains(t, names, testKeyName)
 }
+
+func rewrapArmoredKey(armored []byte, lineLen int) []byte {
+	lines := strings.Split(string(armored), "\n")
+	var out []string
+	var b64 strings.Builder
+	inBody := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimRight(line, "\r")
+		if strings.HasPrefix(trimmed, "-----BEGIN ") {
+			out = append(out, trimmed)
+			inBody = false
+			continue
+		}
+		if strings.HasPrefix(trimmed, "-----END ") {
+			if b64.Len() > 0 {
+				raw := b64.String()
+				for i := 0; i < len(raw); i += lineLen {
+					end := i + lineLen
+					if end > len(raw) {
+						end = len(raw)
+					}
+					out = append(out, raw[i:end])
+				}
+				b64.Reset()
+			}
+			out = append(out, trimmed)
+			inBody = false
+			continue
+		}
+		if !inBody {
+			out = append(out, trimmed)
+			if trimmed == "" {
+				inBody = true
+			}
+			continue
+		}
+		if strings.HasPrefix(trimmed, "=") {
+			if b64.Len() > 0 {
+				raw := b64.String()
+				for i := 0; i < len(raw); i += lineLen {
+					end := i + lineLen
+					if end > len(raw) {
+						end = len(raw)
+					}
+					out = append(out, raw[i:end])
+				}
+				b64.Reset()
+			}
+			out = append(out, trimmed)
+			continue
+		}
+		b64.WriteString(trimmed)
+	}
+	return []byte(strings.Join(out, "\n") + "\n")
+}
+
+func TestLoadKeyRingArmoredMultiBlockLineAlignments(t *testing.T) {
+	raw, err := os.ReadFile(testMultiBlockArmored)
+	require.NoError(t, err)
+
+	for _, lineLen := range []int{32, 36, 40, 44, 48, 52, 56, 64} {
+		t.Run(fmt.Sprintf("lineLen_%d", lineLen), func(t *testing.T) {
+			rewrapped := rewrapArmoredKey(raw, lineLen)
+			k, err := loadArmoredKeyRing(rewrapped)
+			require.NoError(t, err)
+			require.Len(t, k, 2, "expected both keys to be loaded for line length %d", lineLen)
+		})
+	}
+}
+
 
 func TestLoadArmoredKeyRingRejectsNonKeyBlocks(t *testing.T) {
 	var buf bytes.Buffer
