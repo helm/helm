@@ -151,7 +151,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 
 // Add adds a file to the index and logs an error.
 //
-// Deprecated: Use index.MustAdd instead.
+// Deprecated: Use IndexFile.MustAdd instead. Add logs errors; MustAdd returns them.
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
 		slog.Error("skipping loading invalid entry for chart", "name", md.Name, "version", md.Version, "file", filename, "error", err)
@@ -290,21 +290,22 @@ type ChartVersion struct {
 	Removed bool      `json:"removed,omitempty"`
 	Digest  string    `json:"digest,omitempty"`
 
-	// ChecksumDeprecated is deprecated in Helm 3, and therefore ignored. Helm 3 replaced
-	// this with Digest. However, with a strict YAML parser enabled, a field must be
-	// present on the struct for backwards compatibility.
+	// Deprecated: ChecksumDeprecated is ignored (Helm 3 replaced it with Digest). It is
+	// retained only so a strict YAML parser accepts the "checksum" field for backwards
+	// compatibility; do not use it.
 	ChecksumDeprecated string `json:"checksum,omitempty"`
 
-	// EngineDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
-	// YAML parser enabled, this field must be present.
+	// Deprecated: EngineDeprecated is ignored (removed in Helm 3). It is retained only so a
+	// strict YAML parser accepts the "engine" field for backwards compatibility; do not use it.
 	EngineDeprecated string `json:"engine,omitempty"`
 
-	// TillerVersionDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
-	// YAML parser enabled, this field must be present.
+	// Deprecated: TillerVersionDeprecated is ignored (removed in Helm 3). It is retained only
+	// so a strict YAML parser accepts the "tillerVersion" field for backwards compatibility;
+	// do not use it.
 	TillerVersionDeprecated string `json:"tillerVersion,omitempty"`
 
-	// URLDeprecated is deprecated in Helm 3, superseded by URLs. It is ignored. However,
-	// with a strict YAML parser enabled, this must be present on the struct.
+	// Deprecated: URLDeprecated is ignored (superseded by URLs). It is retained only so a
+	// strict YAML parser accepts the "url" field for backwards compatibility; do not use it.
 	URLDeprecated string `json:"url,omitempty"`
 }
 

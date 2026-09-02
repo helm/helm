@@ -47,7 +47,7 @@ type RuntimeConfigSubprocess struct {
 	PlatformHooks PlatformHooks `yaml:"platformHooks"`
 	// ProtocolCommands allows the plugin to specify protocol specific commands
 	//
-	// Obsolete/deprecated: This is a compatibility hangover from the old plugin downloader mechanism, which was extended
+	// Deprecated: This is an obsolete compatibility hangover from the old plugin downloader mechanism, which was extended
 	// to support multiple protocols in a given plugin. The command supplied in PlatformCommand should implement protocol
 	// specific logic by inspecting the download URL
 	ProtocolCommands []SubprocessProtocolCommand `yaml:"protocolCommands,omitempty"`
@@ -112,7 +112,7 @@ func (r *SubprocessPluginRuntime) Invoke(ctx context.Context, input *Input) (*Ou
 
 // InvokeWithEnv executes a plugin command with custom environment and I/O streams
 // This method allows execution with different command/args than the plugin's default
-func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env []string, stdin io.Reader, stdout, stderr io.Writer) error {
+func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv, env []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	mainCmdExp := os.ExpandEnv(main)
 	cmd := exec.CommandContext(context.Background(), mainCmdExp, argv...)
 	cmd.Env = slices.Clone(os.Environ())

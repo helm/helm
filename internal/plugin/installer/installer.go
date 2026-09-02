@@ -153,7 +153,7 @@ func NewForSource(source, version string) (installer Installer, err error) {
 		return installer, fmt.Errorf("cannot get information about plugin source %q (if it's a local directory, does it exist?), last error was: %w", source, err)
 	}
 
-	return
+	return installer, err
 }
 
 // FindSource determines the correct Installer for the given source.

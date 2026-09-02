@@ -471,7 +471,7 @@ func isReleaseApplyMethodClientSideApply(applyMethod string) bool {
 	return applyMethod == "" || applyMethod == string(release.ApplyMethodClientSideApply)
 }
 
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
@@ -682,7 +682,7 @@ func mergeCustomLabels(current, desired map[string]string) map[string]string {
 	return labels
 }
 
-func getUpgradeServerSideValue(serverSideOption string, releaseApplyMethod string) (bool, error) {
+func getUpgradeServerSideValue(serverSideOption, releaseApplyMethod string) (bool, error) {
 	switch serverSideOption {
 	case "auto":
 		return releaseApplyMethod == "ssa", nil

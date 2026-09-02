@@ -506,7 +506,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	return rel, err
 }
 
-func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, toBeAdopted, resources kube.ResourceList) (*release.Release, error) {
 	type Msg struct {
 		r *release.Release
 		e error
@@ -533,7 +533,7 @@ func (i *Install) getGoroutineCount() int32 {
 	return i.goroutineCount.Load()
 }
 
-func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+func (i *Install) performInstall(rel *release.Release, toBeAdopted, resources kube.ResourceList) (*release.Release, error) {
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
@@ -747,7 +747,7 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // write the <data> to <output-dir>/<name>. <appendData> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, appendData bool) error {
+func writeToFile(outputDir, name, data string, appendData bool) error {
 	outfileName := outputDir + string(filepath.Separator) + name
 
 	err := ensureDirectoryForFile(outfileName)
