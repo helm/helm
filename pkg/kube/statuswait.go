@@ -221,7 +221,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	errs := []error{}
 	for _, id := range resources {
 		rs := statusCollector.ResourceStatuses[id]
-		if rs.Status == status.CurrentStatus {
+		if resourceStatusSatisfied(rs, status.CurrentStatus) {
 			continue
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
@@ -367,10 +367,16 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
 				continue
 			}
-			rss = append(rss, rs)
-			if rs.Status != desired {
-				nonDesiredResources = append(nonDesiredResources, rs)
+			// A resource whose status could not be computed (Unknown with an attached
+			// error) is treated as having reached the desired state. Helm 3 considered
+			// all kinds it could not evaluate (e.g. CRDs such as Argo Rollout whose
+			// status fields deviate from Kubernetes conventions) as ready, so don't
+			// block the wait on them.
+			if resourceStatusSatisfied(rs, desired) {
+				continue
 			}
+			rss = append(rss, rs)
+			nonDesiredResources = append(nonDesiredResources, rs)
 		}
 
 		if aggregator.AggregateStatus(rss, desired) == desired {
@@ -388,6 +394,18 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			logger.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 		}
 	}
+}
+
+// resourceStatusSatisfied reports whether the given resource status satisfies the
+// desired status. A resource whose status could not be computed (Unknown with an
+// attached error, e.g. a CRD such as an Argo Rollout whose status fields do not
+// follow Kubernetes conventions) is treated as satisfied for the Current status,
+// matching Helm 3's behavior of considering such kinds ready.
+func resourceStatusSatisfied(rs *event.ResourceStatus, desired status.Status) bool {
+	if rs.Status == desired {
+		return true
+	}
+	return desired == status.CurrentStatus && rs.Status == status.UnknownStatus && rs.Error != nil
 }
 
 type hookOnlyWaiter struct {

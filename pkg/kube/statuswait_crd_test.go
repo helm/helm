@@ -39,10 +39,11 @@ metadata:
   namespace: default
   generation: 1
 status:
-  observedGeneration: 1
+  observedGeneration: "1"
   conditions:
   - type: Promoted
     status: "True"
+    lastTransitionTime: "2026-01-01T00:00:00Z"
 `
 
 var rolloutGVR = schema.GroupVersionResource{
@@ -163,5 +164,32 @@ func TestStatusWaitCustomResource(t *testing.T) {
 				t.Fatal("Wait hung: custom resource remained in the Unknown status despite its CRD becoming available")
 			}
 		})
+	}
+}
+
+// TestStatusWaitCustomResourceUncomputableStatus ensures that waiting on a custom
+// resource whose status cannot be computed by the kstatus library (such as an
+// Argo Rollout, which stores status.observedGeneration as a string) does not
+// hang. Helm 3 considered kinds it could not evaluate as ready, so the wait must
+// succeed instead of leaving the resource in the Unknown status until the timeout.
+func TestStatusWaitCustomResourceUncomputableStatus(t *testing.T) {
+	t.Parallel()
+	mapper := newDelayedMapper(true)
+	sw, resourceList := newRolloutStatusWaiter(t, mapper)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- sw.Wait(resourceList, 5*time.Second)
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Wait failed: %v", err)
+		}
+	case <-ctx.Done():
+		t.Fatal("Wait hung: custom resource remained in the Unknown status because its status could not be computed")
 	}
 }
