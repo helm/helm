@@ -33,7 +33,9 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -154,7 +156,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.Logger()))
+	done := statusCollector.ListenWithObserver(eventCh, w.deleteStatusObserver(cancelCtx, cancel))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -245,11 +247,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs == nil {
 				continue
 			}
-			// If a resource is already deleted before waiting has started, it will show as unknown.
-			// This check ensures we don't wait forever for a resource that is already deleted.
-			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
-				continue
-			}
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
 			// that has already failed, as intervention is required to resolve the failure.
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
@@ -267,15 +264,95 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			return
 		}
 
-		if len(nonDesiredResources) > 0 {
-			// Log a single resource so the user knows what they're waiting for without an overwhelming amount of output
-			sort.Slice(nonDesiredResources, func(i, j int) bool {
-				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
-			})
-			first := nonDesiredResources[0]
-			logger.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
-		}
+		logFirstNonDesiredResource(logger, desired, nonDesiredResources)
 	}
+}
+
+// deleteStatusObserver returns an observer for delete waits, where the desired
+// status is NotFound.
+//
+// UnknownStatus is ambiguous on this path. While the status watcher initializes
+// its informer caches, every watched resource briefly reports Unknown, so an
+// Unknown-only set must not complete the wait: resources that still exist would
+// be reported as deleted before a single real status event arrived (#32261).
+// But a resource deleted before the watch started also stays Unknown forever,
+// because the watcher never emits an event for an object absent from its
+// initial LIST; waiting for a real status event would hang until the timeout
+// for resources that are already gone (#32214).
+//
+// The observer therefore makes no completion decision until the watcher
+// delivers its Sync event, which marks the informer caches as populated. From
+// then on, any resource still reporting Unknown is confirmed with a live
+// lookup: NotFound confirms the deletion, while anything else keeps the wait
+// running until the watcher reports a real status for it.
+func (w *statusWaiter) deleteStatusObserver(ctx context.Context, cancel context.CancelFunc) collector.ObserverFunc {
+	desired := status.NotFoundStatus
+	synced := false
+	confirmedGone := map[object.ObjMetadata]bool{}
+	return func(statusCollector *collector.ResourceStatusCollector, e event.Event) {
+		if e.Type == event.SyncEvent {
+			synced = true
+		}
+		if !synced {
+			return
+		}
+		var rss []*event.ResourceStatus
+		var nonDesiredResources []*event.ResourceStatus
+		for _, rs := range statusCollector.ResourceStatuses {
+			if rs == nil {
+				continue
+			}
+			if rs.Status == status.UnknownStatus {
+				if !confirmedGone[rs.Identifier] && w.isResourceGone(ctx, rs.Identifier) {
+					confirmedGone[rs.Identifier] = true
+				}
+				if confirmedGone[rs.Identifier] {
+					continue
+				}
+			}
+			rss = append(rss, rs)
+			if rs.Status != desired {
+				nonDesiredResources = append(nonDesiredResources, rs)
+			}
+		}
+
+		if aggregator.AggregateStatus(rss, desired) == desired {
+			w.Logger().Debug("all resources achieved desired status", "desiredStatus", desired, "resourceCount", len(rss))
+			cancel()
+			return
+		}
+
+		logFirstNonDesiredResource(w.Logger(), desired, nonDesiredResources)
+	}
+}
+
+// isResourceGone reports whether the resource is confirmed absent from the
+// cluster by a live lookup. Any error (including transient API errors) reports
+// false so the wait keeps running; the lookup is retried on the next event.
+func (w *statusWaiter) isResourceGone(ctx context.Context, id object.ObjMetadata) bool {
+	mapping, err := w.restMapper.RESTMapping(id.GroupKind)
+	if err != nil {
+		w.Logger().Debug("unable to map resource to confirm deletion", "namespace", id.Namespace, "name", id.Name, "kind", id.GroupKind.Kind, "error", err)
+		return false
+	}
+	_, err = w.client.Resource(mapping.Resource).Namespace(id.Namespace).Get(ctx, id.Name, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		w.Logger().Debug("unable to confirm resource deletion", "namespace", id.Namespace, "name", id.Name, "kind", id.GroupKind.Kind, "error", err)
+	}
+	return apierrors.IsNotFound(err)
+}
+
+// logFirstNonDesiredResource logs a single resource so the user knows what
+// they're waiting for without an overwhelming amount of output
+func logFirstNonDesiredResource(logger *slog.Logger, desired status.Status, nonDesiredResources []*event.ResourceStatus) {
+	if len(nonDesiredResources) == 0 {
+		return
+	}
+	sort.Slice(nonDesiredResources, func(i, j int) bool {
+		return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
+	})
+	first := nonDesiredResources[0]
+	logger.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 }
 
 type hookOnlyWaiter struct {
