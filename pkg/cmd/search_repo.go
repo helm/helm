@@ -268,7 +268,7 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 }
 
 // Provides the list of charts that are part of the specified repo, and that starts with 'prefix'.
-func compListChartsOfRepo(repoName string, prefix string) []string {
+func compListChartsOfRepo(repoName, prefix string) []string {
 	var charts []string
 
 	path := filepath.Join(settings.RepositoryCache, helmpath.CacheChartsFile(repoName))

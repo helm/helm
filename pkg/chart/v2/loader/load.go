@@ -113,8 +113,8 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			c.Schema = f.Data
 			c.SchemaModTime = f.ModTime
 
-		// Deprecated: requirements.yaml is deprecated use Chart.yaml.
-		// We will handle it for you because we are nice people
+		// requirements.yaml is deprecated; dependencies are declared in Chart.yaml since
+		// apiVersion v2. Handled here for backwards compatibility.
 		case f.Name == "requirements.yaml":
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -128,7 +128,8 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 			}
-		// Deprecated: requirements.lock is deprecated use Chart.lock.
+		// requirements.lock is deprecated; use Chart.lock. Handled here for backwards
+		// compatibility.
 		case f.Name == "requirements.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
