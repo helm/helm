@@ -177,10 +177,11 @@ func (m *Manager) Update() error {
 	// For the repositories Helm is not configured to know about, ensure Helm
 	// has some information about them and, when possible, the index files
 	// locally.
-	// TODO(mattfarina): Repositories should be explicitly added by end users
-	// rather than automatic. In Helm v4 require users to add repositories. They
-	// should have to add them in order to make sure they are aware of the
-	// repositories and opt-in to any locations, for security.
+	//
+	// TODO Helm v5: require users to add repositories explicitly rather than
+	// adding them automatically. They should have to add them in order to make
+	// sure they are aware of the repositories and opt-in to any locations, for
+	// security.
 	repoNames, err = m.ensureMissingRepos(repoNames, req)
 	if err != nil {
 		return err
@@ -733,22 +734,17 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 		var entry repo.ChartVersions
 		entry, err = findEntryByName(name, cr)
 		if err != nil {
-			// TODO: Where linting is skipped in this function we should
-			// refactor to remove naked returns while ensuring the same
-			// behavior
-			//nolint:nakedret
-			return
+			// TODO: Consider refactoring this function to reduce the number of returned values while preserving behavior.
+			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		var ve *repo.ChartVersion
 		ve, err = findVersionedEntry(version, entry)
 		if err != nil {
-			//nolint:nakedret
-			return
+			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
 		if err != nil {
-			//nolint:nakedret
-			return
+			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		username = cr.Config.Username
 		password = cr.Config.Password
@@ -757,8 +753,8 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 		caFile = cr.Config.CAFile
 		certFile = cr.Config.CertFile
 		keyFile = cr.Config.KeyFile
-		//nolint:nakedret
-		return
+
+		return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
