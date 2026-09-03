@@ -17,6 +17,9 @@ limitations under the License.
 package driver
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -318,10 +321,15 @@ func (s *SQL) Get(key string) (release.Releaser, error) {
 		return nil, err
 	}
 
-	// Get will return an error if the result is empty
+	// Get will return sql.ErrNoRows if the result is empty. Any other error
+	// (connection failure, permission denied, timeout, ...) means we do not
+	// know whether the release exists, so it must not be reported as missing.
 	if err := s.db.Get(&record, query, args...); err != nil {
 		s.Logger().Debug("got SQL error when getting release", slog.String("key", key), slog.Any("error", err))
-		return nil, ErrReleaseNotFound
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrReleaseNotFound
+		}
+		return nil, fmt.Errorf("failed to get release %q: %w", key, err)
 	}
 
 	release, err := decodeRelease(record.Body)
@@ -518,8 +526,14 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 		return err
 	}
 
-	if _, err := transaction.Exec(insertQuery, args...); err != nil {
-		defer transaction.Rollback()
+	if _, err := transaction.ExecContext(context.Background(), insertQuery, args...); err != nil {
+		// The failed statement leaves the transaction in an aborted state -
+		// PostgreSQL rejects every subsequent statement on it with "current
+		// transaction is aborted" - so roll it back before checking whether the
+		// insert failed because the release already exists. Running that check
+		// on the transaction always errors out, which made ErrReleaseExists
+		// unreachable and surfaced the raw driver error instead.
+		transaction.Rollback()
 
 		selectQuery, args, buildErr := s.statementBuilder.
 			Select(sqlReleaseTableKeyColumn).
@@ -529,17 +543,17 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 			ToSql()
 		if buildErr != nil {
 			s.Logger().Debug("failed to build select query", "error", buildErr)
-			return err
+			return fmt.Errorf("failed to create release %q: %w", key, err)
 		}
 
 		var record SQLReleaseWrapper
-		if err := transaction.Get(&record, selectQuery, args...); err == nil {
+		if getErr := s.db.Get(&record, selectQuery, args...); getErr == nil {
 			s.Logger().Debug("release already exists", slog.String("key", key))
 			return ErrReleaseExists
 		}
 
 		s.Logger().Debug("failed to store release in SQL database", slog.String("key", key), slog.Any("error", err))
-		return err
+		return fmt.Errorf("failed to create release %q: %w", key, err)
 	}
 
 	// Filtering labels before insert cause in SQL storage driver system releases are stored in separate columns of release table
@@ -564,7 +578,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 			return err
 		}
 
-		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
+		if _, err := transaction.ExecContext(context.Background(), insertLabelsQuery, args...); err != nil {
 			defer transaction.Rollback()
 			s.Logger().Debug("failed to write Labels", slog.Any("error", err))
 			return err
@@ -609,7 +623,7 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		return err
 	}
 
-	if _, err := s.db.Exec(query, args...); err != nil {
+	if _, err := s.db.ExecContext(context.Background(), query, args...); err != nil {
 		s.Logger().Debug("failed to update release in SQL database", slog.String("key", key), slog.Any("error", err))
 		return err
 	}
@@ -639,8 +653,12 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 	var record SQLReleaseWrapper
 	err = transaction.Get(&record, selectQuery, args...)
 	if err != nil {
-		s.Logger().Debug("release not found", slog.String("key", key), slog.Any("error", err))
-		return nil, ErrReleaseNotFound
+		s.Logger().Debug("failed to get release for deletion", slog.String("key", key), slog.Any("error", err))
+		transaction.Rollback()
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrReleaseNotFound
+		}
+		return nil, fmt.Errorf("failed to get release %q: %w", key, err)
 	}
 
 	release, err := decodeRelease(record.Body)
@@ -661,7 +679,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		return nil, err
 	}
 
-	_, err = transaction.Exec(deleteQuery, args...)
+	_, err = transaction.ExecContext(context.Background(), deleteQuery, args...)
 	if err != nil {
 		s.Logger().Debug("failed perform delete query", slog.Any("error", err))
 		return release, err
@@ -685,7 +703,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		s.Logger().Debug("failed to build delete Labels query", slog.Any("error", err))
 		return nil, err
 	}
-	_, err = transaction.Exec(deleteCustomLabelsQuery, args...)
+	_, err = transaction.ExecContext(context.Background(), deleteCustomLabelsQuery, args...)
 	return release, err
 }
 
