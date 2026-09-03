@@ -36,6 +36,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/memory"
+	orasregistry "github.com/oras-project/oras-go/v3/registry"
 	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	remoteconfig "github.com/oras-project/oras-go/v3/registry/remote/config"
@@ -230,7 +231,13 @@ func (c *Client) applyOverrides(props *properties.Registry) {
 func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 	if c.customHTTPClient {
 		// Legacy path: use c.authorizer directly (preserves custom TLS transport).
-		repo, err := remote.NewRepository(ref)
+		// NewRepository rejects a reference carrying a tag or digest, so pass
+		// only the repository portion.
+		parsed, err := orasregistry.ParseReference(ref)
+		if err != nil {
+			return nil, err
+		}
+		repo, err := remote.NewRepository(parsed.Registry + "/" + parsed.Repository)
 		if err != nil {
 			return nil, err
 		}
