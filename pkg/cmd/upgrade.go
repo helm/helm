@@ -38,6 +38,7 @@ import (
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/kube"
 	ri "helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -81,6 +82,19 @@ The --dry-run flag will output all generated chart manifests, including Secrets
 which can contain sensitive values. To hide Kubernetes Secrets use the
 --hide-secret flag. Please carefully consider how and when these flags are used.
 `
+
+func configureUpgradeWaitProgress(client *action.Upgrade, out io.Writer, outfmt output.Format) {
+	client.SetWaitProgress(nil)
+	if outfmt != output.Table || client.DryRunStrategy != action.DryRunNone {
+		return
+	}
+	if client.WaitStrategy == kube.HookOnlyStrategy && !client.RollbackOnFailure {
+		return
+	}
+	client.SetWaitProgress(func(timeout time.Duration) {
+		printWaitMessage(out, outfmt, kube.StatusWatcherStrategy, false, action.DryRunNone, timeout)
+	})
+}
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
@@ -162,6 +176,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
 					}
+
+					configureWaitProgress(instClient, out, outfmt)
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -256,6 +272,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
 				cancel()
 			}()
+
+			configureUpgradeWaitProgress(client, out, outfmt)
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
