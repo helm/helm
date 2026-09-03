@@ -28,7 +28,7 @@ require (
 	github.com/moby/term v0.5.2
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/oras-project/oras-go/v3 v3.0.3-dev
+	github.com/oras-project/oras-go/v3 v3.0.0-rc.1
 	github.com/rubenv/sql-migrate v1.8.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
