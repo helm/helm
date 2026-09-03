@@ -619,6 +619,63 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	req.Error(err)
 }
 
+func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
+
+	upAction := NewUpgrade(config)
+	upAction.Namespace = "spaced"
+	upAction.ServerSideApply = "true"
+
+	rel := releaseStub()
+	rel.Name = "test-server-dry-run"
+	rel.Info.Status = common.StatusDeployed
+	rel.ApplyMethod = "ssa"
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	expectedErr := errors.New("validation error: unknown field in spec")
+	fakeClient := config.KubeClient.(*kubefake.FailingKubeClient)
+	fakeClient.UpdateError = expectedErr
+	upAction.DryRunStrategy = DryRunServer
+
+	vals := map[string]any{}
+	ctx, done := context.WithCancel(t.Context())
+	_, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+	done()
+
+	req.Error(err)
+	is.Contains(err.Error(), "validation error")
+	// Verify the Update call included DryRun so no real resources are modified.
+	is.True(fakeClient.RecordedUpdateOptions.DryRun, "server dry-run must pass DryRun option to Update")
+
+	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
+	config2.KubeClient.(*kubefake.FailingKubeClient).UpdateError = expectedErr
+
+	upAction2 := NewUpgrade(config2)
+	upAction2.Namespace = "spaced"
+
+	rel2 := releaseStub()
+	rel2.Name = "test-client-dry-run"
+	rel2.Info.Status = common.StatusDeployed
+	req.NoError(upAction2.cfg.Releases.Create(rel2))
+
+	upAction2.DryRunStrategy = DryRunClient
+
+	ctx, done = context.WithCancel(t.Context())
+	resi, err := upAction2.RunWithContext(ctx, rel2.Name, buildChart(), vals)
+	done()
+
+	req.NoError(err)
+	res, err := releaserToV1Release(resi)
+	req.NoError(err)
+	is.Equal("Dry run complete", res.Info.Description)
+	// Client dry-run must not reach the kube client Update at all.
+	is.False(config2.KubeClient.(*kubefake.FailingKubeClient).RecordedUpdateOptions.DryRun,
+		"client dry-run must not call Update")
+}
+
 func TestGetUpgradeServerSideValue(t *testing.T) {
 	tests := []struct {
 		name                    string

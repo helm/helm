@@ -419,8 +419,8 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		}
 	}
 
-	// Bail out here if it is a dry run
-	if isDryRun(i.DryRunStrategy) {
+	// Bail out early for client-side dry run before any cluster interaction.
+	if isDryRun(i.DryRunStrategy) && i.DryRunStrategy != DryRunServer {
 		rel.Info.Description = "Dry run complete"
 		return rel, nil
 	}
@@ -452,6 +452,36 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
+	}
+
+	// For server-side dry-run, validate resources against the API server after
+	// namespace creation so resources inside that namespace resolve correctly.
+	if i.DryRunStrategy == DryRunServer {
+		if !i.ServerSideApply {
+			return rel, errors.New("--dry-run=server requires --server-side=true")
+		}
+		var err error
+		if len(toBeAdopted) == 0 && len(resources) > 0 {
+			_, err = i.cfg.KubeClient.Create(
+				resources,
+				kube.ClientCreateOptionServerSideApply(true, i.ForceConflicts),
+				kube.ClientCreateOptionDryRun(true),
+			)
+		} else if len(resources) > 0 {
+			_, err = i.cfg.KubeClient.Update(
+				toBeAdopted,
+				resources,
+				kube.ClientUpdateOptionForceReplace(false),
+				kube.ClientUpdateOptionServerSideApply(true, i.ForceConflicts),
+				kube.ClientUpdateOptionDryRun(true),
+				kube.ClientUpdateOptionUpgradeClientSideFieldManager(i.TakeOwnership),
+			)
+		}
+		if err != nil {
+			return rel, err
+		}
+		rel.Info.Description = "Dry run complete"
+		return rel, nil
 	}
 
 	// If Replace is true, we need to supersede the last release.
