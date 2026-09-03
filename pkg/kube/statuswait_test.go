@@ -410,7 +410,7 @@ func TestStatusWaitForDeleteClusterScopedReturnsPromptly(t *testing.T) {
 	}()
 	select {
 	case err := <-errCh:
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	case <-time.After(time.Second * 10):
 		t.Fatal("WaitForDelete blocked on a cluster-scoped resource that receives no status events; it must return promptly instead of waiting out the timeout")
 	}
