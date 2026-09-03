@@ -28,7 +28,7 @@ import (
 )
 
 func TestFuncs(t *testing.T) {
-	//TODO write tests for failure cases
+	// TODO write tests for failure cases
 	tests := []struct {
 		tpl, expect string
 		vars        any
@@ -134,8 +134,7 @@ keyInElement1 = "valueInElement1"`,
 
 	for _, tt := range tests {
 		var b strings.Builder
-		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
-		require.NoError(t, err)
+		require.NoError(t, template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars))
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
 	}
 
@@ -148,39 +147,40 @@ keyInElement1 = "valueInElement1"`,
 		tpl    string
 		expect any
 		vars   any
-	}{{
-		tpl:  `{{ mustToYaml . }}`,
-		vars: loopMap,
-	}, {
-		tpl:  `{{ mustToJson . }}`,
-		vars: loopMap,
-	}, {
-		tpl:    `{{ mustToDuration 30 }}`,
-		expect: `30s`,
-		vars:   nil,
-	}, {
-		tpl:    `{{ mustToDuration "1m30s" }}`,
-		expect: `1m30s`,
-		vars:   nil,
-	}, {
-		tpl:  `{{ mustToDuration "foo" }}`,
-		vars: nil,
-	}, {
-		tpl:    `{{ toYaml . }}`,
-		expect: "", // should return empty string and swallow error
-		vars:   loopMap,
-	}, {
-		tpl:    `{{ toJson . }}`,
-		expect: "", // should return empty string and swallow error
-		vars:   loopMap,
-	}, {
-		tpl:  `{{ mustToToml . }}`,
-		vars: map[int]string{1: "one"}, // non-string key is invalid in TOML
-	}, {
-		tpl:    `{{ mustToToml . }}`,
-		expect: "foo = \"bar\"\n", // should succeed and return TOML string
-		vars:   map[string]string{"foo": "bar"},
-	},
+	}{
+		{
+			tpl:  `{{ mustToYaml . }}`,
+			vars: loopMap,
+		}, {
+			tpl:  `{{ mustToJson . }}`,
+			vars: loopMap,
+		}, {
+			tpl:    `{{ mustToDuration 30 }}`,
+			expect: `30s`,
+			vars:   nil,
+		}, {
+			tpl:    `{{ mustToDuration "1m30s" }}`,
+			expect: `1m30s`,
+			vars:   nil,
+		}, {
+			tpl:  `{{ mustToDuration "foo" }}`,
+			vars: nil,
+		}, {
+			tpl:    `{{ toYaml . }}`,
+			expect: "", // should return empty string and swallow error
+			vars:   loopMap,
+		}, {
+			tpl:    `{{ toJson . }}`,
+			expect: "", // should return empty string and swallow error
+			vars:   loopMap,
+		}, {
+			tpl:  `{{ mustToToml . }}`,
+			vars: map[int]string{1: "one"}, // non-string key is invalid in TOML
+		}, {
+			tpl:    `{{ mustToToml . }}`,
+			expect: "foo = \"bar\"\n", // should succeed and return TOML string
+			vars:   map[string]string{"foo": "bar"},
+		},
 	}
 
 	for _, tt := range mustFuncsTests {
@@ -360,8 +360,7 @@ func TestDurationHelpers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var b strings.Builder
-			err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
-			require.NoError(t, err, tt.tpl)
+			require.NoError(t, template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars), tt.tpl)
 			assert.Equal(t, tt.expect, b.String(), tt.tpl)
 		})
 	}
@@ -370,48 +369,49 @@ func TestDurationHelpers(t *testing.T) {
 		name string
 		tpl  string
 		vars any
-	}{{
-		name: "mustToDuration invalid string",
-		tpl:  `{{ mustToDuration "nope" }}`,
-	}, {
-		name: "mustToDuration empty string",
-		tpl:  `{{ mustToDuration "" }}`,
-	}, {
-		name: "mustToDuration whitespace string",
-		tpl:  `{{ mustToDuration "   " }}`,
-	}, {
-		name: "mustToDuration unsupported type",
-		tpl:  `{{ mustToDuration . }}`,
-		vars: []int{1, 2, 3},
-	}, {
-		name: "mustToDuration uint overflow",
-		tpl:  `{{ mustToDuration . }}`,
-		vars: uint64(math.MaxInt64) + 1,
-	}, {
-		name: "mustToDuration int overflow",
-		tpl:  `{{ mustToDuration . }}`,
-		vars: maxDurationSeconds + 1,
-	}, {
-		name: "mustToDuration int underflow",
-		tpl:  `{{ mustToDuration . }}`,
-		vars: minDurationSeconds - 1,
-	}, {
-		name: "mustToDuration float overflow",
-		tpl:  `{{ mustToDuration . }}`,
-		vars: maxDurationSecondsFloat + 0.5,
-	}, {
-		name: "mustToDuration float underflow",
-		tpl:  `{{ mustToDuration . }}`,
-		vars: minDurationSecondsFloat - 0.5,
-	}, {
-		name: "mustToDuration NaN",
-		tpl:  `{{ mustToDuration . }}`,
-		vars: math.NaN(),
-	}, {
-		name: "mustToDuration Inf",
-		tpl:  `{{ mustToDuration . }}`,
-		vars: math.Inf(-1),
-	},
+	}{
+		{
+			name: "mustToDuration invalid string",
+			tpl:  `{{ mustToDuration "nope" }}`,
+		}, {
+			name: "mustToDuration empty string",
+			tpl:  `{{ mustToDuration "" }}`,
+		}, {
+			name: "mustToDuration whitespace string",
+			tpl:  `{{ mustToDuration "   " }}`,
+		}, {
+			name: "mustToDuration unsupported type",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: []int{1, 2, 3},
+		}, {
+			name: "mustToDuration uint overflow",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: uint64(math.MaxInt64) + 1,
+		}, {
+			name: "mustToDuration int overflow",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: maxDurationSeconds + 1,
+		}, {
+			name: "mustToDuration int underflow",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: minDurationSeconds - 1,
+		}, {
+			name: "mustToDuration float overflow",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: maxDurationSecondsFloat + 0.5,
+		}, {
+			name: "mustToDuration float underflow",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: minDurationSecondsFloat - 0.5,
+		}, {
+			name: "mustToDuration NaN",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: math.NaN(),
+		}, {
+			name: "mustToDuration Inf",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: math.Inf(-1),
+		},
 	}
 
 	for _, tt := range mustErrTests {
@@ -422,8 +422,7 @@ func TestDurationHelpers(t *testing.T) {
 					Funcs(funcMap()).
 					Parse(tt.tpl),
 			)
-			err := tmpl.Execute(&b, tt.vars)
-			require.Error(t, err, tt.tpl)
+			require.Error(t, tmpl.Execute(&b, tt.vars), tt.tpl)
 		})
 	}
 }
@@ -474,8 +473,7 @@ func TestMerge(t *testing.T) {
 	}
 	tpl := `{{merge .dst .src1 .src2}}`
 	var b strings.Builder
-	err := template.Must(template.New("test").Funcs(funcMap()).Parse(tpl)).Execute(&b, dict)
-	require.NoError(t, err)
+	require.NoError(t, template.Must(template.New("test").Funcs(funcMap()).Parse(tpl)).Execute(&b, dict))
 
 	expected := map[string]any{
 		"a": "one", // key overridden

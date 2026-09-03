@@ -508,8 +508,8 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 				newDir = filepath.Join(outputDir, releaseName)
 			}
 			// NOTE: We do not have to worry about the post-renderer because
-			// output dir is only used by `helm template`. In the next major
-			// release, we should move this logic to template only as it is not
+			// output dir is only used by `helm template`.
+			// TODO Helm v5: move this logic to template only as it is not
 			// used by install or upgrade
 			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {
@@ -551,12 +551,11 @@ func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 	// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
-		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
-			cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
-		} else {
+		if !discovery.IsGroupDiscoveryFailedError(err) {
 			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
+		cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
+		cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
 	}
 
 	cfg.Capabilities = &common.Capabilities{

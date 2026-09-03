@@ -79,6 +79,8 @@ func New(config *rest.Config) Engine {
 // bar chart during render time.
 //
 // Deprecated: Use RenderWithContext instead.
+//
+//go:fix inline
 func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
 	return e.RenderWithContext(context.Background(), chrt, values)
 }
@@ -102,6 +104,8 @@ func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
+//
+// TODO Helm v5: Rename this to Render (remove the current deprecated Render method) and 'go:fix inline' RenderWithContext method to call Render.
 func (e Engine) RenderWithContext(ctx context.Context, chrt ci.Charter, values common.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
 	return e.render(ctx, tmap)
@@ -109,28 +113,38 @@ func (e Engine) RenderWithContext(ctx context.Context, chrt ci.Charter, values c
 
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
+//
+// Deprecated: Instantiate an Engine and call RenderWithContext instead.
+//
+// TODO Helm v5: Replace with a NewEngine function.
+//
+//go:fix inline
 func Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
-	return new(Engine).Render(chrt, values)
+	return new(Engine).RenderWithContext(context.Background(), chrt, values)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
+//
+// TODO Helm v5: Replace with a NewEngine function that accepts a rest.Config option
 func RenderWithClient(chrt ci.Charter, values common.Values, config *rest.Config) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}.RenderWithContext(context.Background(), chrt, values)
 }
 
 // RenderWithClientProvider takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
+//
+// TODO Helm v5: Replace with a NewEngine function that accepts a ClientProvider option
 func RenderWithClientProvider(chrt ci.Charter, values common.Values, clientProvider ClientProvider) (map[string]string, error) {
 	return Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}.RenderWithContext(context.Background(), chrt, values)
 }
 
 // renderable is an object that can be rendered.
@@ -143,9 +157,11 @@ type renderable struct {
 	basePath string
 }
 
-const warnStartDelim = "HELM_ERR_START"
-const warnEndDelim = "HELM_ERR_END"
-const recursionMaxNums = 1000
+const (
+	warnStartDelim   = "HELM_ERR_START"
+	warnEndDelim     = "HELM_ERR_END"
+	recursionMaxNums = 1000
+)
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
@@ -411,7 +427,7 @@ func parseTemplateExecErrorString(s string) (TraceableError, bool) {
 
 // Special case: "template: no template %q associated with template %q"
 // Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
-func parseTemplateNoTemplateError(s string, remainder string) (TraceableError, bool) {
+func parseTemplateNoTemplateError(s, remainder string) (TraceableError, bool) {
 	if strings.HasPrefix(remainder, "no template ") {
 		return TraceableError{message: s}, true
 	}
@@ -480,8 +496,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 	// If it can parse out details from that error message such as the line number, template it failed on,
 	// and error description, then it will construct a new error that displays these details in a structured way.
 	// If there are issues with parsing the error message, the err passed into the function should return instead.
-	var execError template.ExecError
-	if !errors.As(err, &execError) {
+	if _, ok := errors.AsType[template.ExecError](err); !ok {
 		return err
 	}
 

@@ -40,6 +40,7 @@ func (suite *RegistryScopeTestSuite) SetupSuite() {
 	// when the registry itself was reached over https.
 	setup(&suite.TestRegistry, false, false, "token")
 }
+
 func (suite *RegistryScopeTestSuite) TearDownSuite() {
 	teardown(&suite.TestRegistry)
 	os.RemoveAll(suite.WorkspaceDir)
@@ -76,7 +77,7 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
 	suite.Require().Error(err, "error pushing good ref because auth server doesn't give proper token")
 
-	//check the url that authentication server received
+	// check the url that authentication server received
 	select {
 	case urlStr := <-requestURL:
 		u, err := url.Parse(urlStr)
@@ -122,7 +123,7 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 	_, err = suite.RegistryClient.Pull(ref)
 	suite.Require().Error(err, "error pulling a simple chart because auth server doesn't give proper token")
 
-	//check the url that authentication server received
+	// check the url that authentication server received
 	select {
 	case urlStr := <-requestURL:
 		u, err := url.Parse(urlStr)

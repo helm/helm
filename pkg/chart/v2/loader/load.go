@@ -113,8 +113,8 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			c.Schema = f.Data
 			c.SchemaModTime = f.ModTime
 
-		// Deprecated: requirements.yaml is deprecated use Chart.yaml.
-		// We will handle it for you because we are nice people
+		// requirements.yaml is deprecated; dependencies are declared in Chart.yaml since
+		// apiVersion v2. Handled here for backwards compatibility.
 		case f.Name == "requirements.yaml":
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -128,7 +128,8 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 			}
-		// Deprecated: requirements.lock is deprecated use Chart.lock.
+		// requirements.lock is deprecated; use Chart.lock. Handled here for backwards
+		// compatibility.
 		case f.Name == "requirements.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
@@ -153,7 +154,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			}
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
-			cname := strings.SplitN(fname, "/", 2)[0]
+			cname, _, _ := strings.Cut(fname, "/")
 			subcharts[cname] = append(subcharts[cname], &archive.BufferedFile{Name: fname, ModTime: f.ModTime, Data: f.Data})
 		default:
 			c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
@@ -210,8 +211,20 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 // The reader is expected to contain one or more YAML documents, the values of which are merged.
 // And the values can be either a chart's default values or user-supplied values.
 func LoadValues(data io.Reader) (map[string]any, error) {
+	// Read fully first. YAMLReader/LineReader can drop a final unterminated
+	// line when its length is an exact multiple of bufio.Reader's default
+	// buffer (4096). Appending a trailing newline avoids that case.
+	// See https://github.com/helm/helm/issues/32506
+	b, err := io.ReadAll(data)
+	if err != nil {
+		return nil, err
+	}
+	if len(b) > 0 && b[len(b)-1] != '\n' {
+		b = append(b, '\n')
+	}
+
 	values := map[string]any{}
-	reader := utilyaml.NewYAMLReader(bufio.NewReader(data))
+	reader := utilyaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
 	for {
 		currentMap := map[string]any{}
 		raw, err := reader.Read()

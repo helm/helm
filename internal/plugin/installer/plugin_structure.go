@@ -53,7 +53,7 @@ func detectPluginRoot(extractDir string) (string, error) {
 
 // validatePluginName checks if the plugin directory name matches the plugin name
 // from plugin.yaml when the plugin is in a subdirectory.
-func validatePluginName(pluginRoot string, expectedName string) error {
+func validatePluginName(pluginRoot, expectedName string) error {
 	// Only validate if plugin is in a subdirectory
 	dirName := filepath.Base(pluginRoot)
 	if dirName == expectedName {

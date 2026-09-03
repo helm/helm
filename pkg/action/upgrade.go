@@ -261,12 +261,11 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 			return nil, nil, false, cerr
 		}
 		if err != nil {
-			if errors.Is(err, driver.ErrNoDeployedReleases) &&
-				(lastRelease.Info.Status == rcommon.StatusFailed || lastRelease.Info.Status == rcommon.StatusSuperseded) {
-				currentRelease = lastRelease
-			} else {
+			if !errors.Is(err, driver.ErrNoDeployedReleases) ||
+				(lastRelease.Info.Status != rcommon.StatusFailed && lastRelease.Info.Status != rcommon.StatusSuperseded) {
 				return nil, nil, false, err
 			}
+			currentRelease = lastRelease
 		}
 	}
 
@@ -454,7 +453,7 @@ func isReleaseApplyMethodClientSideApply(applyMethod string) bool {
 	return applyMethod == "" || applyMethod == string(release.ApplyMethodClientSideApply)
 }
 
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
@@ -665,7 +664,7 @@ func mergeCustomLabels(current, desired map[string]string) map[string]string {
 	return labels
 }
 
-func getUpgradeServerSideValue(serverSideOption string, releaseApplyMethod string) (bool, error) {
+func getUpgradeServerSideValue(serverSideOption, releaseApplyMethod string) (bool, error) {
 	switch serverSideOption {
 	case "auto":
 		return releaseApplyMethod == "ssa", nil

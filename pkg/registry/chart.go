@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v4/pkg/registry"
+package registry
 
 import (
 	"bytes"
@@ -108,7 +108,7 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 }
 
 // addToMap takes an existing map and adds an item if the value is not empty
-func addToMap(inputMap map[string]string, newKey string, newValue string) map[string]string {
+func addToMap(inputMap map[string]string, newKey, newValue string) map[string]string {
 	// Add item to map if its
 	if strings.TrimSpace(newValue) != "" {
 		inputMap[newKey] = newValue

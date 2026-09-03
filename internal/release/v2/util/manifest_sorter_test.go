@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util // import "helm.sh/helm/v4/internal/release/v2/util"
+package util
 
 import (
 	"testing"
@@ -61,7 +61,8 @@ metadata:
   annotations:
     "helm.sh/hook": post-install
 `,
-		}, {
+		},
+		{
 			name:  []string{"third"},
 			path:  "three",
 			kind:  []string{"ReplicaSet"},
@@ -73,7 +74,8 @@ metadata:
   annotations:
     "helm.sh/hook": no-such-hook
 `,
-		}, {
+		},
+		{
 			name:  []string{"fourth"},
 			path:  "four",
 			kind:  []string{"Pod"},
@@ -84,7 +86,8 @@ metadata:
   name: fourth
   annotations:
     nothing: here`,
-		}, {
+		},
+		{
 			name:  []string{"fifth"},
 			path:  "five",
 			kind:  []string{"ReplicaSet"},
@@ -96,14 +99,16 @@ metadata:
   annotations:
     "helm.sh/hook": post-delete, post-install
 `,
-		}, {
+		},
+		{
 			// Regression test: files with an underscore in the base name should be skipped.
 			name:     []string{"sixth"},
 			path:     "six/_six",
 			kind:     []string{"ReplicaSet"},
 			hooks:    map[string][]release.HookEvent{"sixth": nil},
 			manifest: `invalid manifest`, // This will fail if partial is not skipped.
-		}, {
+		},
+		{
 			// Regression test: files with no content should be skipped.
 			name:     []string{"seventh"},
 			path:     "seven",
@@ -143,7 +148,6 @@ metadata:
 
 	// This test will fail if 'six' or 'seven' was added.
 	assert.Len(t, generic, 2)
-
 	assert.Len(t, hs, 4)
 
 	for _, out := range hs {

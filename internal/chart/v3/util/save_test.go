@@ -32,6 +32,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/loader"
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -59,26 +62,15 @@ func TestSave(t *testing.T) {
 			chartWithInvalidJSON := withSchema(*c, []byte("{"))
 
 			where, err := Save(c, dest)
-			if err != nil {
-				t.Fatalf("Failed to save: %s", err)
-			}
-			if !strings.HasPrefix(where, dest) {
-				t.Fatalf("Expected %q to start with %q", where, dest)
-			}
-			if !strings.HasSuffix(where, ".tgz") {
-				t.Fatalf("Expected %q to end with .tgz", where)
-			}
+			require.NoError(t, err, "Failed to save")
+			require.Truef(t, strings.HasPrefix(where, dest), "Expected %q to start with %q", where, dest)
+			require.Truef(t, strings.HasSuffix(where, ".tgz"), "Expected %q to end with .tgz", where)
 
 			c2, err := loader.LoadFile(where)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if c2.Name() != c.Name() {
-				t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
-			}
-			if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
-				t.Fatal("Files data did not match")
-			}
+			require.NoError(t, err)
+			require.Equal(t, c.Name(), c2.Name(), "Expected chart archive to have %q, got %q", c.Name(), c2.Name())
+			require.Len(t, c2.Files, 1, "Files data did not match")
+			require.Equal(t, "scheherazade/shahryar.txt", c2.Files[0].Name, "Files data did not match")
 
 			if !bytes.Equal(c.Schema, c2.Schema) {
 				indentation := 4
@@ -86,25 +78,16 @@ func TestSave(t *testing.T) {
 				formattedActual := Indent(indentation, string(c2.Schema))
 				t.Fatalf("Schema data did not match.\nExpected:\n%s\nActual:\n%s", formattedExpected, formattedActual)
 			}
-			if _, err := Save(&chartWithInvalidJSON, dest); err == nil {
-				t.Fatal("Invalid JSON was not caught while saving chart")
-			}
+			_, err = Save(&chartWithInvalidJSON, dest)
+			require.Error(t, err, "Invalid JSON was not caught while saving chart")
 
 			c.Metadata.APIVersion = chart.APIVersionV3
 			where, err = Save(c, dest)
-			if err != nil {
-				t.Fatalf("Failed to save: %s", err)
-			}
+			require.NoError(t, err, "Failed to save")
 			c2, err = loader.LoadFile(where)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if c2.Lock == nil {
-				t.Fatal("Expected v3 chart archive to contain a Chart.lock file")
-			}
-			if c2.Lock.Digest != c.Lock.Digest {
-				t.Fatal("Chart.lock data did not match")
-			}
+			require.NoError(t, err)
+			require.NotNil(t, c2.Lock, "Expected v3 chart archive to contain a Chart.lock file")
+			require.Equal(t, c.Lock.Digest, c2.Lock.Digest, "Chart.lock data did not match")
 		})
 	}
 
@@ -122,9 +105,7 @@ func TestSave(t *testing.T) {
 		},
 	}
 	_, err := Save(c, tmp)
-	if err == nil {
-		t.Fatal("Expected error saving chart with invalid name")
-	}
+	require.Error(t, err, "Expected error saving chart with invalid name")
 }
 
 // Creates a copy with a different schema; does not modify anything.
@@ -165,20 +146,14 @@ func TestSavePreservesTimestamps(t *testing.T) {
 	}
 
 	where, err := Save(c, tmp)
-	if err != nil {
-		t.Fatalf("Failed to save: %s", err)
-	}
+	require.NoError(t, err, "Failed to save")
 
 	allHeaders, err := retrieveAllHeadersFromTar(where)
-	if err != nil {
-		t.Fatalf("Failed to parse tar: %v", err)
-	}
+	require.NoError(t, err, "Failed to parse tar")
 
 	roundedTime := initialCreateTime.Round(time.Second)
 	for _, header := range allHeaders {
-		if !header.ModTime.Equal(roundedTime) {
-			t.Fatalf("File timestamp not preserved: %v", header.ModTime)
-		}
+		require.Truef(t, header.ModTime.Equal(roundedTime), "File timestamp not preserved: %v", header.ModTime)
 	}
 }
 
@@ -234,47 +209,32 @@ func TestSaveDir(t *testing.T) {
 		},
 	}
 
-	if err := SaveDir(c, tmp); err != nil {
-		t.Fatalf("Failed to save: %s", err)
-	}
+	require.NoError(t, SaveDir(c, tmp), "Failed to save")
 
 	c2, err := loader.LoadDir(tmp + "/ahab")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if c2.Name() != c.Name() {
-		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
-	}
+	require.Equal(t, c.Name(), c2.Name(), "Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 
-	if len(c2.Templates) != 1 || c2.Templates[0].Name != c.Templates[0].Name {
-		t.Fatal("Templates data did not match")
-	}
+	require.Len(t, c2.Templates, 1)
+	require.Equal(t, c.Templates[0].Name, c2.Templates[0].Name, "Templates data did not match")
 
-	if len(c2.Files) != 1 || c2.Files[0].Name != c.Files[0].Name {
-		t.Fatal("Files data did not match")
-	}
+	require.Len(t, c2.Files, 1)
+	require.Equal(t, c.Files[0].Name, c2.Files[0].Name, "Files data did not match")
 
 	tmp2 := t.TempDir()
 	c.Metadata.Name = "../ahab"
 	pth := filepath.Join(tmp2, "tmpcharts")
-	if err := os.MkdirAll(filepath.Join(pth), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(filepath.Join(pth), 0o755), "Failed to create directory")
 
-	if err := SaveDir(c, pth); err.Error() != "\"../ahab\" is not a valid chart name" {
-		t.Fatalf("Did not get expected error for chart named %q", c.Name())
-	}
+	assert.EqualError(t, SaveDir(c, pth), "\"../ahab\" is not a valid chart name", "Did not get expected error for chart named %q", c.Name())
 }
 
 func TestRepeatableSave(t *testing.T) {
-	tmp := t.TempDir()
-	defer os.RemoveAll(tmp)
 	modTime := time.Date(2021, 9, 1, 20, 34, 58, 651387237, time.UTC)
 	tests := []struct {
 		name  string
 		chart *chart.Chart
-		want  string
 	}{
 		{
 			name: "Package 1 file",
@@ -295,7 +255,6 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "5bfea18cc3c8cbc265744bc32bffa9489a4dbe87d6b51b90f4255e4839d35e03",
 		},
 		{
 			name: "Package 2 files",
@@ -317,26 +276,26 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "a240365c21e0a2f4a57873132a9b686566a612d08bcb3f20c9446bfff005ccce",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// create package
-			dest := path.Join(tmp, "newdir")
-			where, err := Save(test.chart, dest)
-			if err != nil {
-				t.Fatalf("Failed to save: %s", err)
-			}
-			// get shasum for package
-			result, err := sha256Sum(where)
-			if err != nil {
-				t.Fatalf("Failed to check shasum: %s", err)
-			}
-			// assert that the package SHA is what we wanted.
-			if result != test.want {
-				t.Errorf("FormatName() result = %v, want %v", result, test.want)
-			}
+			// Package the same chart twice, into separate directories so the
+			// second Save does not simply overwrite the first.
+			first, err := Save(test.chart, t.TempDir())
+			require.NoError(t, err, "Failed to save")
+			second, err := Save(test.chart, t.TempDir())
+			require.NoError(t, err, "Failed to save")
+
+			firstSum, err := sha256Sum(first)
+			require.NoError(t, err, "Failed to check shasum")
+			secondSum, err := sha256Sum(second)
+			require.NoError(t, err, "Failed to check shasum")
+
+			// Packaging a chart must be reproducible. The digest itself is not
+			// pinned here because the bytes depend on the compression
+			// implementation of the Go release Helm is built with.
+			assert.Equal(t, firstSum, secondSum, "Save() is not repeatable")
 		})
 	}
 }

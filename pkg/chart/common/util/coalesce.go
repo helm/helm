@@ -336,20 +336,22 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 	// values.
 	for key, val := range src {
 		fullkey := concatPrefix(prefix, key)
-		if dv, ok := dst[key]; ok && !merge && dv == nil && srcOriginalNonNil[key] {
+		dv, ok := dst[key]
+		switch {
+		case ok && !merge && dv == nil && srcOriginalNonNil[key]:
 			// When coalescing (not merging), if dst has nil and src has a non-nil
 			// value, the user is nullifying a chart default - remove the key.
 			// But if src also has nil (or key not in src), preserve the nil
 			delete(dst, key)
-		} else if !ok {
+		case !ok:
 			dst[key] = val
-		} else if istable(val) {
+		case istable(val):
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]any), val.(map[string]any), fullkey, merge)
 			} else {
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
-		} else if istable(dv) && val != nil {
+		case istable(dv) && val != nil:
 			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
 		}
 	}

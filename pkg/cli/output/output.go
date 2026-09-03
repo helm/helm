@@ -85,7 +85,7 @@ func ParseFormat(s string) (out Format, err error) {
 	default:
 		out, err = "", ErrInvalidFormatType
 	}
-	return
+	return out, err
 }
 
 // Writer is an interface that any type can implement to write supported formats

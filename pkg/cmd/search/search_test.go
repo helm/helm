@@ -20,6 +20,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/repo/v1"
 )
@@ -40,24 +43,16 @@ func TestSortScore(t *testing.T) {
 
 	// Test Score
 	for i := range expectScore {
-		if expectScore[i] != in[i].Score {
-			t.Errorf("Sort error on index %d: expected %d, got %d", i, expectScore[i], in[i].Score)
-		}
+		assert.Equalf(t, expectScore[i], in[i].Score, "Sort error on index %d: expected %d, got %d", i, expectScore[i], in[i].Score)
 	}
 	// Test Name
 	for i := range expect {
-		if expect[i] != in[i].Name {
-			t.Errorf("Sort error: expected %s, got %s", expect[i], in[i].Name)
-		}
+		assert.Equalf(t, expect[i], in[i].Name, "Sort error: expected %s, got %s", expect[i], in[i].Name)
 	}
 
 	// Test version of last two items
-	if in[5].Chart.Version != "1.2.4" {
-		t.Errorf("Expected 1.2.4, got %s", in[5].Chart.Version)
-	}
-	if in[6].Chart.Version != "1.2.3" {
-		t.Error("Expected 1.2.3 to be last")
-	}
+	assert.Equalf(t, "1.2.4", in[5].Chart.Version, "Expected 1.2.4, got %s", in[5].Chart.Version)
+	assert.Equal(t, "1.2.3", in[6].Chart.Version, "Expected 1.2.3 to be last")
 }
 
 var indexfileEntries = map[string]repo.ChartVersions{
@@ -122,30 +117,22 @@ func loadTestIndex(_ *testing.T, all bool) *Index {
 func TestAll(t *testing.T) {
 	i := loadTestIndex(t, false)
 	all := i.All()
-	if len(all) != 4 {
-		t.Errorf("Expected 4 entries, got %d", len(all))
-	}
+	assert.Lenf(t, all, 4, "Expected 4 entries, got %d", len(all))
 
 	i = loadTestIndex(t, true)
 	all = i.All()
-	if len(all) != 5 {
-		t.Errorf("Expected 5 entries, got %d", len(all))
-	}
+	assert.Lenf(t, all, 5, "Expected 5 entries, got %d", len(all))
 }
 
 func TestAddRepo_Sort(t *testing.T) {
 	i := loadTestIndex(t, true)
 	sr, err := i.Search("TESTING/SANTA-MARIA", 100, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	SortScore(sr)
 
 	ch := sr[0]
 	expect := "1.2.3"
-	if ch.Chart.Version != expect {
-		t.Errorf("Expected %q, got %q", expect, ch.Chart.Version)
-	}
+	assert.Equalf(t, ch.Chart.Version, expect, "Expected %q, got %q", expect, ch.Chart.Version)
 }
 
 func TestSearchByName(t *testing.T) {
@@ -245,31 +232,20 @@ func TestSearchByName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			charts, err := i.Search(tt.query, 100, tt.regexp)
-			if err != nil {
-				if tt.fail {
-					if !strings.Contains(err.Error(), tt.failMsg) {
-						t.Fatalf("Unexpected error message: %s", err)
+			if tt.fail {
+				require.ErrorContains(t, err, tt.failMsg)
+			} else {
+				require.NoError(t, err) // Give us predictably ordered results.
+				SortScore(charts)
+
+				l := len(tt.expect)
+				require.Len(t, charts, len(tt.expect))
+				// For empty result sets, just keep going.
+				if l != 0 {
+					for i, got := range charts {
+						ex := tt.expect[i]
+						assert.Equalf(t, got.Name, ex.Name, "[%d]: Expected name %q, got %q", i, ex.Name, got.Name)
 					}
-					return
-				}
-				t.Fatalf("%s: %s", tt.name, err)
-			}
-			// Give us predictably ordered results.
-			SortScore(charts)
-
-			l := len(charts)
-			if l != len(tt.expect) {
-				t.Fatalf("Expected %d result, got %d", len(tt.expect), l)
-			}
-			// For empty result sets, just keep going.
-			if l == 0 {
-				return
-			}
-
-			for i, got := range charts {
-				ex := tt.expect[i]
-				if got.Name != ex.Name {
-					t.Errorf("[%d]: Expected name %q, got %q", i, ex.Name, got.Name)
 				}
 			}
 		})
@@ -280,12 +256,8 @@ func TestSearchByNameAll(t *testing.T) {
 	// Test with the All bit turned on.
 	i := loadTestIndex(t, true)
 	cs, err := i.Search("santa-maria", 100, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(cs) != 2 {
-		t.Errorf("expected 2 charts, got %d", len(cs))
-	}
+	require.NoError(t, err)
+	assert.Lenf(t, cs, 2, "expected 2 charts, got %d", len(cs))
 }
 
 func TestCalcScore(t *testing.T) {
@@ -293,16 +265,12 @@ func TestCalcScore(t *testing.T) {
 
 	fields := []string{"aaa", "bbb", "ccc", "ddd"}
 	matchline := strings.Join(fields, sep)
-	if r := i.calcScore(2, matchline); r != 0 {
-		t.Errorf("Expected 0, got %d", r)
-	}
-	if r := i.calcScore(5, matchline); r != 1 {
-		t.Errorf("Expected 1, got %d", r)
-	}
-	if r := i.calcScore(10, matchline); r != 2 {
-		t.Errorf("Expected 2, got %d", r)
-	}
-	if r := i.calcScore(14, matchline); r != 3 {
-		t.Errorf("Expected 3, got %d", r)
-	}
+	r := i.calcScore(2, matchline)
+	assert.Equalf(t, 0, r, "Expected 0, got %d", r)
+	r = i.calcScore(5, matchline)
+	assert.Equalf(t, 1, r, "Expected 1, got %d", r)
+	r = i.calcScore(10, matchline)
+	assert.Equalf(t, 2, r, "Expected 2, got %d", r)
+	r = i.calcScore(14, matchline)
+	assert.Equalf(t, 3, r, "Expected 3, got %d", r)
 }

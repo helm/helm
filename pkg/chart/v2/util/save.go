@@ -33,7 +33,11 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
-var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
+// RFC 1952 subfield header:
+// +---+---+---+---+==================================+
+// |SI1|SI2|  LEN  |... LEN bytes of subfield data ...|
+// +---+---+---+---+==================================+
+var headerBytes = []byte("rr\x28\x00aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 
 // SaveDir saves a chart as files in a directory.
 //
@@ -114,12 +118,11 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 	filename = filepath.Join(outDir, filename)
 	dir := filepath.Dir(filename)
 	if stat, err := os.Stat(dir); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			if err2 := os.MkdirAll(dir, 0o755); err2 != nil {
-				return "", err2
-			}
-		} else {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return "", fmt.Errorf("stat %s: %w", dir, err)
+		}
+		if err2 := os.MkdirAll(dir, 0o755); err2 != nil {
+			return "", err2
 		}
 	} else if !stat.IsDir() {
 		return "", fmt.Errorf("is not a directory: %s", dir)
@@ -180,7 +183,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	}
 
 	// Save Chart.lock
-	// TODO: remove the APIVersion check when APIVersionV1 is not used anymore
+	// TODO Helm v5: remove the APIVersion check when APIVersionV1 is not used anymore
 	if c.Metadata.APIVersion == chart.APIVersionV2 {
 		if c.Lock != nil {
 			ldata, err := yaml.Marshal(c.Lock)

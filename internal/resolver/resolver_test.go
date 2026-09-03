@@ -148,28 +148,22 @@ func TestResolve(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l, err := r.Resolve(tt.req, repoNames)
-			if err != nil {
-				if tt.err {
-					return
-				}
-				require.NoError(t, err)
-			}
-
 			if tt.err {
-				require.Failf(t, "Expected error in test %q", tt.name)
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				h, err := HashReq(tt.req, tt.expect.Dependencies)
+				require.NoError(t, err)
+				assert.Equal(t, l.Digest, h, "%q: hashes don't match.", tt.name)
+
+				// Check fields.
+				require.Len(t, l.Dependencies, len(tt.req), "%s: wrong number of dependencies in lock", tt.name)
+				d0 := l.Dependencies[0]
+				e0 := tt.expect.Dependencies[0]
+				assert.Equal(t, e0.Name, d0.Name, tt.name)
+				assert.Equal(t, e0.Repository, d0.Repository, tt.name)
+				assert.Equal(t, e0.Version, d0.Version, tt.name)
 			}
-
-			h, err := HashReq(tt.req, tt.expect.Dependencies)
-			require.NoError(t, err)
-			assert.Equal(t, l.Digest, h, "%q: hashes don't match.", tt.name)
-
-			// Check fields.
-			assert.Len(t, l.Dependencies, len(tt.req), "%s: wrong number of dependencies in lock", tt.name)
-			d0 := l.Dependencies[0]
-			e0 := tt.expect.Dependencies[0]
-			assert.Equal(t, e0.Name, d0.Name, tt.name)
-			assert.Equal(t, e0.Repository, d0.Repository, tt.name)
-			assert.Equal(t, e0.Version, d0.Version, tt.name)
 		})
 	}
 }
@@ -280,20 +274,16 @@ func TestGetLocalPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p, err := GetLocalPath(tt.repo, tt.chartpath)
-			if err != nil {
-				if tt.err {
-					return
-				}
-				require.NoError(t, err)
-			}
 			if tt.err {
-				require.Failf(t, "Expected error in test %q", tt.name)
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				if runtime.GOOS == "windows" {
+					assert.Equal(t, tt.winExpect, p, tt.name)
+				} else {
+					assert.Equal(t, tt.expect, p, tt.name)
+				}
 			}
-			expect := tt.expect
-			if runtime.GOOS == "windows" {
-				expect = tt.winExpect
-			}
-			assert.Equal(t, expect, p, tt.name)
 		})
 	}
 }

@@ -65,8 +65,7 @@ func TestGetMetadata_Run_BasicMetadata(t *testing.T) {
 		Namespace: "default",
 	}
 
-	err := cfg.Releases.Create(rel)
-	require.NoError(t, err)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -547,7 +546,7 @@ func TestMetadata_FormattedDepNames(t *testing.T) {
 }
 
 func convertDeps(deps []*chart.Dependency) []ci.Dependency {
-	var newDeps = make([]ci.Dependency, len(deps))
+	newDeps := make([]ci.Dependency, len(deps))
 	for i, c := range deps {
 		newDeps[i] = c
 	}
@@ -645,8 +644,7 @@ func TestGetMetadata_Labels(t *testing.T) {
 	rel.Labels = customLabels
 
 	metaGetter := NewGetMetadata(actionConfigFixture(t))
-	err := metaGetter.cfg.Releases.Create(rel)
-	require.NoError(t, err)
+	require.NoError(t, metaGetter.cfg.Releases.Create(rel))
 
 	metadata, err := metaGetter.Run(rel.Name)
 	require.NoError(t, err)

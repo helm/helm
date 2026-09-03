@@ -58,9 +58,7 @@ func actionConfigFixtureWithDummyResources(t *testing.T, dummyResources kube.Res
 	slog.SetDefault(logger)
 
 	registryClient, err := registry.NewClient()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
@@ -371,16 +369,10 @@ func TestGetVersionSet(t *testing.T) {
 	client := fakeclientset.NewClientset()
 
 	vs, err := GetVersionSet(client.Discovery())
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
-	if !vs.Has("v1") {
-		t.Error("Expected supported versions to at least include v1.")
-	}
-	if vs.Has("nosuchversion/v1") {
-		t.Error("Non-existent version is reported found.")
-	}
+	assert.True(t, vs.Has("v1"), "Expected supported versions to at least include v1.")
+	assert.False(t, vs.Has("nosuchversion/v1"), "Non-existent version is reported found.")
 }
 
 // Mock PostRenderer for testing
@@ -1198,9 +1190,9 @@ data:
 `,
 		},
 
-		// Multi-doc tests: block scalar doc is NOT the last document.
-		// SplitManifests' regex consumes \s*\n before ---, so trailing
-		// newlines from non-last docs are always stripped.
+		// Multi-doc block scalar tests where the block scalar document is NOT the last:
+		// the separator regex does not consume trailing newlines, so YAML chomping
+		// indicators (|, |+, |-) are respected.
 
 		// | (clip) in multi-doc (first doc)
 		{
@@ -1229,7 +1221,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1269,7 +1261,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1310,7 +1302,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1473,7 +1465,7 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |
     hello
 ---
 apiVersion: v1
@@ -1513,8 +1505,9 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |+
     hello
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -1554,8 +1547,10 @@ metadata:
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 data:
-  key: |-
+  key: |+
     hello
+
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -2028,9 +2023,7 @@ spec:
 	mockPR := &mockPostRenderer{
 		transform: func(content string) string {
 			count := strings.Count(content, "kind: ServiceAccount")
-			if count > 1 {
-				t.Errorf("post-renderer received %d ServiceAccount resources in a single stream, expected at most 1", count)
-			}
+			assert.LessOrEqualf(t, count, 1, "post-renderer received %d ServiceAccount resources in a single stream, expected at most 1", count)
 			return content
 		},
 	}

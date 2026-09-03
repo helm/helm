@@ -36,13 +36,12 @@ func TestDataPath(t *testing.T) {
 	os.Unsetenv(xdg.DataHomeEnvVar)
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", appName, testFile)
-
 	assert.Equal(t, expected, lazy.dataPath(testFile))
 
-	t.Setenv(xdg.DataHomeEnvVar, "/tmp")
+	tmpDir := t.TempDir()
+	t.Setenv(xdg.DataHomeEnvVar, tmpDir)
 
-	expected = filepath.Join("/tmp", appName, testFile)
-
+	expected = filepath.Join(tmpDir, appName, testFile)
 	assert.Equal(t, expected, lazy.dataPath(testFile))
 }
 
@@ -50,13 +49,12 @@ func TestConfigPath(t *testing.T) {
 	os.Unsetenv(xdg.ConfigHomeEnvVar)
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", "Preferences", appName, testFile)
-
 	assert.Equal(t, expected, lazy.configPath(testFile))
 
-	t.Setenv(xdg.ConfigHomeEnvVar, "/tmp")
+	tmpDir := t.TempDir()
+	t.Setenv(xdg.ConfigHomeEnvVar, tmpDir)
 
-	expected = filepath.Join("/tmp", appName, testFile)
-
+	expected = filepath.Join(tmpDir, appName, testFile)
 	assert.Equal(t, expected, lazy.configPath(testFile))
 }
 
@@ -64,12 +62,11 @@ func TestCachePath(t *testing.T) {
 	os.Unsetenv(xdg.CacheHomeEnvVar)
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", "Caches", appName, testFile)
-
 	assert.Equal(t, expected, lazy.cachePath(testFile))
 
-	t.Setenv(xdg.CacheHomeEnvVar, "/tmp")
+	tmpDir := t.TempDir()
+	t.Setenv(xdg.CacheHomeEnvVar, tmpDir)
 
-	expected = filepath.Join("/tmp", appName, testFile)
-
+	expected = filepath.Join(tmpDir, appName, testFile)
 	assert.Equal(t, expected, lazy.cachePath(testFile))
 }

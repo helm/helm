@@ -18,6 +18,7 @@ package registry
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -71,11 +72,12 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 
 	slog.Debug(req.Method, "id", id, "url", req.URL, "header", logHeader(req.Header))
 	resp, err = t.RoundTripper.RoundTrip(req)
-	if err != nil {
+	switch {
+	case err != nil:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "error", err)
-	} else if resp != nil {
+	case resp != nil:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "status", resp.Status, "header", logHeader(resp.Header), "body", logResponseBody(resp))
-	} else {
+	default:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "response", "nil")
 	}
 
@@ -125,7 +127,7 @@ func logResponseBody(resp *http.Response) string {
 		Closer: body,
 	}
 	// read the body up to limit+1 to check if the body exceeds the limit
-	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && err != io.EOF {
+	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
 

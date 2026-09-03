@@ -40,6 +40,7 @@ The tests to be run are defined in the chart that was installed.
 
 func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewReleaseTesting(cfg)
+	client.WaitOptions = append(client.WaitOptions, defaultCLIWaitOptions()...)
 	outfmt := output.Table
 	var outputLogs bool
 	var filter []string

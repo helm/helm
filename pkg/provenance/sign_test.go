@@ -16,6 +16,7 @@ limitations under the License.
 package provenance
 
 import (
+	"bytes"
 	"crypto"
 	"errors"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/stretchr/testify/assert"
@@ -89,14 +91,10 @@ func loadChartMetadataForSigning(t *testing.T, chartPath string) []byte {
 	t.Helper()
 
 	chart, err := loader.LoadFile(chartPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	metadataBytes, err := yaml.Marshal(chart.Metadata)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return metadataBytes
 }
@@ -106,170 +104,179 @@ func TestMessageBlock(t *testing.T) {
 
 	// Read the chart file data
 	archiveData, err := os.ReadFile(testChartfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	out, err := messageBlock(archiveData, filepath.Base(testChartfile), metadataBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	got := out.String()
 
-	if got != testMessageBlock {
-		t.Errorf("Expected:\n%q\nGot\n%q\n", testMessageBlock, got)
-	}
+	assert.Equal(t, testMessageBlock, got, "Expected:\n%q\nGot\n%q\n", testMessageBlock, got)
 }
 
 func TestParseMessageBlock(t *testing.T) {
 	sc, err := parseMessageBlock([]byte(testMessageBlock))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// parseMessageBlock only returns checksums, not metadata (like upstream)
 
-	if lsc := len(sc.Files); lsc != 1 {
-		t.Errorf("Expected 1 file, got %d", lsc)
-	}
+	lsc := len(sc.Files)
+	assert.Equalf(t, 1, lsc, "Expected 1 file, got %d", lsc)
 
-	if hash, ok := sc.Files["hashtest-1.2.3.tgz"]; !ok {
-		t.Error("hashtest file not found in Files")
-	} else if hash != "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888" {
-		t.Errorf("Unexpected hash: %q", hash)
-	}
+	hash, ok := sc.Files["hashtest-1.2.3.tgz"]
+	assert.True(t, ok, "hashtest file not found in Files")
+	assert.Equalf(t, "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888", hash, "Unexpected hash: %q", hash)
 }
 
 func TestLoadKey(t *testing.T) {
 	k, err := loadKey(testKeyfile)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, ok := k.Identities[testKeyName]; !ok {
-		t.Errorf("Expected to load a key for user %q", testKeyName)
-	}
+	require.NoError(t, err)
+	assert.Containsf(t, k.Identities, testKeyName, "Expected to load a key for user %q", testKeyName)
 }
 
 func TestLoadKeyRing(t *testing.T) {
 	k, err := loadKeyRing(testPubfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(k) > 1 {
-		t.Errorf("Expected 1, got %d", len(k))
-	}
+	assert.LessOrEqualf(t, len(k), 1, "Expected 1, got %d", len(k))
 
 	for _, e := range k {
-		if ii, ok := e.Identities[testKeyName]; !ok {
-			t.Errorf("Expected %s in %v", testKeyName, ii)
+		ii, ok := e.Identities[testKeyName]
+		assert.Truef(t, ok, "Expected %s in %v", testKeyName, ii)
+	}
+}
+
+func TestLoadKeyRingKeybox(t *testing.T) {
+	k, err := loadKeyRing(testKeybox)
+	require.NoError(t, err)
+
+	require.Len(t, k, 1)
+	_, ok := k[0].Identities[testKeyName]
+	assert.True(t, ok, "expected %q in keybox keyring", testKeyName)
+}
+
+func TestLoadKeyRingMixedKeybox(t *testing.T) {
+	k, err := loadKeyRing(testMixedKeybox)
+	require.NoError(t, err)
+
+	require.Len(t, k, 2)
+
+	names := make([]string, 0, len(k))
+	hasEdDSA := false
+	for _, e := range k {
+		for n := range e.Identities {
+			names = append(names, n)
+		}
+		if e.PrimaryKey != nil && e.PrimaryKey.PubKeyAlgo == packet.PubKeyAlgoEdDSA {
+			hasEdDSA = true
 		}
 	}
+	assert.Contains(t, names, testKeyName)
+	assert.True(t, hasEdDSA, "expected an Ed25519 key in %s", testMixedKeybox)
+}
+
+func TestLoadKeyRingArmored(t *testing.T) {
+	k, err := loadKeyRing(testArmoredPubfile)
+	require.NoError(t, err)
+
+	require.Len(t, k, 1)
+	_, ok := k[0].Identities[testKeyName]
+	assert.True(t, ok, "expected %q in armored keyring", testKeyName)
+}
+
+func TestLoadKeyRingArmoredMultiBlock(t *testing.T) {
+	// A keyring assembled by concatenating exports (cat a.asc b.asc) must
+	// load every block, the same way gpg --import does.
+	k, err := loadKeyRing(testMultiBlockArmored)
+	require.NoError(t, err)
+
+	require.Len(t, k, 2)
+	names := make([]string, 0, len(k))
+	for _, e := range k {
+		for n := range e.Identities {
+			names = append(names, n)
+		}
+	}
+	assert.Contains(t, names, testKeyName)
+}
+
+func TestLoadArmoredKeyRingRejectsNonKeyBlocks(t *testing.T) {
+	var buf bytes.Buffer
+	w, err := armor.Encode(&buf, "PGP MESSAGE", nil)
+	require.NoError(t, err)
+	_, err = w.Write([]byte("not a key"))
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	_, err = loadArmoredKeyRing(buf.Bytes())
+	assert.ErrorContains(t, err, "expected a public or private key block")
 }
 
 func TestDigest(t *testing.T) {
 	f, err := os.Open(testChartfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer f.Close()
 
 	hash, err := Digest(f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sig, err := readSumFile(testSumfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if !strings.Contains(sig, hash) {
-		t.Errorf("Expected %s to be in %s", hash, sig)
-	}
+	assert.Contains(t, sig, hash, "Expected %s to be in %s", hash, sig)
 }
 
 func TestNewFromFiles(t *testing.T) {
 	s, err := NewFromFiles(testKeyfile, testPubfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if _, ok := s.Entity.Identities[testKeyName]; !ok {
-		t.Errorf("Expected to load a key for user %q", testKeyName)
-	}
+	assert.Containsf(t, s.Entity.Identities, testKeyName, "Expected to load a key for user %q", testKeyName)
 }
 
 func TestDigestFile(t *testing.T) {
 	hash, err := DigestFile(testChartfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sig, err := readSumFile(testSumfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if !strings.Contains(sig, hash) {
-		t.Errorf("Expected %s to be in %s", hash, sig)
-	}
+	assert.Contains(t, sig, hash, "Expected %s to be in %s", hash, sig)
 }
 
 func TestDecryptKey(t *testing.T) {
 	k, err := NewFromKeyring(testPasswordKeyfile, testPasswordKeyName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if !k.Entity.PrivateKey.Encrypted {
-		t.Fatal("Key is not encrypted")
-	}
+	require.True(t, k.Entity.PrivateKey.Encrypted, "Key is not encrypted")
 
 	// We give this a simple callback that returns the password.
-	if err := k.DecryptKey(func(_ string) ([]byte, error) {
+	require.NoError(t, k.DecryptKey(func(_ string) ([]byte, error) {
 		return []byte("secret"), nil
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// Re-read the key (since we already unlocked it)
 	k, err = NewFromKeyring(testPasswordKeyfile, testPasswordKeyName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Now we give it a bogus password.
-	if err := k.DecryptKey(func(_ string) ([]byte, error) {
+	require.Error(t, k.DecryptKey(func(_ string) ([]byte, error) {
 		return []byte("secrets_and_lies"), nil
-	}); err == nil {
-		t.Fatal("Expected an error when giving a bogus passphrase")
-	}
+	}), "Expected an error when giving a bogus passphrase")
 }
 
 func TestClearSign(t *testing.T) {
 	signer, err := NewFromFiles(testKeyfile, testPubfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	metadataBytes := loadChartMetadataForSigning(t, testChartfile)
 
 	// Read the chart file data
 	archiveData, err := os.ReadFile(testChartfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sig, err := signer.ClearSign(archiveData, filepath.Base(testChartfile), metadataBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Logf("Sig:\n%s", sig)
 
-	if !strings.Contains(sig, testMessageBlock) {
-		t.Errorf("expected message block to be in sig: %s", sig)
-	}
+	assert.Contains(t, sig, testMessageBlock, "expected message block to be in sig: %s", sig)
 }
 
 func TestMixedKeyringRSASigningAndVerification(t *testing.T) {
@@ -298,7 +305,6 @@ func TestMixedKeyringRSASigningAndVerification(t *testing.T) {
 	}
 
 	assert.True(t, hasEdDSA, "expected %s to include an Ed25519 public key", testMixedKeyring)
-
 	require.NotNil(t, signer.Entity, "expected signer entity to be loaded")
 	require.NotNil(t, signer.Entity.PrivateKey, "expected signer private key to be loaded")
 	assert.Equal(t, packet.PubKeyAlgoRSA, signer.Entity.PrivateKey.PubKeyAlgo, "expected RSA key")
@@ -317,9 +323,7 @@ func TestMixedKeyringRSASigningAndVerification(t *testing.T) {
 	require.NotNil(t, verification.SignedBy, "expected verification to include signer")
 	require.NotNil(t, verification.SignedBy.PrimaryKey, "expected verification to include signer primary key")
 	assert.Equal(t, packet.PubKeyAlgoRSA, verification.SignedBy.PrimaryKey.PubKeyAlgo, "expected verification to report RSA key")
-
-	_, ok := verification.SignedBy.Identities[testKeyName]
-	assert.True(t, ok, "expected verification to be signed by %q", testKeyName)
+	assert.Contains(t, verification.SignedBy.Identities, testKeyName, "expected verification to be signed by %q", testKeyName)
 }
 
 // failSigner always fails to sign and returns an error
@@ -335,9 +339,7 @@ func (s failSigner) Sign(_ io.Reader, _ []byte, _ crypto.SignerOpts) ([]byte, er
 
 func TestClearSignError(t *testing.T) {
 	signer, err := NewFromFiles(testKeyfile, testPubfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// ensure that signing always fails
 	signer.Entity.PrivateKey.PrivateKey = failSigner{}
@@ -346,64 +348,67 @@ func TestClearSignError(t *testing.T) {
 
 	// Read the chart file data
 	archiveData, err := os.ReadFile(testChartfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sig, err := signer.ClearSign(archiveData, filepath.Base(testChartfile), metadataBytes)
-	if err == nil {
-		t.Fatal("didn't get an error from ClearSign but expected one")
-	}
-
-	if sig != "" {
-		t.Fatalf("expected an empty signature after failed ClearSign but got %q", sig)
-	}
+	require.Error(t, err, "didn't get an error from ClearSign but expected one")
+	assert.Empty(t, sig, "expected an empty signature after failed ClearSign but got %q", sig)
 }
 
 func TestVerify(t *testing.T) {
 	signer, err := NewFromFiles(testKeyfile, testPubfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the chart file data
 	archiveData, err := os.ReadFile(testChartfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the signature file data
 	sigData, err := os.ReadFile(testSigBlock)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if ver, err := signer.Verify(archiveData, sigData, filepath.Base(testChartfile)); err != nil {
-		t.Errorf("Failed to pass verify. Err: %s", err)
-	} else if ver.FileHash == "" {
-		t.Error("Verification is missing hash.")
-	} else if ver.SignedBy == nil {
-		t.Error("No SignedBy field")
-	} else if ver.FileName != filepath.Base(testChartfile) {
-		t.Errorf("FileName is unexpectedly %q", ver.FileName)
-	}
+	ver, err := signer.Verify(archiveData, sigData, filepath.Base(testChartfile))
+	require.NoError(t, err, "Failed to pass verify")
+	assert.NotEmpty(t, ver.FileHash, "Verification is missing hash.")
+	assert.NotNil(t, ver.SignedBy, "No SignedBy field")
+	assert.Equalf(t, filepath.Base(testChartfile), ver.FileName, "FileName is unexpectedly %q", ver.FileName)
 
 	// Read the tampered signature file data
 	tamperedSigData, err := os.ReadFile(testTamperedSigBlock)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if _, err = signer.Verify(archiveData, tamperedSigData, filepath.Base(testChartfile)); err == nil {
-		t.Errorf("Expected %s to fail.", testTamperedSigBlock)
-	}
+	_, err = signer.Verify(archiveData, tamperedSigData, filepath.Base(testChartfile))
+	require.Errorf(t, err, "Expected %s to fail.", testTamperedSigBlock)
 
-	switch err.(type) {
-	case pgperrors.SignatureError:
-		t.Logf("Tampered sig block error: %s (%T)", err, err)
-	default:
-		t.Errorf("Expected invalid signature error, got %q (%T)", err, err)
+	var sErr pgperrors.SignatureError
+	if assert.ErrorAs(t, err, &sErr, "Expected invalid signature error") {
+		t.Logf("Tampered sig block error: %s (%T)", sErr, sErr)
 	}
+}
+
+// TestVerifyKeyboxKeyring mirrors TestVerify with the keyring loaded from a
+// GnuPG keybox instead of the legacy binary format.
+func TestVerifyKeyboxKeyring(t *testing.T) {
+	signer, err := NewFromKeyring(testKeybox, "")
+	require.NoError(t, err)
+
+	archiveData, err := os.ReadFile(testChartfile)
+	require.NoError(t, err)
+
+	sigData, err := os.ReadFile(testSigBlock)
+	require.NoError(t, err)
+
+	ver, err := signer.Verify(archiveData, sigData, filepath.Base(testChartfile))
+	require.NoError(t, err)
+	require.NotNil(t, ver.SignedBy)
+	_, ok := ver.SignedBy.Identities[testKeyName]
+	assert.True(t, ok, "expected chart to verify as signed by %q", testKeyName)
+
+	tamperedSigData, err := os.ReadFile(testTamperedSigBlock)
+	require.NoError(t, err)
+
+	_, err = signer.Verify(archiveData, tamperedSigData, filepath.Base(testChartfile))
+	assert.Error(t, err, "expected tampered signature to fail against keybox keyring")
 }
 
 // readSumFile reads a file containing a sum generated by the UNIX shasum tool.

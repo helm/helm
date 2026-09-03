@@ -38,7 +38,7 @@ func TestDataPath(t *testing.T) {
 
 	t.Setenv(xdg.DataHomeEnvVar, "/tmp")
 
-	expected = filepath.Join("/tmp", appName, testFile)
+	expected = filepath.FromSlash("/tmp/" + appName + "/" + testFile)
 
 	assert.Equal(t, expected, lazy.dataPath(testFile))
 }
@@ -50,7 +50,7 @@ func TestConfigPath(t *testing.T) {
 
 	t.Setenv(xdg.ConfigHomeEnvVar, "/tmp")
 
-	expected = filepath.Join("/tmp", appName, testFile)
+	expected = filepath.FromSlash("/tmp/" + appName + "/" + testFile)
 
 	assert.Equal(t, expected, lazy.configPath(testFile))
 }
@@ -62,7 +62,7 @@ func TestCachePath(t *testing.T) {
 
 	t.Setenv(xdg.CacheHomeEnvVar, "/tmp")
 
-	expected = filepath.Join("/tmp", appName, testFile)
+	expected = filepath.FromSlash("/tmp/" + appName + "/" + testFile)
 
 	assert.Equal(t, expected, lazy.cachePath(testFile))
 }

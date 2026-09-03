@@ -136,15 +136,16 @@ func Update(i Installer) error {
 
 // NewForSource determines the correct Installer for the given source.
 func NewForSource(source, version string) (installer Installer, err error) {
-	if strings.HasPrefix(source, registry.OCIScheme+"://") {
+	switch {
+	case strings.HasPrefix(source, registry.OCIScheme+"://"):
 		// Source is an OCI registry reference
 		installer, err = NewOCIInstaller(source)
-	} else if isLocalReference(source) {
+	case isLocalReference(source):
 		// Source is a local directory
 		installer, err = NewLocalInstaller(source)
-	} else if isRemoteHTTPArchive(source) {
+	case isRemoteHTTPArchive(source):
 		installer, err = NewHTTPInstaller(source)
-	} else {
+	default:
 		installer, err = NewVCSInstaller(source, version)
 	}
 
@@ -152,7 +153,7 @@ func NewForSource(source, version string) (installer Installer, err error) {
 		return installer, fmt.Errorf("cannot get information about plugin source %q (if it's a local directory, does it exist?), last error was: %w", source, err)
 	}
 
-	return
+	return installer, err
 }
 
 // FindSource determines the correct Installer for the given source.

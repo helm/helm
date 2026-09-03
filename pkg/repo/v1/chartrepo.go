@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repo // import "helm.sh/helm/v4/pkg/repo/v1"
+package repo
 
 import (
 	"bytes"
@@ -104,14 +104,15 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	}
 
 	// Create the chart list file in the cache directory
-	var charts strings.Builder
+	var charts bytes.Buffer
 	for name := range indexFile.Entries {
-		fmt.Fprintln(&charts, name)
+		charts.WriteString(name)
+		charts.WriteByte('\n') // Terminate each entry with a newline
 	}
 	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(chartsFile), 0o755)
 
-	fileutil.AtomicWriteFile(chartsFile, bytes.NewReader([]byte(charts.String())), 0o644)
+	fileutil.AtomicWriteFile(chartsFile, &charts, 0o644)
 
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
@@ -172,7 +173,7 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) FindChartInRepoURLOpt
 
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
-func FindChartInRepoURL(repoURL string, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
+func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
 	opts := findChartInRepoURLOptions{}
 	for _, option := range options {
 		option(&opts)

@@ -59,6 +59,7 @@ func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 	is.Nil(res)
 	is.NoError(err)
 }
+
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -121,7 +122,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	unAction.cfg.KubeClient = failer
 	resi, err := unAction.Run(rel.Name)
 	req.Error(err)
-	is.Contains(err.Error(), "U timed out")
+	req.ErrorContains(err, "U timed out")
 	res, err := releaserToV1Release(resi.Release)
 	req.NoError(err)
 	is.Equal(common.StatusUninstalled, res.Info.Status)
@@ -163,7 +164,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	unAction.cfg.KubeClient = failer
 	_, err := unAction.Run(rel.Name)
 	require.Error(t, err)
-	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+	is.ErrorContains(err, "failed to delete release: come-fail-away")
 }
 
 func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
