@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -140,4 +141,29 @@ func copyFile(dst, src string) error {
 func TestRepoIndexFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo index", true)
 	checkFileCompletion(t, "repo index mydir", false)
+}
+
+func TestRepoIndexCmdMergeWriteError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permissions are not enforced on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions")
+	}
+
+	dir := t.TempDir()
+	require.NoError(t, linkOrCopy("testdata/testcharts/compressedchart-0.1.0.tgz", filepath.Join(dir, "compressedchart-0.1.0.tgz")))
+
+	// The merge target does not exist and its directory is read-only, so
+	// creating it must fail and the error must be reported.
+	roDir := filepath.Join(t.TempDir(), "ro")
+	require.NoError(t, os.Mkdir(roDir, 0o500))
+	mergeTo := filepath.Join(roDir, "index.yaml")
+
+	buf := bytes.NewBuffer(nil)
+	c := newRepoIndexCmd(buf)
+	require.NoError(t, c.ParseFlags([]string{"--merge", mergeTo}))
+
+	err := c.RunE(c, []string{dir})
+	require.Error(t, err, "expected an error when the missing merge target cannot be written")
 }

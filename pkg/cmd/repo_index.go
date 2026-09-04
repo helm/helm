@@ -101,7 +101,9 @@ func index(dir, url, mergeTo string, json bool) error {
 		var i2 *repo.IndexFile
 		if _, err := os.Stat(mergeTo); errors.Is(err, fs.ErrNotExist) {
 			i2 = repo.NewIndexFile()
-			writeIndexFile(i2, mergeTo, json)
+			if err := writeIndexFile(i2, mergeTo, json); err != nil {
+				return fmt.Errorf("merge failed: %w", err)
+			}
 		} else {
 			i2, err = repo.LoadIndexFile(mergeTo)
 			if err != nil {
