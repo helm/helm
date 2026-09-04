@@ -170,8 +170,6 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
 	fs.StringVar(&s.ColorMode, "color", s.ColorMode, "use colored output (never, auto, always)")
 	fs.StringVar(&s.ColorMode, "colour", s.ColorMode, "use colored output (never, auto, always)")
-
-	fs.MarkHidden("context")
 }
 
 func envOr(name, def string) string {
