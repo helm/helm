@@ -95,7 +95,11 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 		StatusReaders: append(w.readers, jobSR, podSR, genericSR),
 	}
 	sw.StatusReader = sr
-	return w.wait(ctx, resourceList, sw)
+	// Hook resources may legitimately disappear while Helm is waiting for them.
+	// A Job hook with .spec.ttlSecondsAfterFinished is removed by the TTL
+	// controller as soon as it completes, so a hook that is gone is treated as
+	// done rather than as a resource that never became ready.
+	return w.waitFor(ctx, resourceList, sw, true)
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
@@ -154,7 +158,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.Logger()))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, false, w.Logger()))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -180,6 +184,13 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 }
 
 func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
+	return w.waitFor(ctx, resourceList, sw, false)
+}
+
+// waitFor waits until every resource reaches the current status. When
+// deletedIsDone is set, a resource that is not found is considered done
+// instead of blocking until the timeout expires.
+func (w *statusWaiter) waitFor(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher, deletedIsDone bool) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resources := []object.ObjMetadata{}
@@ -198,7 +209,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, w.Logger()))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, deletedIsDone, w.Logger()))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -209,6 +220,9 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	for _, id := range resources {
 		rs := statusCollector.ResourceStatuses[id]
 		if rs.Status == status.CurrentStatus {
+			continue
+		}
+		if deletedIsDone && rs.Status == status.NotFoundStatus {
 			continue
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
@@ -237,7 +251,7 @@ func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Con
 	return watchtools.ContextWithOptionalTimeout(ctx, timeout)
 }
 
-func statusObserver(cancel context.CancelFunc, desired status.Status, logger *slog.Logger) collector.ObserverFunc {
+func statusObserver(cancel context.CancelFunc, desired status.Status, deletedIsDone bool, logger *slog.Logger) collector.ObserverFunc {
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
@@ -253,6 +267,12 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
 			// that has already failed, as intervention is required to resolve the failure.
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
+				continue
+			}
+			// A hook that is gone has finished its job: the TTL controller
+			// removes completed Jobs that set .spec.ttlSecondsAfterFinished, and
+			// the legacy waiter treated a delete event as the end of the wait.
+			if deletedIsDone && rs.Status == status.NotFoundStatus {
 				continue
 			}
 			rss = append(rss, rs)
