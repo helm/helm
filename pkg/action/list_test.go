@@ -179,6 +179,15 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	is.Len(list, 2)
 }
 
+func TestList_NegativeOffset(t *testing.T) {
+	req := require.New(t)
+	lister := newListFixture(t)
+	lister.Offset = -1
+	makeMeSomeReleases(t, lister.cfg.Releases)
+	_, err := lister.Run()
+	req.Error(err)
+}
+
 func TestList_StateMask(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
