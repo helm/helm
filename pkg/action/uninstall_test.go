@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release/common"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
@@ -165,6 +166,26 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	_, err := unAction.Run(rel.Name)
 	require.Error(t, err)
 	is.ErrorContains(err, "failed to delete release: come-fail-away")
+}
+
+func TestUninstallRelease_PreDeleteHookFailureKeepsReleaseDeployed(t *testing.T) {
+	unAction := uninstallAction(t)
+	rel := releaseStub()
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
+
+	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.CreateError = errors.New("pre-delete hook failed")
+
+	res, err := unAction.Run(rel.Name)
+	require.ErrorContains(t, err, "pre-delete hook failed")
+	require.NotNil(t, res)
+
+	stored, err := unAction.cfg.Releases.Get(rel.Name, rel.Version)
+	require.NoError(t, err)
+	storedRelease, err := releaserToV1Release(stored)
+	require.NoError(t, err)
+	assert.Equal(t, common.StatusDeployed, storedRelease.Info.Status)
+	assert.Equal(t, release.HookPhaseFailed, storedRelease.Hooks[0].LastRun.Phase)
 }
 
 func TestUninstallRun_UnreachableKubeClient(t *testing.T) {

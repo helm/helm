@@ -193,14 +193,15 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 	}
 
 	u.cfg.Logger().Debug("uninstall: deleting release", "name", name)
-	rel.Info.Status = common.StatusUninstalling
-	rel.Info.Deleted = time.Now()
-	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &releasei.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
 		serverSideApply := true
 		if err := u.cfg.execHook(rel, release.HookPreDelete, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
+			// Persist the failed hook result without hiding the release from the
+			// deployed release list. This leaves both retrying the uninstall and
+			// upgrading the release available to the user.
+			u.cfg.recordRelease(rel)
 			return res, err
 		}
 	} else {
@@ -209,6 +210,9 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
+	rel.Info.Status = common.StatusUninstalling
+	rel.Info.Deleted = time.Now()
+	rel.Info.Description = "Deletion in progress (or silently failed)"
 	if err := u.cfg.Releases.Update(rel); err != nil {
 		u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
