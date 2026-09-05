@@ -447,9 +447,16 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 			return nil, err
 		}
 
+		// The namespace is not part of the release, it is only a precondition for
+		// installing into it, and --create-namespace is documented as creating it
+		// only when it is not present. A client-side create is used so that an
+		// existing namespace reports AlreadyExists and is left untouched. A
+		// server-side apply would instead make Helm a field manager of a
+		// namespace it does not own and drop labels and annotations set by
+		// whoever created it.
 		if _, err := i.cfg.KubeClient.Create(
 			resourceList,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
+			kube.ClientCreateOptionServerSideApply(false, false)); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
