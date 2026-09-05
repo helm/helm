@@ -796,33 +796,54 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	repository.PlainHTTP = c.plainHTTP
 	repository.Client = c.authorizer
 
-	var tagVersions []*semver.Version
-	err = repository.Tags(ctx, "", func(tags []string) error {
-		for _, tag := range tags {
-			// Change underscore (_) back to plus (+) for Helm
-			// See https://github.com/helm/helm/issues/10166
-			tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
-			if err == nil {
-				tagVersions = append(tagVersions, tagVersion)
-			}
-		}
-
+	var tags []string
+	err = repository.Tags(ctx, "", func(repoTags []string) error {
+		tags = sortSemverTags(repoTags)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Sort the collection
-	sort.Sort(sort.Reverse(semver.Collection(tagVersions)))
+	return tags, nil
+}
 
-	tags := make([]string, len(tagVersions))
-
-	for iTv, tv := range tagVersions {
-		tags[iTv] = tv.String()
+// sortSemverTags sorts the given tags by semantic version precedence (highest
+// first) and returns them preserving the original tag strings. The original
+// strings are kept because Helm's underscore convention (#10166) means a tag
+// like 1.1.17_meta is stored in the registry verbatim; normalizing it back to
+// 1.1.17+meta would produce a reference that does not exist in the registry.
+func sortSemverTags(tags []string) []string {
+	type parsedTag struct {
+		tag string
+		v   *semver.Version
 	}
 
-	return tags, nil
+	var tagVersions []parsedTag
+	for _, tag := range tags {
+		// Change underscore (_) back to plus (+) for Helm
+		// See https://github.com/helm/helm/issues/10166
+		tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
+		if err == nil {
+			tagVersions = append(tagVersions, parsedTag{tag: tag, v: tagVersion})
+		} else {
+			slog.Debug("Skipping tag that is not a valid semantic version", "tag", tag, "error", err)
+		}
+	}
+
+	// Sort the collection by semantic version precedence (highest first),
+	// while preserving the original tag string so it remains a valid OCI reference.
+	sort.Slice(tagVersions, func(i, j int) bool {
+		return tagVersions[i].v.GreaterThan(tagVersions[j].v)
+	})
+
+	tagsOut := make([]string, len(tagVersions))
+
+	for iTv, tv := range tagVersions {
+		tagsOut[iTv] = tv.tag
+	}
+
+	return tagsOut
 }
 
 // Resolve a reference to a descriptor.
