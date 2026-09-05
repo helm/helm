@@ -135,6 +135,9 @@ type Upgrade struct {
 	EnableDNS bool
 	// TakeOwnership will skip the check for helm annotations and adopt all existing resources.
 	TakeOwnership bool
+	// FieldValidationDirective, when non-empty, overrides the Kubernetes client's
+	// default field validation directive for update operations.
+	FieldValidationDirective kube.FieldValidationDirective
 }
 
 type resultMessage struct {
@@ -466,12 +469,19 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 
 	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
+	updateOpts := []kube.ClientUpdateOption{
+		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
+		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager),
+	}
+
+	if u.FieldValidationDirective != "" {
+		updateOpts = append(updateOpts, kube.ClientUpdateOptionFieldValidationDirective(u.FieldValidationDirective))
+	}
 	results, err := u.cfg.KubeClient.Update(
 		current,
 		target,
-		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
-		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
-		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
+		updateOpts...)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)

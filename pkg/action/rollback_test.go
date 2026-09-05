@@ -60,6 +60,48 @@ func TestRollbackRun_UnreachableKubeClient(t *testing.T) {
 	assert.Error(t, client.Run(""))
 }
 
+func TestRollbackFieldValidationDirectiveOptionPassed(t *testing.T) {
+	tests := []struct {
+		name      string
+		directive kube.FieldValidationDirective
+		wantOpts  int
+	}{
+		{name: "empty directive", wantOpts: 4},
+		{name: "warn directive", directive: kube.FieldValidationDirectiveWarn, wantOpts: 5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := actionConfigFixture(t)
+
+			rel1 := releaseStub()
+			rel1.Name = "field-validation-rollback"
+			rel1.Version = 1
+			rel1.Info.Status = "superseded"
+			rel1.ApplyMethod = "csa"
+			require.NoError(t, config.Releases.Create(rel1))
+
+			rel2 := releaseStub()
+			rel2.Name = rel1.Name
+			rel2.Version = 2
+			rel2.Info.Status = "deployed"
+			rel2.ApplyMethod = "csa"
+			require.NoError(t, config.Releases.Create(rel2))
+
+			client := NewRollback(config)
+			client.Version = 1
+			client.ServerSideApply = "auto"
+			client.FieldValidationDirective = tt.directive
+
+			require.NoError(t, client.Run(rel1.Name))
+
+			failer := config.KubeClient.(*kubefake.FailingKubeClient)
+			assert.Len(t, failer.RecordedUpdateOptions, tt.wantOpts,
+				"unexpected update option count for directive %q", tt.directive)
+		})
+	}
+}
+
 func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
