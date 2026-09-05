@@ -426,30 +426,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 
 	if i.CreateNamespace {
-		ns := &v1.Namespace{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "Namespace",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: i.Namespace,
-				Labels: map[string]string{
-					"name": i.Namespace,
-				},
-			},
-		}
-		buf, err := yaml.Marshal(ns)
-		if err != nil {
-			return nil, err
-		}
-		resourceList, err := i.cfg.KubeClient.Build(bytes.NewBuffer(buf), true)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, err := i.cfg.KubeClient.Create(
-			resourceList,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
+		if err := i.createReleaseNamespace(); err != nil {
 			return nil, err
 		}
 	}
@@ -576,6 +553,50 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted, resources ku
 	}
 
 	return rel, nil
+}
+
+func (i *Install) createReleaseNamespace() error {
+	ns := &v1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Namespace",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: i.Namespace,
+			Labels: map[string]string{
+				"name": i.Namespace,
+			},
+		},
+	}
+	buf, err := yaml.Marshal(ns)
+	if err != nil {
+		return err
+	}
+	resourceList, err := i.cfg.KubeClient.Build(bytes.NewBuffer(buf), true)
+	if err != nil {
+		return err
+	}
+
+	err = resourceList.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		_, err = resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
+		return err
+	})
+	if err == nil {
+		return nil
+	}
+	if !apierrors.IsNotFound(err) && !apierrors.IsForbidden(err) {
+		return err
+	}
+
+	if _, err := i.cfg.KubeClient.Create(
+		resourceList,
+		kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }
 
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
