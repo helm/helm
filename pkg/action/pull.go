@@ -73,6 +73,8 @@ func (p *Pull) SetRegistryClient(client *registry.Client) {
 func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
 
+	p.loadMissingCredentials()
+
 	c := downloader.ChartDownloader{
 		Out:     &out,
 		Keyring: p.Keyring,
@@ -172,4 +174,20 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		return out.String(), chartutil.ExpandFile(ud, saved)
 	}
 	return out.String(), nil
+}
+
+// loadMissingCredentials checks if the repository credentials are already stored in helm's repository config, if the
+// repository URL is set via CLI (--repo), but neither a username nor password are set for a pull request.
+func (p *Pull) loadMissingCredentials() {
+	if p.RepoURL != "" && p.Username == "" && p.Password == "" {
+		f, err := repo.LoadFile(p.Settings.RepositoryConfig)
+		if err != nil {
+			return
+		}
+		if repoEntry := f.GetByURL(p.RepoURL); repoEntry != nil {
+			p.cfg.Logger().Debug("Using credentials from repository config")
+			p.Username = repoEntry.Username
+			p.Password = repoEntry.Password
+		}
+	}
 }
