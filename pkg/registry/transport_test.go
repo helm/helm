@@ -22,6 +22,9 @@ import (
 	"io"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var errMockRead = errors.New("mock read error")
@@ -127,9 +130,7 @@ func Test_isPrintableContentType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isPrintableContentType(tt.contentType); got != tt.want {
-				t.Errorf("isPrintableContentType() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, isPrintableContentType(tt.contentType))
 		})
 	}
 }
@@ -292,21 +293,13 @@ func Test_logResponseBody(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := logResponseBody(tt.resp); got != tt.want {
-				t.Errorf("logResponseBody() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, logResponseBody(tt.resp))
 			// validate the response body
 			if tt.resp.Body != nil {
 				readBytes, err := io.ReadAll(tt.resp.Body)
-				if err != nil {
-					t.Errorf("failed to read body after logResponseBody(), err= %v", err)
-				}
-				if !bytes.Equal(readBytes, tt.wantData) {
-					t.Errorf("resp.Body after logResponseBody() = %v, want %v", readBytes, tt.wantData)
-				}
-				if closeErr := tt.resp.Body.Close(); closeErr != nil {
-					t.Errorf("failed to close body after logResponseBody(), err= %v", closeErr)
-				}
+				require.NoError(t, err, "failed to read body after logResponseBody()")
+				assert.True(t, bytes.Equal(tt.wantData, readBytes), "resp.Body after logResponseBody()")
+				assert.NoError(t, tt.resp.Body.Close(), "failed to close body after logResponseBody()")
 			}
 		})
 	}
@@ -331,12 +324,8 @@ func Test_logResponseBody_error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := logResponseBody(tt.resp); got != tt.want {
-				t.Errorf("logResponseBody() = %v, want %v", got, tt.want)
-			}
-			if closeErr := tt.resp.Body.Close(); closeErr != nil {
-				t.Errorf("failed to close body after logResponseBody(), err= %v", closeErr)
-			}
+			assert.Equal(t, tt.want, logResponseBody(tt.resp))
+			assert.NoError(t, tt.resp.Body.Close(), "failed to close body after logResponseBody()")
 		})
 	}
 }
@@ -391,9 +380,7 @@ func Test_containsCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := containsCredentials(tt.body); got != tt.want {
-				t.Errorf("containsCredentials() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, containsCredentials(tt.body))
 		})
 	}
 }

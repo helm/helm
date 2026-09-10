@@ -1,7 +1,7 @@
 # Contributing Guidelines
 
 The Helm project accepts contributions via GitHub pull requests. This document outlines the process
-to help get your contribution accepted.
+to help you get your contribution accepted.
 
 ## Reporting a Security Issue
 
@@ -110,9 +110,9 @@ Whether you are a user or contributor, official support channels include:
   - User: [#helm-users](https://kubernetes.slack.com/messages/C0NH30761/details/)
   - Contributor: [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG/)
 
-Before opening a new issue or submitting a new pull request, it's helpful to search the project -
-it's likely that another user has already reported the issue you're facing, or it's a known issue
-that we're already aware of. It is also worth asking on the Slack channels.
+Before opening a new issue or submitting a new pull request, it helps to search the project first.
+Another user may have already reported the issue you are facing, or it may already be a known issue.
+It is also worth asking on the Slack channels.
 
 ## Milestones
 
@@ -137,7 +137,7 @@ are removed or substantially modified (unless we need to fix a security issue).
 
 We also remain committed to not changing publicly accessible Go library definitions inside of the `pkg/` directory of our source code in a non-backwards-compatible way.
 
-For more details on Helm’s minor and patch release backwards-compatibility rules, please read [HIP-0004](https://github.com/helm/community/blob/main/hips/hip-0004.md)
+For more details on Helm’s minor and patch release backwards-compatibility rules, please read [HIP-0004](https://github.com/helm/community/blob/main/hips/hip-0004.md).
 
 For a quick summary of our backward compatibility guidelines for releases between 3.0 and 4.0:
 

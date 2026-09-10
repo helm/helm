@@ -19,10 +19,9 @@ package tlsutil
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"os"
-
-	"errors"
 )
 
 type TLSConfigOptions struct {

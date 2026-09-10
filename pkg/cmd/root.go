@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd // import "helm.sh/helm/v4/pkg/cmd"
+package cmd
 
 import (
 	"context"
@@ -84,6 +84,7 @@ Environment variables:
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
 | $HELM_COLOR                        | set color output mode. Allowed values: never, always, auto (default: never)                                |
 | $NO_COLOR                          | set to any non-empty value to disable all colored output (overrides $HELM_COLOR)                           |
+| $SOURCE_DATE_EPOCH                 | set a Unix timestamp for reproducible chart archives                                                       |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
@@ -228,7 +229,6 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-		if len(settings.KubeConfig) > 0 {
+		if settings.KubeConfig != "" {
 			loadingRules = &clientcmd.ClientConfigLoadingRules{ExplicitPath: settings.KubeConfig}
 		}
 		if config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
@@ -252,12 +252,11 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	registryClient, err := newDefaultRegistryClient(false, "", "")
+	registryClient, err := newDefaultRegistryClient(out, false, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -401,27 +400,27 @@ func checkForExpiredRepos(repofile string) {
 }
 
 func newRegistryClient(
-	certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool, username, password string,
+	out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool, username, password string,
 ) (*registry.Client, error) {
 	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSVerify {
-		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSVerify, username, password)
+		registryClient, err := newRegistryClientWithTLS(out, certFile, keyFile, caFile, insecureSkipTLSVerify, username, password)
 		if err != nil {
 			return nil, err
 		}
 		return registryClient, nil
 	}
-	registryClient, err := newDefaultRegistryClient(plainHTTP, username, password)
+	registryClient, err := newDefaultRegistryClient(out, plainHTTP, username, password)
 	if err != nil {
 		return nil, err
 	}
 	return registryClient, nil
 }
 
-func newDefaultRegistryClient(plainHTTP bool, username, password string) (*registry.Client, error) {
+func newDefaultRegistryClient(out io.Writer, plainHTTP bool, username, password string) (*registry.Client, error) {
 	opts := []registry.ClientOption{
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptEnableCache(true),
-		registry.ClientOptWriter(os.Stderr),
+		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 		registry.ClientOptBasicAuth(username, password),
 	}
@@ -438,14 +437,13 @@ func newDefaultRegistryClient(plainHTTP bool, username, password string) (*regis
 }
 
 func newRegistryClientWithTLS(
-	certFile, keyFile, caFile string, insecureSkipTLSVerify bool, username, password string,
+	out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSVerify bool, username, password string,
 ) (*registry.Client, error) {
 	tlsConf, err := tlsutil.NewTLSConfig(
 		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
 		tlsutil.WithCAFile(caFile),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 	}
@@ -454,7 +452,7 @@ func newRegistryClientWithTLS(
 	registryClient, err := registry.NewClient(
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptEnableCache(true),
-		registry.ClientOptWriter(os.Stderr),
+		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 		registry.ClientOptHTTPClient(&http.Client{
 			Transport: &http.Transport{

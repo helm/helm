@@ -107,7 +107,6 @@ func (r *ReleaseTesting) Run(name string) (ri.Releaser, ExecuteShutdownFunc, err
 
 	serverSideApply := rel.ApplyMethod == string(release.ApplyMethodServerSideApply)
 	shutdown, err := r.cfg.execHookWithDelayedShutdown(rel, release.HookTest, kube.StatusWatcherStrategy, r.WaitOptions, r.Timeout, serverSideApply)
-
 	if err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(reli)
@@ -136,6 +135,10 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 					continue
 				}
 				if len(r.Filters[IncludeNameFilter]) > 0 && !slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
+					continue
+				}
+
+				if h.Kind != "Pod" {
 					continue
 				}
 				if err := r.getContainerLogs(out, client, h.Name); err != nil {

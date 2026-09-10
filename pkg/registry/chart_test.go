@@ -14,14 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v4/pkg/registry"
+package registry
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
@@ -147,10 +148,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 		result := generateChartOCIAnnotations(tt.chart, nowString)
-
-		if !reflect.DeepEqual(tt.expect, result) {
-			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
-		}
+		assert.Equal(t, tt.expect, result, tt.name)
 	}
 }
 
@@ -218,10 +216,7 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 		result := generateOCIAnnotations(tt.chart, nowString)
-
-		if !reflect.DeepEqual(tt.expect, result) {
-			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
-		}
+		assert.Equal(t, tt.expect, result, tt.name)
 	}
 }
 
@@ -237,29 +232,21 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 	result := generateOCIAnnotations(testChart, nowTimeString)
 
 	// Check that created annotation exists
-	if _, ok := result[ocispec.AnnotationCreated]; !ok {
-		t.Errorf("%s annotation not created", ocispec.AnnotationCreated)
-	}
+	assert.Contains(t, result, ocispec.AnnotationCreated, "%s annotation not created", ocispec.AnnotationCreated)
 
 	// Verify value of created artifact in RFC3339 format
-	if _, err := time.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
-		t.Errorf("%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
-	}
+	_, err := time.Parse(time.RFC3339, result[ocispec.AnnotationCreated])
+	require.NoError(t, err, "%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
 
 	// Verify default creation time set
 	result = generateOCIAnnotations(testChart, "")
 
 	// Check that created annotation exists
-	if _, ok := result[ocispec.AnnotationCreated]; !ok {
-		t.Errorf("%s annotation not created", ocispec.AnnotationCreated)
-	}
+	require.Contains(t, result, ocispec.AnnotationCreated, "%s annotation not created", ocispec.AnnotationCreated)
 
-	if createdTimeAnnotation, err := time.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
-		t.Errorf("%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
+	createdTimeAnnotation, err := time.Parse(time.RFC3339, result[ocispec.AnnotationCreated])
+	require.NoError(t, err, "%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
 
-		// Verify creation annotation after time test began
-		if !nowTime.Before(createdTimeAnnotation) {
-			t.Errorf("%s annotation with value '%s' not configured properly. Annotation value is not after %s", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated], nowTimeString)
-		}
-	}
+	// Verify creation annotation after (or equals) time test began
+	assert.GreaterOrEqual(t, nowTime, createdTimeAnnotation, "%s annotation with value '%s' not configured properly. Annotation value is not after %s", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated], nowTimeString)
 }

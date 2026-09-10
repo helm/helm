@@ -3,7 +3,6 @@
 .DS_Store
 .coverage/
 .idea
-.claude
 .vimrc
 .vscode/
 .devcontainer/
@@ -11,7 +10,14 @@ _dist/
 _dist_versions/
 bin/
 vendor/
+.pre-commit-config.yaml
+
 # Ignores charts pulled for dependency build tests
 cmd/helm/testdata/testcharts/issue-7233/charts/*
 pkg/cmd/testdata/testcharts/issue-7233/charts/*
-.pre-commit-config.yaml
+
+# AI Vendor specific paths
+CLAUDE.md
+.claude/
+.codex/
+.cursor/

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util // import "helm.sh/helm/v4/internal/release/v2/util"
+package util
 
 import (
 	"fmt"
@@ -35,16 +35,19 @@ type SimpleHead struct {
 }
 
 // sep matches YAML document separators. A separator is `---` at the start of
-// a line (or start of the stream), optionally followed by trailing horizontal
-// whitespace, and then a newline or end of stream.
+// a line (or start of the stream), followed by horizontal whitespace or by a
+// newline/end of stream. The whitespace branch allows same-line comments or
+// content while leaving their suffix in the following manifest. The multiline
+// anchor leaves the preceding document's trailing whitespace and newlines
+// intact.
 //
 // This is intentionally stricter than the Chart v1/v2 regex in
 // pkg/release/v1/util/manifest.go. The v1/v2 version tolerates
 // `---<non-whitespace>` (e.g. `---apiVersion: v1`) by treating it as a
-// separator glued to content — a silent correction for Go template whitespace
+// separator glued to content, a silent correction for Go template whitespace
 // trimming (`{{-`) eating the newline after `---`. Chart v3 does not carry
 // that workaround forward; see the function comment below.
-var sep = regexp.MustCompile("(?:^|\\s*\n)---[ \\t]*(?:\\r?\\n|$)")
+var sep = regexp.MustCompile(`(?m)^---(?:[ \t]+|\r?$)`)
 
 // SplitManifests takes a manifest string and returns a map containing individual manifests.
 //
@@ -58,10 +61,10 @@ var sep = regexp.MustCompile("(?:^|\\s*\n)---[ \\t]*(?:\\r?\\n|$)")
 // renders `---apiVersion: v1\n...` because `{{-` strips the newline after
 // `---`. In Chart v1/v2, SplitManifests detects this and splits the input as
 // if the newline were still there; in Chart v3, the glued `---` is left as
-// part of the document body and downstream YAML parsing will surface the
-// problem. Chart authors should drop the dash (`{{ include ... }}`) or omit
-// the explicit `---` separator — Helm inserts one between templates on its
-// own. See helm/helm#32036.
+// part of the document body rather than being silently repaired. Downstream
+// validation can then reject the malformed manifest. Chart authors should
+// drop the dash (`{{ include ... }}`) or omit the explicit `---` separator;
+// Helm inserts one between templates on its own. See helm/helm#32036.
 func SplitManifests(bigFile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. The file name is just a place holder, but should be
@@ -80,7 +83,7 @@ func SplitManifests(bigFile string) map[string]string {
 
 		d = strings.TrimLeftFunc(d, unicode.IsSpace)
 		res[fmt.Sprintf(tpl, count)] = d
-		count = count + 1
+		count++
 	}
 	return res
 }

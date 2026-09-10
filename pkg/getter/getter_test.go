@@ -19,6 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/cli"
 )
 
@@ -30,9 +33,7 @@ func TestProvider(t *testing.T) {
 		func(_ ...Option) (Getter, error) { return nil, nil },
 	}
 
-	if !p.Provides("three") {
-		t.Error("Expected provider to provide three")
-	}
+	assert.True(t, p.Provides("three"), "Expected provider to provide three")
 }
 
 func TestProviders(t *testing.T) {
@@ -41,34 +42,25 @@ func TestProviders(t *testing.T) {
 		{[]string{"two", "four"}, func(_ ...Option) (Getter, error) { return nil, nil }},
 	}
 
-	if _, err := ps.ByScheme("one"); err != nil {
-		t.Error(err)
-	}
-	if _, err := ps.ByScheme("four"); err != nil {
-		t.Error(err)
-	}
+	_, err := ps.ByScheme("one")
+	require.NoError(t, err)
+	_, err = ps.ByScheme("four")
+	require.NoError(t, err)
 
-	if _, err := ps.ByScheme("five"); err == nil {
-		t.Error("Did not expect handler for five")
-	}
+	_, err = ps.ByScheme("five")
+	assert.Error(t, err, "Did not expect handler for five")
 }
 
 func TestProvidersWithTimeout(t *testing.T) {
 	want := time.Hour
 	getters := Getters(WithTimeout(want))
 	getter, err := getters.ByScheme("http")
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	httpGetter := getter.(*HTTPGetter)
 	client, err := httpGetter.httpClient(httpGetter.opts)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	got := client.Timeout
-	if got != want {
-		t.Errorf("Expected %q, got %q", want, got)
-	}
+	assert.Equal(t, want, got, "Expected %q, got %q", want, got)
 }
 
 func TestAll(t *testing.T) {
@@ -76,13 +68,10 @@ func TestAll(t *testing.T) {
 	env.PluginsDirectory = pluginDir
 
 	all := All(env)
-	if len(all) != 4 {
-		t.Errorf("expected 4 providers (default plus three plugins), got %d", len(all))
-	}
+	assert.Len(t, all, 4, "expected 4 providers (default plus three plugins), got %d", len(all))
 
-	if _, err := all.ByScheme("test2"); err != nil {
-		t.Error(err)
-	}
+	_, err := all.ByScheme("test2")
+	assert.NoError(t, err)
 }
 
 func TestByScheme(t *testing.T) {
@@ -90,10 +79,8 @@ func TestByScheme(t *testing.T) {
 	env.PluginsDirectory = pluginDir
 
 	g := All(env)
-	if _, err := g.ByScheme("test"); err != nil {
-		t.Error(err)
-	}
-	if _, err := g.ByScheme("https"); err != nil {
-		t.Error(err)
-	}
+	_, err := g.ByScheme("test")
+	require.NoError(t, err)
+	_, err = g.ByScheme("https")
+	assert.NoError(t, err)
 }

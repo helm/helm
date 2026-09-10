@@ -30,13 +30,13 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]any, error)
+type lookupFunc = func(apiversion, resource, namespace, name string) (map[string]any, error)
 
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
 // If the resource does not exist, no error is raised.
 func NewLookupFunction(config *rest.Config) lookupFunc { //nolint:revive
-	return newLookupFunction(clientProviderFromConfig{config: config})
+	return newLookupFunction(context.Background(), clientProviderFromConfig{config: config})
 }
 
 type ClientProvider interface {
@@ -54,8 +54,8 @@ func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic
 	return getDynamicClientOnKind(apiVersion, kind, c.config)
 }
 
-func newLookupFunction(clientProvider ClientProvider) lookupFunc {
-	return func(apiversion string, kind string, namespace string, name string) (map[string]any, error) {
+func newLookupFunction(ctx context.Context, clientProvider ClientProvider) lookupFunc {
+	return func(apiversion, kind, namespace, name string) (map[string]any, error) {
 		var client dynamic.ResourceInterface
 		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
 		if err != nil {
@@ -68,11 +68,17 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 		}
 		if name != "" {
 			// this will return a single object
-			obj, err := client.Get(context.Background(), name, metav1.GetOptions{})
+			obj, err := client.Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					// Just return an empty interface when the object was not found.
 					// That way, users can use `if not (lookup ...)` in their templates.
+					slog.Debug("lookup: resource not found",
+						slog.String("apiVersion", apiversion),
+						slog.String("kind", kind),
+						slog.String("namespace", namespace),
+						slog.String("name", name),
+					)
 					return map[string]any{}, nil
 				}
 				return map[string]any{}, err
@@ -80,11 +86,16 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 			return obj.UnstructuredContent(), nil
 		}
 		// this will return a list
-		obj, err := client.List(context.Background(), metav1.ListOptions{})
+		obj, err := client.List(ctx, metav1.ListOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// Just return an empty interface when the object was not found.
 				// That way, users can use `if not (lookup ...)` in their templates.
+				slog.Debug("lookup: resource list not found",
+					slog.String("apiVersion", apiversion),
+					slog.String("kind", kind),
+					slog.String("namespace", namespace),
+				)
 				return map[string]any{}, nil
 			}
 			return map[string]any{}, err
@@ -94,7 +105,7 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 }
 
 // getDynamicClientOnKind returns a dynamic client on an Unstructured type. This client can be further namespaced.
-func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
+func getDynamicClientOnKind(apiversion, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIResourceForGVK(gvk, config)
 	if err != nil {

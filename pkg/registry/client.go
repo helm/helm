@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v4/pkg/registry"
+package registry
 
 import (
 	"context"
@@ -231,7 +231,7 @@ type (
 // Returns true if the host contains a path component (i.e., contains a '/').
 func warnIfHostHasPath(host string) bool {
 	if strings.Contains(host, "/") {
-		registryHost := strings.Split(host, "/")[0]
+		registryHost, _, _ := strings.Cut(host, "/")
 		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
 		return true
 	}
@@ -276,7 +276,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
-func LoginOptBasicAuth(username string, password string) LoginOption {
+func LoginOptBasicAuth(username, password string) LoginOption {
 	return func(o *loginOperation) {
 		o.client.username = username
 		o.client.password = password
@@ -303,8 +303,7 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 		case *http.Transport:
 			transport = t
 		case *LoggingTransport:
-			switch t := t.RoundTripper.(type) {
-			case *http.Transport:
+			if t, ok := t.RoundTripper.(*http.Transport); ok {
 				transport = t
 			}
 		}
@@ -323,6 +322,11 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 		transport.TLSClientConfig = &tls.Config{}
 	}
 
+	// Idle connections were established under the previous TLS configuration.
+	// Drop them so the settings being applied here take effect on the next
+	// request instead of being bypassed by a pooled connection.
+	transport.CloseIdleConnections()
+
 	return transport.TLSClientConfig, nil
 }
 
@@ -330,7 +334,6 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(o *loginOperation) {
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
-
 		if err != nil {
 			panic(err)
 		}
@@ -485,12 +488,11 @@ func (c *Client) processChartPull(genericResult *GenericPullResult, operation *p
 
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
-		if operation.ignoreMissingProv {
-			provMissing = true
-		} else {
+		if !operation.ignoreMissingProv {
 			return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
 				ProvLayerMediaType)
 		}
+		provMissing = true
 	}
 
 	// Build chart-specific result
@@ -717,6 +719,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	repository.PlainHTTP = c.plainHTTP
 	repository.Client = c.authorizer
 
+	ctx = withScopeHint(ctx, repository, auth.ActionPull, auth.ActionPush)
+
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
 		return nil, err
@@ -852,10 +856,8 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 	if version == "" {
 		// Use OCI URI tag as default
 		version = registryReference.Tag
-	} else {
-		if registryReference.Tag != "" && registryReference.Tag != version {
-			return "", nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
-		}
+	} else if registryReference.Tag != "" && registryReference.Tag != version {
+		return "", nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
 	}
 
 	if registryReference.Digest != "" {
@@ -911,7 +913,8 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 // tagManifest prepares and tags a manifest in memory storage
 func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
-	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
+	ociAnnotations map[string]string, parsedRef reference,
+) (ocispec.Descriptor, error) {
 	manifest := ocispec.Manifest{
 		Versioned:   specs.Versioned{SchemaVersion: 2},
 		Config:      configDescriptor,
@@ -926,4 +929,15 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 
 	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
 		manifestData, parsedRef.String())
+}
+
+// add actions when request a registry authentication token(jwt)
+// example1. when we want to pull 'testrepo/local-subchart' we can send below url, and 'pull' is the action
+// auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice
+// example2. when we want to push 'testrepo/local-subchart' we can send below url, and 'pull%2Cpush' are the actions
+// auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice
+// we can set the actions like below
+// example) ctx = withScopeHint(ctx, repository, auth.ActionPush, auth.ActionPull)
+func withScopeHint(ctx context.Context, repo *remote.Repository, actions ...string) context.Context {
+	return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
 }

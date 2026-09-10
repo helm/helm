@@ -19,6 +19,7 @@ package rules
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -134,7 +135,7 @@ func (t *templateLinter) Lint() {
 	}
 	var e engine.Engine
 	e.LintMode = true
-	renderedContentMap, err := e.Render(chart, valuesToRender)
+	renderedContentMap, err := e.RenderWithContext(context.Background(), chart, valuesToRender)
 
 	renderOk := t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 

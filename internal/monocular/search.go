@@ -17,6 +17,7 @@ limitations under the License.
 package monocular
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -98,7 +99,18 @@ type ChartVersion struct {
 }
 
 // Search performs a search against the monocular search API
+//
+// Deprecated: Use SearchWithContext instead.
+//
+//go:fix inline
 func (c *Client) Search(term string) ([]SearchResult, error) {
+	return c.SearchWithContext(context.Background(), term)
+}
+
+// SearchWithContext performs a search against the monocular search API
+//
+// TODO Helm v5: Rename this to Search (remove the current deprecated Search method) and 'go:fix inline' SearchWithContext method to call Search.
+func (c *Client) SearchWithContext(ctx context.Context, term string) ([]SearchResult, error) {
 	// Create the URL to the search endpoint
 	// Note, this is currently an internal API for the Hub. This should be
 	// formatted without showing how monocular operates.
@@ -113,7 +125,7 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 	p.RawQuery = "q=" + url.QueryEscape(term)
 
 	// Create request
-	req, err := http.NewRequest(http.MethodGet, p.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.String(), http.NoBody)
 	if err != nil {
 		return nil, err
 	}

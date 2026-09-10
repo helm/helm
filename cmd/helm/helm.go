@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main // import "helm.sh/helm/v4/cmd/helm"
+package main
 
 import (
 	"errors"
@@ -42,8 +42,7 @@ func main() {
 	}
 
 	if err := cmd.Execute(); err != nil {
-		var cerr helmcmd.CommandError
-		if errors.As(err, &cerr) {
+		if cerr, ok := errors.AsType[helmcmd.CommandError](err); ok {
 			os.Exit(cerr.ExitCode)
 		}
 		os.Exit(1)

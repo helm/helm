@@ -49,7 +49,7 @@ type PluginPullResult struct {
 }
 
 // PullPlugin downloads a plugin from an OCI registry using artifact type
-func (c *Client) PullPlugin(ref string, pluginName string, options ...PluginPullOption) (*PluginPullResult, error) {
+func (c *Client) PullPlugin(ref, pluginName string, options ...PluginPullOption) (*PluginPullResult, error) {
 	operation := &pluginPullOperation{
 		pluginName: pluginName,
 	}

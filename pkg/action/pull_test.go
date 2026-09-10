@@ -48,9 +48,7 @@ func TestPullSetRegistryClient(t *testing.T) {
 
 func TestPullRun_ChartNotFound(t *testing.T) {
 	srv, err := startLocalServerForTests(t, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	config := actionConfigFixture(t)
@@ -71,8 +69,8 @@ func startLocalServerForTests(t *testing.T, handler http.Handler) (*httptest.Ser
 			return nil, err
 		}
 		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			_, err = w.Write(fileBytes)
-			require.NoError(t, err)
+			_, err := w.Write(fileBytes)
+			assert.NoError(t, err)
 		})
 	}
 

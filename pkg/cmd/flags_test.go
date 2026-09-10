@@ -110,14 +110,11 @@ func TestPostRendererFlagSetOnce(t *testing.T) {
 		},
 	}
 	// Set the plugin name once
-	err := str.Set("postrenderer-v1")
-	require.NoError(t, err)
+	require.NoError(t, str.Set("postrenderer-v1"))
 
 	// Set the plugin name again to the same value is not ok
-	err = str.Set("postrenderer-v1")
-	require.Error(t, err)
+	require.Error(t, str.Set("postrenderer-v1"))
 
 	// Set the plugin name again to a different value is not ok
-	err = str.Set("cat")
-	require.Error(t, err)
+	require.Error(t, str.Set("cat"))
 }

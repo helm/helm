@@ -29,6 +29,7 @@ import (
 const completionDesc = `
 Generate autocompletion scripts for Helm for the specified shell.
 `
+
 const bashCompDesc = `
 Generate the autocompletion script for Helm for the bash shell.
 

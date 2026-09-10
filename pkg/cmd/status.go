@@ -236,7 +236,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	}
 
 	// Hide notes from output - option in install and upgrades
-	if !s.hideNotes && len(rel.Info.Notes) > 0 {
+	if !s.hideNotes && rel.Info.Notes != "" {
 		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(rel.Info.Notes))
 	}
 	return nil

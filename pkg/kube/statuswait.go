@@ -43,14 +43,15 @@ import (
 )
 
 type statusWaiter struct {
-	client             dynamic.Interface
-	restMapper         meta.RESTMapper
-	ctx                context.Context
-	watchUntilReadyCtx context.Context
-	waitCtx            context.Context
-	waitWithJobsCtx    context.Context
-	waitForDeleteCtx   context.Context
-	readers            []engine.StatusReader
+	client               dynamic.Interface
+	restMapper           meta.RESTMapper
+	ctx                  context.Context
+	watchUntilReadyCtx   context.Context
+	waitCtx              context.Context
+	waitWithJobsCtx      context.Context
+	waitForDeleteCtx     context.Context
+	readers              []engine.StatusReader
+	statusComputeWorkers int
 	logging.LogHolder
 }
 
@@ -82,6 +83,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
+	sw.StatusComputeWorkers = w.statusComputeWorkers
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
 	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks.
@@ -104,6 +106,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
+	sw.StatusComputeWorkers = w.statusComputeWorkers
 	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
 	return w.wait(ctx, resourceList, sw)
 }
@@ -116,6 +119,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
+	sw.StatusComputeWorkers = w.statusComputeWorkers
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
 	readers = append(readers, newCustomJobStatusReader)
@@ -167,15 +171,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
 	}
 	if err := ctx.Err(); err != nil {
-		// context.Canceled and other non-deadline errors always propagate: they signal an
-		// external interruption regardless of resource state.
-		// context.DeadlineExceeded is only added when there are resource-specific errors;
-		// if all resources are Unknown or NotFound the timeout is not itself a failure for
-		// a delete wait (e.g. resources deleted before the watch started stay Unknown in
-		// the fake client but are effectively gone).
-		if !errors.Is(err, context.DeadlineExceeded) || len(errs) > 0 {
-			errs = append(errs, err)
-		}
+		errs = append(errs, err)
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
@@ -188,11 +184,8 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	defer cancel()
 	resources := []object.ObjMetadata{}
 	for _, resource := range resourceList {
-		switch value := AsVersioned(resource).(type) {
-		case *appsv1.Deployment:
-			if value.Spec.Paused {
-				continue
-			}
+		if value, ok := AsVersioned(resource).(*appsv1.Deployment); ok && value.Spec.Paused {
+			continue
 		}
 		obj, err := object.RuntimeToObjMeta(resource.Object)
 		if err != nil {
@@ -248,7 +241,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
-		var unknownSkipped int
 		for _, rs := range statusCollector.ResourceStatuses {
 			if rs == nil {
 				continue
@@ -256,7 +248,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			// If a resource is already deleted before waiting has started, it will show as unknown.
 			// This check ensures we don't wait forever for a resource that is already deleted.
 			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
-				unknownSkipped++
 				continue
 			}
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
@@ -268,14 +259,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs.Status != desired {
 				nonDesiredResources = append(nonDesiredResources, rs)
 			}
-		}
-
-		// During informer initialization there is a brief window where existing resources
-		// appear as Unknown before their real status is delivered. If every resource was
-		// skipped as Unknown, we cannot yet distinguish "all deleted" from "not yet synced",
-		// so hold off on the early-cancel to avoid a spurious success or premature exit.
-		if unknownSkipped > 0 && len(rss) == 0 {
-			return
 		}
 
 		if aggregator.AggregateStatus(rss, desired) == desired {

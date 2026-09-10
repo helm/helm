@@ -65,11 +65,18 @@ func TestReleaseTestingGetPodLogs_FilterEvents(t *testing.T) {
 
 	hooks := []*release.Hook{
 		{
+			Kind:   "Pod",
 			Name:   "event-1",
 			Events: []release.HookEvent{release.HookTest},
 		},
 		{
+			Kind:   "Pod",
 			Name:   "event-2",
+			Events: []release.HookEvent{release.HookTest},
+		},
+		{
+			Kind:   "ConfigMap",
+			Name:   "event-3",
 			Events: []release.HookEvent{release.HookTest},
 		},
 	}
@@ -80,6 +87,25 @@ func TestReleaseTestingGetPodLogs_FilterEvents(t *testing.T) {
 	assert.Empty(t, out.String())
 }
 
+func TestReleaseTestingGetPodLogs_ExcludeFilter_SkipsPodHook(t *testing.T) {
+	config := actionConfigFixture(t)
+	require.NoError(t, config.Init(cli.New().RESTClientGetter(), "", os.Getenv("HELM_DRIVER")))
+	client := NewReleaseTesting(config)
+	client.Filters[ExcludeNameFilter] = []string{"excluded-pod"}
+
+	hooks := []*release.Hook{
+		{
+			Kind:   "Pod",
+			Name:   "excluded-pod",
+			Events: []release.HookEvent{release.HookTest},
+		},
+	}
+
+	out := &bytes.Buffer{}
+	require.NoError(t, client.GetPodLogs(out, &release.Release{Hooks: hooks}))
+	assert.Empty(t, out.String())
+}
+
 func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {
 	config := actionConfigFixture(t)
 	require.NoError(t, config.Init(cli.New().RESTClientGetter(), "", os.Getenv("HELM_DRIVER")))
@@ -87,6 +113,7 @@ func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {
 
 	hooks := []*release.Hook{
 		{
+			Kind:   "Pod",
 			Name:   "event-1",
 			Events: []release.HookEvent{release.HookTest},
 		},
@@ -95,8 +122,32 @@ func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {
 	require.ErrorContains(t, client.GetPodLogs(&bytes.Buffer{}, &release.Release{Hooks: hooks}), "unable to get pod")
 }
 
+func TestReleaseTestingGetPodLogs_SkipNonPodHooks(t *testing.T) {
+	config := actionConfigFixture(t)
+	require.NoError(t, config.Init(cli.New().RESTClientGetter(), "", os.Getenv("HELM_DRIVER")))
+	client := NewReleaseTesting(config)
+
+	hooks := []*release.Hook{
+		{
+			Name:   "cm-hook",
+			Kind:   "ConfigMap",
+			Events: []release.HookEvent{release.HookTest},
+		},
+		{
+			Name:   "secret-hook",
+			Kind:   "Secret",
+			Events: []release.HookEvent{release.HookTest},
+		},
+	}
+
+	out := &bytes.Buffer{}
+	require.NoError(t, client.GetPodLogs(out, &release.Release{Hooks: hooks}))
+	assert.Empty(t, out.String())
+}
+
 func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	config := actionConfigFixture(t)
 
 	// Create a release with a test hook
@@ -115,7 +166,7 @@ func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
 	failer := config.KubeClient.(*kubefake.FailingKubeClient)
 
 	_, _, err := client.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
@@ -139,8 +190,7 @@ func TestGetContainerLogs_MultipleContainers(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	err := rt.getContainerLogs(&buf, client, "test-pod")
-	require.NoError(t, err)
+	require.NoError(t, rt.getContainerLogs(&buf, client, "test-pod"))
 	output := buf.String()
 	assert.Contains(t, output, "POD LOGS: test-pod (main)")
 	assert.Contains(t, output, "POD LOGS: test-pod (sidecar)")
@@ -166,8 +216,7 @@ func TestGetContainerLogs_WithInitContainers(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	err := rt.getContainerLogs(&buf, client, "test-pod")
-	require.NoError(t, err)
+	require.NoError(t, rt.getContainerLogs(&buf, client, "test-pod"))
 	output := buf.String()
 	// Init containers should appear before regular containers
 	assert.Contains(t, output, "POD LOGS: test-pod (init-setup)")
@@ -179,9 +228,7 @@ func TestGetContainerLogs_PodNotFound(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	err := rt.getContainerLogs(&buf, client, "nonexistent-pod")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unable to get pod nonexistent-pod")
+	assert.ErrorContains(t, rt.getContainerLogs(&buf, client, "nonexistent-pod"), "unable to get pod nonexistent-pod")
 }
 
 func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
@@ -202,8 +249,7 @@ func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	err := rt.getContainerLogs(&buf, client, "multi-test")
-	require.NoError(t, err)
+	require.NoError(t, rt.getContainerLogs(&buf, client, "multi-test"))
 	output := buf.String()
 	assert.Contains(t, output, "POD LOGS: multi-test (container-a)")
 	assert.Contains(t, output, "POD LOGS: multi-test (container-b)")

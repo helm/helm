@@ -20,8 +20,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -29,66 +31,36 @@ import (
 
 func TestValidateAgainstSingleSchema(t *testing.T) {
 	values, err := common.ReadValuesFile("./testdata/test-values.yaml")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
-	schema, err := os.ReadFile("./testdata/test-values.schema.json")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	require.NoError(t, err, "Error reading YAML file")
 
-	if err := ValidateAgainstSingleSchema(values, schema); err != nil {
-		t.Errorf("Error validating Values against Schema: %s", err)
-	}
+	schema, err := os.ReadFile("./testdata/test-values.schema.json")
+	require.NoError(t, err, "Error reading YAML file")
+	assert.NoErrorf(t, ValidateAgainstSingleSchema(values, schema), "Error validating Values against Schema")
 }
 
 func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	values, err := common.ReadValuesFile("./testdata/test-values.yaml")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
-	schema, err := os.ReadFile("./testdata/test-values-invalid.schema.json")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	require.NoError(t, err, "Error reading YAML file")
 
-	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatal("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
+	schema, err := os.ReadFile("./testdata/test-values-invalid.schema.json")
+	require.NoError(t, err, "Error reading YAML file")
 
 	expectedErrString := `"file:///values.schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
 - at '': got number, want boolean or object`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+	assert.EqualError(t, ValidateAgainstSingleSchema(values, schema), expectedErrString)
 }
 
 func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	values, err := common.ReadValuesFile("./testdata/test-values-negative.yaml")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
-	schema, err := os.ReadFile("./testdata/test-values.schema.json")
-	if err != nil {
-		t.Fatalf("Error reading JSON file: %s", err)
-	}
+	require.NoError(t, err, "Error reading YAML file")
 
-	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatal("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
+	schema, err := os.ReadFile("./testdata/test-values.schema.json")
+	require.NoError(t, err, "Error reading JSON file")
 
 	expectedErrString := `- at '': missing property 'employmentInfo'
 - at '/age': minimum: got -5, want 0
 `
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+	assert.EqualError(t, ValidateAgainstSingleSchema(values, schema), expectedErrString)
 }
 
 const subchartSchema = `{
@@ -145,9 +117,7 @@ func TestValidateAgainstSchema(t *testing.T) {
 		},
 	}
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
-		t.Errorf("Error validating Values against Schema: %s", err)
-	}
+	assert.NoErrorf(t, ValidateAgainstSchema(chrt, vals), "Error validating Values against Schema")
 }
 
 func TestValidateAgainstSchemaNegative(t *testing.T) {
@@ -170,19 +140,10 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		"subchart": map[string]any{},
 	}
 
-	var errString string
-	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatal("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
-
 	expectedErrString := `subchart:
 - at '': missing property 'age'
 `
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+	assert.EqualError(t, ValidateAgainstSchema(chrt, vals), expectedErrString)
 }
 
 func TestValidateAgainstSchema2020(t *testing.T) {
@@ -207,9 +168,7 @@ func TestValidateAgainstSchema2020(t *testing.T) {
 		},
 	}
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
-		t.Errorf("Error validating Values against Schema: %s", err)
-	}
+	assert.NoErrorf(t, ValidateAgainstSchema(chrt, vals), "Error validating Values against Schema")
 }
 
 func TestValidateAgainstSchema2020Negative(t *testing.T) {
@@ -234,20 +193,11 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 		},
 	}
 
-	var errString string
-	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatal("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
-
 	expectedErrString := `subchart:
 - at '/data': no items match contains schema
   - at '/data/0': got number, want string
 `
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+	assert.EqualError(t, ValidateAgainstSchema(chrt, vals), expectedErrString)
 }
 
 func TestHTTPURLLoader_Load(t *testing.T) {
@@ -262,12 +212,8 @@ func TestHTTPURLLoader_Load(t *testing.T) {
 
 		loader := newHTTPURLLoader()
 		result, err := loader.Load(server.URL)
-		if err != nil {
-			t.Fatalf("Expected no error, got: %v", err)
-		}
-		if result == nil {
-			t.Fatal("Expected result to be non-nil")
-		}
+		require.NoError(t, err, "Expected no error, got")
+		require.NotNil(t, result, "Expected result to be non-nil")
 	})
 
 	t.Run("HTTP error status", func(t *testing.T) {
@@ -278,12 +224,8 @@ func TestHTTPURLLoader_Load(t *testing.T) {
 
 		loader := newHTTPURLLoader()
 		_, err := loader.Load(server.URL)
-		if err == nil {
-			t.Fatal("Expected error for HTTP 404")
-		}
-		if !strings.Contains(err.Error(), "404") {
-			t.Errorf("Expected error message to contain '404', got: %v", err)
-		}
+		require.Error(t, err, "Expected error for HTTP 404")
+		assert.ErrorContains(t, err, "404", "Expected error message to contain '404'")
 	})
 }
 
@@ -295,9 +237,7 @@ func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
         "$ref": "urn:example:helm:schemas:v1:helm-schema-validation-conditions:v1/helmSchemaValidation-true"
     }`)
 	vals := map[string]any{"any": "value"}
-	if err := ValidateAgainstSingleSchema(vals, schema); err != nil {
-		t.Fatalf("expected no error when URN unresolved is ignored, got: %v", err)
-	}
+	require.NoErrorf(t, ValidateAgainstSingleSchema(vals, schema), "expected no error when URN unresolved is ignored, got")
 }
 
 // Non-regression tests for https://github.com/helm/helm/issues/31202
@@ -323,14 +263,10 @@ func TestValidateAgainstSchema_MissingSubchartValues_NoPanic(t *testing.T) {
 	}
 
 	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("ValidateAgainstSchema panicked (missing subchart values): %v", r)
-		}
+		require.Nilf(t, recover(), "ValidateAgainstSchema panicked (missing subchart values)")
 	}()
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
-		t.Fatalf("expected no error when subchart values are missing, got: %v", err)
-	}
+	require.NoErrorf(t, ValidateAgainstSchema(chrt, vals), "expected no error when subchart values are missing, got")
 }
 
 func TestValidateAgainstSchema_SubchartNil_NoPanic(t *testing.T) {
@@ -351,14 +287,10 @@ func TestValidateAgainstSchema_SubchartNil_NoPanic(t *testing.T) {
 	}
 
 	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("ValidateAgainstSchema panicked (nil subchart values): %v", r)
-		}
+		require.Nilf(t, recover(), "ValidateAgainstSchema panicked (nil subchart values)")
 	}()
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
-		t.Fatalf("expected no error when subchart values are nil, got: %v", err)
-	}
+	require.NoErrorf(t, ValidateAgainstSchema(chrt, vals), "expected no error when subchart values are nil, got")
 }
 
 func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
@@ -379,13 +311,9 @@ func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
 	}
 
 	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("ValidateAgainstSchema panicked (invalid subchart values type): %v", r)
-		}
+		require.Nilf(t, recover(), "ValidateAgainstSchema panicked (invalid subchart values type)")
 	}()
 
 	// We expect a non-nil error (invalid type), but crucially no panic.
-	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatal("expected an error when subchart values have invalid type, got nil")
-	}
+	require.Error(t, ValidateAgainstSchema(chrt, vals), "expected an error when subchart values have invalid type, got nil")
 }

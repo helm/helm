@@ -19,6 +19,9 @@ package util
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/internal/chart/v3"
 )
 
@@ -26,92 +29,40 @@ const testfile = "testdata/chartfiletest.yaml"
 
 func TestLoadChartfile(t *testing.T) {
 	f, err := LoadChartfile(testfile)
-	if err != nil {
-		t.Errorf("Failed to open %s: %s", testfile, err)
-		return
-	}
+	require.NoErrorf(t, err, "Failed to open %s", testfile)
 	verifyChartfile(t, f, "frobnitz")
 }
 
 func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	t.Helper()
-	if f == nil {
-		t.Fatal("Failed verifyChartfile because f is nil")
-	}
+	require.NotNil(t, f, "Failed verifyChartfile because f is nil")
+	assert.Equal(t, name, f.Name, "Expected %s, got %s", name, f.Name)
+	assert.Equal(t, "This is a frobnitz.", f.Description, "Unexpected description %q", f.Description)
+	assert.Equal(t, "1.2.3", f.Version, "Unexpected version %q", f.Version)
+	assert.Len(t, f.Maintainers, 2, "Expected 2 maintainers, got %d", len(f.Maintainers))
+	assert.Equal(t, "The Helm Team", f.Maintainers[0].Name, "Unexpected maintainer name.")
+	assert.Equal(t, "nobody@example.com", f.Maintainers[1].Email, "Unexpected maintainer email.")
+	require.Len(t, f.Sources, 1, "Unexpected number of sources")
+	assert.Equal(t, "https://example.com/foo/bar", f.Sources[0], "Expected https://example.com/foo/bar, got %s", f.Sources)
+	assert.Equal(t, "http://example.com", f.Home, "Unexpected home.")
+	assert.Equal(t, "https://example.com/64x64.png", f.Icon, "Unexpected icon: %q", f.Icon)
+	require.Len(t, f.Keywords, 3, "Unexpected keywords")
+	require.Len(t, f.Annotations, 2, "Unexpected annotations")
 
-	if f.Name != name {
-		t.Errorf("Expected %s, got %s", name, f.Name)
-	}
-
-	if f.Description != "This is a frobnitz." {
-		t.Errorf("Unexpected description %q", f.Description)
-	}
-
-	if f.Version != "1.2.3" {
-		t.Errorf("Unexpected version %q", f.Version)
-	}
-
-	if len(f.Maintainers) != 2 {
-		t.Errorf("Expected 2 maintainers, got %d", len(f.Maintainers))
-	}
-
-	if f.Maintainers[0].Name != "The Helm Team" {
-		t.Error("Unexpected maintainer name.")
-	}
-
-	if f.Maintainers[1].Email != "nobody@example.com" {
-		t.Error("Unexpected maintainer email.")
-	}
-
-	if len(f.Sources) != 1 {
-		t.Fatal("Unexpected number of sources")
-	}
-
-	if f.Sources[0] != "https://example.com/foo/bar" {
-		t.Errorf("Expected https://example.com/foo/bar, got %s", f.Sources)
-	}
-
-	if f.Home != "http://example.com" {
-		t.Error("Unexpected home.")
-	}
-
-	if f.Icon != "https://example.com/64x64.png" {
-		t.Errorf("Unexpected icon: %q", f.Icon)
-	}
-
-	if len(f.Keywords) != 3 {
-		t.Error("Unexpected keywords")
-	}
-
-	if len(f.Annotations) != 2 {
-		t.Fatal("Unexpected annotations")
-	}
-
-	if want, got := "extravalue", f.Annotations["extrakey"]; want != got {
-		t.Errorf("Want %q, but got %q", want, got)
-	}
-
-	if want, got := "anothervalue", f.Annotations["anotherkey"]; want != got {
-		t.Errorf("Want %q, but got %q", want, got)
-	}
+	assert.Equal(t, "extravalue", f.Annotations["extrakey"])
+	assert.Equal(t, "anothervalue", f.Annotations["anotherkey"])
 
 	kk := []string{"frobnitz", "sprocket", "dodad"}
 	for i, k := range f.Keywords {
-		if kk[i] != k {
-			t.Errorf("Expected %q, got %q", kk[i], k)
-		}
+		assert.Equal(t, kk[i], k, "Expected %q, got %q", kk[i], k)
 	}
 }
 
 func TestIsChartDir(t *testing.T) {
 	validChartDir, err := IsChartDir("testdata/frobnitz")
-	if !validChartDir {
-		t.Errorf("unexpected error while reading chart-directory: (%v)", err)
-		return
-	}
+	require.NoError(t, err, "while reading chart-directory")
+	require.True(t, validChartDir, "expected valid chart directory")
 	validChartDir, err = IsChartDir("testdata")
-	if validChartDir || err == nil {
-		t.Error("expected error but did not get any")
-		return
-	}
+	require.Error(t, err)
+	require.False(t, validChartDir, "expected invalid chart directory")
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"context"
@@ -237,7 +237,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls release.Releaser, err error) 
 		return nil, err
 	}
 	// delete the release
-	if err = cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{}); err != nil {
+	if err := cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{}); err != nil {
 		return rls, err
 	}
 	return rls, nil

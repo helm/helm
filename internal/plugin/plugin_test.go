@@ -18,6 +18,8 @@ package plugin
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
@@ -34,9 +36,7 @@ func TestValidPluginName(t *testing.T) {
 
 	for name, pluginName := range validNames {
 		t.Run("valid/"+name, func(t *testing.T) {
-			if !validPluginName.MatchString(pluginName) {
-				t.Errorf("expected %q to match validPluginName regex", pluginName)
-			}
+			assert.Truef(t, validPluginName.MatchString(pluginName), "expected %q to match validPluginName regex", pluginName)
 		})
 	}
 
@@ -52,9 +52,7 @@ func TestValidPluginName(t *testing.T) {
 
 	for name, pluginName := range invalidNames {
 		t.Run("invalid/"+name, func(t *testing.T) {
-			if validPluginName.MatchString(pluginName) {
-				t.Errorf("expected %q to not match validPluginName regex", pluginName)
-			}
+			assert.Falsef(t, validPluginName.MatchString(pluginName), "expected %q to not match validPluginName regex", pluginName)
 		})
 	}
 }

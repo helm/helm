@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -76,35 +77,74 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
+//
+// Deprecated: Use RenderWithContext instead.
+//
+//go:fix inline
 func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
+	return e.RenderWithContext(context.Background(), chrt, values)
+}
+
+// RenderWithContext takes a chart, optional values, and value overrides, and attempts to render the Go templates.
+//
+// RenderWithContext can be called repeatedly on the same engine.
+//
+// This will look in the chart's 'templates' data (e.g. the 'templates/' directory)
+// and attempt to render the templates there using the values passed in.
+//
+// Values are scoped to their templates. A dependency template will not have
+// access to the values set for its parent. If chart "foo" includes chart "bar",
+// "bar" will not have access to the values for "foo".
+//
+// Values should be prepared with something like `chartutils.ReadValues`.
+//
+// Values are passed through the templates according to scope. If the top layer
+// chart includes the chart foo, which includes the chart bar, the values map
+// will be examined for a table called "foo". If "foo" is found in vals,
+// that section of the values will be passed into the "foo" chart. And if that
+// section contains a value named "bar", that value will be passed on to the
+// bar chart during render time.
+//
+// TODO Helm v5: Rename this to Render (remove the current deprecated Render method) and 'go:fix inline' RenderWithContext method to call Render.
+func (e Engine) RenderWithContext(ctx context.Context, chrt ci.Charter, values common.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
-	return e.render(tmap)
+	return e.render(ctx, tmap)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
+//
+// Deprecated: Instantiate an Engine and call RenderWithContext instead.
+//
+// TODO Helm v5: Replace with a NewEngine function.
+//
+//go:fix inline
 func Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
-	return new(Engine).Render(chrt, values)
+	return new(Engine).RenderWithContext(context.Background(), chrt, values)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
+//
+// TODO Helm v5: Replace with a NewEngine function that accepts a rest.Config option
 func RenderWithClient(chrt ci.Charter, values common.Values, config *rest.Config) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}.RenderWithContext(context.Background(), chrt, values)
 }
 
 // RenderWithClientProvider takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
+//
+// TODO Helm v5: Replace with a NewEngine function that accepts a ClientProvider option
 func RenderWithClientProvider(chrt ci.Charter, values common.Values, clientProvider ClientProvider) (map[string]string, error) {
 	return Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}.RenderWithContext(context.Background(), chrt, values)
 }
 
 // renderable is an object that can be rendered.
@@ -117,9 +157,11 @@ type renderable struct {
 	basePath string
 }
 
-const warnStartDelim = "HELM_ERR_START"
-const warnEndDelim = "HELM_ERR_END"
-const recursionMaxNums = 1000
+const (
+	warnStartDelim   = "HELM_ERR_START"
+	warnEndDelim     = "HELM_ERR_END"
+	recursionMaxNums = 1000
+)
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
@@ -195,7 +237,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template) {
+func (e Engine) initFunMap(ctx context.Context, t *template.Template) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -238,7 +280,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	// If we are not linting and have a cluster connection, provide a Kubernetes-backed
 	// implementation.
 	if !e.LintMode && e.clientProvider != nil {
-		funcMap["lookup"] = newLookupFunction(*e.clientProvider)
+		funcMap["lookup"] = newLookupFunction(ctx, *e.clientProvider)
 	}
 
 	// When DNS lookups are not enabled override the sprig function and return
@@ -256,7 +298,7 @@ func (e Engine) initFunMap(t *template.Template) {
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, err error) {
+func (e Engine) render(ctx context.Context, tpls map[string]renderable) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -278,7 +320,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		t.Option("missingkey=zero")
 	}
 
-	e.initFunMap(t)
+	e.initFunMap(ctx, t)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.
@@ -385,7 +427,7 @@ func parseTemplateExecErrorString(s string) (TraceableError, bool) {
 
 // Special case: "template: no template %q associated with template %q"
 // Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
-func parseTemplateNoTemplateError(s string, remainder string) (TraceableError, bool) {
+func parseTemplateNoTemplateError(s, remainder string) (TraceableError, bool) {
 	if strings.HasPrefix(remainder, "no template ") {
 		return TraceableError{message: s}, true
 	}
@@ -411,7 +453,7 @@ func parseTemplateSimpleErrorString(remainder string) (TraceableError, bool) {
 // Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
 func parseTemplateExecutingAtErrorType(remainder string) (TraceableError, bool) {
 	if templateName, after, found := strings.Cut(remainder, ": executing "); found {
-		if len(after) == 0 || after[0] != '"' {
+		if after == "" || after[0] != '"' {
 			return TraceableError{}, false
 		}
 		// find closing quote for function name
@@ -454,8 +496,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 	// If it can parse out details from that error message such as the line number, template it failed on,
 	// and error description, then it will construct a new error that displays these details in a structured way.
 	// If there are issues with parsing the error message, the err passed into the function should return instead.
-	var execError template.ExecError
-	if !errors.As(err, &execError) {
+	if _, ok := errors.AsType[template.ExecError](err); !ok {
 		return err
 	}
 
@@ -513,7 +554,7 @@ func (p byPathLen) Less(i, j int) bool {
 	a, b := p[i], p[j]
 	ca, cb := strings.Count(a, "/"), strings.Count(b, "/")
 	if ca == cb {
-		return strings.Compare(a, b) == -1
+		return a < b
 	}
 	return ca < cb
 }

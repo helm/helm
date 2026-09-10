@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util // import "helm.sh/helm/v4/internal/release/v2/util"
+package util
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSplitManifests(t *testing.T) {
@@ -27,6 +28,37 @@ func TestSplitManifests(t *testing.T) {
 		input    string
 		expected map[string]string
 	}{
+		{
+			name:  "commented separator after existing document (LF)",
+			input: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n--- # next document\napiVersion: v1\nkind: Service\nmetadata:\n  name: svc\n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n",
+				"manifest-1": "# next document\napiVersion: v1\nkind: Service\nmetadata:\n  name: svc\n",
+			},
+		},
+		{
+			name:  "commented separator after existing document (CRLF)",
+			input: "apiVersion: v1\r\nkind: ConfigMap\r\nmetadata:\r\n  name: cm1\r\n--- # next document\r\napiVersion: v1\r\nkind: Service\r\nmetadata:\r\n  name: svc\r\n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\r\nkind: ConfigMap\r\nmetadata:\r\n  name: cm1\r\n",
+				"manifest-1": "# next document\r\napiVersion: v1\r\nkind: Service\r\nmetadata:\r\n  name: svc\r\n",
+			},
+		},
+		{
+			name:  "whitespace-separated same-line content is a document boundary",
+			input: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n--- apiVersion: v1\nkind: Service\nmetadata:\n  name: svc\n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n",
+				"manifest-1": "apiVersion: v1\nkind: Service\nmetadata:\n  name: svc\n",
+			},
+		},
+		{
+			name:  "no-whitespace marker remains attached",
+			input: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n---#comment\napiVersion: v1\nkind: Service\nmetadata:\n  name: svc\n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n---#comment\napiVersion: v1\nkind: Service\nmetadata:\n  name: svc\n",
+			},
+		},
 		{
 			name: "single doc with leading separator and whitespace",
 			input: `
@@ -73,7 +105,7 @@ spec:
 			name:  "whitespace-only doc after separator is skipped",
 			input: "---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n---\n  \n",
 			expected: map[string]string{
-				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1",
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n",
 			},
 		},
 		{
@@ -109,7 +141,8 @@ metadata:
 				"manifest-0": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm1`,
+  name: cm1
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -328,8 +361,8 @@ data:
 			},
 		},
 
-		// Multi-doc with block scalars: the regex consumes \s*\n before ---,
-		// so trailing newlines from non-last docs are stripped.
+		// Multi-doc with block scalars: the separator regex preserves trailing
+		// newlines from non-last documents.
 		{
 			name: "multi-doc block scalar clip (|) before separator",
 			input: `
@@ -353,7 +386,8 @@ metadata:
   name: test
 data:
   key: |
-    hello`,
+    hello
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -386,7 +420,10 @@ metadata:
   name: test
 data:
   key: |+
-    hello`,
+    hello
+
+
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -493,7 +530,8 @@ metadata:
 				"manifest-0": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm1`,
+  name: cm1
+`,
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -506,10 +544,26 @@ metadata:
 			},
 		},
 		{
+			name:  "block scalar trailing whitespace survives a following separator",
+			input: "apiVersion: v1\nkind: ConfigMap\ndata:\n  value: |+\n    hello 	\n\n---\napiVersion: v1\nkind: Service\n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\ndata:\n  value: |+\n    hello 	\n\n",
+				"manifest-1": "apiVersion: v1\nkind: Service\n",
+			},
+		},
+		{
+			name:  "CRLF document endings survive a following separator",
+			input: "apiVersion: v1\r\nkind: ConfigMap\r\n\r\n---	 \r\napiVersion: v1\r\nkind: Service\r\n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\r\nkind: ConfigMap\r\n\r\n",
+				"manifest-1": "apiVersion: v1\r\nkind: Service\r\n",
+			},
+		},
+		{
 			name:  "trailing separator with no newline is still a separator",
 			input: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n---",
 			expected: map[string]string{
-				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1",
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n",
 			},
 		},
 		{
@@ -531,9 +585,7 @@ metadata:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := SplitManifests(tt.input)
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("SplitManifests() =\n%v\nwant:\n%v", result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result, "SplitManifests() =\n%v\nwant:\n%v", result, tt.expected)
 		})
 	}
 }

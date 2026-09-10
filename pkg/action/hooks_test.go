@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -177,6 +178,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 		expectedOutput = "attempted to output logs for namespace: " + expectedNamespace
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	outBuffer := &bytes.Buffer{}
@@ -190,9 +192,9 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
-	is.NoError(err)
+	req.NoError(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(rcommon.StatusDeployed, res.Info.Status)
 }
@@ -204,6 +206,7 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 		expectedOutput = "attempted to output logs for namespace: " + expectedNamespace
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	failingClient := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -220,9 +223,9 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
-	is.Error(err)
+	req.Error(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(res.Info.Description, "failed pre-install")
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(rcommon.StatusFailed, res.Info.Status)
@@ -249,7 +252,6 @@ func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList
 	configMap := &v1.ConfigMap{}
 
 	err := yaml.NewYAMLOrJSONDecoder(reader, 1000).Decode(configMap)
-
 	if err != nil {
 		return kube.ResourceList{}, err
 	}
@@ -355,10 +357,12 @@ data:
 						},
 					},
 				},
-			}, resource.Info{
+			},
+			resource.Info{
 				Name:      "build-config-2",
 				Namespace: "test",
-			}, []resource.Info{
+			},
+			[]resource.Info{
 				{
 					// This should be in the record for `before-hook-creation`
 					Name:      "build-config-1",
@@ -379,7 +383,8 @@ data:
 					Name:      "build-config-1",
 					Namespace: "test",
 				},
-			}, true,
+			},
+			true,
 		},
 	}
 
@@ -398,16 +403,12 @@ data:
 			serverSideApply := true
 			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, nil, 600, serverSideApply)
 
-			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
-				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
-			}
+			require.Truef(t, reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord), "Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
 
-			if err != nil && !tc.expectError {
-				t.Fatal("Got an unexpected error.")
-			}
-
-			if err == nil && tc.expectError {
-				t.Fatal("Expected and error but did not get it.")
+			if !tc.expectError {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
 			}
 		})
 	}
@@ -447,6 +448,7 @@ func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
 
 func TestExecHook_WaitOptionsPassedDownstream(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	failer := &kubefake.FailingKubeClient{
 		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
@@ -486,8 +488,7 @@ data:
 	ctx := context.Background()
 	waitOptions := []kube.WaitOption{kube.WithWaitContext(ctx)}
 
-	err := configuration.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, waitOptions, 600, false)
-	is.NoError(err)
+	req.NoError(configuration.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, waitOptions, 600, false))
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")

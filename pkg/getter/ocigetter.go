@@ -165,7 +165,6 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 	}
 
 	client, err := registry.NewClient(opts...)
-
 	if err != nil {
 		return nil, err
 	}

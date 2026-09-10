@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -65,8 +66,8 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 		Use:   "hub [KEYWORD]",
 		Short: "search for charts in the Artifact Hub or your own hub instance",
 		Long:  searchHubDesc,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return o.run(out, args)
+		RunE: func(c *cobra.Command, args []string) error {
+			return o.run(c.Context(), out, args)
 		},
 	}
 
@@ -81,14 +82,14 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *searchHubOptions) run(out io.Writer, args []string) error {
+func (o *searchHubOptions) run(ctx context.Context, out io.Writer, args []string) error {
 	c, err := monocular.New(o.searchEndpoint)
 	if err != nil {
 		return fmt.Errorf("unable to create connection to %q: %w", o.searchEndpoint, err)
 	}
 
 	q := strings.Join(args, " ")
-	results, err := c.Search(q)
+	results, err := c.SearchWithContext(ctx, q)
 	if err != nil {
 		slog.Debug("search failed", slog.Any("error", err))
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)

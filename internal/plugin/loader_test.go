@@ -118,7 +118,7 @@ func TestLoadDir(t *testing.T) {
 			require.NoError(t, err, "error loading plugin from %s", tc.dirname)
 
 			assert.Equal(t, tc.dirname, plug.Dir())
-			assert.EqualValues(t, tc.expect, plug.Metadata())
+			assert.Equal(t, tc.expect, plug.Metadata())
 		})
 	}
 }
@@ -194,20 +194,16 @@ func TestDetectDuplicates(t *testing.T) {
 		mockSubprocessCLIPlugin(t, "foo"),
 		mockSubprocessCLIPlugin(t, "bar"),
 	}
-	if err := detectDuplicates(plugs); err != nil {
-		t.Error("no duplicates in the first set")
-	}
+	require.NoError(t, detectDuplicates(plugs), "no duplicates in the first set")
 	plugs = append(plugs, mockSubprocessCLIPlugin(t, "foo"))
-	if err := detectDuplicates(plugs); err == nil {
-		t.Error("duplicates in the second set")
-	}
+	assert.Error(t, detectDuplicates(plugs), "duplicates in the second set")
 }
 
 func TestLoadAllDir_Empty(t *testing.T) {
 	emptyDir := t.TempDir()
 	plugs, err := LoadAllDir(emptyDir, func(_ string, err error) error { return err })
 	require.NoError(t, err)
-	assert.Len(t, plugs, 0)
+	assert.Empty(t, plugs)
 }
 
 func TestLoadAllPluginsDir(t *testing.T) {
@@ -295,8 +291,7 @@ command: echo test`,
 			m, err := loadMetadataLegacy([]byte(tc.yaml))
 
 			if tc.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorContains)
+				require.ErrorContains(t, err, tc.errorContains)
 				t.Logf("Legacy error (validation catches empty name): %v", err)
 				if tc.logNote != "" {
 					t.Log(tc.logNote)
@@ -342,8 +337,7 @@ runtime: subprocess
 			m, err := loadMetadataV1([]byte(tc.yaml))
 
 			if tc.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorContains)
+				require.ErrorContains(t, err, tc.errorContains)
 				t.Logf("V1 error (strict unmarshalling): %v", err)
 			} else {
 				require.NoError(t, err)

@@ -23,6 +23,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/test/ensure"
 )
@@ -37,29 +40,20 @@ func TestInstallWithOptions_VerifyMissingProvenance(t *testing.T) {
 
 	// Create local installer
 	installer, err := NewLocalInstaller(pluginTgz)
-	if err != nil {
-		t.Fatalf("Failed to create installer: %v", err)
-	}
+	require.NoError(t, err, "Failed to create installer")
 	defer os.RemoveAll(installer.Path())
 
 	// Install with verification enabled should fail when .prov is missing
 	result, err := InstallWithOptions(installer, Options{Verify: true, Keyring: "dummy"})
 
 	// Should fail with a missing provenance error
-	if err == nil {
-		t.Fatal("Expected installation to fail when .prov file is missing and verification is enabled")
-	}
-	if !strings.Contains(err.Error(), "no provenance file") {
-		t.Errorf("Expected 'no provenance file' in error message, got: %v", err)
-	}
-	if result != nil {
-		t.Errorf("Expected nil verification result when .prov file is missing, got: %+v", result)
-	}
+	require.Error(t, err, "Expected installation to fail when .prov file is missing and verification is enabled")
+	require.ErrorContains(t, err, "no provenance file")
+	assert.Nil(t, result, "Expected nil verification result when .prov file is missing, got: %+v", result)
 
 	// Plugin should NOT be installed
-	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
-		t.Error("Plugin should not be installed when verification fails due to missing .prov")
-	}
+	_, err = os.Stat(installer.Path())
+	assert.True(t, os.IsNotExist(err), "Plugin should not be installed when verification fails due to missing .prov")
 }
 
 func TestInstallWithOptions_NoVerifyMissingProvenance(t *testing.T) {
@@ -72,25 +66,18 @@ func TestInstallWithOptions_NoVerifyMissingProvenance(t *testing.T) {
 
 	// Create local installer
 	installer, err := NewLocalInstaller(pluginTgz)
-	if err != nil {
-		t.Fatalf("Failed to create installer: %v", err)
-	}
+	require.NoError(t, err, "Failed to create installer")
 	defer os.RemoveAll(installer.Path())
 
 	// Install with verification explicitly disabled should succeed without .prov
 	result, err := InstallWithOptions(installer, Options{Verify: false})
 
-	if err != nil {
-		t.Fatalf("Expected installation to succeed with --verify=false, got error: %v", err)
-	}
-	if result != nil {
-		t.Errorf("Expected nil verification result when verification is disabled, got: %+v", result)
-	}
+	require.NoError(t, err, "Expected installation to succeed with --verify=false")
+	assert.Nil(t, result, "Expected nil verification result when verification is disabled, got: %+v", result)
 
 	// Plugin should be installed
-	if _, err := os.Stat(installer.Path()); os.IsNotExist(err) {
-		t.Errorf("Plugin should be installed at %s", installer.Path())
-	}
+	_, err = os.Stat(installer.Path())
+	assert.Falsef(t, os.IsNotExist(err), "Plugin should be installed at %s", installer.Path())
 }
 
 func TestInstallWithOptions_VerifyWithValidProvenance(t *testing.T) {
@@ -110,9 +97,7 @@ func TestInstallWithOptions_VerifyWithValidProvenance(t *testing.T) {
 
 	// Create local installer
 	installer, err := NewLocalInstaller(pluginTgz)
-	if err != nil {
-		t.Fatalf("Failed to create installer: %v", err)
-	}
+	require.NoError(t, err, "Failed to create installer")
 	defer os.RemoveAll(installer.Path())
 
 	// Install with verification enabled
@@ -120,20 +105,13 @@ func TestInstallWithOptions_VerifyWithValidProvenance(t *testing.T) {
 	result, err := InstallWithOptions(installer, Options{Verify: true, Keyring: keyring})
 
 	// Should fail due to invalid signature (empty keyring) but we test that it gets past the hash check
-	if err == nil {
-		t.Fatal("Expected installation to fail with empty keyring")
-	}
-	if !strings.Contains(err.Error(), "plugin verification failed") {
-		t.Errorf("Expected plugin verification failed error, got: %v", err)
-	}
-	if result != nil {
-		t.Errorf("Expected nil verification result when verification fails, got: %+v", result)
-	}
+	require.Error(t, err, "Expected installation to fail with empty keyring")
+	require.ErrorContains(t, err, "plugin verification failed")
+	assert.Nil(t, result, "Expected nil verification result when verification fails, got: %+v", result)
 
 	// Plugin should not be installed due to verification failure
-	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
-		t.Error("Plugin should not be installed when verification fails")
-	}
+	_, err = os.Stat(installer.Path())
+	assert.True(t, os.IsNotExist(err), "Plugin should not be installed when verification fails")
 }
 
 func TestInstallWithOptions_VerifyWithInvalidProvenance(t *testing.T) {
@@ -154,32 +132,23 @@ func TestInstallWithOptions_VerifyWithInvalidProvenance(t *testing.T) {
 
 	// Create local installer
 	installer, err := NewLocalInstaller(pluginTgz)
-	if err != nil {
-		t.Fatalf("Failed to create installer: %v", err)
-	}
+	require.NoError(t, err, "Failed to create installer")
 	defer os.RemoveAll(installer.Path())
 
 	// Install with verification enabled (should fail)
 	result, err := InstallWithOptions(installer, Options{Verify: true, Keyring: keyring})
 
 	// Should fail with verification error
-	if err == nil {
-		t.Fatal("Expected installation with invalid .prov file to fail")
-	}
-	if result != nil {
-		t.Errorf("Expected nil verification result when verification fails, got: %+v", result)
-	}
+	require.Error(t, err, "Expected installation with invalid .prov file to fail")
+	assert.Nil(t, result, "Expected nil verification result when verification fails, got: %+v", result)
 
 	// Should contain verification failure message
 	expectedError := "plugin verification failed"
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Expected error message '%s', got: %s", expectedError, err.Error())
-	}
+	require.ErrorContains(t, err, expectedError)
 
 	// Plugin should not be installed
-	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
-		t.Error("Plugin should not be installed when verification fails")
-	}
+	_, err = os.Stat(installer.Path())
+	assert.True(t, os.IsNotExist(err), "Plugin should not be installed when verification fails")
 }
 
 func TestInstallWithOptions_NoVerifyRequested(t *testing.T) {
@@ -192,26 +161,19 @@ func TestInstallWithOptions_NoVerifyRequested(t *testing.T) {
 
 	// Create local installer
 	installer, err := NewLocalInstaller(pluginTgz)
-	if err != nil {
-		t.Fatalf("Failed to create installer: %v", err)
-	}
+	require.NoError(t, err, "Failed to create installer")
 	defer os.RemoveAll(installer.Path())
 
 	// Install without verification (should succeed without any verification)
 	result, err := InstallWithOptions(installer, Options{Verify: false})
 
 	// Should succeed with no verification
-	if err != nil {
-		t.Fatalf("Expected installation without verification to succeed, got error: %v", err)
-	}
-	if result != nil {
-		t.Errorf("Expected nil verification result when verification is disabled, got: %+v", result)
-	}
+	require.NoError(t, err, "Expected installation without verification to succeed")
+	assert.Nil(t, result, "Expected nil verification result when verification is disabled, got: %+v", result)
 
 	// Plugin should be installed
-	if _, err := os.Stat(installer.Path()); os.IsNotExist(err) {
-		t.Errorf("Plugin should be installed at %s", installer.Path())
-	}
+	_, err = os.Stat(installer.Path())
+	assert.Falsef(t, os.IsNotExist(err), "Plugin should be installed at %s", installer.Path())
 }
 
 func TestInstallWithOptions_VerifyDirectoryNotSupported(t *testing.T) {
@@ -222,24 +184,16 @@ func TestInstallWithOptions_VerifyDirectoryNotSupported(t *testing.T) {
 
 	// Create local installer for directory
 	installer, err := NewLocalInstaller(pluginDir)
-	if err != nil {
-		t.Fatalf("Failed to create installer: %v", err)
-	}
+	require.NoError(t, err, "Failed to create installer")
 	defer os.RemoveAll(installer.Path())
 
 	// Install with verification should fail (directories don't support verification)
 	result, err := InstallWithOptions(installer, Options{Verify: true, Keyring: "dummy"})
 
 	// Should fail with verification not supported error
-	if err == nil {
-		t.Fatal("Expected installation to fail with verification not supported error")
-	}
-	if !strings.Contains(err.Error(), "--verify is only supported for plugin tarballs") {
-		t.Errorf("Expected verification not supported error, got: %v", err)
-	}
-	if result != nil {
-		t.Errorf("Expected nil verification result when verification fails, got: %+v", result)
-	}
+	require.Error(t, err, "Expected installation to fail with verification not supported error")
+	require.ErrorContains(t, err, "--verify is only supported for plugin tarballs")
+	assert.Nil(t, result, "Expected nil verification result when verification fails, got: %+v", result)
 }
 
 func TestInstallWithOptions_VerifyMismatchedProvenance(t *testing.T) {
@@ -261,24 +215,16 @@ func TestInstallWithOptions_VerifyMismatchedProvenance(t *testing.T) {
 
 	// Create local installer
 	installer, err := NewLocalInstaller(pluginTgz)
-	if err != nil {
-		t.Fatalf("Failed to create installer: %v", err)
-	}
+	require.NoError(t, err, "Failed to create installer")
 	defer os.RemoveAll(installer.Path())
 
 	// Install with verification should fail due to hash mismatch
 	result, err := InstallWithOptions(installer, Options{Verify: true, Keyring: keyring})
 
 	// Should fail with verification error
-	if err == nil {
-		t.Fatal("Expected installation to fail with hash mismatch")
-	}
-	if !strings.Contains(err.Error(), "plugin verification failed") {
-		t.Errorf("Expected plugin verification failed error, got: %v", err)
-	}
-	if result != nil {
-		t.Errorf("Expected nil verification result when verification fails, got: %+v", result)
-	}
+	require.Error(t, err, "Expected installation to fail with hash mismatch")
+	require.ErrorContains(t, err, "plugin verification failed")
+	assert.Nil(t, result, "Expected nil verification result when verification fails, got: %+v", result)
 }
 
 func TestInstallWithOptions_VerifyProvenanceAccessError(t *testing.T) {
@@ -291,9 +237,7 @@ func TestInstallWithOptions_VerifyProvenanceAccessError(t *testing.T) {
 
 	// Create a .prov file but make it inaccessible (simulate permission error)
 	provFile := pluginTgz + ".prov"
-	if err := os.WriteFile(provFile, []byte("test"), 0000); err != nil {
-		t.Fatalf("Failed to create inaccessible provenance file: %v", err)
-	}
+	require.NoErrorf(t, os.WriteFile(provFile, []byte("test"), 0o000), "Failed to create inaccessible provenance file")
 	defer os.Remove(provFile)
 
 	// Create keyring
@@ -302,27 +246,21 @@ func TestInstallWithOptions_VerifyProvenanceAccessError(t *testing.T) {
 
 	// Create local installer
 	installer, err := NewLocalInstaller(pluginTgz)
-	if err != nil {
-		t.Fatalf("Failed to create installer: %v", err)
-	}
+	require.NoError(t, err, "Failed to create installer")
 	defer os.RemoveAll(installer.Path())
 
 	// Install with verification should fail due to access error
 	result, err := InstallWithOptions(installer, Options{Verify: true, Keyring: keyring})
 
 	// Should fail with access error (either at stat level or during verification)
-	if err == nil {
-		t.Fatal("Expected installation to fail with provenance file access error")
-	}
+	require.Error(t, err, "Expected installation to fail with provenance file access error")
 	// The error could be either "failed to access provenance file" or "plugin verification failed"
 	// depending on when the permission error occurs
 	if !strings.Contains(err.Error(), "failed to access provenance file") &&
 		!strings.Contains(err.Error(), "plugin verification failed") {
 		t.Errorf("Expected provenance file access or verification error, got: %v", err)
 	}
-	if result != nil {
-		t.Errorf("Expected nil verification result when verification fails, got: %+v", result)
-	}
+	assert.Nil(t, result, "Expected nil verification result when verification fails, got: %+v", result)
 }
 
 // Helper functions for test setup
@@ -333,9 +271,7 @@ func createTestPluginDir(t *testing.T) string {
 	// Create temporary directory with plugin structure
 	tmpDir := t.TempDir()
 	pluginDir := filepath.Join(tmpDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
-		t.Fatalf("Failed to create plugin directory: %v", err)
-	}
+	require.NoErrorf(t, os.MkdirAll(pluginDir, 0o755), "Failed to create plugin directory")
 
 	// Create plugin.yaml using the standardized v1 format
 	pluginYaml := `apiVersion: v1
@@ -346,9 +282,7 @@ version: 1.0.0
 runtimeConfig:
   platformCommand:
     - command: echo`
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYaml), 0644); err != nil {
-		t.Fatalf("Failed to create plugin.yaml: %v", err)
-	}
+	require.NoErrorf(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYaml), 0o644), "Failed to create plugin.yaml")
 
 	return pluginDir
 }
@@ -360,15 +294,10 @@ func createTarballFromPluginDir(t *testing.T, pluginDir string) string {
 	tmpDir := filepath.Dir(pluginDir)
 	tgzPath := filepath.Join(tmpDir, "test-plugin-1.0.0.tgz")
 	tarFile, err := os.Create(tgzPath)
-	if err != nil {
-		t.Fatalf("Failed to create tarball file: %v", err)
-	}
+	require.NoError(t, err, "Failed to create tarball file")
 	defer tarFile.Close()
 
-	if err := plugin.CreatePluginTarball(pluginDir, "test-plugin", tarFile); err != nil {
-		t.Fatalf("Failed to create tarball: %v", err)
-	}
-
+	require.NoErrorf(t, plugin.CreatePluginTarball(pluginDir, "test-plugin", tarFile), "Failed to create tarball")
 	return tgzPath
 }
 
@@ -379,9 +308,7 @@ func createProvFile(t *testing.T, provFile, pluginTgz, hash string) {
 	if hash == "" {
 		// Calculate actual hash of the tarball for realistic testing
 		data, err := os.ReadFile(pluginTgz)
-		if err != nil {
-			t.Fatalf("Failed to read tarball for hashing: %v", err)
-		}
+		require.NoError(t, err, "Failed to read tarball for hashing")
 		hashSum := sha256.Sum256(data)
 		hashStr = fmt.Sprintf("sha256:%x", hashSum)
 	} else {
@@ -404,9 +331,7 @@ Version: GnuPG v1
 iQEcBAEBCAAGBQJktest...
 -----END PGP SIGNATURE-----
 `, hashStr)
-	if err := os.WriteFile(provFile, []byte(provContent), 0644); err != nil {
-		t.Fatalf("Failed to create provenance file: %v", err)
-	}
+	require.NoErrorf(t, os.WriteFile(provFile, []byte(provContent), 0o644), "Failed to create provenance file")
 }
 
 func createProvFileInvalidFormat(t *testing.T, provFile string) {
@@ -414,9 +339,7 @@ func createProvFileInvalidFormat(t *testing.T, provFile string) {
 
 	// Create an invalid provenance file (not PGP signed format)
 	invalidProv := "This is not a valid PGP signed message"
-	if err := os.WriteFile(provFile, []byte(invalidProv), 0644); err != nil {
-		t.Fatalf("Failed to create invalid provenance file: %v", err)
-	}
+	require.NoErrorf(t, os.WriteFile(provFile, []byte(invalidProv), 0o644), "Failed to create invalid provenance file")
 }
 
 func createTestKeyring(t *testing.T) string {
@@ -427,9 +350,7 @@ func createTestKeyring(t *testing.T) string {
 	keyringPath := filepath.Join(tmpDir, "pubring.gpg")
 
 	// Create empty keyring for testing
-	if err := os.WriteFile(keyringPath, []byte{}, 0644); err != nil {
-		t.Fatalf("Failed to create test keyring: %v", err)
-	}
+	require.NoErrorf(t, os.WriteFile(keyringPath, []byte{}, 0o644), "Failed to create test keyring")
 
 	return keyringPath
 }

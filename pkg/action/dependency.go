@@ -77,12 +77,14 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 
 	// If a chart is unpacked, this will check the unpacked chart's `charts/` directory for tarballs.
-	// Technically, this is COMPLETELY unnecessary, and should be removed in Helm 4. It is here
-	// to preserved backward compatibility. In Helm 2/3, there is a "difference" between
+	//
+	// Technically, this is COMPLETELY unnecessary. It is here to preserve backward
+	// compatibility. In Helm 2/3, there is a "difference" between
 	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outputs
 	// "unpacked"). Early in Helm 2's history, this would have made a difference. But it no
-	// longer does. However, since this code shipped with Helm 3, the output must remain stable
-	// until Helm 4.
+	// longer does. However, since this code shipped with Helm 3, the output must remain stable.
+	//
+	// TODO Helm v5: remove this.
 	switch archives, err := filepath.Glob(filepath.Join(chartpath, "charts", filename)); {
 	case err != nil:
 		return "bad pattern"
@@ -156,7 +158,9 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 // stat an archive and return a message if the stat is successful
 //
 // This is a refactor of the code originally in dependencyStatus. It is here to
-// support legacy behavior, and should be removed in Helm 4.
+// support legacy behavior.
+//
+// TODO Helm v5: remove this.
 func statArchiveForStatus(archive string, dep *chart.Dependency) string {
 	if _, err := os.Stat(archive); err == nil {
 		c, err := loader.Load(archive)
@@ -201,7 +205,7 @@ func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart
 // printMissing prints warnings about charts that are present on disk, but are
 // not in Chart.yaml.
 func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart.Dependency) {
-	folder := filepath.Join(chartpath, "charts/*")
+	folder := filepath.Join(chartpath, "charts", "*")
 	files, err := filepath.Glob(folder)
 	if err != nil {
 		fmt.Fprintln(out, err)
