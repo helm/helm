@@ -80,6 +80,9 @@ type Install struct {
 	//
 	// This should be used with caution.
 	ForceReplace bool
+	// FieldValidationDirective, when non-empty, overrides the Kubernetes client's
+	// default field validation directive for create and update operations.
+	FieldValidationDirective kube.FieldValidationDirective
 	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
 	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
 	ForceConflicts bool
@@ -516,18 +519,25 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted, resources ku
 	// do an update, but it's not clear whether we WANT to do an update if the reuse is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Create(
-			resources,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false))
+		createOpts := []kube.ClientCreateOption{
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false),
+		}
+		if i.FieldValidationDirective != "" {
+			createOpts = append(createOpts, kube.ClientCreateOptionFieldValidationDirective(i.FieldValidationDirective))
+		}
+		_, err = i.cfg.KubeClient.Create(resources, createOpts...)
 	} else if len(resources) > 0 {
 		updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply // Use three-way merge when taking ownership (and not using server-side apply)
-		_, err = i.cfg.KubeClient.Update(
-			toBeAdopted,
-			resources,
+		updateOpts := []kube.ClientUpdateOption{
 			kube.ClientUpdateOptionForceReplace(i.ForceReplace),
 			kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
 			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
-			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true),
+		}
+		if i.FieldValidationDirective != "" {
+			updateOpts = append(updateOpts, kube.ClientUpdateOptionFieldValidationDirective(i.FieldValidationDirective))
+		}
+		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, updateOpts...)
 	}
 	if err != nil {
 		return rel, err
