@@ -17,8 +17,10 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +31,31 @@ import (
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
+
+// Regression test for #31902: table timestamps must be rendered in the
+// local timezone (which Go derives from TZ) rather than the zone the
+// release happened to be stored with.
+func TestHistoryTableUsesLocalTime(t *testing.T) {
+	originalLocal := time.Local
+	time.Local = time.FixedZone("UTC+2", 2*60*60)
+	defer func() { time.Local = originalLocal }()
+
+	h := releaseHistory{{
+		Revision:    1,
+		Updated:     time.Date(2026, 3, 4, 14, 38, 52, 0, time.UTC),
+		Status:      "deployed",
+		Chart:       "foo-0.1.0",
+		AppVersion:  "1.0",
+		Description: "Install complete",
+	}}
+
+	var buf bytes.Buffer
+	require.NoError(t, h.WriteTable(&buf))
+
+	if !strings.Contains(buf.String(), "Wed Mar  4 16:38:52 2026") {
+		t.Fatalf("expected timestamp rendered in local zone (UTC+2), got:\n%s", buf.String())
+	}
+}
 
 func TestHistoryCmd(t *testing.T) {
 	mk := func(name string, vers int, status common.Status) *release.Release {
