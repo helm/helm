@@ -126,10 +126,8 @@ func (s *Storage) ListUninstalled() ([]release.Releaser, error) {
 	return s.List(func(rls release.Releaser) bool {
 		rel, err := releaserToV1Release(rls)
 		if err != nil {
-			// This will only happen if calling code does not pass the proper types. This is
-			// a problem with the application and not user data.
-			s.Logger().Error("unable to convert release to typed release", slog.Any("error", err))
-			panic(fmt.Sprintf("unable to convert release to typed release: %s", err))
+			s.Logger().Warn("unable to convert release, skipping", slog.Any("error", err))
+			return false
 		}
 		return relutil.StatusFilter(common.StatusUninstalled).Check(rel)
 	})
@@ -142,10 +140,8 @@ func (s *Storage) ListDeployed() ([]release.Releaser, error) {
 	return s.List(func(rls release.Releaser) bool {
 		rel, err := releaserToV1Release(rls)
 		if err != nil {
-			// This will only happen if calling code does not pass the proper types. This is
-			// a problem with the application and not user data.
-			s.Logger().Error("unable to convert release to typed release", slog.Any("error", err))
-			panic(fmt.Sprintf("unable to convert release to typed release: %s", err))
+			s.Logger().Warn("unable to convert release, skipping", slog.Any("error", err))
+			return false
 		}
 		return relutil.StatusFilter(common.StatusDeployed).Check(rel)
 	})
