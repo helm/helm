@@ -233,8 +233,8 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		log.Fatal(err)
 	}
 
-	// Setup shell completion for the kube-context flag
-	err = cmd.RegisterFlagCompletionFunc("kube-context", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	// Setup shell completion for the kube-context flag (and its --context alias)
+	kubeContextCompletionFunc := func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -251,7 +251,12 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 			return comps, cobra.ShellCompDirectiveNoFileComp
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
-	})
+	}
+	err = cmd.RegisterFlagCompletionFunc("kube-context", kubeContextCompletionFunc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = cmd.RegisterFlagCompletionFunc("context", kubeContextCompletionFunc)
 	if err != nil {
 		log.Fatal(err)
 	}
