@@ -1,0 +1,5 @@
+apiVersion: v2
+name: sequenced-isolated-chart
+description: A test chart with an isolated resource group
+type: application
+version: 0.1.0
