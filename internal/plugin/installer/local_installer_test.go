@@ -55,57 +55,103 @@ func TestLocalInstallerNotAFolder(t *testing.T) {
 }
 
 func TestLocalInstallerTarball(t *testing.T) {
-	ensure.HelmHome(t)
-
-	// Create a test tarball
-	tempDir := t.TempDir()
-	tarballPath := filepath.Join(tempDir, "test-plugin-1.0.0.tar.gz")
-
-	// Create tarball content
-	var buf bytes.Buffer
-	gw := gzip.NewWriter(&buf)
-	tw := tar.NewWriter(gw)
-
-	files := []struct {
-		Name string
-		Body string
-		Mode int64
-	}{
-		{"test-plugin/plugin.yaml", "name: test-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0o644},
-		{"test-plugin/bin/test-plugin", "#!/usr/bin/env sh\necho test", 0o755},
-	}
-
-	for _, file := range files {
-		hdr := &tar.Header{
-			Name: file.Name,
-			Mode: file.Mode,
-			Size: int64(len(file.Body)),
+	testCases := []struct {
+		Name    string
+		Archive string
+		Files   []struct {
+			Name string
+			Body string
+			Mode int64
 		}
-		require.NoError(t, tw.WriteHeader(hdr))
-		_, err := tw.Write([]byte(file.Body))
-		require.NoError(t, err)
+		ExpectedPath string
+	}{
+		{
+			Name:    "plugin archive named following the convention",
+			Archive: "test-plugin-1.0.0.tar.gz",
+			Files: []struct {
+				Name string
+				Body string
+				Mode int64
+			}{
+				{"test-plugin/plugin.yaml", "name: test-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0o644},
+				{"test-plugin/bin/test-plugin", "#!/usr/bin/env sh\necho test", 0o755},
+			},
+			ExpectedPath: "test-plugin",
+		},
+		{
+			Name:    "plugin archive with unconventional name",
+			Archive: "unconventional-name-linux-amd64.tar.gz",
+			Files: []struct {
+				Name string
+				Body string
+				Mode int64
+			}{
+				{"unconventional-name/plugin.yaml", "name: unconventional-name\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0o644},
+				{"unconventional-name/bin/test-plugin", "#!/usr/bin/env sh\necho test", 0o755},
+			},
+			ExpectedPath: "unconventional-name",
+		},
+		{
+			Name:    "plugin where archive name matches sub-path",
+			Archive: "search-here-1.0.0.tar.gz",
+			Files: []struct {
+				Name string
+				Body string
+				Mode int64
+			}{
+				{"search-here/plugin.yaml", "name: working-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0o644},
+				{"search-here/bin/test-plugin", "#!/usr/bin/env sh\necho test", 0o755},
+			},
+			ExpectedPath: "working-plugin",
+		},
 	}
 
-	require.NoError(t, tw.Close())
-	require.NoError(t, gw.Close())
+	for _, tt := range testCases {
+		t.Run(tt.Name, func(t *testing.T) {
+			ensure.HelmHome(t)
 
-	// Write tarball to file
-	require.NoError(t, os.WriteFile(tarballPath, buf.Bytes(), 0o644))
+			// Create a test tarball
+			tempDir := t.TempDir()
+			tarballPath := filepath.Join(tempDir, tt.Archive)
 
-	// Test installation
-	i, err := NewForSource(tarballPath, "")
-	require.NoError(t, err)
+			// Create tarball content
+			var buf bytes.Buffer
+			gw := gzip.NewWriter(&buf)
+			tw := tar.NewWriter(gw)
 
-	// Verify it's detected as LocalInstaller
-	localInstaller, ok := i.(*LocalInstaller)
-	require.True(t, ok, "expected LocalInstaller")
-	require.True(t, localInstaller.isArchive, "expected isArchive to be true")
-	require.NoError(t, Install(i))
+			for _, file := range tt.Files {
+				hdr := &tar.Header{
+					Name: file.Name,
+					Mode: file.Mode,
+					Size: int64(len(file.Body)),
+				}
+				require.NoError(t, tw.WriteHeader(hdr))
+				_, err := tw.Write([]byte(file.Body))
+				require.NoError(t, err)
+			}
 
-	expectedPath := helmpath.DataPath("plugins", "test-plugin")
-	require.Equal(t, expectedPath, i.Path(), "expected path %q, got %q", expectedPath, i.Path())
+			require.NoError(t, tw.Close())
+			require.NoError(t, gw.Close())
 
-	// Verify plugin was installed
-	_, err = os.Stat(i.Path())
-	require.NoErrorf(t, err, "plugin not found at %s", i.Path())
+			// Write tarball to file
+			require.NoError(t, os.WriteFile(tarballPath, buf.Bytes(), 0o644))
+
+			// Test installation
+			i, err := NewForSource(tarballPath, "")
+			require.NoError(t, err)
+
+			// Verify it's detected as LocalInstaller
+			localInstaller, ok := i.(*LocalInstaller)
+			require.True(t, ok, "expected LocalInstaller")
+			require.True(t, localInstaller.isArchive, "expected isArchive to be true")
+			require.NoError(t, Install(i))
+
+			expectedPath := helmpath.DataPath("plugins", tt.ExpectedPath)
+			require.Equal(t, expectedPath, i.Path(), "expected path %q, got %q", expectedPath, i.Path())
+
+			// Verify plugin was installed
+			_, err = os.Stat(i.Path())
+			require.NoErrorf(t, err, "plugin not found at %s", i.Path())
+		})
+	}
 }

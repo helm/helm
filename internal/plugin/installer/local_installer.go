@@ -39,6 +39,7 @@ type LocalInstaller struct {
 	extractor  Extractor
 	pluginData []byte // Cached plugin data
 	provData   []byte // Cached provenance data
+	pluginName string // Cached plugin name
 }
 
 // NewLocalInstaller creates a new LocalInstaller.
@@ -115,6 +116,7 @@ func (i *LocalInstaller) installFromArchive() error {
 	if err != nil {
 		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
 	}
+	i.pluginName = metadata.Name
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
 	tarballPath := helmpath.DataPath("plugins", filename)
 	if err := os.MkdirAll(filepath.Dir(tarballPath), 0o755); err != nil {
@@ -147,10 +149,16 @@ func (i *LocalInstaller) installFromArchive() error {
 	}
 
 	// Plugin directory should be named after the plugin at the archive root
-	pluginName := stripPluginName(filepath.Base(i.Source))
-	pluginDir := filepath.Join(tempDir, pluginName)
+	pluginDir := filepath.Join(tempDir, metadata.Name)
 	if _, err = os.Stat(filepath.Join(pluginDir, "plugin.yaml")); err != nil {
-		return fmt.Errorf("plugin.yaml not found in expected directory %s: %w", pluginDir, err)
+		// Stay backwards compatible with archives like foo.tgz containing foo/plugin.tgz regardless of actual plugin name
+		archiveBasedName := stripPluginName(filepath.Base(i.Source))
+		fallbackDir := filepath.Join(tempDir, archiveBasedName)
+		if _, err = os.Stat(filepath.Join(fallbackDir, "plugin.yaml")); err != nil {
+			return fmt.Errorf("plugin.yaml not found in expected directory %s: %w", pluginDir, err)
+		}
+		slog.Warn("plugin is using bad archive path", slog.String("path", archiveBasedName))
+		pluginDir = fallbackDir
 	}
 
 	// Copy to the final destination
@@ -170,13 +178,19 @@ func (i *LocalInstaller) Path() string {
 		return ""
 	}
 
-	pluginName := filepath.Base(i.Source)
-	if i.isArchive {
-		// Strip archive extension to get plugin name
-		pluginName = stripPluginName(pluginName)
-	}
+	return helmpath.DataPath("plugins", i.name())
+}
 
-	return helmpath.DataPath("plugins", pluginName)
+func (i *LocalInstaller) name() string {
+	if i.pluginName == "" {
+		pluginName := filepath.Base(i.Source)
+		if i.isArchive {
+			// Strip archive extension to get plugin name
+			pluginName = stripPluginName(pluginName)
+		}
+		i.pluginName = pluginName
+	}
+	return i.pluginName
 }
 
 // SupportsVerification returns true if the local installer can verify plugins
