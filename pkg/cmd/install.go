@@ -38,6 +38,7 @@ import (
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -156,6 +157,8 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 			client.DryRunStrategy = dryRunStrategy
+
+			configureWaitProgress(client, out, outfmt)
 
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
@@ -368,6 +371,29 @@ func checkIfInstallable(ch chart.Accessor) error {
 		return nil
 	}
 	return fmt.Errorf("%s charts are not installable", meta["Type"])
+}
+
+func configureWaitProgress(client *action.Install, out io.Writer, outfmt output.Format) {
+	client.SetWaitProgress(nil)
+	if outfmt != output.Table || client.DryRunStrategy != action.DryRunNone {
+		return
+	}
+	if client.WaitStrategy == kube.HookOnlyStrategy && !client.RollbackOnFailure {
+		return
+	}
+	client.SetWaitProgress(func(timeout time.Duration) {
+		printWaitMessage(out, outfmt, kube.StatusWatcherStrategy, false, action.DryRunNone, timeout)
+	})
+}
+
+func printWaitMessage(out io.Writer, outfmt output.Format, strategy kube.WaitStrategy, rollbackOnFailure bool, dryRun action.DryRunStrategy, timeout time.Duration) {
+	if strategy == kube.HookOnlyStrategy && rollbackOnFailure {
+		strategy = kube.StatusWatcherStrategy
+	}
+	if outfmt != output.Table || strategy == kube.HookOnlyStrategy || dryRun != action.DryRunNone {
+		return
+	}
+	fmt.Fprintf(out, "Waiting for resources to become ready (timeout: %s)\n", timeout)
 }
 
 // Provide dynamic auto-completion for the install and template commands
