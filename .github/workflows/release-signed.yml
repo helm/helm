@@ -1,0 +1,54 @@
+#
+# Signed release with SBOMs and build provenance.
+# Modeled on https://github.com/goreleaser/example-secure
+#
+name: release-signed
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # needed to write releases
+  id-token: write # needed for keyless signing
+  attestations: write # needed for provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # pin@7.0.0
+        with:
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
+          cache: false
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@e24998b8b67b290c2fa8b7c14fcfa7de2c5c9b8c # v7.1.0
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-checksums: ./_dist/checksums.txt
