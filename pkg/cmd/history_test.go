@@ -26,6 +26,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+
+	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -146,6 +148,93 @@ func TestHistoryWithRollback(t *testing.T) {
 		golden: "output/history-with-rollback.yaml",
 	}}
 	runTestCmd(t, tests)
+}
+
+func TestHistoryCmdRespectsTimezone(t *testing.T) {
+	location := time.FixedZone("UTC-4", -4*60*60)
+
+	prevLocal := time.Local
+	time.Local = location
+	t.Cleanup(func() {
+		time.Local = prevLocal
+	})
+
+	date := time.Unix(242085845, 0).UTC()
+	ch := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "foo",
+			Version:    "0.1.0-beta.1",
+			AppVersion: "1.0",
+		},
+	}
+
+	releases := []*release.Release{
+		{
+			Name:    "angry-bird",
+			Version: 1,
+			Info: &release.Info{
+				FirstDeployed: date,
+				LastDeployed:  date,
+				Status:        common.StatusSuperseded,
+				Description:   "Install complete",
+			},
+			Chart: ch,
+		},
+		{
+			Name:    "angry-bird",
+			Version: 2,
+			Info: &release.Info{
+				FirstDeployed: date,
+				LastDeployed:  date,
+				Status:        common.StatusSuperseded,
+				Description:   "Upgrade complete",
+			},
+			Chart: ch,
+		},
+		{
+			Name:    "angry-bird",
+			Version: 3,
+			Info: &release.Info{
+				FirstDeployed:    date,
+				LastDeployed:     date,
+				Status:           common.StatusDeployed,
+				RollbackRevision: 1,
+				Description:      "Rollback to 1",
+			},
+			Chart: ch,
+		},
+	}
+
+	tests := []struct {
+		name    string
+		command string
+		golden  string
+	}{
+		{
+			name:    "default table",
+			command: "history angry-bird",
+			golden:  "output/history-timezone.txt",
+		},
+		{
+			name:    "rollback revision table",
+			command: "history angry-bird --show-rollback-revision",
+			golden:  "output/history-timezone-with-rollback.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage := storageFixture()
+			for _, rel := range releases {
+				require.NoError(t, storage.Create(rel))
+			}
+
+			_, out, err := executeActionCommandC(storage, tt.command)
+			require.NoError(t, err)
+
+			test.AssertGoldenString(t, out, tt.golden)
+		})
+	}
 }
 
 func TestHistoryOutputCompletion(t *testing.T) {
