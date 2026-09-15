@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/vcs"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
@@ -142,4 +143,42 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	require.NoError(t, os.Remove(filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")))
 	// Testing update for error
 	require.EqualErrorf(t, Update(vcsInstaller), "plugin repo was modified", "expected error for plugin modified")
+}
+
+func TestVCSInstaller_Path(t *testing.T) {
+	customPluginsDir := "/foo/bar"
+
+	tests := []struct {
+		name           string
+		source         string
+		version        string
+		helmPluginsDir string
+		expectPath     string
+	}{
+		{
+			name:           "default helm plugins dir",
+			source:         "https://github.com/adamreese/helm-env",
+			version:        "0.2.0",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "helm-env"),
+		}, {
+			name:           "custom helm plugins dir",
+			source:         "https://github.com/adamreese/helm-env",
+			version:        "0.2.0",
+			helmPluginsDir: customPluginsDir,
+			expectPath:     filepath.Join(customPluginsDir, "helm-env"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.helmPluginsDir != "" {
+				t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+			}
+			installer, err := NewVCSInstaller(tt.source, tt.version)
+			require.NoError(t, err)
+			path := installer.Path()
+			assert.Equal(t, tt.expectPath, path)
+		})
+	}
 }
