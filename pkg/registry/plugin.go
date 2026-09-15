@@ -58,6 +58,7 @@ func (c *Client) PullPlugin(ref, pluginName string, options ...PluginPullOption)
 	}
 
 	// Use generic client for the pull operation with artifact type filtering
+	// Pass PluginArtifactType to enable selection from OCI Image Index
 	genericClient := c.Generic()
 	genericResult, err := genericClient.PullGeneric(ref, GenericPullOptions{
 		// Allow manifests and all layer types - we'll validate artifact type after download
@@ -66,6 +67,7 @@ func (c *Client) PullPlugin(ref, pluginName string, options ...PluginPullOption)
 			"application/vnd.oci.image.layer.v1.tar",
 			"application/vnd.oci.image.layer.v1.tar+gzip",
 		},
+		ArtifactType: PluginArtifactType,
 	})
 	if err != nil {
 		return nil, err
