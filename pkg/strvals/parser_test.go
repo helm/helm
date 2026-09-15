@@ -642,6 +642,51 @@ func TestParseJSON(t *testing.T) {
 	}
 }
 
+func TestParseJSONNumbers(t *testing.T) {
+	// A JSON integer must round-trip exactly, including values above 2^53
+	// where a float64 would lose precision. This mirrors the plain --set
+	// path, which parses integers as int64.
+	tests := []struct {
+		name   string
+		input  string
+		expect map[string]any
+	}{
+		{
+			name:   "integer beyond 2^53 keeps its exact value",
+			input:  "id=9007199254740993",
+			expect: map[string]any{"id": int64(9007199254740993)},
+		},
+		{
+			name:   "small integer decodes as int64",
+			input:  "n=3",
+			expect: map[string]any{"n": int64(3)},
+		},
+		{
+			name:   "negative large integer keeps its exact value",
+			input:  "n=-9223372036854775807",
+			expect: map[string]any{"n": int64(-9223372036854775807)},
+		},
+		{
+			name:   "fractional value stays a float",
+			input:  "ratio=1.5",
+			expect: map[string]any{"ratio": float64(1.5)},
+		},
+		{
+			name:   "integers nested in objects and arrays keep their exact value",
+			input:  `obj={"big":9007199254740993,"list":[9007199254740995]}`,
+			expect: map[string]any{"obj": map[string]any{"big": int64(9007199254740993), "list": []any{int64(9007199254740995)}}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := map[string]any{}
+			err := ParseJSON(tt.input, got)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expect, got)
+		})
+	}
+}
+
 func TestParseFile(t *testing.T) {
 	input := "name1=path1"
 	expect := map[string]any{
