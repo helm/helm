@@ -34,4 +34,8 @@ const (
 
 	// LegacyChartLayerMediaType is the legacy reserved media type for Helm chart package content.
 	LegacyChartLayerMediaType = "application/tar+gzip"
+
+	// ChartArtifactType is the artifact type for Helm charts in OCI v1.1+ Image Index.
+	// This is used to identify Helm chart manifests within a multi-artifact index.
+	ChartArtifactType = "application/vnd.cncf.helm.config.v1+json"
 )
