@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -132,4 +133,19 @@ func TestAddDefaults(t *testing.T) {
 func parseString(str string) (*Rules, error) {
 	b := bytes.NewBuffer([]byte(str))
 	return Parse(b)
+}
+
+func TestIgnoreRootPatternConcurrent(t *testing.T) {
+	rules, err := parseString("/root.txt")
+	require.NoError(t, err)
+	var workers sync.WaitGroup
+	for range 8 {
+		workers.Go(func() {
+			for range 100 {
+				assert.True(t, rules.Ignore("root.txt", nil))
+				assert.False(t, rules.Ignore("nested/root.txt", nil))
+			}
+		})
+	}
+	workers.Wait()
 }
