@@ -26,6 +26,7 @@ import (
 
 	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -35,6 +36,7 @@ var ErrPluginNotADirectory = errors.New("expected plugin to be a directory (cont
 // LocalInstaller installs plugins from the filesystem.
 type LocalInstaller struct {
 	base
+	settings   *cli.EnvSettings
 	isArchive  bool
 	extractor  Extractor
 	pluginData []byte // Cached plugin data
@@ -47,8 +49,12 @@ func NewLocalInstaller(source string) (*LocalInstaller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to get absolute path to plugin: %w", err)
 	}
+
+	settings := cli.New()
+
 	i := &LocalInstaller{
-		base: newBase(src),
+		base:     newBase(src),
+		settings: settings,
 	}
 
 	// Check if source is an archive
@@ -176,7 +182,7 @@ func (i *LocalInstaller) Path() string {
 		pluginName = stripPluginName(pluginName)
 	}
 
-	return helmpath.DataPath("plugins", pluginName)
+	return filepath.Join(i.settings.PluginsDirectory, pluginName)
 }
 
 // SupportsVerification returns true if the local installer can verify plugins
