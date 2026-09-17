@@ -13,7 +13,8 @@ formatters:
 
     gofumpt:
       module-path: helm.sh/helm/v4
-      extra-rules: false
+      extra:
+        group-params: true
 
     goimports:
       local-prefixes:
@@ -95,7 +96,6 @@ linters:
         - exposedSyncMutex
         - hugeParam
         - importShadow
-        - paramTypeCombine
         - ptrToRefParam
         - rangeValCopy
         - todoCommentWithoutDetail
@@ -119,6 +119,7 @@ linters:
       enable-default-rules: true
       max-open-files: 2048
       rules:
+        - name: bare-return
         - name: early-return
           arguments:
             - "preserve-scope"

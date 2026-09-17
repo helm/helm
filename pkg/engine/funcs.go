@@ -447,7 +447,7 @@ func durationWeeks(v any) float64 {
 //
 // v and m accept the same forms as asDuration (e.g. "2h13m", "30s").
 // On error, it returns time.Duration(0). If m is invalid, it returns v.
-func durationRoundTo(v any, m any) time.Duration {
+func durationRoundTo(v, m any) time.Duration {
 	d, err := asDuration(v)
 	if err != nil {
 		return 0
@@ -463,7 +463,7 @@ func durationRoundTo(v any, m any) time.Duration {
 // Returns a time.Duration.
 //
 // On error, it returns time.Duration(0). If m is invalid, it returns v.
-func durationTruncateTo(v any, m any) time.Duration {
+func durationTruncateTo(v, m any) time.Duration {
 	d, err := asDuration(v)
 	if err != nil {
 		return 0

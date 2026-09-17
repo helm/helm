@@ -27,7 +27,7 @@ func (lbs labels) keys() (ls []string) {
 	for key := range lbs {
 		ls = append(ls, key)
 	}
-	return
+	return ls
 }
 
 func (lbs labels) match(set labels) bool {

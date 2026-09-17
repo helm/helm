@@ -42,8 +42,7 @@ func main() {
 	}
 
 	if err := cmd.Execute(); err != nil {
-		var cerr helmcmd.CommandError
-		if errors.As(err, &cerr) {
+		if cerr, ok := errors.AsType[helmcmd.CommandError](err); ok {
 			os.Exit(cerr.ExitCode)
 		}
 		os.Exit(1)

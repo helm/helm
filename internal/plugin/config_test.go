@@ -41,7 +41,7 @@ func TestUnmarshaConfig(t *testing.T) {
 			ShortHelp:   "short help string",
 			LongHelp:    "long help string",
 			IgnoreFlags: true,
-		}, *(config.(*schema.ConfigCLIV1)))
+		}, *config.(*schema.ConfigCLIV1))
 	}
 
 	// Test unmarshalling invalid config data

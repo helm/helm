@@ -493,7 +493,7 @@ func TestSqlDelete(t *testing.T) {
 	assert.Equalf(t, rel, deletedRelease, "Expected release {%v}, got {%v}", rel, deletedRelease)
 }
 
-func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace string, labels map[string]string) {
+func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key, namespace string, labels map[string]string) {
 	query := fmt.Sprintf(
 		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
 		sqlCustomLabelsTableKeyColumn,

@@ -18,6 +18,8 @@ package downloader
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -428,6 +430,55 @@ func TestDownloadToCache(t *testing.T) {
 		c.Verify = VerifyNever
 		c.Keyring = ""
 	})
+}
+
+func TestDownloadToCachePassesOptionsToProvenance(t *testing.T) {
+	chartData, err := os.ReadFile("testdata/signtest-0.1.0.tgz")
+	require.NoError(t, err)
+	provData, err := os.ReadFile("testdata/signtest-0.1.0.tgz.prov")
+	require.NoError(t, err)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		switch r.URL.Path {
+		case "/signtest-0.1.0.tgz":
+			_, _ = w.Write(chartData)
+		case "/signtest-0.1.0.tgz.prov":
+			_, _ = w.Write(provData)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	contentCache := t.TempDir()
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyLater,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+			ContentCache:     contentCache,
+		}),
+		Options: []getter.Option{
+			getter.WithBasicAuth("username", "password"),
+		},
+		Cache: &DiskCache{Root: contentCache},
+	}
+
+	_, _, err = c.DownloadToCache(srv.URL+"/signtest-0.1.0.tgz", "")
+	require.NoError(t, err)
+
+	digest := sha256.Sum256(chartData)
+	_, err = c.Cache.Get(digest, CacheProv)
+	require.NoError(t, err, "provenance file should be in cache")
 }
 
 func TestStripDigestAlgorithm(t *testing.T) {

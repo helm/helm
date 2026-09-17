@@ -447,7 +447,7 @@ func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expe
 	require.NoError(t, err)
 
 	require.NotNil(t, returnVal, "Expected non nil value for http client")
-	transport := (returnVal.Transport).(*http.Transport)
+	transport := returnVal.Transport.(*http.Transport)
 	gotValue := false
 	if transport.TLSClientConfig != nil {
 		gotValue = transport.TLSClientConfig.InsecureSkipVerify
@@ -465,7 +465,7 @@ func TestDefaultHTTPTransportReuse(t *testing.T) {
 
 	require.NotNil(t, httpClient1, "Expected non nil value for http client")
 
-	transport1 := (httpClient1.Transport).(*http.Transport)
+	transport1 := httpClient1.Transport.(*http.Transport)
 
 	httpClient2, err := g.httpClient(g.opts)
 
@@ -473,7 +473,7 @@ func TestDefaultHTTPTransportReuse(t *testing.T) {
 
 	require.NotNil(t, httpClient2, "Expected non nil value for http client")
 
-	transport2 := (httpClient2.Transport).(*http.Transport)
+	transport2 := httpClient2.Transport.(*http.Transport)
 
 	require.Equal(t, transport2, transport1, "Expected default transport to be reused")
 }
@@ -489,7 +489,7 @@ func TestHTTPTransportOption(t *testing.T) {
 
 	require.NotNil(t, httpClient1, "Expected non nil value for http client")
 
-	transport1 := (httpClient1.Transport).(*http.Transport)
+	transport1 := httpClient1.Transport.(*http.Transport)
 
 	require.Equal(t, transport, transport1, "Expected transport option to be applied")
 
@@ -499,7 +499,7 @@ func TestHTTPTransportOption(t *testing.T) {
 
 	require.NotNil(t, httpClient2, "Expected non nil value for http client")
 
-	transport2 := (httpClient2.Transport).(*http.Transport)
+	transport2 := httpClient2.Transport.(*http.Transport)
 
 	require.Equal(t, transport2, transport1, "Expected applied transport to be reused")
 

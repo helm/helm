@@ -183,7 +183,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	}
 
 	// Save Chart.lock
-	// TODO: remove the APIVersion check when APIVersionV1 is not used anymore
+	// TODO Helm v5: remove the APIVersion check when APIVersionV1 is not used anymore
 	if c.Metadata.APIVersion == chart.APIVersionV2 {
 		if c.Lock != nil {
 			ldata, err := yaml.Marshal(c.Lock)
