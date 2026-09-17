@@ -224,10 +224,11 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 				// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
 				var jsonval any
 				dec := json.NewDecoder(strings.NewReader(t.sc.String()))
+				dec.UseNumber()
 				if err := dec.Decode(&jsonval); err != nil {
 					return err
 				}
-				set(data, string(k), jsonval)
+				set(data, string(k), convertJSONNumbers(jsonval))
 				if _, err = io.CopyN(io.Discard, t.sc, dec.InputOffset()); err != nil {
 					return err
 				}
@@ -356,10 +357,11 @@ func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 			// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
 			var jsonval any
 			dec := json.NewDecoder(strings.NewReader(t.sc.String()))
+			dec.UseNumber()
 			if err := dec.Decode(&jsonval); err != nil {
 				return list, err
 			}
-			if list, err = setIndex(list, i, jsonval); err != nil {
+			if list, err = setIndex(list, i, convertJSONNumbers(jsonval)); err != nil {
 				return list, err
 			}
 			if _, err = io.CopyN(io.Discard, t.sc, dec.InputOffset()); err != nil {
@@ -554,4 +556,34 @@ func typedVal(v []rune, st bool) any {
 	}
 
 	return val
+}
+
+// convertJSONNumbers walks a value decoded by encoding/json with UseNumber
+// enabled and turns every json.Number into an int64 when it is integral, or a
+// float64 otherwise. Decoding into an any without UseNumber makes every JSON
+// number a float64, which silently loses precision for integers beyond 2^53
+// (for example 9007199254740993 becomes 9007199254740992). This keeps the
+// --set-json path consistent with the plain --set path, whose typedVal parses
+// integers as int64.
+func convertJSONNumbers(v any) any {
+	switch val := v.(type) {
+	case json.Number:
+		if iv, err := val.Int64(); err == nil {
+			return iv
+		}
+		fv, _ := val.Float64()
+		return fv
+	case map[string]any:
+		for k, e := range val {
+			val[k] = convertJSONNumbers(e)
+		}
+		return val
+	case []any:
+		for i, e := range val {
+			val[i] = convertJSONNumbers(e)
+		}
+		return val
+	default:
+		return v
+	}
 }
