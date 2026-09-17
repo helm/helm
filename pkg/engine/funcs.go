@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"reflect"
@@ -88,8 +89,16 @@ func funcMap() template.FuncMap {
 		"tpl":      func(string, any) any { return "not implemented" },
 		"required": func(string, any) (any, error) { return "not implemented", nil },
 		// Provide a placeholder for the "lookup" function, which requires a kubernetes
-		// connection.
-		"lookup": func(string, string, string, string) (map[string]any, error) {
+		// connection. This is what actually runs for a plain `helm template` (client-only
+		// dry run, no cluster connection), which is the common case users hit when they
+		// expect lookup to see real cluster state and get an empty result instead.
+		"lookup": func(apiversion, kind, namespace, name string) (map[string]any, error) {
+			slog.Debug("lookup: no cluster connection, returning empty result",
+				slog.String("apiVersion", apiversion),
+				slog.String("kind", kind),
+				slog.String("namespace", namespace),
+				slog.String("name", name),
+			)
 			return map[string]any{}, nil
 		},
 	}
