@@ -388,18 +388,25 @@ func TestTmpChartsDirConcurrent(t *testing.T) {
 
 	const concurrency = 32
 	paths := make([]string, concurrency)
+	errs := make([]error, concurrency)
 	var wg sync.WaitGroup
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			path, err := tmpChartsDir(chartPath)
-			require.NoError(t, err)
-			paths[i] = path
-			require.NoError(t, os.RemoveAll(path))
+			if err == nil {
+				paths[i] = path
+				err = os.RemoveAll(path)
+			}
+			errs[i] = err
 		}(i)
 	}
 	wg.Wait()
+
+	for i, err := range errs {
+		require.NoError(t, err, "tmpChartsDir goroutine %d failed", i)
+	}
 
 	seen := make(map[string]struct{}, concurrency)
 	for _, path := range paths {
@@ -408,7 +415,6 @@ func TestTmpChartsDirConcurrent(t *testing.T) {
 		require.False(t, dup, "duplicate tmp dir: %s", path)
 		seen[path] = struct{}{}
 	}
-}
 
 func TestLockForChartPathEquivalentPaths(t *testing.T) {
 	chartPath := t.TempDir()
