@@ -415,6 +415,7 @@ func TestTmpChartsDirConcurrent(t *testing.T) {
 		require.False(t, dup, "duplicate tmp dir: %s", path)
 		seen[path] = struct{}{}
 	}
+}
 
 func TestLockForChartPathEquivalentPaths(t *testing.T) {
 	chartPath := t.TempDir()
