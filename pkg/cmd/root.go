@@ -289,6 +289,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 
 		newCompletionCmd(out),
 		newEnvCmd(out),
+		newGitCmd(out),
 		newPluginCmd(out),
 		newVersionCmd(out),
 
