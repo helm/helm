@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
+	"path"
 	"strings"
 
 	"k8s.io/cli-runtime/pkg/printers"
@@ -61,7 +62,10 @@ type Show struct {
 	Devel            bool
 	OutputFormat     ShowOutputFormat
 	JSONPathTemplate string
-	chart            *chart.Chart // for testing
+	// OCIRef is the original OCI reference (without oci:// scheme) used to fetch
+	// manifest annotations when showing an OCI chart. Leave empty for non-OCI charts.
+	OCIRef string
+	chart  *chart.Chart // for testing
 }
 
 // NewShow creates a new Show object with the given configuration.
@@ -96,6 +100,25 @@ func (s *Show) Run(chartpath string) (string, error) {
 	var out strings.Builder
 	if s.OutputFormat == ShowChart || s.OutputFormat == ShowAll {
 		fmt.Fprintf(&out, "%s\n", cf)
+		if s.OCIRef != "" && s.registryClient != nil {
+			ref := s.OCIRef
+			// When the reference has no explicit tag or digest, fall back to the
+			// resolved chart version. Helm stores an OCI chart under a tag that
+			// matches its version, and s.chart.Metadata.Version is the concrete
+			// version actually downloaded (the requested version may be a range).
+			if s.chart.Metadata != nil && s.chart.Metadata.Version != "" &&
+				!strings.Contains(path.Base(ref), ":") && !strings.Contains(ref, "@") {
+				ref = fmt.Sprintf("%s:%s", ref, s.chart.Metadata.Version)
+			}
+			annotations, err := s.registryClient.GetManifestAnnotations(ref)
+			if err == nil && len(annotations) > 0 {
+				annotationsYAML, marshalErr := yaml.Marshal(annotations)
+				if marshalErr == nil {
+					fmt.Fprintln(&out, "---")
+					fmt.Fprintf(&out, "%s\n", annotationsYAML)
+				}
+			}
+		}
 	}
 
 	if (s.OutputFormat == ShowValues || s.OutputFormat == ShowAll) && s.chart.Values != nil {
