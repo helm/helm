@@ -172,8 +172,8 @@ func (r *Rules) parseRule(rule string) error {
 
 	if after, ok := strings.CutPrefix(rule, "/"); ok {
 		// Require path matches the root path.
+		rule = after
 		p.match = func(n string, _ os.FileInfo) bool {
-			rule = after
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
 				slog.Error("failed to compile", slog.String("rule", rule), slog.Any("error", err))
