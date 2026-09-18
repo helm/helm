@@ -600,6 +600,7 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		Set(sqlReleaseTableVersionColumn, int(rls.Version)).
 		Set(sqlReleaseTableStatusColumn, rls.Info.Status.String()).
 		Set(sqlReleaseTableOwnerColumn, sqlReleaseDefaultOwner).
+		Set(sqlReleaseTableTypeColumn, sqlReleaseDefaultType).
 		Set(sqlReleaseTableModifiedAtColumn, int(time.Now().Unix())).
 		Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
 		Where(sq.Eq{sqlReleaseTableNamespaceColumn: namespace}).
