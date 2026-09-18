@@ -31,7 +31,17 @@ var b64 = base64.StdEncoding
 
 var magicGzip = []byte{0x1f, 0x8b, 0x08}
 
-var systemLabels = []string{"name", "owner", "status", "version", "createdAt", "modifiedAt"}
+// releaseVersionLabel carries the release object schema version on storage
+// objects that have no native field for it. Secrets record it in their Type
+// field, but ConfigMaps have no equivalent, so the marker is a label instead.
+// Absence of the label means release v1, so records written before this label
+// existed continue to read correctly.
+const releaseVersionLabel = "helm.sh/release-version"
+
+// releaseVersion is the schema version written by this package.
+const releaseVersion = "v2"
+
+var systemLabels = []string{"name", "owner", "status", "version", "createdAt", "modifiedAt", releaseVersionLabel}
 
 // encodeRelease encodes a release returning a base64 encoded
 // gzipped string representation, or error.

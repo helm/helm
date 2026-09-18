@@ -72,6 +72,24 @@ func TestUncompressedConfigMapGet(t *testing.T) {
 	assert.Equalf(t, rel, got, "Expected {%v}, got {%v}", rel, got)
 }
 
+func TestConfigMapReleaseVersionLabel(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+
+	cfgmap, err := newConfigMapsObject(key, rel, nil)
+	require.NoError(t, err, "Failed to create configmap")
+
+	// ConfigMaps have no Type field, so the release schema version is a label.
+	assert.Equal(t, releaseVersion, cfgmap.Labels[releaseVersionLabel])
+
+	// The label is a system label and must not leak into the release's own labels.
+	assert.True(t, isSystemLabel(releaseVersionLabel))
+	assert.NotContains(t, filterSystemLabels(cfgmap.Labels), releaseVersionLabel)
+}
+
 func convertReleaserToV1(t *testing.T, rel release.Releaser) *rspb.Release {
 	t.Helper()
 	switch r := rel.(type) {

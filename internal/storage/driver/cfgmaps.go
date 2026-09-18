@@ -255,6 +255,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls release.Releaser, err error) 
 //	"status"         - status of the release (see pkg/release/status.go for variants)
 //	"owner"          - owner of the configmap, currently "helm".
 //	"name"           - name of the release.
+//	"helm.sh/release-version" - release object schema version, see releaseVersionLabel.
 func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigMap, error) {
 	const owner = "helm"
 
@@ -276,6 +277,7 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 	lbs.set("owner", owner)
 	lbs.set("status", rls.Info.Status.String())
 	lbs.set("version", strconv.Itoa(rls.Version))
+	lbs.set(releaseVersionLabel, releaseVersion)
 
 	// create and return configmap object
 	return &v1.ConfigMap{
