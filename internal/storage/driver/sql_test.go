@@ -297,13 +297,14 @@ func TestSqlUpdate(t *testing.T) {
 	body, _ := encodeRelease(rel)
 
 	query := fmt.Sprintf(
-		"UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4, %s = $5, %s = $6 WHERE %s = $7 AND %s = $8",
+		"UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4, %s = $5, %s = $6, %s = $7 WHERE %s = $8 AND %s = $9",
 		sqlReleaseTableName,
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableNameColumn,
 		sqlReleaseTableVersionColumn,
 		sqlReleaseTableStatusColumn,
 		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableTypeColumn,
 		sqlReleaseTableModifiedAtColumn,
 		sqlReleaseTableKeyColumn,
 		sqlReleaseTableNamespaceColumn,
@@ -311,7 +312,7 @@ func TestSqlUpdate(t *testing.T) {
 
 	mock.
 		ExpectExec(regexp.QuoteMeta(query)).
-		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace).
+		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, sqlReleaseDefaultType, recentUnixTimestamp(), key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
