@@ -618,6 +618,11 @@ func TestInstallRelease_Wait(t *testing.T) {
 	failer.WaitError = errors.New("I timed out")
 	instAction.cfg.KubeClient = failer
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
+	progressCalls := 0
+	instAction.SetWaitProgress(func(timeout time.Duration) {
+		assert.Equal(t, instAction.Timeout, timeout)
+		progressCalls++
+	})
 	vals := map[string]any{}
 
 	goroutines := instAction.getGoroutineCount()
@@ -628,6 +633,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 	req.NoError(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(rcommon.StatusFailed, res.Info.Status)
+	is.Equal(1, progressCalls)
 
 	is.Equal(goroutines, instAction.getGoroutineCount())
 }

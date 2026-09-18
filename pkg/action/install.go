@@ -100,12 +100,14 @@ type Install struct {
 	Devel            bool
 	DependencyUpdate bool
 	Timeout          time.Duration
-	Namespace        string
-	ReleaseName      string
-	GenerateName     bool
-	NameTemplate     string
-	Description      string
-	OutputDir        string
+	// waitProgress is called immediately before waiting for resources.
+	waitProgress func(time.Duration)
+	Namespace    string
+	ReleaseName  string
+	GenerateName bool
+	NameTemplate string
+	Description  string
+	OutputDir    string
 	// RollbackOnFailure enables rolling back (uninstalling) the release on failure if set
 	RollbackOnFailure        bool
 	SkipCRDs                 bool
@@ -180,6 +182,11 @@ func (i *Install) SetRegistryClient(registryClient *registry.Client) {
 // GetRegistryClient get the registry client.
 func (i *Install) GetRegistryClient() *registry.Client {
 	return i.registryClient
+}
+
+// SetWaitProgress configures a callback invoked immediately before waiting for resources.
+func (i *Install) SetWaitProgress(waitProgress func(time.Duration)) {
+	i.waitProgress = waitProgress
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {
@@ -541,6 +548,10 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted, resources ku
 	}
 	if err != nil {
 		return rel, fmt.Errorf("failed to get waiter: %w", err)
+	}
+
+	if i.waitProgress != nil {
+		i.waitProgress(i.Timeout)
 	}
 
 	if i.WaitForJobs {
