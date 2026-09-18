@@ -18,6 +18,7 @@ package installer
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -142,4 +143,62 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	require.NoError(t, os.Remove(filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")))
 	// Testing update for error
 	require.EqualErrorf(t, Update(vcsInstaller), "plugin repo was modified", "expected error for plugin modified")
+}
+
+// runGit runs a git command in dir, failing the test on error.
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	args = append([]string{"-C", dir, "-c", "user.name=Helm Test", "-c", "user.email=helm@example.com", "-c", "commit.gpgsign=false"}, args...)
+	out, err := exec.CommandContext(t.Context(), "git", args...).CombinedOutput()
+	require.NoErrorf(t, err, "git %v: %s", args, out)
+}
+
+// TestVCSInstallerUpdateHookModifiedPlugin ensures a plugin can still be
+// updated after its install hook has modified files inside the installed
+// plugin directory, as helm-unittest's install-binary.sh does. Update must
+// run against Helm's cached repository, not the installed copy, whose
+// checkout is legitimately dirtied by hooks. See
+// https://github.com/helm/helm/issues/31664.
+func TestVCSInstallerUpdateHookModifiedPlugin(t *testing.T) {
+	ensure.HelmHome(t)
+
+	require.NoErrorf(t, os.MkdirAll(helmpath.DataPath("plugins"), 0o755), "Could not create %s", helmpath.DataPath("plugins"))
+
+	// Create a local git repository containing the plugin.
+	upstream := filepath.Join(t.TempDir(), "hookmod")
+	require.NoError(t, os.MkdirAll(upstream, 0o755))
+	pluginYAML := "name: \"hookmod\"\nversion: \"0.1.0\"\ntype: cli/v1\napiVersion: v1\nruntime: subprocess\nconfig:\n  shortHelp: \"hook modified plugin\"\n  longHelp: \"hook modified plugin\"\nruntimeConfig:\n  command: \"echo Hello\"\n"
+	require.NoError(t, os.WriteFile(filepath.Join(upstream, "plugin.yaml"), []byte(pluginYAML), 0o644))
+	runGit(t, upstream, "init")
+	runGit(t, upstream, "add", "plugin.yaml")
+	runGit(t, upstream, "commit", "-m", "initial commit")
+
+	source := "file://" + upstream
+	i, err := NewForSource(source, "")
+	require.NoError(t, err)
+	require.IsType(t, &VCSInstaller{}, i, "expected a VCSInstaller")
+	require.NoError(t, Install(i))
+
+	// Simulate an install hook rewriting a tracked file inside the
+	// installed plugin directory.
+	require.NoError(t, os.WriteFile(filepath.Join(i.Path(), "plugin.yaml"), []byte(pluginYAML+"# rewritten by install hook\n"), 0o644))
+
+	// Publish a new version upstream.
+	require.NoError(t, os.WriteFile(filepath.Join(upstream, "plugin.yaml"), []byte(strings.ReplaceAll(pluginYAML, "0.1.0", "0.2.0")), 0o644))
+	runGit(t, upstream, "commit", "-am", "release 0.2.0")
+
+	upd, err := FindSource(i.Path())
+	require.NoError(t, err)
+	require.NoError(t, Update(upd), "update must not treat hook-produced changes as user modifications")
+
+	// The installed copy is refreshed from the clean checkout.
+	data, err := os.ReadFile(filepath.Join(i.Path(), "plugin.yaml"))
+	require.NoError(t, err)
+	require.Contains(t, string(data), `version: "0.2.0"`)
+	require.NotContains(t, string(data), "rewritten by install hook")
+
+	// A second update must keep working.
+	upd, err = FindSource(i.Path())
+	require.NoError(t, err)
+	require.NoError(t, Update(upd))
 }
