@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -27,6 +28,34 @@ import (
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
+
+// Regression test for #31902: the UPDATED column must be rendered in the
+// local timezone (derived from TZ) for both the --time-format path and the
+// default String() path.
+func TestListWriterUsesLocalTime(t *testing.T) {
+	originalLocal := time.Local
+	time.Local = time.FixedZone("UTC+2", 2*60*60)
+	defer func() { time.Local = originalLocal }()
+
+	releases := []*release.Release{{
+		Name:      "tz-release",
+		Version:   1,
+		Namespace: "default",
+		Info: &release.Info{
+			LastDeployed: time.Date(2026, 3, 4, 14, 38, 52, 0, time.UTC),
+			Status:       common.StatusDeployed,
+		},
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Name: "test-chart", Version: "1.0.0", AppVersion: "0.0.1"}},
+	}}
+
+	writer := newReleaseListWriter(releases, "2006-01-02 15:04:05", false, false)
+	assert.Equal(t, "2026-03-04 16:38:52", writer.releases[0].Updated)
+
+	writer = newReleaseListWriter(releases, "", false, false)
+	if got := writer.releases[0].Updated; !strings.Contains(got, "16:38:52") || !strings.Contains(got, "+0200") {
+		t.Fatalf("expected default-format timestamp in local zone (UTC+2), got %q", got)
+	}
+}
 
 func TestListCmd(t *testing.T) {
 	defaultNamespace := "default"
