@@ -2271,3 +2271,31 @@ func createManifest(t *testing.T, manifest string,
 	require.NoError(t, err)
 	require.NoError(t, fakeClient.Tracker().Create(mapping.Resource, obj, obj.GetNamespace()))
 }
+
+func TestResolveClientCreateOptions(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		opts, err := ResolveClientCreateOptions()
+		require.NoError(t, err)
+		assert.True(t, opts.ServerSideApply)
+		assert.False(t, opts.ForceConflicts)
+		assert.False(t, opts.DryRun)
+		assert.Equal(t, FieldValidationDirectiveStrict, opts.FieldValidationDirective)
+	})
+
+	t.Run("options are applied", func(t *testing.T) {
+		opts, err := ResolveClientCreateOptions(
+			ClientCreateOptionServerSideApply(false, false),
+			ClientCreateOptionDryRun(true),
+			ClientCreateOptionFieldValidationDirective(FieldValidationDirectiveIgnore),
+		)
+		require.NoError(t, err)
+		assert.False(t, opts.ServerSideApply)
+		assert.True(t, opts.DryRun)
+		assert.Equal(t, FieldValidationDirectiveIgnore, opts.FieldValidationDirective)
+	})
+
+	t.Run("invalid combination", func(t *testing.T) {
+		_, err := ResolveClientCreateOptions(ClientCreateOptionServerSideApply(false, true))
+		require.Error(t, err)
+	})
+}
