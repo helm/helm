@@ -80,6 +80,21 @@ jobs:
           container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
 
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Purge Azure CDN Cache
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az cdn endpoint purge \
+              --content-paths "/helm-latest-version" "/helm4-latest-version" \
+              --resource-group "${{ secrets.AZURE_CDN_RESOURCE_GROUP }}" \
+              --profile-name "${{ secrets.AZURE_CDN_PROFILE_NAME }}" \
+              --name "${{ secrets.AZURE_CDN_ENDPOINT_NAME }}"
+
   canary-release:
     runs-on: ubuntu-latest-16-cores
     if: github.ref == 'refs/heads/main' && github.repository == 'helm/helm'
