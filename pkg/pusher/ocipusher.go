@@ -93,8 +93,14 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	chartArchiveFileCreatedTime := stat.ModTime()
 	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartArchiveFileCreatedTime.Format(time.RFC3339)))
 
-	_, err = client.Push(chartBytes, ref, pushOpts...)
-	return err
+	result, err := client.Push(chartBytes, ref, pushOpts...)
+	if err != nil {
+		return err
+	}
+	if pusher.opts.pushResultHandler != nil {
+		pusher.opts.pushResultHandler(result)
+	}
+	return nil
 }
 
 // NewOCIPusher constructs a valid OCI client as a Pusher

@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 func TestNewPushWithPushConfig(t *testing.T) {
@@ -63,4 +65,11 @@ func TestNewPushWithPushOptWriter(t *testing.T) {
 
 	assert.NotNil(t, client)
 	assert.Equal(t, buf, client.out)
+}
+
+func TestNewPushWithPushResultHandler(t *testing.T) {
+	client := NewPushWithOpts(WithPushResultHandler(func(_ *registry.PushResult) {}))
+
+	assert.NotNil(t, client)
+	assert.NotNil(t, client.pushResultHandler)
 }
