@@ -17,8 +17,10 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -125,4 +127,42 @@ command: $HELM_PLUGIN_DIR/test-plugin
 	// Verify other version files are NOT removed
 	_, err = os.Stat(otherVersionTarball)
 	assert.False(t, os.IsNotExist(err), "other version tarball should NOT be removed")
+}
+
+func TestPluginUninstallWithMultiplePluginDirs(t *testing.T) {
+	ensure.HelmHome(t)
+
+	firstDir := t.TempDir()
+	secondDir := t.TempDir()
+	t.Setenv("HELM_PLUGINS", strings.Join([]string{firstDir, secondDir}, string(os.PathListSeparator)))
+
+	origSettings := settings
+	settings = cli.New()
+	t.Cleanup(func() { settings = origSettings })
+
+	// The plugin lives in the second directory of HELM_PLUGINS, along with the
+	// versioned files kept next to it.
+	pluginDir := filepath.Join(secondDir, "test-plugin")
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
+	pluginYAML := `name: test-plugin
+version: 1.2.3
+description: Test plugin
+command: $HELM_PLUGIN_DIR/test-plugin
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0o644))
+
+	tarballFile := filepath.Join(secondDir, "test-plugin-1.2.3.tgz")
+	provFile := filepath.Join(secondDir, "test-plugin-1.2.3.tgz.prov")
+	require.NoError(t, os.WriteFile(tarballFile, []byte("fake tarball"), 0o644))
+	require.NoError(t, os.WriteFile(provFile, []byte("fake provenance"), 0o644))
+
+	o := &pluginUninstallOptions{names: []string{"test-plugin"}}
+	require.NoError(t, o.run(io.Discard))
+
+	_, err := os.Stat(pluginDir)
+	assert.True(t, os.IsNotExist(err), "plugin directory should be removed")
+	_, err = os.Stat(tarballFile)
+	assert.True(t, os.IsNotExist(err), "versioned tarball file should be removed")
+	_, err = os.Stat(provFile)
+	assert.True(t, os.IsNotExist(err), "versioned provenance file should be removed")
 }
