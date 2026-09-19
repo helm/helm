@@ -245,7 +245,7 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					// If the original value is nil, there is nothing to coalesce, so we don't print
 					// the warning
 					if val != nil {
-						printf("warning: skipped value for %s.%s: Not a table.", subPrefix, key)
+						printf("warning: skipped value for %s.%s: the chart default here is a table (a nested map of keys), but the supplied value is not, so it was ignored.", subPrefix, key)
 					}
 				} else {
 					// If the key is a child chart, coalesce tables with Merge set to true
@@ -349,10 +349,10 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]any), val.(map[string]any), fullkey, merge)
 			} else {
-				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
+				printf("warning: cannot overwrite table with non table for %s (%v): the destination is a table (a nested map of keys) but the source value is not, so the source value was ignored.", fullkey, val)
 			}
 		case istable(dv) && val != nil:
-			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
+			printf("warning: destination for %s is a table (a nested map of keys), but the supplied value (%v) is not a table, so it was ignored. If you meant to replace the whole table, unset it first.", fullkey, val)
 		}
 	}
 	return dst
