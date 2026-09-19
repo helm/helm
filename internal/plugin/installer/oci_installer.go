@@ -25,6 +25,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/plugin/cache"
@@ -246,6 +248,30 @@ func extractTar(r io.Reader, targetDir string) error {
 			if _, err := io.Copy(outFile, tarReader); err != nil {
 				return err
 			}
+		case tar.TypeSymlink:
+			cleanTarget := filepath.Clean(header.Linkname)
+			if filepath.IsAbs(cleanTarget) {
+				return fmt.Errorf("symlink with absolute target: %s", cleanTarget)
+			}
+			targetPath := filepath.Join(filepath.Dir(path), cleanTarget)
+			rel, err := filepath.Rel(targetDir, targetPath)
+			if err != nil || strings.HasPrefix(rel, "..") {
+				return fmt.Errorf("symlink target %s escapes installation directory", header.Linkname)
+			}
+			if runtime.GOOS == "windows" {
+				if !hasSymlinkPrivilege() {
+					return fmt.Errorf("symlink creation not supported on Windows: run as administrator or enable developer mode")
+				}
+			}
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				return fmt.Errorf("create directory: %w", err)
+			}
+			if err := os.Symlink(header.Linkname, path); err != nil {
+				if runtime.GOOS == "windows" && os.IsPermission(err) {
+					return fmt.Errorf("create symlink requires admin privileges: %w", err)
+				}
+				return fmt.Errorf("create symlink: %w", err)
+			}
 		case tar.TypeXGlobalHeader, tar.TypeXHeader:
 			// Skip these
 			continue
@@ -299,4 +325,15 @@ func (i *OCIInstaller) GetVerificationData() (archiveData, provData []byte, file
 
 	slog.Debug("got verification data for OCI plugin", "filename", filename)
 	return i.pluginData, i.provData, filename, nil
+}
+
+func hasSymlinkPrivilege() bool {
+	testLink := filepath.Join(os.TempDir(), "symlink_priv_test")
+	_ = os.Remove(testLink)
+	err := os.Symlink("test", testLink)
+	if err == nil {
+		_ = os.Remove(testLink)
+		return true
+	}
+	return false
 }
