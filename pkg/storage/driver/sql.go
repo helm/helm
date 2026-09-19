@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -488,6 +489,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 		s.Logger().Debug("failed to start SQL transaction", slog.Any("error", err))
 		return fmt.Errorf("error beginning transaction: %w", err)
 	}
+	defer transaction.Rollback()
 
 	insertQuery, args, err := s.statementBuilder.
 		Insert(sqlReleaseTableName).
@@ -518,9 +520,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 		return err
 	}
 
-	if _, err := transaction.Exec(insertQuery, args...); err != nil {
-		defer transaction.Rollback()
-
+	if _, err := transaction.ExecContext(context.Background(), insertQuery, args...); err != nil {
 		selectQuery, args, buildErr := s.statementBuilder.
 			Select(sqlReleaseTableKeyColumn).
 			From(sqlReleaseTableName).
@@ -559,18 +559,20 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 				v,
 			).ToSql()
 		if err != nil {
-			defer transaction.Rollback()
 			s.Logger().Debug("failed to build insert query", slog.Any("error", err))
 			return err
 		}
 
-		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
-			defer transaction.Rollback()
+		if _, err := transaction.ExecContext(context.Background(), insertLabelsQuery, args...); err != nil {
 			s.Logger().Debug("failed to write Labels", slog.Any("error", err))
 			return err
 		}
 	}
-	defer transaction.Commit()
+
+	if err := transaction.Commit(); err != nil {
+		s.Logger().Debug("failed to commit release creation transaction", slog.Any("error", err))
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
 
 	return nil
 }
@@ -609,7 +611,7 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		return err
 	}
 
-	if _, err := s.db.Exec(query, args...); err != nil {
+	if _, err := s.db.ExecContext(context.Background(), query, args...); err != nil {
 		s.Logger().Debug("failed to update release in SQL database", slog.String("key", key), slog.Any("error", err))
 		return err
 	}
@@ -624,6 +626,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		s.Logger().Debug("failed to start SQL transaction", slog.Any("error", err))
 		return nil, fmt.Errorf("error beginning transaction: %w", err)
 	}
+	defer transaction.Rollback()
 
 	selectQuery, args, err := s.statementBuilder.
 		Select(sqlReleaseTableBodyColumn).
@@ -646,10 +649,8 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 	release, err := decodeRelease(record.Body)
 	if err != nil {
 		s.Logger().Debug("failed to decode release", slog.String("key", key), slog.Any("error", err))
-		transaction.Rollback()
 		return nil, err
 	}
-	defer transaction.Commit()
 
 	deleteQuery, args, err := s.statementBuilder.
 		Delete(sqlReleaseTableName).
@@ -661,7 +662,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		return nil, err
 	}
 
-	_, err = transaction.Exec(deleteQuery, args...)
+	_, err = transaction.ExecContext(context.Background(), deleteQuery, args...)
 	if err != nil {
 		s.Logger().Debug("failed perform delete query", slog.Any("error", err))
 		return release, err
@@ -685,8 +686,17 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 		s.Logger().Debug("failed to build delete Labels query", slog.Any("error", err))
 		return nil, err
 	}
-	_, err = transaction.Exec(deleteCustomLabelsQuery, args...)
-	return release, err
+	if _, err = transaction.ExecContext(context.Background(), deleteCustomLabelsQuery, args...); err != nil {
+		s.Logger().Debug("failed to delete release custom labels", slog.String("key", key), slog.Any("error", err))
+		return release, err
+	}
+
+	if err := transaction.Commit(); err != nil {
+		s.Logger().Debug("failed to commit release deletion transaction", slog.Any("error", err))
+		return release, fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return release, nil
 }
 
 // Get release custom labels from database
