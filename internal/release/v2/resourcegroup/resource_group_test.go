@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package resourcegroup
 
 import (
 	"fmt"
@@ -23,6 +23,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	releasev2manifest "helm.sh/helm/v4/internal/release/v2/manifest"
+)
+
+type (
+	Manifest   = releasev2manifest.Manifest
+	SimpleHead = releasev2manifest.SimpleHead
 )
 
 func TestParseResourceGroups_NoAnnotations(t *testing.T) {

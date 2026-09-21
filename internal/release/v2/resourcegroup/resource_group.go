@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package resourcegroup
 
 import (
 	"encoding/json"
 	"fmt"
 
 	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
+	releasev2manifest "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
 const (
@@ -35,13 +36,13 @@ const (
 // ResourceGroupResult holds the output of ParseResourceGroups.
 type ResourceGroupResult struct {
 	// Groups maps group names to manifests assigned to those groups.
-	Groups map[string][]Manifest
+	Groups map[string][]releasev2manifest.Manifest
 
 	// GroupDeps maps group names to the group names they depend on.
 	GroupDeps map[string][]string
 
 	// Unsequenced contains manifests that should be deployed outside the DAG.
-	Unsequenced []Manifest
+	Unsequenced []releasev2manifest.Manifest
 }
 
 // ParseResourceGroups extracts resource-group annotations from rendered
@@ -52,9 +53,9 @@ type ResourceGroupResult struct {
 // unsequenced batch. References to unknown groups emit a warning and demote the
 // entire referencing group to the unsequenced batch. If the same resource is
 // assigned to different groups, ParseResourceGroups returns an error.
-func ParseResourceGroups(manifests []Manifest) (ResourceGroupResult, []string, error) {
+func ParseResourceGroups(manifests []releasev2manifest.Manifest) (ResourceGroupResult, []string, error) {
 	result := ResourceGroupResult{
-		Groups:    make(map[string][]Manifest),
+		Groups:    make(map[string][]releasev2manifest.Manifest),
 		GroupDeps: make(map[string][]string),
 	}
 	var warnings []string
@@ -151,7 +152,7 @@ func BuildResourceGroupDAG(result ResourceGroupResult) (*chartutil.DAG, error) {
 	return dag, nil
 }
 
-func resourceGroupName(manifest Manifest) (string, bool) {
+func resourceGroupName(manifest releasev2manifest.Manifest) (string, bool) {
 	if manifest.Head == nil || manifest.Head.Metadata == nil || len(manifest.Head.Metadata.Annotations) == 0 {
 		return "", false
 	}
@@ -163,7 +164,7 @@ func resourceGroupName(manifest Manifest) (string, bool) {
 	return groupName, true
 }
 
-func resourceGroupDependencies(manifest Manifest) ([]string, string, error) {
+func resourceGroupDependencies(manifest releasev2manifest.Manifest) ([]string, string, error) {
 	annotations := manifest.Head.Metadata.Annotations
 	rawDeps, ok := annotations[AnnotationDependsOnResourceGroups]
 	if !ok {
@@ -186,7 +187,7 @@ func resourceGroupDependencies(manifest Manifest) ([]string, string, error) {
 // firstMissingDependency returns the first dependency that does not name an
 // existing group, and whether one was found. The boolean disambiguates an
 // empty-string dependency from no missing dependency.
-func firstMissingDependency(groups map[string][]Manifest, deps []string) (string, bool) {
+func firstMissingDependency(groups map[string][]releasev2manifest.Manifest, deps []string) (string, bool) {
 	for _, dep := range deps {
 		if _, ok := groups[dep]; !ok {
 			return dep, true
@@ -211,7 +212,7 @@ func appendUniqueStrings(existing []string, values ...string) []string {
 	return existing
 }
 
-func resourceGroupResourceID(manifest Manifest) string {
+func resourceGroupResourceID(manifest releasev2manifest.Manifest) string {
 	if manifest.Head == nil || manifest.Head.Metadata == nil || manifest.Head.Metadata.Name == "" {
 		return manifest.Name
 	}
