@@ -43,7 +43,7 @@ func TestParseResourceGroups_NoAnnotations(t *testing.T) {
 func TestParseResourceGroups_GroupWithDependency(t *testing.T) {
 	t.Parallel()
 
-	result, warnings := parseResourceGroups(t,
+	result, warnings, batches := parseResourceGroupBatches(t,
 		makeManifest("database", "chart/templates/database.yaml", map[string]string{
 			AnnotationResourceGroup: "database",
 		}),
@@ -54,8 +54,7 @@ func TestParseResourceGroups_GroupWithDependency(t *testing.T) {
 	)
 
 	require.Len(t, result.Groups, 2)
-	assert.Equal(t, []string{"database"}, result.GroupDeps["app"])
-	assert.Empty(t, result.GroupDeps["database"])
+	assert.Equal(t, [][]string{{"database"}, {"app"}}, batches)
 	assert.Empty(t, result.Unsequenced)
 	assert.Empty(t, warnings)
 }
@@ -63,7 +62,7 @@ func TestParseResourceGroups_GroupWithDependency(t *testing.T) {
 func TestParseResourceGroups_MultipleResourcesPerGroup(t *testing.T) {
 	t.Parallel()
 
-	result, warnings := parseResourceGroups(t,
+	result, warnings, batches := parseResourceGroupBatches(t,
 		makeManifest("database-config", "chart/templates/database-config.yaml", map[string]string{
 			AnnotationResourceGroup: "database",
 		}),
@@ -81,7 +80,7 @@ func TestParseResourceGroups_MultipleResourcesPerGroup(t *testing.T) {
 		"chart/templates/database-config.yaml",
 		"chart/templates/database-secret.yaml",
 	}, manifestPaths(result.Groups["database"]))
-	assert.Equal(t, []string{"database"}, result.GroupDeps["app"])
+	assert.Equal(t, [][]string{{"database"}, {"app"}}, batches)
 	assert.Empty(t, warnings)
 }
 
@@ -184,7 +183,151 @@ func TestParseResourceGroups_CascadingMissingDeps(t *testing.T) {
 		require.Len(t, warnings, 2)
 		assert.Contains(t, warnings[0], `group "database" depends-on non-existent group "missing"`)
 		assert.Contains(t, warnings[1], `group "app" depends-on non-existent group "database"`)
+
+		dag, err := BuildResourceGroupDAG(result)
+		require.NoError(t, err)
+		batches, err := dag.GetBatches()
+		require.NoError(t, err)
+		assert.Empty(t, batches)
 	}
+}
+
+func TestParseResourceGroups_InvalidDependsOnJSON(t *testing.T) {
+	t.Parallel()
+
+	result, warnings := parseResourceGroups(t,
+		makeManifest("app", "chart/templates/app.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `not-valid-json`,
+		}),
+	)
+
+	assert.Empty(t, result.Groups)
+	require.Len(t, result.Unsequenced, 1)
+	assert.Equal(t, []string{"chart/templates/app.yaml"}, manifestPaths(result.Unsequenced))
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "invalid JSON")
+}
+
+func TestParseResourceGroups_MixedSequencedAndUnsequenced(t *testing.T) {
+	t.Parallel()
+
+	result, warnings := parseResourceGroups(t,
+		makeManifest("database", "chart/templates/database.yaml", map[string]string{
+			AnnotationResourceGroup: "database",
+		}),
+		makeManifest("plain", "chart/templates/plain.yaml", nil),
+	)
+
+	require.Len(t, result.Groups, 1)
+	assert.Contains(t, result.Groups, "database")
+	require.Len(t, result.Unsequenced, 1)
+	assert.Equal(t, []string{"chart/templates/plain.yaml"}, manifestPaths(result.Unsequenced))
+	assert.Empty(t, warnings)
+}
+
+func TestResourceGroupDAG_CycleDetection(t *testing.T) {
+	t.Parallel()
+
+	result, _ := parseResourceGroups(t,
+		makeManifest("a", "chart/templates/a.yaml", map[string]string{
+			AnnotationResourceGroup:           "a",
+			AnnotationDependsOnResourceGroups: `["c"]`,
+		}),
+		makeManifest("b", "chart/templates/b.yaml", map[string]string{
+			AnnotationResourceGroup:           "b",
+			AnnotationDependsOnResourceGroups: `["a"]`,
+		}),
+		makeManifest("c", "chart/templates/c.yaml", map[string]string{
+			AnnotationResourceGroup:           "c",
+			AnnotationDependsOnResourceGroups: `["b"]`,
+		}),
+	)
+
+	dag, err := BuildResourceGroupDAG(result)
+	require.NoError(t, err)
+
+	batches, err := dag.GetBatches()
+	require.Error(t, err)
+	assert.Nil(t, batches)
+	assert.EqualError(t, err, "cycle detected among nodes: a, b, c")
+}
+
+func TestParseResourceGroups_DeduplicatesDependencies(t *testing.T) {
+	t.Parallel()
+
+	result, warnings, batches := parseResourceGroupBatches(t,
+		makeManifest("database", "chart/templates/database.yaml", map[string]string{
+			AnnotationResourceGroup: "database",
+		}),
+		makeManifest("app-config", "chart/templates/app-config.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `["database"]`,
+		}),
+		makeManifest("app-secret", "chart/templates/app-secret.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `["database"]`,
+		}),
+	)
+
+	assert.Equal(t, []string{"database"}, result.GroupDeps["app"])
+	assert.Equal(t, [][]string{{"database"}, {"app"}}, batches)
+	assert.Empty(t, warnings)
+}
+
+func TestParseResourceGroups_IsolatedGroupsRemainInBatch0(t *testing.T) {
+	t.Parallel()
+
+	_, warnings, batches := parseResourceGroupBatches(t,
+		makeManifest("database", "chart/templates/database.yaml", map[string]string{
+			AnnotationResourceGroup: "database",
+		}),
+		makeManifest("metrics", "chart/templates/metrics.yaml", map[string]string{
+			AnnotationResourceGroup: "metrics",
+		}),
+		makeManifest("app", "chart/templates/app.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `["database"]`,
+		}),
+	)
+
+	assert.Equal(t, [][]string{{"database", "metrics"}, {"app"}}, batches)
+	assert.Empty(t, warnings)
+}
+
+func TestParseResourceGroups_ComplexDAG(t *testing.T) {
+	t.Parallel()
+
+	_, warnings, batches := parseResourceGroupBatches(t,
+		makeManifest("cache", "chart/templates/cache.yaml", map[string]string{
+			AnnotationResourceGroup: "cache",
+		}),
+		makeManifest("database", "chart/templates/database.yaml", map[string]string{
+			AnnotationResourceGroup: "database",
+		}),
+		makeManifest("queue", "chart/templates/queue.yaml", map[string]string{
+			AnnotationResourceGroup: "queue",
+		}),
+		makeManifest("api", "chart/templates/api.yaml", map[string]string{
+			AnnotationResourceGroup:           "api",
+			AnnotationDependsOnResourceGroups: `["database","queue"]`,
+		}),
+		makeManifest("worker", "chart/templates/worker.yaml", map[string]string{
+			AnnotationResourceGroup:           "worker",
+			AnnotationDependsOnResourceGroups: `["cache","queue"]`,
+		}),
+		makeManifest("frontend", "chart/templates/frontend.yaml", map[string]string{
+			AnnotationResourceGroup:           "frontend",
+			AnnotationDependsOnResourceGroups: `["api"]`,
+		}),
+	)
+
+	assert.Equal(t, [][]string{
+		{"cache", "database", "queue"},
+		{"api", "worker"},
+		{"frontend"},
+	}, batches)
+	assert.Empty(t, warnings)
 }
 
 func parseResourceGroups(t *testing.T, manifests ...Manifest) (ResourceGroupResult, []string) {
@@ -194,6 +337,19 @@ func parseResourceGroups(t *testing.T, manifests ...Manifest) (ResourceGroupResu
 	require.NoError(t, err)
 
 	return result, warnings
+}
+
+func parseResourceGroupBatches(t *testing.T, manifests ...Manifest) (ResourceGroupResult, []string, [][]string) {
+	t.Helper()
+
+	result, warnings := parseResourceGroups(t, manifests...)
+	dag, err := BuildResourceGroupDAG(result)
+	require.NoError(t, err)
+
+	batches, err := dag.GetBatches()
+	require.NoError(t, err)
+
+	return result, warnings, batches
 }
 
 func makeManifest(name, sourcePath string, annotations map[string]string) Manifest {
