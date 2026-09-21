@@ -19,6 +19,7 @@ package sequence
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
@@ -52,10 +53,18 @@ type Edge struct {
 
 // BatchRecord preserves one apply batch and its manifest membership.
 type BatchRecord struct {
-	ChartPath string        `json:"chartPath"`
-	Depth     int           `json:"depth"`
-	Kind      string        `json:"kind"`
-	Barrier   bool          `json:"barrier"`
+	ChartPath  string        `json:"chartPath"`
+	Depth      int           `json:"depth"`
+	Kind       string        `json:"kind"`
+	Barrier    bool          `json:"barrier"`
+	Manifests  []ManifestRef `json:"manifests"`
+	Groups     []GroupRecord `json:"groups,omitempty"`
+	LeafGroups []string      `json:"leafGroups,omitempty"`
+}
+
+// GroupRecord preserves one resource group's name and manifest membership.
+type GroupRecord struct {
+	Name      string        `json:"name"`
 	Manifests []ManifestRef `json:"manifests"`
 }
 
@@ -95,12 +104,17 @@ func NewPlanRecord(plan *Plan, manifests []releaseutil.Manifest) (*PlanRecord, e
 	consumedByPath := make(map[string]int, len(indexesByPath))
 	consumed := make([]bool, len(manifests))
 	for i, batch := range plan.Batches {
+		kind, err := batchKindRecord(batch.Kind)
+		if err != nil {
+			return nil, fmt.Errorf("persisting batch %d: %w", i, err)
+		}
 		batchRecord := BatchRecord{
-			ChartPath: batch.ChartPath,
-			Depth:     batch.Depth,
-			Kind:      "unsequenced",
-			Barrier:   batch.Wait,
-			Manifests: make([]ManifestRef, len(batch.Manifests)),
+			ChartPath:  batch.ChartPath,
+			Depth:      batch.Depth,
+			Kind:       kind,
+			Barrier:    batch.Wait,
+			Manifests:  make([]ManifestRef, len(batch.Manifests)),
+			LeafGroups: slices.Clone(batch.LeafGroups),
 		}
 		for j, manifest := range batch.Manifests {
 			pathIndexes := indexesByPath[manifest.Name]
@@ -112,6 +126,27 @@ func NewPlanRecord(plan *Plan, manifests []releaseutil.Manifest) (*PlanRecord, e
 			consumedByPath[manifest.Name]++
 			consumed[index] = true
 			batchRecord.Manifests[j] = ManifestRef{Index: index, Path: manifest.Name}
+		}
+		if len(batch.Groups) > 0 {
+			batchRecord.Groups = make([]GroupRecord, len(batch.Groups))
+			manifestOffset := 0
+			for j, group := range batch.Groups {
+				groupRecord := GroupRecord{
+					Name:      group.Name,
+					Manifests: make([]ManifestRef, len(group.Manifests)),
+				}
+				for k, manifest := range group.Manifests {
+					if manifestOffset >= len(batch.Manifests) || batch.Manifests[manifestOffset].Name != manifest.Name {
+						return nil, fmt.Errorf("group manifests do not match the ordered manifests in batch %d", i)
+					}
+					groupRecord.Manifests[k] = batchRecord.Manifests[manifestOffset]
+					manifestOffset++
+				}
+				batchRecord.Groups[j] = groupRecord
+			}
+			if manifestOffset != len(batch.Manifests) {
+				return nil, fmt.Errorf("group manifests do not match the ordered manifests in batch %d", i)
+			}
 		}
 		record.Batches[i] = batchRecord
 	}
@@ -151,14 +186,17 @@ func (record *PlanRecord) Restore(manifests []releaseutil.Manifest) (*Plan, erro
 
 	used := make([]bool, len(manifests))
 	for i, batch := range record.Batches {
-		if batch.Kind != "unsequenced" {
-			return nil, fmt.Errorf("unsupported batch kind %q in batch %d", batch.Kind, i)
+		kind, err := restoreBatchKind(batch.Kind)
+		if err != nil {
+			return nil, fmt.Errorf("%w in batch %d", err, i)
 		}
 		restored := Batch{
-			ChartPath: batch.ChartPath,
-			Depth:     batch.Depth,
-			Wait:      batch.Barrier,
-			Manifests: make([]releaseutil.Manifest, len(batch.Manifests)),
+			ChartPath:  batch.ChartPath,
+			Depth:      batch.Depth,
+			Kind:       kind,
+			Wait:       batch.Barrier,
+			Manifests:  make([]releaseutil.Manifest, len(batch.Manifests)),
+			LeafGroups: slices.Clone(batch.LeafGroups),
 		}
 		for j, ref := range batch.Manifests {
 			if ref.Index < 0 || ref.Index >= len(manifests) {
@@ -172,6 +210,27 @@ func (record *PlanRecord) Restore(manifests []releaseutil.Manifest) (*Plan, erro
 			}
 			used[ref.Index] = true
 			restored.Manifests[j] = manifests[ref.Index]
+		}
+		if len(batch.Groups) > 0 {
+			groupRefs := make([]ManifestRef, 0, len(batch.Manifests))
+			for _, group := range batch.Groups {
+				groupRefs = append(groupRefs, group.Manifests...)
+			}
+			if !slices.Equal(groupRefs, batch.Manifests) {
+				return nil, fmt.Errorf("group manifest references do not match manifests in batch %d", i)
+			}
+
+			restored.Groups = make([]Group, len(batch.Groups))
+			for j, group := range batch.Groups {
+				restoredGroup := Group{
+					Name:      group.Name,
+					Manifests: make([]releaseutil.Manifest, len(group.Manifests)),
+				}
+				for k, ref := range group.Manifests {
+					restoredGroup.Manifests[k] = manifests[ref.Index]
+				}
+				restored.Groups[j] = restoredGroup
+			}
 		}
 		plan.Batches[i] = restored
 	}
@@ -197,6 +256,28 @@ func RecoverPlan(chrt *chart.Chart, record *PlanRecord, storedManifest string) (
 		}
 	}
 	return Build(chrt, manifests)
+}
+
+func batchKindRecord(kind BatchKind) (string, error) {
+	switch kind {
+	case BatchKindGroups:
+		return "groups", nil
+	case BatchKindUnsequenced:
+		return "unsequenced", nil
+	default:
+		return "", fmt.Errorf("unsupported batch kind %d", kind)
+	}
+}
+
+func restoreBatchKind(kind string) (BatchKind, error) {
+	switch kind {
+	case "groups":
+		return BatchKindGroups, nil
+	case "unsequenced":
+		return BatchKindUnsequenced, nil
+	default:
+		return 0, fmt.Errorf("unsupported batch kind %q", kind)
+	}
 }
 
 func levelBatchEdges(batches [][]string) []Edge {
