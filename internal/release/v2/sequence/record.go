@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	chart "helm.sh/helm/v4/internal/chart/v3"
 	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
@@ -181,6 +182,21 @@ func (record *PlanRecord) Restore(manifests []releaseutil.Manifest) (*Plan, erro
 	}
 
 	return plan, nil
+}
+
+// RecoverPlan reconstructs a plan from its persisted record, falling back to
+// the chart metadata when the record is absent or fails its integrity checks.
+func RecoverPlan(chrt *chart.Chart, record *PlanRecord, storedManifest string) (*Plan, error) {
+	manifests, err := ParseStoredManifests(storedManifest)
+	if err != nil {
+		return nil, err
+	}
+	if record != nil {
+		if plan, err := record.Restore(manifests); err == nil {
+			return plan, nil
+		}
+	}
+	return Build(chrt, manifests)
 }
 
 func levelBatchEdges(batches [][]string) []Edge {
