@@ -17,12 +17,14 @@ limitations under the License.
 package kube
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/util/jsonpath"
 )
 
@@ -79,6 +81,63 @@ type ExpressionWarning struct {
 // an ExpressionWarning instead of aborting the entire wait.
 var errIncomparableOrdering = errors.New("ordering operators (<, <=, >, >=) require numeric values")
 
+// EvaluateCustomReadiness evaluates custom readiness expressions against a
+// resource's .status field.
+//
+// When both successExprs and failureExprs are empty or nil, or when only one
+// side is provided, the caller should fall back to kstatus and useKstatus will
+// be returned as true.
+//
+// Expressions that cannot be evaluated against the observed values (an
+// ordering operator applied to non-numeric operands) are treated as
+// "condition not met" and reported in the returned warnings rather than as an
+// error. Expressions after the first met condition are not evaluated. All
+// other evaluation problems (invalid JSONPath, unsupported operator) are
+// returned as errors.
+func EvaluateCustomReadiness(obj *unstructured.Unstructured, successExprs, failureExprs []string) (ReadinessStatus, bool, []ExpressionWarning, error) {
+	if len(successExprs) == 0 || len(failureExprs) == 0 {
+		return ReadinessPending, true, nil, nil
+	}
+
+	statusObj, found, err := unstructured.NestedMap(obj.Object, "status")
+	if err != nil || !found {
+		return ReadinessPending, false, nil, nil
+	}
+
+	statusWrapper := map[string]any{"status": statusObj}
+	var warnings []ExpressionWarning
+
+	for _, expr := range failureExprs {
+		met, err := evaluateExpression(statusWrapper, expr)
+		if err != nil {
+			if errors.Is(err, errIncomparableOrdering) {
+				warnings = append(warnings, ExpressionWarning{Expression: expr, Detail: err.Error()})
+				continue
+			}
+			return ReadinessPending, false, warnings, fmt.Errorf("evaluating failure expression %q: %w", expr, err)
+		}
+		if met {
+			return ReadinessFailed, false, warnings, nil
+		}
+	}
+
+	for _, expr := range successExprs {
+		met, err := evaluateExpression(statusWrapper, expr)
+		if err != nil {
+			if errors.Is(err, errIncomparableOrdering) {
+				warnings = append(warnings, ExpressionWarning{Expression: expr, Detail: err.Error()})
+				continue
+			}
+			return ReadinessPending, false, warnings, fmt.Errorf("evaluating success expression %q: %w", expr, err)
+		}
+		if met {
+			return ReadinessReady, false, warnings, nil
+		}
+	}
+
+	return ReadinessPending, false, warnings, nil
+}
+
 // ParseReadinessExpressions parses a readiness annotation value as a JSON
 // string array. Blank input, null, and an empty array are all represented as
 // no expressions. Each parsed expression has surrounding whitespace removed.
@@ -133,6 +192,30 @@ func ValidateReadinessExpressions(annotation string) error {
 	}
 
 	return nil
+}
+
+func evaluateExpression(obj map[string]any, expr string) (bool, error) {
+	path, op, rawVal, err := parseReadinessExpression(expr)
+	if err != nil {
+		return false, err
+	}
+
+	template, err := readinessJSONPath(path)
+	if err != nil {
+		return false, err
+	}
+
+	jp := jsonpath.New("readiness")
+	if err := jp.Parse(template); err != nil {
+		return false, fmt.Errorf("invalid JSONPath %q: %w", template, err)
+	}
+
+	var buf bytes.Buffer
+	if err := jp.Execute(&buf, obj); err != nil {
+		return false, nil
+	}
+
+	return compareValues(strings.TrimSpace(buf.String()), op, rawVal)
 }
 
 func readinessJSONPath(path string) (string, error) {
@@ -193,6 +276,39 @@ func parseReadinessExpression(expr string) (path, op, val string, err error) {
 	return path, op, val, nil
 }
 
+func compareValues(actual, op, expected string) (bool, error) {
+	actual = strings.TrimSpace(actual)
+	expected = trimReadinessValue(expected)
+
+	if actualFloat, ok := tryParseFloat(actual); ok {
+		if expectedFloat, ok := tryParseFloat(expected); ok {
+			return compareNumeric(actualFloat, op, expectedFloat)
+		}
+	}
+
+	if actualBool, actualIsBool := tryParseBool(actual); actualIsBool {
+		if expectedBool, expectedIsBool := tryParseBool(expected); expectedIsBool {
+			switch op {
+			case "==":
+				return actualBool == expectedBool, nil
+			case "!=":
+				return actualBool != expectedBool, nil
+			default:
+				return false, fmt.Errorf("cannot compare %q %s %q: %w", actual, op, expected, errIncomparableOrdering)
+			}
+		}
+	}
+
+	switch op {
+	case "==":
+		return actual == expected, nil
+	case "!=":
+		return actual != expected, nil
+	default:
+		return false, fmt.Errorf("cannot compare %q %s %q: %w", actual, op, expected, errIncomparableOrdering)
+	}
+}
+
 func trimReadinessValue(value string) string {
 	value = strings.TrimSpace(value)
 	if len(value) >= 2 {
@@ -209,4 +325,37 @@ func trimReadinessValue(value string) string {
 func tryParseFloat(value string) (float64, bool) {
 	parsed, err := strconv.ParseFloat(value, 64)
 	return parsed, err == nil
+}
+
+// tryParseBool accepts only the literals "true" and "false", unlike
+// strconv.ParseBool, so numeric strings such as "1" fall through to numeric
+// or string comparison instead of matching a boolean literal.
+func tryParseBool(value string) (bool, bool) {
+	switch value {
+	case "true":
+		return true, true
+	case "false":
+		return false, true
+	default:
+		return false, false
+	}
+}
+
+func compareNumeric(actual float64, op string, expected float64) (bool, error) {
+	switch op {
+	case "==":
+		return actual == expected, nil
+	case "!=":
+		return actual != expected, nil
+	case "<":
+		return actual < expected, nil
+	case "<=":
+		return actual <= expected, nil
+	case ">":
+		return actual > expected, nil
+	case ">=":
+		return actual >= expected, nil
+	default:
+		return false, fmt.Errorf("unknown operator %q", op)
+	}
 }
