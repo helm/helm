@@ -17,6 +17,7 @@ limitations under the License.
 package kube
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -383,4 +384,131 @@ func TestReadinessExpressionsJSON(t *testing.T) {
 		_, err := ParseReadinessExpressions(`["{.ready} == true"`)
 		assert.ErrorContains(t, err, "parsing readiness annotation JSON")
 	})
+}
+
+func TestEvaluateReadiness_OrderingOnNonNumericString_TreatedAsNotMet(t *testing.T) {
+	for _, op := range []string{"<", "<=", ">", ">="} {
+		t.Run(op, func(t *testing.T) {
+			obj := makeUnstructuredWithStatus(t, map[string]any{"phase": "Running"})
+			expr := fmt.Sprintf(`{.phase} %s "Ready"`, op)
+
+			result, useKstatus, warnings, err := EvaluateCustomReadiness(
+				obj,
+				[]string{expr},
+				[]string{`{.failed} >= 1`},
+			)
+
+			require.NoError(t, err)
+			assert.False(t, useKstatus)
+			assert.Equal(t, ReadinessPending, result)
+			require.Len(t, warnings, 1)
+			assert.Equal(t, expr, warnings[0].Expression)
+			assert.Contains(t, warnings[0].Detail, "ordering operators")
+			assert.Contains(t, warnings[0].Detail, `"Running"`)
+		})
+	}
+}
+
+func TestEvaluateReadiness_IncomparableFailureExpression_Symmetric(t *testing.T) {
+	// A type-mismatched FAILURE expression must mean "failure condition not
+	// met" — not "failed" and not an error — so a satisfied success
+	// expression still marks the resource ready, with the mistake surfaced
+	// as a warning.
+	obj := makeUnstructuredWithStatus(t, map[string]any{"phase": "Running"})
+
+	result, useKstatus, warnings, err := EvaluateCustomReadiness(
+		obj,
+		[]string{`{.phase} == "Running"`},
+		[]string{`{.phase} > "Failed"`},
+	)
+
+	require.NoError(t, err)
+	assert.False(t, useKstatus)
+	assert.Equal(t, ReadinessReady, result)
+	require.Len(t, warnings, 1)
+	assert.Equal(t, `{.phase} > "Failed"`, warnings[0].Expression)
+}
+
+func TestEvaluateReadiness_NumericStringCoercionPreserved(t *testing.T) {
+	// A string status value that parses as a number keeps comparing
+	// numerically — only genuinely non-numeric values changed behavior.
+	tests := []struct{ name, expr string }{
+		{name: "unquoted numeric literal", expr: `{.phase} >= 5`},
+		{name: "quoted numeric literal", expr: `{.phase} >= "5"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj := makeUnstructuredWithStatus(t, map[string]any{"phase": "5"})
+
+			result, useKstatus, warnings, err := EvaluateCustomReadiness(
+				obj,
+				[]string{tt.expr},
+				[]string{`{.failed} >= 1`},
+			)
+
+			require.NoError(t, err)
+			assert.False(t, useKstatus)
+			assert.Empty(t, warnings)
+			assert.Equal(t, ReadinessReady, result)
+		})
+	}
+}
+
+func TestEvaluateReadiness_OrderingOnBooleans_TreatedAsNotMet(t *testing.T) {
+	obj := makeUnstructuredWithStatus(t, map[string]any{"ready": true})
+
+	result, useKstatus, warnings, err := EvaluateCustomReadiness(
+		obj,
+		[]string{`{.ready} >= true`},
+		[]string{`{.failed} >= 1`},
+	)
+
+	require.NoError(t, err)
+	assert.False(t, useKstatus)
+	assert.Equal(t, ReadinessPending, result)
+	require.Len(t, warnings, 1)
+}
+
+func TestEvaluateReadiness_AllSuccessExpressionsIncomparable_Pending(t *testing.T) {
+	obj := makeUnstructuredWithStatus(t, map[string]any{"phase": "Running"})
+
+	result, _, warnings, err := EvaluateCustomReadiness(
+		obj,
+		[]string{`{.phase} > "Ready"`, `{.phase} < "Ready"`},
+		[]string{`{.failed} >= 1`},
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, ReadinessPending, result)
+	assert.Len(t, warnings, 2)
+}
+
+func TestCompareValues_OrderingOnNonNumeric_ReturnsSentinel(t *testing.T) {
+	met, err := compareValues("Running", ">", `"Ready"`)
+	require.ErrorIs(t, err, errIncomparableOrdering)
+	assert.False(t, met)
+
+	// A numeric actual against a non-numeric literal is equally incomparable.
+	met, err = compareValues("5", ">", `"high"`)
+	require.ErrorIs(t, err, errIncomparableOrdering)
+	assert.False(t, met)
+}
+
+func TestCompareValues_NumericStringIsNotBoolean(t *testing.T) {
+	// "1" must not satisfy a boolean literal via strconv.ParseBool semantics.
+	met, err := compareValues("1", "==", "true")
+	require.NoError(t, err)
+	assert.False(t, met)
+
+	met, err = compareValues("0", "!=", "false")
+	require.NoError(t, err)
+	assert.True(t, met)
+
+	met, err = compareValues("true", "==", "true")
+	require.NoError(t, err)
+	assert.True(t, met)
+
+	met, err = compareValues("false", "!=", "true")
+	require.NoError(t, err)
+	assert.True(t, met)
 }
