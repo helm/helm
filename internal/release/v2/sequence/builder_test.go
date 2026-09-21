@@ -137,6 +137,91 @@ func TestBuild_SubchartDependencyOrder(t *testing.T) {
 	assert.Equal(t, [][]string{{"postgres"}, {"rabbitmq"}, {"app"}}, plan.Levels[0].SubchartBatches)
 }
 
+func TestBuild_Aliases_RealPipeline(t *testing.T) {
+	t.Parallel()
+
+	postgres := newTestChart("postgres")
+	app := newTestChart("app")
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "postgres", Version: "0.1.0", Alias: "primary-db"},
+		{Name: "app", Version: "0.1.0", DependsOn: []string{"postgres"}},
+	}
+	parent.SetDependencies(postgres, app)
+	require.NoError(t, chartutil.ProcessDependencies(parent, map[string]any{}))
+	manifests := []releaseutil.Manifest{
+		{Name: "parent/charts/app/templates/app.yaml"},
+		{Name: "parent/charts/primary-db/templates/database.yaml"},
+	}
+
+	plan, err := Build(parent, manifests)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"parent/charts/primary-db",
+		"parent/charts/app",
+	}, planBatchPaths(plan))
+	require.NotEmpty(t, plan.Levels)
+	assert.Equal(t, [][]string{{"primary-db"}, {"app"}}, plan.Levels[0].SubchartBatches)
+}
+
+func TestBuild_SubchartCycle_Fatal(t *testing.T) {
+	t.Parallel()
+
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "a", Enabled: true, DependsOn: []string{"b"}},
+		{Name: "b", Enabled: true, DependsOn: []string{"a"}},
+	}
+
+	plan, err := Build(parent, nil)
+	require.Error(t, err)
+	assert.Nil(t, plan)
+	assert.ErrorContains(t, err, "subchart circular dependency detected in parent")
+	assert.ErrorContains(t, err, "cycle detected among nodes: a, b")
+}
+
+func TestBuild_UnknownDependsOnRef_Fatal(t *testing.T) {
+	t.Parallel()
+
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "app", Enabled: true, DependsOn: []string{"missing"}},
+	}
+
+	plan, err := Build(parent, nil)
+	require.Error(t, err)
+	assert.Nil(t, plan)
+	assert.ErrorContains(t, err, "building subchart DAG for parent")
+	assert.ErrorContains(t, err, `depends-on unknown or disabled subchart "missing"`)
+}
+
+func TestBuild_EveryManifestExactlyOnce(t *testing.T) {
+	t.Parallel()
+
+	chrt, manifests := builderAcceptanceFixture()
+	plan, err := Build(chrt, manifests)
+	require.NoError(t, err)
+
+	actual := make([]releaseutil.Manifest, 0, len(manifests))
+	for _, batch := range plan.Batches {
+		actual = append(actual, batch.Manifests...)
+	}
+	require.Len(t, actual, len(manifests))
+	assert.ElementsMatch(t, manifests, actual)
+}
+
+func TestBuild_Deterministic(t *testing.T) {
+	t.Parallel()
+
+	chrt, manifests := builderAcceptanceFixture()
+	first, err := Build(chrt, manifests)
+	require.NoError(t, err)
+	second, err := Build(chrt, manifests)
+	require.NoError(t, err)
+
+	assert.Equal(t, first, second)
+}
+
 func TestBuild_UndeclaredSubchartWarnedAndPlaced(t *testing.T) {
 	t.Parallel()
 
@@ -391,6 +476,31 @@ func newTestChart(name string) *chart.Chart {
 		Name:       name,
 		Version:    "0.1.0",
 	}}
+}
+
+func builderAcceptanceFixture() (*chart.Chart, []releaseutil.Manifest) {
+	database := newTestChart("database")
+	app := newTestChart("app")
+	empty := newTestChart("empty")
+	library := newTestChart("library")
+	library.Metadata.Type = "library"
+	vendored := newTestChart("vendored")
+
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "database", Enabled: true},
+		{Name: "app", Enabled: true, DependsOn: []string{"database"}},
+		{Name: "empty", Enabled: true},
+		{Name: "library", Enabled: true},
+	}
+	parent.SetDependencies(database, app, empty, library, vendored)
+
+	return parent, []releaseutil.Manifest{
+		{Name: "parent/templates/parent.yaml", Content: "parent"},
+		{Name: "parent/charts/app/templates/app.yaml", Content: "app"},
+		{Name: "parent/charts/database/templates/database.yaml", Content: "database"},
+		{Name: "parent/charts/vendored/templates/vendored.yaml", Content: "vendored"},
+	}
 }
 
 func planBatchPaths(plan *Plan) []string {
