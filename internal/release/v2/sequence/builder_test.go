@@ -176,7 +176,7 @@ func TestBuild_SubchartCycle_Fatal(t *testing.T) {
 	plan, err := Build(parent, nil)
 	require.Error(t, err)
 	assert.Nil(t, plan)
-	assert.ErrorContains(t, err, "subchart circular dependency detected in parent")
+	require.ErrorContains(t, err, "subchart circular dependency detected in parent")
 	assert.ErrorContains(t, err, "cycle detected among nodes: a, b")
 }
 
@@ -191,7 +191,7 @@ func TestBuild_UnknownDependsOnRef_Fatal(t *testing.T) {
 	plan, err := Build(parent, nil)
 	require.Error(t, err)
 	assert.Nil(t, plan)
-	assert.ErrorContains(t, err, "building subchart DAG for parent")
+	require.ErrorContains(t, err, "building subchart DAG for parent")
 	assert.ErrorContains(t, err, `depends-on unknown or disabled subchart "missing"`)
 }
 
