@@ -34,7 +34,7 @@ const (
 )
 
 // ResourceGroupResult holds the output of ParseResourceGroups.
-type ResourceGroupResult struct {
+type ResourceGroupResult struct { //nolint:revive // Retain the accepted parser seam after moving to the leaf package.
 	// Groups maps group names to manifests assigned to those groups.
 	Groups map[string][]releasev2manifest.Manifest
 
