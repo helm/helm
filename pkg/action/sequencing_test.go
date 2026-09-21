@@ -20,13 +20,18 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
@@ -41,6 +46,8 @@ type recordingSequenceClient struct {
 	waitError           error
 	waitErrorAt, waits  int
 	onBuild, onMutation func()
+	onDelete            func()
+	buildClients        map[string]resource.RESTClient
 }
 
 func (c *recordingSequenceClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
@@ -56,7 +63,20 @@ func (c *recordingSequenceClient) Build(reader io.Reader, _ bool) (kube.Resource
 		}
 		name, _, _ := strings.Cut(metadata, "\n")
 		u := &unstructured.Unstructured{Object: map[string]any{"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": name}}}
-		resources = append(resources, &resource.Info{Name: u.GetName(), Namespace: u.GetNamespace(), Object: u})
+		namespace := u.GetNamespace()
+		if namespace == "" {
+			namespace = "spaced"
+			u.SetNamespace(namespace)
+		}
+		resources = append(resources, &resource.Info{
+			Name: u.GetName(), Namespace: namespace, Object: u,
+			Mapping: &meta.RESTMapping{
+				Resource:         schema.GroupVersionResource{Version: "v1", Resource: "configmaps"},
+				GroupVersionKind: schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"},
+				Scope:            meta.RESTScopeNamespace,
+			},
+			Client: c.buildClients[name],
+		})
 	}
 	return resources, nil
 }
@@ -75,6 +95,14 @@ func (c *recordingSequenceClient) Update(current, target kube.ResourceList, _ ..
 		c.onMutation()
 	}
 	return &kube.Result{Updated: target}, nil
+}
+
+func (c *recordingSequenceClient) Delete(resources kube.ResourceList, _ metav1.DeletionPropagation) (*kube.Result, []error) {
+	c.operations = append(c.operations, "delete:"+resourceNames(resources))
+	if c.onDelete != nil {
+		c.onDelete()
+	}
+	return &kube.Result{Deleted: resources}, nil
 }
 
 func (c *recordingSequenceClient) GetWaiter(kube.WaitStrategy) (kube.Waiter, error) {
@@ -103,7 +131,13 @@ func (w *recordingSequenceWaiter) WaitWithJobs(r kube.ResourceList, d time.Durat
 	return w.Wait(r, d)
 }
 
-func (*recordingSequenceWaiter) WaitForDelete(kube.ResourceList, time.Duration) error { return nil }
+func (w *recordingSequenceWaiter) WaitForDelete(resources kube.ResourceList, timeout time.Duration) error {
+	if timeout <= 0 {
+		return errors.New("nonpositive timeout")
+	}
+	w.client.operations = append(w.client.operations, "wait-delete:"+resourceNames(resources))
+	return nil
+}
 
 func (*recordingSequenceWaiter) WatchUntilReady(kube.ResourceList, time.Duration) error { return nil }
 
@@ -128,7 +162,10 @@ func threeLevelSequencePlan() *sequence.Plan {
 }
 
 func newSequenceDeployment(client *recordingSequenceClient) *sequencedDeployment {
-	return &sequencedDeployment{kubeClient: client, releaseName: "demo", releaseNamespace: "spaced", waitStrategy: kube.OrderedWaitStrategy}
+	return &sequencedDeployment{
+		kubeClient: client, logger: slog.New(slog.DiscardHandler),
+		releaseName: "demo", releaseNamespace: "spaced", waitStrategy: kube.OrderedWaitStrategy,
+	}
 }
 
 func TestSequencedApply_DependenciesBeforeDependents(t *testing.T) {
@@ -209,4 +246,102 @@ func TestBatchWaitTimeout(t *testing.T) {
 		_, err := (&sequencedDeployment{readinessTimeout: time.Minute, deadline: time.Now().Add(-time.Second)}).batchWaitTimeout()
 		require.Error(t, err)
 	})
+}
+
+func TestDeleteSequencedBatches_ExactReverseOrder(t *testing.T) {
+	client := &recordingSequenceClient{}
+	deployment := newSequenceDeployment(client)
+	waiter := &recordingSequenceWaiter{client: client}
+
+	deleted, report, err := deployment.deleteSequencedBatches(
+		threeLevelSequencePlan().Reverse(), metav1.DeletePropagationBackground, waiter, nil,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "parent,child,grand", resourceNames(deleted))
+	assert.Empty(t, report)
+	assert.Equal(t, []string{
+		"delete:parent", "wait-delete:parent",
+		"delete:child", "wait-delete:child",
+		"delete:grand", "wait-delete:grand",
+	}, client.operations)
+}
+
+func TestDeleteSequencedBatches_KeepPolicyAndOwnership(t *testing.T) {
+	manifests, err := sequence.ParseStoredManifests(`# Source: parent/templates/keep.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keep
+  annotations:
+    helm.sh/resource-policy: keep
+---
+# Source: parent/templates/owned.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: owned
+---
+# Source: parent/templates/unowned.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unowned
+---
+# Source: parent/templates/unverifiable.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unverifiable
+`)
+	require.NoError(t, err)
+	kept, remaining := filterSequencedManifestsToKeep(manifests)
+	require.Len(t, kept, 1)
+	require.Len(t, remaining, 3)
+
+	client := &recordingSequenceClient{buildClients: map[string]resource.RESTClient{
+		"unowned":      fakeClientWith(http.StatusOK, schema.GroupVersion{Version: "v1"}, `{"apiVersion":"v1","kind":"ConfigMap","metadata":{"name":"unowned"}}`),
+		"unverifiable": fakeClientWith(http.StatusForbidden, schema.GroupVersion{Version: "v1"}, `{}`),
+	}}
+	deployment := newSequenceDeployment(client)
+	plan := &sequence.Plan{Batches: []sequence.Batch{{Manifests: remaining, Wait: true}}}
+
+	deleted, report, err := deployment.deleteSequencedBatches(
+		plan, metav1.DeletePropagationBackground, &recordingSequenceWaiter{client: client}, kept,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "owned", resourceNames(deleted))
+	assert.Equal(t, []string{"delete:owned", "wait-delete:owned"}, client.operations)
+	assert.Contains(t, report, "kept due to the resource policy")
+	assert.Contains(t, report, "not owned by this release")
+	assert.Contains(t, report, "ownership could not be verified")
+}
+
+func TestDeleteSequencedBatches_DeadlineExhaustedFailsFast(t *testing.T) {
+	client := &recordingSequenceClient{}
+	deployment := newSequenceDeployment(client)
+	deployment.deadline = time.Now().Add(time.Hour)
+	client.onDelete = func() { deployment.deadline = time.Now().Add(-time.Second) }
+	plan := &sequence.Plan{Batches: []sequence.Batch{{Manifests: []releaseutil.Manifest{sequenceManifest("", "cm")}, Wait: true}}}
+
+	_, _, err := deployment.deleteSequencedBatches(
+		plan, metav1.DeletePropagationBackground, &recordingSequenceWaiter{client: client}, nil,
+	)
+	require.ErrorContains(t, err, "before waiting for batch deletion")
+	assert.Equal(t, []string{"delete:cm"}, client.operations)
+}
+
+func TestDeleteRemoved_SkipsKeysOutsideRemovedSet(t *testing.T) {
+	client := &recordingSequenceClient{}
+	deployment := newSequenceDeployment(client)
+	waiter := &recordingSequenceWaiter{client: client}
+	remove := sequenceManifest("", "remove")
+	plan := &sequence.Plan{Batches: []sequence.Batch{
+		{Manifests: []releaseutil.Manifest{remove, sequenceManifest("", "keep")}, Wait: true},
+		{Manifests: []releaseutil.Manifest{sequenceManifest("", "outside")}, Wait: true},
+	}}
+	resources, err := client.Build(strings.NewReader(remove.Content), false)
+	require.NoError(t, err)
+
+	require.NoError(t, deployment.deleteRemoved(plan, map[string]bool{objectKey(resources[0]): true}, waiter))
+	assert.Equal(t, []string{"delete:remove", "wait-delete:remove"}, client.operations)
 }
