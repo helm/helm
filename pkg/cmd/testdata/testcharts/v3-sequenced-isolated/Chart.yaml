@@ -1,0 +1,5 @@
+apiVersion: v3
+name: v3-sequenced-isolated
+description: A v3 chart with isolated resource groups
+type: application
+version: 0.1.0

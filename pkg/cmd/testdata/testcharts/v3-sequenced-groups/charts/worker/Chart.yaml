@@ -1,0 +1,5 @@
+apiVersion: v3
+name: worker
+description: A v3 subchart with a resource group
+type: application
+version: 0.1.0

@@ -23,7 +23,6 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -133,12 +132,8 @@ func dagManifests(rendered map[string]string) []releaseutil.Manifest {
 
 func printSequencingDAG(plan *sequence.Plan, out io.Writer) {
 	levels := make(map[string]*sequence.ChartLevel, len(plan.Levels))
-	manifests := make(map[string][]releaseutil.Manifest)
 	for i := range plan.Levels {
 		levels[plan.Levels[i].Path] = &plan.Levels[i]
-	}
-	for _, batch := range plan.Batches {
-		manifests[batch.ChartPath] = append(manifests[batch.ChartPath], batch.Manifests...)
 	}
 	var printLevel func(*sequence.ChartLevel)
 	printLevel = func(level *sequence.ChartLevel) {
@@ -152,20 +147,19 @@ func printSequencingDAG(plan *sequence.Plan, out io.Writer) {
 				fmt.Fprintf(out, "%s    Batch %d: %s\n", indent, i+1, strings.Join(batch, ", "))
 			}
 		}
-		labels := make([]string, 0, len(manifests[level.Path]))
-		for _, manifest := range manifests[level.Path] {
-			label := manifest.Name
-			if manifest.Head != nil && manifest.Head.Metadata != nil && manifest.Head.Metadata.Name != "" {
-				label = manifest.Head.Metadata.Name
-				if manifest.Head.Kind != "" {
-					label = manifest.Head.Kind + "/" + label
+		display := plan.BatchDisplay(level.Path)
+		if len(display.ResourceGroupBatches) > 0 || hasResourceGroupWarning(plan.Warnings, level.Path) {
+			if len(display.ResourceGroupBatches) == 0 {
+				fmt.Fprintf(out, "%s  Resource-group batches: (none)\n", indent)
+			} else {
+				fmt.Fprintf(out, "%s  Resource-group batches:\n", indent)
+				for i, batch := range display.ResourceGroupBatches {
+					fmt.Fprintf(out, "%s    Batch %d: %s\n", indent, i+1, strings.Join(batch, ", "))
 				}
 			}
-			labels = append(labels, label)
 		}
-		if len(labels) > 0 {
-			sort.Strings(labels)
-			fmt.Fprintf(out, "%s  Unsequenced (deployed last): %s\n", indent, strings.Join(labels, ", "))
+		if len(display.Unsequenced) > 0 {
+			fmt.Fprintf(out, "%s  Unsequenced (deployed last): %s\n", indent, strings.Join(display.Unsequenced, ", "))
 		}
 		printChild := func(name string) {
 			if slices.Contains(level.Unresolved, name) {
@@ -188,4 +182,13 @@ func printSequencingDAG(plan *sequence.Plan, out io.Writer) {
 	if len(plan.Levels) > 0 {
 		printLevel(&plan.Levels[0])
 	}
+}
+
+func hasResourceGroupWarning(warnings []sequence.Warning, chartPath string) bool {
+	for _, warning := range warnings {
+		if warning.ChartPath == chartPath && (warning.Kind == sequence.WarningKindResourceGroupDemotion || warning.Kind == sequence.WarningKindIsolatedGroup) {
+			return true
+		}
+	}
+	return false
 }

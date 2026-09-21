@@ -34,15 +34,28 @@ import (
 func TestDagCmd(t *testing.T) {
 	t.Setenv(string(gates.ChartV3), "1")
 	for _, tt := range []struct {
-		name, golden string
-		chart        *chart.Chart
+		name, golden, path string
+		chart              *chart.Chart
 	}{
-		{"linear chain", "output/dag-v3-linear.txt", linearDagChart()},
-		{"diamond with alias and parent annotation", "output/dag-v3-diamond.txt", diamondDagChart()},
-		{"three nested levels", "output/dag-v3-nested.txt", nestedDagChart()},
+		{name: "linear chain", golden: "output/dag-v3-linear.txt", chart: linearDagChart()},
+		{name: "diamond with alias and parent annotation", golden: "output/dag-v3-diamond.txt", chart: diamondDagChart()},
+		{name: "three nested levels", golden: "output/dag-v3-nested.txt", chart: nestedDagChart()},
+		{
+			name:   "resource groups compose with subchart order",
+			golden: "output/dag-v3-sequenced-groups.txt",
+			path:   "testdata/testcharts/v3-sequenced-groups",
+		},
+		{
+			name:   "isolated resource groups are deployed unsequenced",
+			golden: "output/dag-v3-sequenced-isolated.txt",
+			path:   "testdata/testcharts/v3-sequenced-isolated",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			path := saveDagChart(t, tt.chart)
+			path := tt.path
+			if tt.chart != nil {
+				path = saveDagChart(t, tt.chart)
+			}
 			_, first, err := executeActionCommandC(storageFixture(), fmt.Sprintf("dag %q", path))
 			require.NoError(t, err)
 			_, second, err := executeActionCommandC(storageFixture(), fmt.Sprintf("dag %q", path))
