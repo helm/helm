@@ -123,6 +123,5 @@ func newRecord(key string, rls *rspb.Release) *record {
 	lbs.set("status", rls.Info.Status.String())
 	lbs.set("version", strconv.Itoa(rls.Version))
 
-	// return &record{key: key, lbs: lbs, rls: proto.Clone(rls).(*rspb.Release)}
 	return &record{key: key, lbs: lbs, rls: rls}
 }
