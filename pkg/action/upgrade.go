@@ -70,6 +70,8 @@ type Upgrade struct {
 	SkipCRDs bool
 	// Timeout is the timeout for this operation
 	Timeout time.Duration
+	// ReadinessTimeout is the per-batch timeout when ordered waiting is used.
+	ReadinessTimeout time.Duration
 	// WaitStrategy determines what type of waiting should be done
 	WaitStrategy kube.WaitStrategy
 	// WaitOptions are additional options for waiting on resources
