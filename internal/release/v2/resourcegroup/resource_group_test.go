@@ -23,6 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	releasev2manifest "helm.sh/helm/v4/internal/release/v2/manifest"
 )
@@ -31,6 +33,30 @@ type (
 	Manifest   = releasev2manifest.Manifest
 	SimpleHead = releasev2manifest.SimpleHead
 )
+
+func TestSequencingAnnotationKeysAreValidKubernetesKeys(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		key  string
+	}{
+		{name: "resource group", key: AnnotationResourceGroup},
+		{name: "resource group dependencies", key: AnnotationDependsOnResourceGroups},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			errs := validation.ValidateAnnotations(
+				map[string]string{tt.key: "x"},
+				field.NewPath("metadata", "annotations"),
+			)
+			assert.Empty(t, errs)
+		})
+	}
+}
 
 func TestParseResourceGroups_NoAnnotations(t *testing.T) {
 	t.Parallel()
