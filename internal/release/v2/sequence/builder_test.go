@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
+	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
 	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
 )
 
@@ -192,6 +193,78 @@ func TestBuild_StructuralWalk_StorageDecodedNested(t *testing.T) {
 	assert.Equal(t, WarningKindUnresolvedSubchart, plan.Warnings[0].Kind)
 	assert.Equal(t, "parent/charts/child", plan.Warnings[0].ChartPath)
 	assert.Contains(t, plan.Warnings[0].Message, "name order")
+}
+
+func TestBuild_ParentDependsOnResolved(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		chart           func(t *testing.T) *chart.Chart
+		parentDependsOn []string
+	}{
+		{
+			name: "resolved alias from dependency pipeline",
+			chart: func(t *testing.T) *chart.Chart {
+				database := newTestChart("database")
+				app := newTestChart("app")
+				parent := newTestChart("parent")
+				parent.Metadata.Dependencies = []*chart.Dependency{
+					{Name: "database", Version: "0.1.0", Alias: "primary-db"},
+					{Name: "app", Version: "0.1.0"},
+				}
+				parent.Metadata.Annotations = map[string]string{
+					chartutil.AnnotationDependsOnSubcharts: `["database"]`,
+				}
+				parent.SetDependencies(database, app)
+				require.NoError(t, chartutil.ProcessDependencies(parent, map[string]any{}))
+				return parent
+			},
+			parentDependsOn: []string{"primary-db"},
+		},
+		{
+			name:  "annotation absent",
+			chart: func(*testing.T) *chart.Chart { return newTestChart("without-annotation") },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			plan, err := Build(tt.chart(t), nil)
+			require.NoError(t, err)
+			require.NotEmpty(t, plan.Levels)
+			assert.Equal(t, tt.parentDependsOn, plan.Levels[0].ParentDependsOn)
+		})
+	}
+}
+
+func TestBuild_DeclaredAPIVersionRejected(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		apiVersion string
+		errMessage string
+	}{
+		{name: "chart v1", apiVersion: "v1", errMessage: `declared apiVersion "v1" is not supported`},
+		{name: "chart v2", apiVersion: "v2", errMessage: `declared apiVersion "v2" is not supported`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			chrt := newTestChart("parent")
+			chrt.Metadata.APIVersion = tt.apiVersion
+
+			plan, err := Build(chrt, nil)
+			require.Error(t, err)
+			assert.Nil(t, plan)
+			assert.ErrorContains(t, err, tt.errMessage)
+		})
+	}
 }
 
 func TestGroupManifestsByDirectSubchart(t *testing.T) {

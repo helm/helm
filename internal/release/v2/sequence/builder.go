@@ -17,6 +17,7 @@ limitations under the License.
 package sequence
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
@@ -41,6 +42,9 @@ func Build(chrt *chart.Chart, manifests []releaseutil.Manifest) (*Plan, error) {
 			return nil, err
 		}
 		return b.plan, nil
+	}
+	if chrt.Metadata != nil && chrt.Metadata.APIVersion != "" && chrt.Metadata.APIVersion != chart.APIVersionV3 {
+		return nil, fmt.Errorf("declared apiVersion %q is not supported; expected %q", chrt.Metadata.APIVersion, chart.APIVersionV3)
 	}
 
 	if err := b.buildLevel(chrt, manifests, chrt.Name(), 0); err != nil {
@@ -71,6 +75,16 @@ func (b *builder) buildLevel(chrt *chart.Chart, manifests []releaseutil.Manifest
 		return fmt.Errorf("subchart circular dependency detected in %s: %w", chartPath, err)
 	}
 	b.plan.Levels[levelIdx].SubchartBatches = subchartBatches
+	if chrt.Metadata != nil {
+		annotation := strings.TrimSpace(chrt.Metadata.Annotations[chartutil.AnnotationDependsOnSubcharts])
+		if annotation != "" {
+			var parentDependsOn []string
+			if err := json.Unmarshal([]byte(annotation), &parentDependsOn); err != nil {
+				return fmt.Errorf("parsing %s annotation for %s: %w", chartutil.AnnotationDependsOnSubcharts, chartPath, err)
+			}
+			b.plan.Levels[levelIdx].ParentDependsOn = parentDependsOn
+		}
+	}
 
 	declared := make(map[string]bool, len(subchartBatches))
 	for _, subchartBatch := range subchartBatches {
