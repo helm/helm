@@ -31,6 +31,18 @@ func TestBuildSubchartDAG_Empty(t *testing.T) {
 	assert.Empty(t, subchartBatches(t, subchartDAGChart("parent")))
 }
 
+func TestBuildSubchartDAG_NoDependencies(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("parent",
+		enabledSubchartDependency("nginx"),
+		enabledSubchartDependency("rabbitmq"),
+		enabledSubchartDependency("postgres"),
+	)
+
+	assert.Equal(t, [][]string{{"nginx", "postgres", "rabbitmq"}}, subchartBatches(t, c))
+}
+
 func TestBuildSubchartDAG_LinearOrder(t *testing.T) {
 	t.Parallel()
 
@@ -41,6 +53,17 @@ func TestBuildSubchartDAG_LinearOrder(t *testing.T) {
 	)
 
 	assert.Equal(t, [][]string{{"postgres"}, {"rabbitmq"}, {"app"}}, subchartBatches(t, c))
+}
+
+func TestBuildSubchartDAG_AliasResolution(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("parent",
+		&chart.Dependency{Name: "primary-db", Alias: "primary-db", Enabled: true},
+		enabledSubchartDependency("app", "primary-db"),
+	)
+
+	assert.Equal(t, [][]string{{"primary-db"}, {"app"}}, subchartBatches(t, c))
 }
 
 func TestBuildSubchartDAG_DisabledSubchart(t *testing.T) {
@@ -56,6 +79,72 @@ func TestBuildSubchartDAG_DisabledSubchart(t *testing.T) {
 	assert.ErrorContains(t, err, `depends-on unknown or disabled subchart "cache"`)
 }
 
+func TestBuildSubchartDAG_DisabledSubchartNotReferenced(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("parent",
+		&chart.Dependency{Name: "cache", Enabled: false},
+		enabledSubchartDependency("app"),
+	)
+
+	assert.Equal(t, [][]string{{"app"}}, subchartBatches(t, c))
+}
+
+func TestBuildSubchartDAG_CycleDetection(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("parent",
+		enabledSubchartDependency("a", "b"),
+		enabledSubchartDependency("b", "c"),
+		enabledSubchartDependency("c", "a"),
+	)
+
+	dag, err := BuildSubchartDAG(c)
+	require.NoError(t, err)
+	batches, err := dag.GetBatches()
+	require.Error(t, err)
+	assert.Nil(t, batches)
+	assert.ErrorContains(t, err, "cycle")
+}
+
+func TestBuildSubchartDAG_AnnotationBasedParentDependencies(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("parent",
+		enabledSubchartDependency("postgres"),
+		enabledSubchartDependency("nginx"),
+	)
+	c.Metadata.Annotations = map[string]string{AnnotationDependsOnSubcharts: `["nginx"]`}
+
+	assert.Equal(t, [][]string{{"nginx", "postgres"}}, subchartBatches(t, c))
+}
+
+func TestBuildSubchartDAG_HIPExample(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("foo",
+		enabledSubchartDependency("nginx"),
+		enabledSubchartDependency("rabbitmq"),
+		enabledSubchartDependency("bar", "nginx", "rabbitmq"),
+	)
+	c.Metadata.Annotations = map[string]string{AnnotationDependsOnSubcharts: `["bar", "rabbitmq"]`}
+
+	assert.Equal(t, [][]string{{"nginx", "rabbitmq"}, {"bar"}}, subchartBatches(t, c))
+}
+
+func TestBuildSubchartDAG_MixedDeclarations(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("parent",
+		enabledSubchartDependency("database"),
+		enabledSubchartDependency("api", "database"),
+		enabledSubchartDependency("worker"),
+	)
+	c.Metadata.Annotations = map[string]string{AnnotationDependsOnSubcharts: `["worker"]`}
+
+	assert.Equal(t, [][]string{{"database", "worker"}, {"api"}}, subchartBatches(t, c))
+}
+
 func TestBuildSubchartDAG_InvalidAnnotationJSON(t *testing.T) {
 	t.Parallel()
 
@@ -67,6 +156,30 @@ func TestBuildSubchartDAG_InvalidAnnotationJSON(t *testing.T) {
 	assert.ErrorContains(t, err, "parsing "+AnnotationDependsOnSubcharts+" annotation")
 }
 
+func TestBuildSubchartDAG_ObjectAnnotationRejected(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("parent",
+		enabledSubchartDependency("postgres"),
+		enabledSubchartDependency("nginx"),
+	)
+	c.Metadata.Annotations = map[string]string{AnnotationDependsOnSubcharts: `{"nginx":["postgres"]}`}
+
+	_, err := BuildSubchartDAG(c)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "JSON string array")
+}
+
+func TestBuildSubchartDAG_NonExistentReference(t *testing.T) {
+	t.Parallel()
+
+	c := subchartDAGChart("parent", enabledSubchartDependency("app", "missing"))
+
+	_, err := BuildSubchartDAG(c)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `depends-on unknown or disabled subchart "missing"`)
+}
+
 func TestBuildSubchartDAG_AnnotationUnknownSubchart(t *testing.T) {
 	t.Parallel()
 
@@ -76,6 +189,26 @@ func TestBuildSubchartDAG_AnnotationUnknownSubchart(t *testing.T) {
 	_, err := BuildSubchartDAG(c)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, `unknown or disabled subchart "app"`)
+}
+
+func TestBuildSubchartDAG_NestedSubcharts(t *testing.T) {
+	t.Parallel()
+
+	root := subchartDAGChart("parent",
+		enabledSubchartDependency("database"),
+		enabledSubchartDependency("application", "database"),
+	)
+	nested := subchartDAGChart("application",
+		enabledSubchartDependency("cache"),
+		enabledSubchartDependency("worker", "cache"),
+	)
+	root.SetDependencies(
+		&chart.Chart{Metadata: &chart.Metadata{Name: "database"}},
+		nested,
+	)
+
+	assert.Equal(t, [][]string{{"database"}, {"application"}}, subchartBatches(t, root))
+	assert.Equal(t, [][]string{{"cache"}, {"worker"}}, subchartBatches(t, nested))
 }
 
 func TestBuildSubchartDAG_StorageDecodedMetadataTrusted(t *testing.T) {
@@ -90,6 +223,17 @@ func TestBuildSubchartDAG_StorageDecodedMetadataTrusted(t *testing.T) {
 	}}
 
 	assert.Equal(t, [][]string{{"db"}, {"app"}}, subchartBatches(t, c))
+}
+
+func TestBuildSubchartDAG_MetadataOnlyNotEnabled_Ignored(t *testing.T) {
+	t.Parallel()
+
+	c := &chart.Chart{Metadata: &chart.Metadata{
+		Name:         "parent",
+		Dependencies: []*chart.Dependency{{Name: "ghost"}},
+	}}
+
+	assert.Empty(t, subchartBatches(t, c))
 }
 
 func TestBuildSubchartDAG_AnnotationReferencesUnloadedDep(t *testing.T) {
