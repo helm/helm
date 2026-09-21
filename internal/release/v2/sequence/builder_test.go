@@ -42,6 +42,8 @@ func TestBuild_NilChart_FlatPlan(t *testing.T) {
 	assert.Equal(t, Batch{
 		ChartPath: "",
 		Depth:     0,
+		Kind:      BatchKindUnsequenced,
+		Groups:    []Group{{Name: "", Manifests: manifests}},
 		Manifests: manifests,
 		Wait:      true,
 	}, plan.Batches[0])
@@ -74,6 +76,8 @@ func TestBuild_NoAnnotations_SingleFlatBatch(t *testing.T) {
 	assert.Equal(t, Batch{
 		ChartPath: "parent",
 		Depth:     0,
+		Kind:      BatchKindUnsequenced,
+		Groups:    []Group{{Name: "", Manifests: manifests}},
 		Manifests: manifests,
 		Wait:      true,
 	}, plan.Batches[0])

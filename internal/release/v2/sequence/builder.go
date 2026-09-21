@@ -26,6 +26,7 @@ import (
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
 	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
+	"helm.sh/helm/v4/internal/release/v2/resourcegroup"
 )
 
 type builder struct {
@@ -205,19 +206,101 @@ func (b *builder) appendChartBatches(chartPath string, depth int, manifests []re
 	return nil
 }
 
-// chartBatches returns the batches owned by one chart level. PR1 keeps every
-// manifest in one hard-barrier batch; PR2 replaces this body with resource
-// group partitioning while retaining this signature.
+// chartBatches returns the resource-group and trailing unsequenced batches
+// owned by one chart level.
 func chartBatches(chartPath string, manifests []releaseutil.Manifest) ([]Batch, []Warning, error) {
 	if len(manifests) == 0 {
 		return nil, nil, nil
 	}
 
-	return []Batch{{
-		ChartPath: chartPath,
-		Manifests: manifests,
-		Wait:      true,
-	}}, nil, nil
+	result, demotions, err := resourcegroup.ParseResourceGroups(manifests)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parsing resource-group annotations for %s: %w", chartPath, err)
+	}
+
+	warnings := make([]Warning, 0, len(demotions))
+	for _, message := range demotions {
+		warnings = append(warnings, Warning{
+			Kind:      WarningKindResourceGroupDemotion,
+			ChartPath: chartPath,
+			Message:   message,
+		})
+	}
+
+	unsequenced := result.Unsequenced
+	if len(result.Groups) >= 2 {
+		dependents := resourceGroupDependents(result.GroupDeps)
+		for _, groupName := range slices.Sorted(maps.Keys(result.Groups)) {
+			if len(result.GroupDeps[groupName]) != 0 || dependents[groupName] {
+				continue
+			}
+
+			warnings = append(warnings, Warning{
+				Kind:      WarningKindIsolatedGroup,
+				ChartPath: chartPath,
+				Message:   fmt.Sprintf("resource-group %q is isolated (no depends-on edges and no dependents); deploying it in the unsequenced batch after sequenced groups", groupName),
+			})
+			unsequenced = append(unsequenced, result.Groups[groupName]...)
+			delete(result.Groups, groupName)
+			delete(result.GroupDeps, groupName)
+		}
+	}
+
+	var batches []Batch
+	if len(result.Groups) > 0 {
+		dag, err := resourcegroup.BuildResourceGroupDAG(result)
+		if err != nil {
+			return nil, nil, fmt.Errorf("building resource-group DAG for %s: %w", chartPath, err)
+		}
+
+		groupBatches, err := dag.GetBatches()
+		if err != nil {
+			return nil, nil, fmt.Errorf("resource-group circular dependency detected in %s: %w", chartPath, err)
+		}
+
+		dependents := resourceGroupDependents(result.GroupDeps)
+		for _, groupBatch := range groupBatches {
+			batch := Batch{
+				ChartPath: chartPath,
+				Kind:      BatchKindGroups,
+				Wait:      true,
+			}
+			for _, groupName := range groupBatch {
+				groupManifests := result.Groups[groupName]
+				batch.Groups = append(batch.Groups, Group{
+					Name:      groupName,
+					Manifests: groupManifests,
+				})
+				batch.Manifests = append(batch.Manifests, groupManifests...)
+				if !dependents[groupName] {
+					batch.LeafGroups = append(batch.LeafGroups, groupName)
+				}
+			}
+			batches = append(batches, batch)
+		}
+	}
+
+	if len(unsequenced) > 0 {
+		batches = append(batches, Batch{
+			ChartPath: chartPath,
+			Kind:      BatchKindUnsequenced,
+			Groups:    []Group{{Name: "", Manifests: unsequenced}},
+			Manifests: unsequenced,
+			Wait:      true,
+		})
+	}
+
+	return batches, warnings, nil
+}
+
+func resourceGroupDependents(groupDeps map[string][]string) map[string]bool {
+	dependents := make(map[string]bool)
+	for _, deps := range groupDeps {
+		for _, dep := range deps {
+			dependents[dep] = true
+		}
+	}
+	return dependents
 }
 
 // GroupManifestsByDirectSubchart groups manifests by the direct subchart they belong to.

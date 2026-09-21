@@ -23,15 +23,34 @@ import (
 	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
+// BatchKind distinguishes the batch flavors a chart level produces.
+type BatchKind uint8
+
+const (
+	// BatchKindGroups is one topological level of the resource-group DAG.
+	BatchKindGroups BatchKind = iota
+	// BatchKindUnsequenced is a chart level's trailing unsequenced batch.
+	BatchKindUnsequenced
+)
+
+// Group is a named set of manifests deployed as one unit within a batch.
+type Group struct {
+	Name      string
+	Manifests []releaseutil.Manifest
+}
+
 // Batch is one apply unit in a deployment plan. Wait marks the end of a stage:
 // the executor waits for every resource applied since the previous stage
 // before it continues. Batches of independent subcharts share a stage, so only
 // the last batch of such a stage has Wait set.
 type Batch struct {
-	ChartPath string
-	Depth     int
-	Manifests []releaseutil.Manifest
-	Wait      bool
+	ChartPath  string
+	Depth      int
+	Kind       BatchKind
+	Groups     []Group
+	Manifests  []releaseutil.Manifest
+	Wait       bool
+	LeafGroups []string
 }
 
 // ChartLevel describes one chart in the plan's traversal order.
@@ -52,6 +71,10 @@ const (
 	WarningKindUndeclaredSubchart WarningKind = iota
 	// WarningKindUnresolvedSubchart identifies rendered subcharts with no resolvable chart object.
 	WarningKindUnresolvedSubchart
+	// WarningKindResourceGroupDemotion identifies a resource or group demoted to the unsequenced batch.
+	WarningKindResourceGroupDemotion
+	// WarningKindIsolatedGroup identifies an edge-free group demoted to the unsequenced batch.
+	WarningKindIsolatedGroup
 )
 
 // Warning is a non-fatal issue discovered while building a plan.
