@@ -36,6 +36,8 @@ auth-enabled registry to cover that path.
 | `HELM_E2E_REGISTRY`    | yes      | Registry namespace to push to, without a scheme (e.g. `ghcr.io/your-org`).                       |
 | `HELM_E2E_USERNAME`    | yes      | Username for the registry.                                                                       |
 | `HELM_E2E_PASSWORD`    | yes      | Password or token for the registry. Passed to helm on stdin and never logged.                    |
+| `HELM_E2E_REPO`        | no       | Repository path under the registry. Defaults to `helm-e2e`.                                      |
+| `HELM_E2E_ISOLATE`     | no       | Append a per-run suffix to the repository path. Off by default; see below.                       |
 | `HELM_E2E_BIN`         | no       | Path to a prebuilt helm binary. Defaults to building one from the working tree.                  |
 | `HELM_E2E_PLAIN_HTTP`  | no       | Set to use plain HTTP, for registries without TLS.                                               |
 | `HELM_E2E_KUBERNETES`  | no       | Set to run the install test against the current kubecontext. Off by default because it mutates.  |
@@ -44,8 +46,45 @@ auth-enabled registry to cover that path.
 Because the `e2e` build tag is already an explicit opt-in, a missing required
 variable fails the test rather than silently skipping it.
 
-Each run pushes to repositories suffixed with a random run ID, so concurrent
-runs and repeated runs in a shared namespace do not collide.
+## Repository layout
+
+Helm appends the chart name to the push target, so a run touches one repository
+per fixture:
+
+```
+<HELM_E2E_REGISTRY>/<HELM_E2E_REPO>/test
+<HELM_E2E_REGISTRY>/<HELM_E2E_REPO>/compressedchart
+<HELM_E2E_REGISTRY>/<HELM_E2E_REPO>/compressedchart-with-hyphens
+<HELM_E2E_REGISTRY>/<HELM_E2E_REPO>/unicode-chart
+```
+
+That set is stable by default. The fixtures are immutable, so re-running
+overwrites each tag with byte-identical content: concurrent runs do not
+interfere, a shared registry does not accumulate repositories over time, and
+registries that require a repository to exist before a push (ECR) can have
+these created ahead of time.
+
+Set `HELM_E2E_ISOLATE` to append a per-run suffix instead, which is useful when
+several people share one registry namespace and you want a run to stand alone.
+Note that stable paths stay safe only while every test pushes identical content
+under a given tag; a test that pushes mutated content under a fixed tag would
+need isolation.
+
+## Running against several registries
+
+The suite has no registry-specific behavior — everything comes from the
+environment — so covering a new registry is a matter of pointing the same tests
+at it. This is how `.github/workflows/e2e-registries.yml` exercises GHCR, Quay,
+and ECR on a schedule, one matrix leg each, to catch changes that break a
+particular registry implementation rather than OCI in general.
+
+Two registry differences are worth knowing about:
+
+- A default `registry:2` serves anonymous access, so the invalid-credential
+  test skips itself there, as described above.
+- ECR does not create repositories on push and issues a short-lived token
+  rather than accepting a static password. The workflow creates the four
+  repositories listed above and mints a token before running the tests.
 
 The Kubernetes test deletes the namespace it creates. If you supply
 `HELM_E2E_NAMESPACE`, that namespace is left in place and only the releases are

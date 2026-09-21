@@ -1,0 +1,143 @@
+name: e2e-registries
+
+# Runs the OCI end-to-end suite against real registry implementations, to catch
+# changes that break a particular registry rather than OCI in general.
+#
+# This workflow needs credentials, so it deliberately does not run on
+# pull_request: fork PRs cannot read secrets and would fail for every outside
+# contributor. Secret-free coverage against a local registry runs per-PR in
+# e2e.yml. Each registry is a separate matrix leg with fail-fast disabled, so
+# one registry being down does not hide the results of the others.
+#
+# Required secrets, per registry. A leg whose secrets are absent is skipped
+# rather than failed, so registries can be wired up one at a time.
+#
+#   GHCR   HELM_E2E_GHCR_REGISTRY    e.g. ghcr.io/helm
+#          HELM_E2E_GHCR_USERNAME
+#          HELM_E2E_GHCR_TOKEN       PAT with write:packages
+#
+#   Quay   HELM_E2E_QUAY_REGISTRY    e.g. quay.io/helm
+#          HELM_E2E_QUAY_USERNAME    robot account, e.g. helm+e2e
+#          HELM_E2E_QUAY_TOKEN       robot account token
+#
+#   ECR    HELM_E2E_ECR_REGISTRY     e.g. 111122223333.dkr.ecr.us-east-1.amazonaws.com
+#          HELM_E2E_ECR_REGION       e.g. us-east-1
+#          HELM_E2E_ECR_ACCESS_KEY_ID
+#          HELM_E2E_ECR_SECRET_ACCESS_KEY
+#
+# ECR is the odd one out in two ways: it mints a short-lived password rather
+# than using a static one, and it does not create repositories on push, so the
+# repositories are created below before the tests run.
+
+on:
+  schedule:
+    # Nightly, after most merges have landed.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KIND_VERSION: v0.31.0
+  # Repository path under each registry. Stable rather than per-run, so the
+  # set of repositories stays bounded and can be pre-created for ECR.
+  HELM_E2E_REPO: helm-e2e
+
+jobs:
+  registries:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [ghcr, quay, ecr]
+    name: ${{ matrix.name }}
+    steps:
+      # Secrets cannot be referenced from strategy.matrix, so every registry's
+      # secrets are bound here and the matrix leg selects among them. They are
+      # read as environment variables rather than interpolated into the script,
+      # so no credential becomes shell source.
+      - name: Resolve registry configuration
+        id: config
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
+          GHCR_REGISTRY: ${{ secrets.HELM_E2E_GHCR_REGISTRY }}
+          GHCR_USERNAME: ${{ secrets.HELM_E2E_GHCR_USERNAME }}
+          GHCR_PASSWORD: ${{ secrets.HELM_E2E_GHCR_TOKEN }}
+          QUAY_REGISTRY: ${{ secrets.HELM_E2E_QUAY_REGISTRY }}
+          QUAY_USERNAME: ${{ secrets.HELM_E2E_QUAY_USERNAME }}
+          QUAY_PASSWORD: ${{ secrets.HELM_E2E_QUAY_TOKEN }}
+          ECR_REGISTRY: ${{ secrets.HELM_E2E_ECR_REGISTRY }}
+          # ECR authenticates as the fixed user "AWS" with a token minted below.
+          ECR_USERNAME: AWS
+          ECR_PASSWORD: ""
+        run: |
+          set -euo pipefail
+          prefix="$(printf '%s' "${MATRIX_NAME}" | tr '[:lower:]' '[:upper:]')"
+          registry="${prefix}_REGISTRY"
+          username="${prefix}_USERNAME"
+          password="${prefix}_PASSWORD"
+
+          # A registry with no secrets set is skipped rather than failed, so
+          # registries can be wired up one at a time.
+          if [ -z "${!registry:-}" ]; then
+            echo "no registry secret set for ${MATRIX_NAME}, skipping this leg"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "HELM_E2E_REGISTRY=${!registry}"
+            echo "HELM_E2E_USERNAME=${!username:-}"
+          } >> "$GITHUB_ENV"
+          if [ -n "${!password:-}" ]; then
+            echo "HELM_E2E_PASSWORD=${!password}" >> "$GITHUB_ENV"
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout source code
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # pin@v6.0.0
+      - name: Add variables to environment file
+        if: steps.config.outputs.configured == 'true'
+        run: cat ".github/env" >> "$GITHUB_ENV"
+      - name: Setup Go
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # pin@6.1.0
+        with:
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
+
+      # ECR issues a short-lived authorization token rather than accepting a
+      # long-lived secret, and does not create repositories on push.
+      - name: Prepare ECR
+        if: steps.config.outputs.configured == 'true' && matrix.name == 'ecr'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.HELM_E2E_ECR_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.HELM_E2E_ECR_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.HELM_E2E_ECR_REGION }}
+        run: |
+          set -euo pipefail
+          # Helm appends the chart name to HELM_E2E_REPO, so each fixture needs
+          # its own repository. Keep this list in step with
+          # test/e2e/testdata/testcharts.
+          for chart in test compressedchart compressedchart-with-hyphens unicode-chart; do
+            aws ecr describe-repositories --repository-names "${HELM_E2E_REPO}/${chart}" >/dev/null 2>&1 \
+              || aws ecr create-repository --repository-name "${HELM_E2E_REPO}/${chart}" >/dev/null
+          done
+          token="$(aws ecr get-login-password)"
+          echo "::add-mask::${token}"
+          echo "HELM_E2E_PASSWORD=${token}" >> "$GITHUB_ENV"
+
+      - name: Create a kind cluster
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          go install "sigs.k8s.io/kind@${KIND_VERSION}"
+          kind create cluster --name helm-e2e --wait 120s
+
+      - name: Run end-to-end tests
+        if: steps.config.outputs.configured == 'true'
+        env:
+          HELM_E2E_KUBERNETES: "true"
+        run: make test-e2e
