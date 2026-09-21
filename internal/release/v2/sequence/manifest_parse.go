@@ -23,7 +23,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
+	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
 // ParseStoredManifests parses a stored release manifest stream in input order.

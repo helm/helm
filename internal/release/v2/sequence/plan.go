@@ -20,7 +20,7 @@ package sequence
 import (
 	"strings"
 
-	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
+	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
 // Batch is one apply-and-wait unit in a deployment plan.

@@ -27,16 +27,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
+	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
 func TestPlanReverse(t *testing.T) {
 	t.Parallel()
 
-	first := Batch{ChartPath: "parent/charts/db", Depth: 1, Wait: true,
-		Manifests: []releaseutil.Manifest{{Name: "db/templates/config.yaml"}}}
-	second := Batch{ChartPath: "parent", Depth: 0, Wait: true,
-		Manifests: []releaseutil.Manifest{{Name: "parent/templates/app.yaml"}}}
+	first := Batch{
+		ChartPath: "parent/charts/db", Depth: 1, Wait: true,
+		Manifests: []releaseutil.Manifest{{Name: "db/templates/config.yaml"}},
+	}
+	second := Batch{
+		ChartPath: "parent", Depth: 0, Wait: true,
+		Manifests: []releaseutil.Manifest{{Name: "parent/templates/app.yaml"}},
+	}
 	plan := &Plan{
 		Batches:  []Batch{first, second},
 		Levels:   []ChartLevel{{Path: "parent"}},

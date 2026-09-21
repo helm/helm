@@ -24,7 +24,7 @@ import (
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
-	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
+	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
 func TestBuild_NilChart_FlatPlan(t *testing.T) {
@@ -206,6 +206,7 @@ func TestBuild_ParentDependsOnResolved(t *testing.T) {
 		{
 			name: "resolved alias from dependency pipeline",
 			chart: func(t *testing.T) *chart.Chart {
+				t.Helper()
 				database := newTestChart("database")
 				app := newTestChart("app")
 				parent := newTestChart("parent")

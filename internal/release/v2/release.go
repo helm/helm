@@ -17,6 +17,7 @@ package v2
 
 import (
 	chart "helm.sh/helm/v4/internal/chart/v3"
+	"helm.sh/helm/v4/internal/release/v2/sequence"
 	"helm.sh/helm/v4/pkg/release/common"
 )
 
@@ -41,6 +42,8 @@ type Release struct {
 	Config map[string]any `json:"config,omitempty"`
 	// Manifest is the string representation of the rendered template.
 	Manifest string `json:"manifest,omitempty"`
+	// Plan preserves the resolved deployment sequence for this release.
+	Plan *sequence.PlanRecord `json:"plan,omitempty"`
 	// Hooks are all of the hooks declared for this release.
 	Hooks []*Hook `json:"hooks,omitempty"`
 	// Version is an int which represents the revision of the release.

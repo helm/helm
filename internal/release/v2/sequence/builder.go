@@ -25,7 +25,7 @@ import (
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
-	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
+	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
 type builder struct {
