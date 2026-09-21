@@ -1,0 +1,11 @@
+Chart: nested
+  Subchart batches:
+    Batch 1: middle
+  Unsequenced (deployed last): ConfigMap/nested
+  Chart: nested/charts/middle
+    Subchart batches:
+      Batch 1: leaf
+    Unsequenced (deployed last): ConfigMap/middle
+    Chart: nested/charts/middle/charts/leaf
+      Subchart batches: (none)
+      Unsequenced (deployed last): ConfigMap/leaf
