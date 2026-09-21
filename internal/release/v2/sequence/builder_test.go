@@ -26,6 +26,59 @@ import (
 	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
 )
 
+func TestBuild_NilChart_FlatPlan(t *testing.T) {
+	t.Parallel()
+
+	manifests := []releaseutil.Manifest{
+		{Name: "parent/templates/first.yaml"},
+		{Name: "parent/charts/database/templates/second.yaml"},
+	}
+
+	plan, err := Build(nil, manifests)
+	require.NoError(t, err)
+	assert.Equal(t, []ChartLevel{{Path: "", Depth: 0}}, plan.Levels)
+	require.Len(t, plan.Batches, 1)
+	assert.Equal(t, Batch{
+		ChartPath: "",
+		Depth:     0,
+		Manifests: manifests,
+		Wait:      true,
+	}, plan.Batches[0])
+	assert.Empty(t, plan.Warnings)
+}
+
+func TestBuild_EmptyChart(t *testing.T) {
+	t.Parallel()
+
+	plan, err := Build(newTestChart("parent"), nil)
+	require.NoError(t, err)
+	assert.Equal(t, []ChartLevel{{Path: "parent", Depth: 0}}, plan.Levels)
+	assert.Empty(t, plan.Batches)
+	assert.Empty(t, plan.Warnings)
+}
+
+func TestBuild_NoAnnotations_SingleFlatBatch(t *testing.T) {
+	t.Parallel()
+
+	manifests := []releaseutil.Manifest{
+		{Name: "parent/templates/first.yaml"},
+		{Name: "parent/templates/second.yaml"},
+		{Name: "parent/templates/third.yaml"},
+	}
+
+	plan, err := Build(newTestChart("parent"), manifests)
+	require.NoError(t, err)
+	assert.Equal(t, []ChartLevel{{Path: "parent", Depth: 0}}, plan.Levels)
+	require.Len(t, plan.Batches, 1)
+	assert.Equal(t, Batch{
+		ChartPath: "parent",
+		Depth:     0,
+		Manifests: manifests,
+		Wait:      true,
+	}, plan.Batches[0])
+	assert.Empty(t, plan.Warnings)
+}
+
 func TestGroupManifestsByDirectSubchart(t *testing.T) {
 	t.Parallel()
 

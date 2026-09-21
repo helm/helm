@@ -23,6 +23,42 @@ import (
 	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
 )
 
+// Build constructs a deployment plan for a chart's rendered manifests.
+// A nil chart produces a flat plan whose chart path is empty.
+func Build(chrt *chart.Chart, manifests []releaseutil.Manifest) (*Plan, error) {
+	chartPath := ""
+	if chrt != nil {
+		chartPath = chrt.Name()
+	}
+
+	plan := &Plan{Levels: []ChartLevel{{Path: chartPath, Depth: 0}}}
+	batches, warnings, err := chartBatches(chartPath, manifests)
+	if err != nil {
+		return nil, err
+	}
+	for i := range batches {
+		batches[i].Depth = 0
+	}
+	plan.Batches = append(plan.Batches, batches...)
+	plan.Warnings = append(plan.Warnings, warnings...)
+	return plan, nil
+}
+
+// chartBatches returns the batches owned by one chart level. PR1 keeps every
+// manifest in one hard-barrier batch; PR2 replaces this body with resource
+// group partitioning while retaining this signature.
+func chartBatches(chartPath string, manifests []releaseutil.Manifest) ([]Batch, []Warning, error) {
+	if len(manifests) == 0 {
+		return nil, nil, nil
+	}
+
+	return []Batch{{
+		ChartPath: chartPath,
+		Manifests: manifests,
+		Wait:      true,
+	}}, nil, nil
+}
+
 // GroupManifestsByDirectSubchart groups manifests by the direct subchart they belong to.
 // The current chart level's own manifests use the empty string key. Nested
 // descendants are grouped under their direct subchart parent because deeper
