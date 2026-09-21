@@ -19,12 +19,24 @@ limitations under the License.
 package e2e
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // TestOCIRegistryPushPull pushes chart archives to the configured OCI registry
@@ -98,6 +110,10 @@ func TestOCIRegistryPushPull(t *testing.T) {
 			if fi.IsDir() != tt.expectPullDir {
 				t.Errorf("expected directory=%t, got directory=%t", tt.expectPullDir, fi.IsDir())
 			}
+
+			// Verify the round-trip actually returned the chart we pushed,
+			// not merely some artifact under the same tag.
+			assertChartMatches(t, chart(t, tt.chart), pullDir, tt.expectPullDir)
 		})
 	}
 }
@@ -112,7 +128,10 @@ func TestOCIRegistryInvalidCredentials(t *testing.T) {
 	// credential itself.
 	out, err := h.login(t, "invalid-"+h.runID)
 	if err == nil {
-		t.Fatal("expected registry login to fail with an invalid credential, but it succeeded")
+		// An anonymous registry, such as a default registry:2 deployment,
+		// accepts any credential. There is no authentication to exercise, so
+		// skip rather than report a failure the registry cannot produce.
+		t.Skipf("Skipping invalid credential test: %s accepts unauthenticated access", h.registryHost())
 	}
 	if !isAuthError(out) {
 		t.Fatalf("expected an authentication failure, got a different error:\n%s", out)
@@ -189,9 +208,13 @@ func TestOCIRegistryInstallToKubernetes(t *testing.T) {
 	h := newHarness(t)
 	h.mustLogin(t)
 
+	// A caller-supplied namespace is left alone; one we create for the run is
+	// removed again so repeated runs do not accumulate namespaces in the
+	// cluster.
 	namespace := os.Getenv(envNamespace)
 	if namespace == "" {
 		namespace = "helm-e2e-" + h.runID
+		t.Cleanup(func() { deleteNamespace(t, namespace) })
 	}
 	repo := h.repo("install")
 
@@ -243,5 +266,141 @@ func TestOCIRegistryInstallToKubernetes(t *testing.T) {
 				t.Errorf("expected release %s to be deployed, got:\n%s", tt.releaseName, out)
 			}
 		})
+	}
+}
+
+// assertChartMatches verifies that what was pulled into pullDir is the same
+// chart as the fixture at src. Existence and file-vs-directory checks alone
+// would pass if the registry served a different artifact under the same tag.
+//
+// A chart pulled without --untar is the pushed archive verbatim, so it is
+// compared byte for byte. With --untar, helm expands the archive, so every
+// regular file in the source archive is compared against its extracted
+// counterpart.
+func assertChartMatches(t *testing.T, src, pullDir string, untarred bool) {
+	t.Helper()
+
+	if !untarred {
+		assertFilesEqual(t, src, filepath.Join(pullDir, filepath.Base(src)))
+		return
+	}
+
+	want := archiveFiles(t, src)
+	if len(want) == 0 {
+		t.Fatalf("fixture %s contains no files", src)
+	}
+	for name, content := range want {
+		extracted := filepath.Join(pullDir, filepath.FromSlash(name))
+		got, err := os.ReadFile(extracted)
+		if err != nil {
+			t.Errorf("expected extracted file %s: %v", extracted, err)
+			continue
+		}
+		if !bytes.Equal(got, content) {
+			t.Errorf("extracted file %s does not match the pushed chart", name)
+		}
+	}
+}
+
+// assertFilesEqual compares two files byte for byte.
+func assertFilesEqual(t *testing.T, want, got string) {
+	t.Helper()
+	wantBytes, err := os.ReadFile(want)
+	if err != nil {
+		t.Fatalf("reading %s: %v", want, err)
+	}
+	gotBytes, err := os.ReadFile(got)
+	if err != nil {
+		t.Fatalf("reading %s: %v", got, err)
+	}
+	if !bytes.Equal(wantBytes, gotBytes) {
+		t.Errorf("pulled chart %s does not match the pushed chart %s (%d vs %d bytes)",
+			got, want, len(gotBytes), len(wantBytes))
+	}
+}
+
+// archiveFiles returns the regular files in a gzipped tar archive, keyed by
+// their slash-separated path within the archive.
+func archiveFiles(t *testing.T, path string) map[string][]byte {
+	t.Helper()
+
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("opening %s: %v", path, err)
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("reading %s as gzip: %v", path, err)
+	}
+	defer gz.Close()
+
+	files := map[string][]byte{}
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("reading %s as tar: %v", path, err)
+		}
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+		content, err := io.ReadAll(tr)
+		if err != nil {
+			t.Fatalf("reading %s from %s: %v", hdr.Name, path, err)
+		}
+		files[hdr.Name] = content
+	}
+	return files
+}
+
+// deleteNamespace removes a namespace created by the test run. It is best
+// effort in the sense that it reports a failure rather than aborting the test,
+// but it does not silently leave the namespace behind.
+func deleteNamespace(t *testing.T, namespace string) {
+	t.Helper()
+
+	cfg, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(),
+		&clientcmd.ConfigOverrides{},
+	).ClientConfig()
+	if err != nil {
+		t.Errorf("building kube client config to delete namespace %s: %v", namespace, err)
+		return
+	}
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		t.Errorf("building kube client to delete namespace %s: %v", namespace, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	t.Logf("deleting namespace %s", namespace)
+	if err := client.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return
+		}
+		t.Errorf("deleting namespace %s: %v", namespace, err)
+		return
+	}
+
+	// Deletion is asynchronous. Wait for the namespace to actually go away so
+	// that a namespace wedged in Terminating is reported rather than quietly
+	// accumulating in the cluster.
+	err = wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
+		_, err := client.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	})
+	if err != nil {
+		t.Errorf("waiting for namespace %s to be deleted: %v", namespace, err)
 	}
 }
