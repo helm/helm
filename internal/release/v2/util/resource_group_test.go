@@ -1,0 +1,236 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package util
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestParseResourceGroups_NoAnnotations(t *testing.T) {
+	t.Parallel()
+
+	result, warnings := parseResourceGroups(t,
+		makeManifest("plain-a", "chart/templates/plain-a.yaml", nil),
+		makeManifest("plain-b", "chart/templates/plain-b.yaml", nil),
+	)
+
+	assert.Empty(t, result.Groups)
+	assert.Empty(t, result.GroupDeps)
+	require.Len(t, result.Unsequenced, 2)
+	assert.Equal(t, []string{"chart/templates/plain-a.yaml", "chart/templates/plain-b.yaml"}, manifestPaths(result.Unsequenced))
+	assert.Empty(t, warnings)
+}
+
+func TestParseResourceGroups_GroupWithDependency(t *testing.T) {
+	t.Parallel()
+
+	result, warnings := parseResourceGroups(t,
+		makeManifest("database", "chart/templates/database.yaml", map[string]string{
+			AnnotationResourceGroup: "database",
+		}),
+		makeManifest("app", "chart/templates/app.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `["database"]`,
+		}),
+	)
+
+	require.Len(t, result.Groups, 2)
+	assert.Equal(t, []string{"database"}, result.GroupDeps["app"])
+	assert.Empty(t, result.GroupDeps["database"])
+	assert.Empty(t, result.Unsequenced)
+	assert.Empty(t, warnings)
+}
+
+func TestParseResourceGroups_MultipleResourcesPerGroup(t *testing.T) {
+	t.Parallel()
+
+	result, warnings := parseResourceGroups(t,
+		makeManifest("database-config", "chart/templates/database-config.yaml", map[string]string{
+			AnnotationResourceGroup: "database",
+		}),
+		makeManifest("database-secret", "chart/templates/database-secret.yaml", map[string]string{
+			AnnotationResourceGroup: "database",
+		}),
+		makeManifest("app", "chart/templates/app.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `["database"]`,
+		}),
+	)
+
+	require.Len(t, result.Groups["database"], 2)
+	assert.Equal(t, []string{
+		"chart/templates/database-config.yaml",
+		"chart/templates/database-secret.yaml",
+	}, manifestPaths(result.Groups["database"]))
+	assert.Equal(t, []string{"database"}, result.GroupDeps["app"])
+	assert.Empty(t, warnings)
+}
+
+func TestParseResourceGroups_ResourceAssignedToMultipleGroups(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := ParseResourceGroups([]Manifest{
+		makeManifest("shared", "chart/templates/database.yaml", map[string]string{
+			AnnotationResourceGroup: "database",
+		}),
+		makeManifest("shared", "chart/templates/cache.yaml", map[string]string{
+			AnnotationResourceGroup: "cache",
+		}),
+	})
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "assigned to multiple resource groups")
+	require.ErrorContains(t, err, "database")
+	require.ErrorContains(t, err, "cache")
+}
+
+func TestParseResourceGroups_SameNameDifferentNamespaces(t *testing.T) {
+	t.Parallel()
+
+	m1 := makeManifest("shared", "chart/templates/a.yaml", map[string]string{
+		AnnotationResourceGroup: "groupA",
+	})
+	m1.Head.Metadata.Namespace = "ns-a"
+	m2 := makeManifest("shared", "chart/templates/b.yaml", map[string]string{
+		AnnotationResourceGroup: "groupB",
+	})
+	m2.Head.Metadata.Namespace = "ns-b"
+
+	result, warnings, err := ParseResourceGroups([]Manifest{m1, m2})
+
+	require.NoError(t, err, "same-name resources in different namespaces must not collide")
+	assert.Empty(t, warnings)
+	assert.Len(t, result.Groups["groupA"], 1)
+	assert.Len(t, result.Groups["groupB"], 1)
+}
+
+func TestParseResourceGroups_NonExistentGroupReferenceWarning(t *testing.T) {
+	t.Parallel()
+
+	result, warnings := parseResourceGroups(t,
+		makeManifest("app", "chart/templates/app.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `["missing"]`,
+		}),
+	)
+
+	assert.Empty(t, result.Groups)
+	require.Len(t, result.Unsequenced, 1)
+	assert.Equal(t, []string{"chart/templates/app.yaml"}, manifestPaths(result.Unsequenced))
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "non-existent group")
+	assert.Contains(t, warnings[0], "missing")
+}
+
+func TestParseResourceGroups_EmptyStringDependencyDemoted(t *testing.T) {
+	t.Parallel()
+
+	result, warnings := parseResourceGroups(t,
+		makeManifest("app", "chart/templates/app.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `[""]`,
+		}),
+	)
+
+	assert.Empty(t, result.Groups)
+	require.Len(t, result.Unsequenced, 1)
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], `depends-on non-existent group ""`)
+}
+
+func TestParseResourceGroups_CascadingMissingDeps(t *testing.T) {
+	t.Parallel()
+
+	manifests := []Manifest{
+		makeManifest("app", "chart/templates/app.yaml", map[string]string{
+			AnnotationResourceGroup:           "app",
+			AnnotationDependsOnResourceGroups: `["database"]`,
+		}),
+		makeManifest("database", "chart/templates/database.yaml", map[string]string{
+			AnnotationResourceGroup:           "database",
+			AnnotationDependsOnResourceGroups: `["missing"]`,
+		}),
+	}
+
+	for range 64 {
+		result, warnings := parseResourceGroups(t, manifests...)
+
+		assert.Empty(t, result.Groups)
+		assert.Empty(t, result.GroupDeps)
+		require.Len(t, result.Unsequenced, 2)
+		assert.ElementsMatch(t, []string{
+			"chart/templates/app.yaml",
+			"chart/templates/database.yaml",
+		}, manifestPaths(result.Unsequenced))
+		require.Len(t, warnings, 2)
+		assert.Contains(t, warnings[0], `group "database" depends-on non-existent group "missing"`)
+		assert.Contains(t, warnings[1], `group "app" depends-on non-existent group "database"`)
+	}
+}
+
+func parseResourceGroups(t *testing.T, manifests ...Manifest) (ResourceGroupResult, []string) {
+	t.Helper()
+
+	result, warnings, err := ParseResourceGroups(manifests)
+	require.NoError(t, err)
+
+	return result, warnings
+}
+
+func makeManifest(name, sourcePath string, annotations map[string]string) Manifest {
+	var content strings.Builder
+	fmt.Fprintf(&content, "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: %s\n", name)
+	if len(annotations) > 0 {
+		content.WriteString("  annotations:\n")
+		for key, value := range annotations {
+			fmt.Fprintf(&content, "    %s: %q\n", key, value)
+		}
+	}
+
+	head := &SimpleHead{
+		Version: "v1",
+		Kind:    "ConfigMap",
+		Metadata: &struct {
+			Name        string            `json:"name"`
+			Namespace   string            `json:"namespace,omitempty"`
+			Annotations map[string]string `json:"annotations"`
+		}{
+			Name:        name,
+			Annotations: annotations,
+		},
+	}
+
+	return Manifest{
+		Name:    sourcePath,
+		Content: content.String(),
+		Head:    head,
+	}
+}
+
+func manifestPaths(manifests []Manifest) []string {
+	paths := make([]string, 0, len(manifests))
+	for _, manifest := range manifests {
+		paths = append(paths, manifest.Name)
+	}
+
+	return paths
+}
