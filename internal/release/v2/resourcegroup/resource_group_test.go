@@ -337,7 +337,7 @@ func TestParseResourceGroups_ComplexDAG(t *testing.T) {
 	assert.Empty(t, warnings)
 }
 
-func parseResourceGroups(t *testing.T, manifests ...Manifest) (ResourceGroupResult, []string) {
+func parseResourceGroups(t *testing.T, manifests ...Manifest) (Result, []string) {
 	t.Helper()
 
 	result, warnings, err := ParseResourceGroups(manifests)
@@ -346,7 +346,7 @@ func parseResourceGroups(t *testing.T, manifests ...Manifest) (ResourceGroupResu
 	return result, warnings
 }
 
-func parseResourceGroupBatches(t *testing.T, manifests ...Manifest) (ResourceGroupResult, []string, [][]string) {
+func parseResourceGroupBatches(t *testing.T, manifests ...Manifest) (Result, []string, [][]string) {
 	t.Helper()
 
 	result, warnings := parseResourceGroups(t, manifests...)

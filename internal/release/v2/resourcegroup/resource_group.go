@@ -33,8 +33,8 @@ const (
 	AnnotationDependsOnResourceGroups = "helm.sh/depends-on-resource-groups"
 )
 
-// ResourceGroupResult holds the output of ParseResourceGroups.
-type ResourceGroupResult struct { //nolint:revive // Retain the accepted parser seam after moving to the leaf package.
+// Result holds the output of ParseResourceGroups.
+type Result struct {
 	// Groups maps group names to manifests assigned to those groups.
 	Groups map[string][]releasev2manifest.Manifest
 
@@ -53,8 +53,8 @@ type ResourceGroupResult struct { //nolint:revive // Retain the accepted parser 
 // unsequenced batch. References to unknown groups emit a warning and demote the
 // entire referencing group to the unsequenced batch. If the same resource is
 // assigned to different groups, ParseResourceGroups returns an error.
-func ParseResourceGroups(manifests []releasev2manifest.Manifest) (ResourceGroupResult, []string, error) {
-	result := ResourceGroupResult{
+func ParseResourceGroups(manifests []releasev2manifest.Manifest) (Result, []string, error) {
+	result := Result{
 		Groups:    make(map[string][]releasev2manifest.Manifest),
 		GroupDeps: make(map[string][]string),
 	}
@@ -73,7 +73,7 @@ func ParseResourceGroups(manifests []releasev2manifest.Manifest) (ResourceGroupR
 
 		resourceID := resourceGroupResourceID(manifest)
 		if existingGroup, ok := resourceAssignments[resourceID]; ok && existingGroup != groupName {
-			return ResourceGroupResult{}, warnings, fmt.Errorf(
+			return Result{}, warnings, fmt.Errorf(
 				"resource %q assigned to multiple resource groups %q and %q",
 				resourceID,
 				existingGroup,
@@ -134,7 +134,7 @@ func ParseResourceGroups(manifests []releasev2manifest.Manifest) (ResourceGroupR
 
 // BuildResourceGroupDAG constructs a DAG from the resource-group parse result.
 // Each group becomes a DAG node and every dependency becomes an edge.
-func BuildResourceGroupDAG(result ResourceGroupResult) (*chartutil.DAG, error) {
+func BuildResourceGroupDAG(result Result) (*chartutil.DAG, error) {
 	dag := chartutil.NewDAG()
 
 	for groupName := range result.Groups {
