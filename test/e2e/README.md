@@ -24,6 +24,11 @@ $ export HELM_E2E_REGISTRY=localhost:5000/charts
 $ export HELM_E2E_PLAIN_HTTP=true
 ```
 
+A default `registry:2` deployment serves anonymous access and accepts any
+credential. Against such a registry there is no authentication to exercise, so
+the invalid-credential test detects this and skips itself. Run against an
+auth-enabled registry to cover that path.
+
 ## Configuration
 
 | Variable               | Required | Description                                                                                    |
@@ -41,3 +46,7 @@ variable fails the test rather than silently skipping it.
 
 Each run pushes to repositories suffixed with a random run ID, so concurrent
 runs and repeated runs in a shared namespace do not collide.
+
+The Kubernetes test deletes the namespace it creates. If you supply
+`HELM_E2E_NAMESPACE`, that namespace is left in place and only the releases are
+uninstalled.
