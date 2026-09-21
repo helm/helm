@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/fluxcd/cli-utils/pkg/object"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/util/jsonpath"
 )
@@ -80,6 +81,20 @@ type ExpressionWarning struct {
 // so lint cannot always catch this. EvaluateCustomReadiness downgrades it to
 // an ExpressionWarning instead of aborting the entire wait.
 var errIncomparableOrdering = errors.New("ordering operators (<, <=, >, >=) require numeric values")
+
+// CustomReadinessEligibleResources returns the identities of resources that
+// may use custom readiness during a wait.
+func CustomReadinessEligibleResources(resources ResourceList) ([]object.ObjMetadata, error) {
+	eligible := make([]object.ObjMetadata, 0, len(resources))
+	for _, resource := range resources {
+		identifier, err := object.RuntimeToObjMeta(resource.Object)
+		if err != nil {
+			return nil, err
+		}
+		eligible = append(eligible, identifier)
+	}
+	return eligible, nil
+}
 
 // EvaluateCustomReadiness evaluates custom readiness expressions against a
 // resource's .status field.
