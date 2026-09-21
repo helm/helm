@@ -86,6 +86,104 @@ func BuildSubchartDAG(c *chart.Chart) (*DAG, error) {
 	return dag, nil
 }
 
+// resolveDependsOnReferences rewrites dependency and parent annotation
+// references from original chart names to effective names before aliases make
+// the original names unrecoverable. Unknown references remain unchanged for
+// BuildSubchartDAG to report.
+func resolveDependsOnReferences(c *chart.Chart) error {
+	refs := newSubchartRefs()
+	for _, dep := range c.Metadata.Dependencies {
+		if dep == nil {
+			continue
+		}
+		effective := effectiveDependencyName(dep)
+		refs.register(effective, effective)
+		refs.register(dep.Name, effective)
+	}
+
+	for _, dep := range c.Metadata.Dependencies {
+		if dep == nil {
+			continue
+		}
+		for i, ref := range dep.DependsOn {
+			effective, found, ambiguous := refs.resolve(ref)
+			if ambiguous {
+				return fmt.Errorf("subchart %q depends-on ambiguous subchart reference %q; reference it by alias to disambiguate", effectiveDependencyName(dep), ref)
+			}
+			if found {
+				dep.DependsOn[i] = effective
+			}
+		}
+	}
+
+	return resolveAnnotationDependsOn(c, refs)
+}
+
+func resolveAnnotationDependsOn(c *chart.Chart, refs *subchartRefs) error {
+	annotation := strings.TrimSpace(c.Metadata.Annotations[AnnotationDependsOnSubcharts])
+	if annotation == "" {
+		return nil
+	}
+
+	var prerequisites []string
+	if err := json.Unmarshal([]byte(annotation), &prerequisites); err != nil {
+		return nil
+	}
+
+	changed := false
+	for i, ref := range prerequisites {
+		effective, found, ambiguous := refs.resolve(ref)
+		if ambiguous {
+			return fmt.Errorf("annotation %s references ambiguous subchart %q; reference it by alias to disambiguate", AnnotationDependsOnSubcharts, ref)
+		}
+		if found && effective != ref {
+			prerequisites[i] = effective
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+
+	encoded, err := json.Marshal(prerequisites)
+	if err != nil {
+		return fmt.Errorf("re-encoding %s annotation: %w", AnnotationDependsOnSubcharts, err)
+	}
+	c.Metadata.Annotations[AnnotationDependsOnSubcharts] = string(encoded)
+	return nil
+}
+
+type subchartRefs struct {
+	byRef     map[string]string
+	ambiguous map[string]bool
+}
+
+func newSubchartRefs() *subchartRefs {
+	return &subchartRefs{
+		byRef:     make(map[string]string),
+		ambiguous: make(map[string]bool),
+	}
+}
+
+func (s *subchartRefs) register(ref, effective string) {
+	if ref == "" {
+		return
+	}
+	if existing, ok := s.byRef[ref]; ok && existing != effective {
+		s.ambiguous[ref] = true
+		return
+	}
+	s.byRef[ref] = effective
+}
+
+func (s *subchartRefs) resolve(ref string) (effective string, found, ambiguous bool) {
+	if s.ambiguous[ref] {
+		return "", false, true
+	}
+	effective, found = s.byRef[ref]
+	return effective, found, false
+}
+
 func validateParentSubchartDependencies(annotation string, nodes map[string]bool) error {
 	annotation = strings.TrimSpace(annotation)
 	if annotation == "" {

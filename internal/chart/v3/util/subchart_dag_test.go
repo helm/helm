@@ -110,6 +110,63 @@ func TestBuildSubchartDAG_AnnotationReferencesUnloadedDep(t *testing.T) {
 	assert.ErrorContains(t, err, `unknown or disabled subchart "pruned"`)
 }
 
+func TestProcessDependencies_ResolvesDependsOnByOriginalName(t *testing.T) {
+	t.Parallel()
+
+	c := pipelineChart(
+		pipelineDependency("postgres", "primary-db"),
+		pipelineDependency("app", "", "postgres"),
+	)
+
+	require.NoError(t, ProcessDependencies(c, map[string]any{}))
+	assert.Equal(t, "primary-db", c.Metadata.Dependencies[0].Name)
+	assert.Equal(t, []string{"primary-db"}, c.Metadata.Dependencies[1].DependsOn)
+	assert.Equal(t, [][]string{{"primary-db"}, {"app"}}, subchartBatches(t, c))
+}
+
+func TestProcessDependencies_ResolvesDependsOnByAlias(t *testing.T) {
+	t.Parallel()
+
+	c := pipelineChart(
+		pipelineDependency("postgres", "primary-db"),
+		pipelineDependency("app", "", "primary-db"),
+	)
+
+	require.NoError(t, ProcessDependencies(c, map[string]any{}))
+	assert.Equal(t, []string{"primary-db"}, c.Metadata.Dependencies[1].DependsOn)
+	assert.Equal(t, [][]string{{"primary-db"}, {"app"}}, subchartBatches(t, c))
+}
+
+func TestProcessDependencies_AmbiguousDependsOnRejected(t *testing.T) {
+	t.Parallel()
+
+	c := pipelineChart(
+		pipelineDependency("postgres", "db1"),
+		pipelineDependency("postgres", "db2"),
+		pipelineDependency("app", "", "postgres"),
+	)
+
+	err := ProcessDependencies(c, map[string]any{})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `ambiguous subchart reference "postgres"`)
+}
+
+func TestProcessDependencies_RewritesSubchartAnnotation(t *testing.T) {
+	t.Parallel()
+
+	c := pipelineChart(
+		pipelineDependency("postgres", "primary-db"),
+		pipelineDependency("app", ""),
+	)
+	c.Metadata.Annotations = map[string]string{
+		AnnotationDependsOnSubcharts: `["postgres", "app"]`,
+	}
+
+	require.NoError(t, ProcessDependencies(c, map[string]any{}))
+	assert.Equal(t, `["primary-db","app"]`, c.Metadata.Annotations[AnnotationDependsOnSubcharts])
+	assert.Equal(t, [][]string{{"app", "primary-db"}}, subchartBatches(t, c))
+}
+
 func subchartBatches(t *testing.T, c *chart.Chart) [][]string {
 	t.Helper()
 
@@ -137,4 +194,35 @@ func subchartDAGChart(name string, deps ...*chart.Dependency) *chart.Chart {
 
 func enabledSubchartDependency(name string, dependsOn ...string) *chart.Dependency {
 	return &chart.Dependency{Name: name, Enabled: true, DependsOn: dependsOn}
+}
+
+func pipelineChart(deps ...*chart.Dependency) *chart.Chart {
+	c := &chart.Chart{Metadata: &chart.Metadata{
+		Name:         "parent",
+		Version:      "0.1.0",
+		APIVersion:   chart.APIVersionV3,
+		Dependencies: deps,
+	}}
+	added := make(map[string]bool)
+	for _, dep := range deps {
+		if added[dep.Name] {
+			continue
+		}
+		added[dep.Name] = true
+		c.AddDependency(&chart.Chart{Metadata: &chart.Metadata{
+			Name:       dep.Name,
+			Version:    "0.1.0",
+			APIVersion: chart.APIVersionV3,
+		}})
+	}
+	return c
+}
+
+func pipelineDependency(name, alias string, dependsOn ...string) *chart.Dependency {
+	return &chart.Dependency{
+		Name:      name,
+		Version:   "0.1.0",
+		Alias:     alias,
+		DependsOn: dependsOn,
+	}
 }
