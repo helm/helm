@@ -51,6 +51,15 @@ const (
 	// envPlainHTTP requests plain HTTP for registries without TLS, which is
 	// useful when testing against a local registry.
 	envPlainHTTP = "HELM_E2E_PLAIN_HTTP"
+	// envRepo is the repository path under the registry that charts are
+	// pushed to. Helm appends the chart name, so this is a prefix shared by
+	// every fixture.
+	envRepo = "HELM_E2E_REPO"
+	// envIsolate appends a per-run suffix to the repository path. It is off by
+	// default so that the set of repositories a run touches is stable and can
+	// be created ahead of time on registries that do not create repositories
+	// on push.
+	envIsolate = "HELM_E2E_ISOLATE"
 	// envKubernetes opts in to the tests that install charts into a real
 	// Kubernetes cluster using the ambient kubeconfig.
 	envKubernetes = "HELM_E2E_KUBERNETES"
@@ -70,6 +79,10 @@ type harness struct {
 	password string
 	// plainHTTP is true when the registry should be reached over HTTP.
 	plainHTTP bool
+	// repoBase is the repository path charts are pushed under.
+	repoBase string
+	// isolate appends runID to repoBase.
+	isolate bool
 	// configPath is the registry credential file used for this run.
 	configPath string
 	// runID isolates the repositories written by a single test run so that
@@ -88,6 +101,8 @@ func newHarness(t *testing.T) *harness {
 		username:  requireEnv(t, envUsername),
 		password:  requireEnv(t, envPassword),
 		plainHTTP: os.Getenv(envPlainHTTP) != "",
+		repoBase:  envOr(envRepo, "helm-e2e"),
+		isolate:   os.Getenv(envIsolate) != "",
 		helmBin:   helmBinary(t),
 		runID:     runID(t),
 	}
@@ -146,10 +161,28 @@ func (h *harness) registryHost() string {
 	return host
 }
 
-// repo returns an isolated repository path for this run, so that a shared
-// registry namespace can serve many runs without interference.
-func (h *harness) repo(name string) string {
-	return fmt.Sprintf("%s/%s-%s", h.registry, name, h.runID)
+// repo returns the repository path charts are pushed to. Helm appends the
+// chart name, so a run touches one repository per fixture.
+//
+// The path is stable by default. Re-pushing a fixture overwrites the same tag
+// with byte-identical content, so concurrent runs do not interfere, the set of
+// repositories stays bounded, and registries that require repositories to
+// exist before a push (ECR) can have them created ahead of time. Set
+// HELM_E2E_ISOLATE to give a run its own repositories instead.
+func (h *harness) repo() string {
+	if h.isolate {
+		return fmt.Sprintf("%s/%s-%s", h.registry, h.repoBase, h.runID)
+	}
+	return fmt.Sprintf("%s/%s", h.registry, h.repoBase)
+}
+
+// envOr returns the value of the named environment variable, or def when it is
+// unset.
+func envOr(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
 }
 
 // ref returns a full OCI reference for a chart within an isolated repository.

@@ -45,7 +45,7 @@ func TestOCIRegistryPushPull(t *testing.T) {
 	h := newHarness(t)
 	h.mustLogin(t)
 
-	repo := h.repo("push-pull")
+	repo := h.repo()
 	contentCache := t.TempDir()
 
 	tests := []struct {
@@ -142,7 +142,7 @@ func TestOCIRegistryInvalidCredentials(t *testing.T) {
 	// locally for want of any credential at all.
 	writeRegistryCredential(t, h.registryConfig(t), h.registryHost(), h.username, "invalid-"+h.runID)
 
-	out, err = h.helm(t, "push", chart(t, "test-0.1.0.tgz"), "oci://"+h.repo("auth-failure"))
+	out, err = h.helm(t, "push", chart(t, "test-0.1.0.tgz"), "oci://"+h.repo())
 	if err == nil {
 		t.Fatal("expected push to fail with an invalid credential, but it succeeded")
 	}
@@ -216,7 +216,7 @@ func TestOCIRegistryInstallToKubernetes(t *testing.T) {
 		namespace = "helm-e2e-" + h.runID
 		t.Cleanup(func() { deleteNamespace(t, namespace) })
 	}
-	repo := h.repo("install")
+	repo := h.repo()
 
 	tests := []struct {
 		name         string
