@@ -17,31 +17,133 @@ limitations under the License.
 package sequence
 
 import (
+	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
+	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
 	releaseutil "helm.sh/helm/v4/internal/release/v2/util"
 )
+
+type builder struct {
+	plan *Plan
+}
 
 // Build constructs a deployment plan for a chart's rendered manifests.
 // A nil chart produces a flat plan whose chart path is empty.
 func Build(chrt *chart.Chart, manifests []releaseutil.Manifest) (*Plan, error) {
-	chartPath := ""
-	if chrt != nil {
-		chartPath = chrt.Name()
+	b := &builder{plan: &Plan{}}
+	if chrt == nil {
+		b.plan.Levels = append(b.plan.Levels, ChartLevel{Path: "", Depth: 0})
+		if err := b.appendChartBatches("", 0, manifests); err != nil {
+			return nil, err
+		}
+		return b.plan, nil
 	}
 
-	plan := &Plan{Levels: []ChartLevel{{Path: chartPath, Depth: 0}}}
-	batches, warnings, err := chartBatches(chartPath, manifests)
-	if err != nil {
+	if err := b.buildLevel(chrt, manifests, chrt.Name(), 0); err != nil {
 		return nil, err
 	}
-	for i := range batches {
-		batches[i].Depth = 0
+	return b.plan, nil
+}
+
+func (b *builder) warnf(kind WarningKind, chartPath, format string, args ...any) {
+	b.plan.Warnings = append(b.plan.Warnings, Warning{
+		Kind:      kind,
+		ChartPath: chartPath,
+		Message:   fmt.Sprintf(format, args...),
+	})
+}
+
+func (b *builder) buildLevel(chrt *chart.Chart, manifests []releaseutil.Manifest, chartPath string, depth int) error {
+	levelIdx := len(b.plan.Levels)
+	b.plan.Levels = append(b.plan.Levels, ChartLevel{Path: chartPath, Depth: depth})
+	grouped := GroupManifestsByDirectSubchart(manifests, chartPath)
+
+	dag, err := chartutil.BuildSubchartDAG(chrt)
+	if err != nil {
+		return fmt.Errorf("building subchart DAG for %s: %w", chartPath, err)
 	}
-	plan.Batches = append(plan.Batches, batches...)
-	plan.Warnings = append(plan.Warnings, warnings...)
-	return plan, nil
+	subchartBatches, err := dag.GetBatches()
+	if err != nil {
+		return fmt.Errorf("subchart circular dependency detected in %s: %w", chartPath, err)
+	}
+	b.plan.Levels[levelIdx].SubchartBatches = subchartBatches
+
+	declared := make(map[string]bool, len(subchartBatches))
+	for _, subchartBatch := range subchartBatches {
+		for _, name := range subchartBatch {
+			declared[name] = true
+			if err := b.buildSubchart(chrt, chartPath, name, grouped[name], depth, levelIdx); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(grouped)) {
+		if name == "" || declared[name] {
+			continue
+		}
+		b.plan.Levels[levelIdx].Undeclared = append(b.plan.Levels[levelIdx].Undeclared, name)
+		b.warnf(WarningKindUndeclaredSubchart, chartPath, "rendered subchart %q is not declared in Chart.yaml dependencies; sequencing it after declared subcharts", name)
+		if err := b.buildSubchart(chrt, chartPath, name, grouped[name], depth, levelIdx); err != nil {
+			return err
+		}
+	}
+	slices.Sort(b.plan.Levels[levelIdx].Unresolved)
+
+	return b.appendChartBatches(chartPath, depth, grouped[""])
+}
+
+func (b *builder) buildSubchart(parent *chart.Chart, chartPath, name string, manifests []releaseutil.Manifest, depth, parentLevelIdx int) error {
+	if len(manifests) == 0 {
+		return nil
+	}
+
+	subchartPath := chartPath + "/charts/" + name
+	subchart := FindSubchart(parent, name)
+	if subchart == nil {
+		b.plan.Levels[parentLevelIdx].Unresolved = append(b.plan.Levels[parentLevelIdx].Unresolved, name)
+		return b.buildStructuralLevel(subchartPath, depth+1, manifests)
+	}
+	return b.buildLevel(subchart, manifests, subchartPath, depth+1)
+}
+
+func (b *builder) buildStructuralLevel(chartPath string, depth int, manifests []releaseutil.Manifest) error {
+	levelIdx := len(b.plan.Levels)
+	b.plan.Levels = append(b.plan.Levels, ChartLevel{Path: chartPath, Depth: depth})
+	grouped := GroupManifestsByDirectSubchart(manifests, chartPath)
+	subcharts := slices.DeleteFunc(slices.Sorted(maps.Keys(grouped)), func(name string) bool {
+		return name == ""
+	})
+
+	if len(subcharts) > 0 {
+		b.plan.Levels[levelIdx].SubchartBatches = [][]string{subcharts}
+	}
+	if len(subcharts) >= 2 {
+		b.warnf(WarningKindUnresolvedSubchart, chartPath, "chart metadata for %s is unavailable; sequencing its subcharts %v in name order (depends-on between them, if any, is not recoverable)", chartPath, subcharts)
+	}
+	for _, name := range subcharts {
+		if err := b.buildStructuralLevel(chartPath+"/charts/"+name, depth+1, grouped[name]); err != nil {
+			return err
+		}
+	}
+	return b.appendChartBatches(chartPath, depth, grouped[""])
+}
+
+func (b *builder) appendChartBatches(chartPath string, depth int, manifests []releaseutil.Manifest) error {
+	batches, warnings, err := chartBatches(chartPath, manifests)
+	if err != nil {
+		return err
+	}
+	for i := range batches {
+		batches[i].Depth = depth
+	}
+	b.plan.Batches = append(b.plan.Batches, batches...)
+	b.plan.Warnings = append(b.plan.Warnings, warnings...)
+	return nil
 }
 
 // chartBatches returns the batches owned by one chart level. PR1 keeps every

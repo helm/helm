@@ -79,6 +79,121 @@ func TestBuild_NoAnnotations_SingleFlatBatch(t *testing.T) {
 	assert.Empty(t, plan.Warnings)
 }
 
+func TestBuild_NestedSubcharts_ThreeLevels(t *testing.T) {
+	t.Parallel()
+
+	grand := newTestChart("grand")
+	child := newTestChart("child")
+	child.Metadata.Dependencies = []*chart.Dependency{{Name: "grand", Enabled: true}}
+	child.SetDependencies(grand)
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{{Name: "child", Enabled: true}}
+	parent.SetDependencies(child)
+	manifests := []releaseutil.Manifest{
+		{Name: "parent/templates/parent.yaml"},
+		{Name: "parent/charts/child/templates/child.yaml"},
+		{Name: "parent/charts/child/charts/grand/templates/grand.yaml"},
+	}
+
+	plan, err := Build(parent, manifests)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"parent/charts/child/charts/grand",
+		"parent/charts/child",
+		"parent",
+	}, planBatchPaths(plan))
+	assert.Equal(t, []int{2, 1, 0}, planBatchDepths(plan))
+	assert.Equal(t, []ChartLevel{
+		{Path: "parent", Depth: 0, SubchartBatches: [][]string{{"child"}}},
+		{Path: "parent/charts/child", Depth: 1, SubchartBatches: [][]string{{"grand"}}},
+		{Path: "parent/charts/child/charts/grand", Depth: 2},
+	}, plan.Levels)
+}
+
+func TestBuild_SubchartDependencyOrder(t *testing.T) {
+	t.Parallel()
+
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "postgres", Enabled: true},
+		{Name: "rabbitmq", DependsOn: []string{"postgres"}, Enabled: true},
+		{Name: "app", DependsOn: []string{"rabbitmq"}, Enabled: true},
+	}
+	manifests := []releaseutil.Manifest{
+		{Name: "parent/charts/app/templates/app.yaml"},
+		{Name: "parent/charts/rabbitmq/templates/rabbitmq.yaml"},
+		{Name: "parent/charts/postgres/templates/postgres.yaml"},
+	}
+
+	plan, err := Build(parent, manifests)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"parent/charts/postgres",
+		"parent/charts/rabbitmq",
+		"parent/charts/app",
+	}, planBatchPaths(plan))
+	require.NotEmpty(t, plan.Levels)
+	assert.Equal(t, [][]string{{"postgres"}, {"rabbitmq"}, {"app"}}, plan.Levels[0].SubchartBatches)
+}
+
+func TestBuild_UndeclaredSubchartWarnedAndPlaced(t *testing.T) {
+	t.Parallel()
+
+	declared := newTestChart("declared")
+	vendored := newTestChart("vendored")
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{{Name: "declared", Enabled: true}}
+	parent.SetDependencies(declared, vendored)
+	manifests := []releaseutil.Manifest{
+		{Name: "parent/charts/declared/templates/declared.yaml"},
+		{Name: "parent/charts/vendored/templates/vendored.yaml"},
+		{Name: "parent/templates/parent.yaml"},
+	}
+
+	plan, err := Build(parent, manifests)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"parent/charts/declared",
+		"parent/charts/vendored",
+		"parent",
+	}, planBatchPaths(plan))
+	require.NotEmpty(t, plan.Levels)
+	assert.Equal(t, []string{"vendored"}, plan.Levels[0].Undeclared)
+	require.Len(t, plan.Warnings, 1)
+	assert.Equal(t, WarningKindUndeclaredSubchart, plan.Warnings[0].Kind)
+	assert.Equal(t, "parent", plan.Warnings[0].ChartPath)
+	assert.Contains(t, plan.Warnings[0].Message, "not declared")
+}
+
+func TestBuild_StructuralWalk_StorageDecodedNested(t *testing.T) {
+	t.Parallel()
+
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{{Name: "child", Enabled: true}}
+	manifests := []releaseutil.Manifest{
+		{Name: "parent/charts/child/templates/child.yaml"},
+		{Name: "parent/charts/child/charts/database/templates/database.yaml"},
+		{Name: "parent/charts/child/charts/cache/templates/cache.yaml"},
+		{Name: "parent/templates/parent.yaml"},
+	}
+
+	plan, err := Build(parent, manifests)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"parent/charts/child/charts/cache",
+		"parent/charts/child/charts/database",
+		"parent/charts/child",
+		"parent",
+	}, planBatchPaths(plan))
+	require.Len(t, plan.Levels, 4)
+	assert.Equal(t, []string{"child"}, plan.Levels[0].Unresolved)
+	assert.Equal(t, [][]string{{"cache", "database"}}, plan.Levels[1].SubchartBatches)
+	require.Len(t, plan.Warnings, 1)
+	assert.Equal(t, WarningKindUnresolvedSubchart, plan.Warnings[0].Kind)
+	assert.Equal(t, "parent/charts/child", plan.Warnings[0].ChartPath)
+	assert.Contains(t, plan.Warnings[0].Message, "name order")
+}
+
 func TestGroupManifestsByDirectSubchart(t *testing.T) {
 	t.Parallel()
 
@@ -202,4 +317,20 @@ func newTestChart(name string) *chart.Chart {
 		Name:       name,
 		Version:    "0.1.0",
 	}}
+}
+
+func planBatchPaths(plan *Plan) []string {
+	paths := make([]string, len(plan.Batches))
+	for i, batch := range plan.Batches {
+		paths[i] = batch.ChartPath
+	}
+	return paths
+}
+
+func planBatchDepths(plan *Plan) []int {
+	depths := make([]int, len(plan.Batches))
+	for i, batch := range plan.Batches {
+		depths[i] = batch.Depth
+	}
+	return depths
 }
