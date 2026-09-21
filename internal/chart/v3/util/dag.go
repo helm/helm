@@ -23,8 +23,7 @@ import (
 	"strings"
 )
 
-// DAG is a directed acyclic graph of string-keyed nodes, used for resource-group
-// and subchart dependency ordering.
+// DAG is a directed acyclic graph of string-keyed nodes used for dependency ordering.
 //
 // Edges are directed: AddEdge("a", "b") means "b depends on a" (a must come before b).
 type DAG struct {
