@@ -58,12 +58,14 @@ func Sequencing(linter *support.Linter, namespace string, values map[string]any)
 	}
 
 	for _, warning := range plan.Warnings {
+		path := warning.ChartPath
+		if path == "" {
+			path = linter.ChartDir
+		}
 		switch warning.Kind {
-		case sequence.WarningKindUndeclaredSubchart, sequence.WarningKindUnresolvedSubchart:
-			path := warning.ChartPath
-			if path == "" {
-				path = linter.ChartDir
-			}
+		case sequence.WarningKindResourceGroupDemotion:
+			linter.RunLinterRule(support.ErrorSev, path, errors.New(warning.Message))
+		case sequence.WarningKindUndeclaredSubchart, sequence.WarningKindUnresolvedSubchart, sequence.WarningKindIsolatedGroup:
 			linter.RunLinterRule(support.WarningSev, path, errors.New(warning.Message))
 		}
 	}
