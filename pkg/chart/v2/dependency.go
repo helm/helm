@@ -47,6 +47,9 @@ type Dependency struct {
 	ImportValues []any `json:"import-values,omitempty" yaml:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty" yaml:"alias,omitempty"`
+	// DependsOn is a list of subchart names or aliases that must be deployed
+	// before this subchart.
+	DependsOn []string `json:"depends-on,omitempty" yaml:"depends-on,omitempty"`
 }
 
 // Validate checks for common problems with the dependency datastructure in
@@ -62,6 +65,9 @@ func (d *Dependency) Validate() error {
 	d.Condition = sanitizeString(d.Condition)
 	for i := range d.Tags {
 		d.Tags[i] = sanitizeString(d.Tags[i])
+	}
+	for i := range d.DependsOn {
+		d.DependsOn[i] = sanitizeString(d.DependsOn[i])
 	}
 	if d.Alias != "" && !aliasNameFormat.MatchString(d.Alias) {
 		return ValidationErrorf("dependency %q has disallowed characters in the alias", d.Name)
