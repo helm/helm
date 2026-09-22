@@ -94,7 +94,8 @@ func newTestFixtureCfgMaps(t *testing.T, releases ...*rspb.Release) *ConfigMaps 
 type MockConfigMapsInterface struct {
 	corev1.ConfigMapInterface
 
-	objects map[string]*v1.ConfigMap
+	objects     map[string]*v1.ConfigMap
+	updateError error
 }
 
 // Init initializes the MockConfigMapsInterface with the set of releases.
@@ -149,6 +150,9 @@ func (mock *MockConfigMapsInterface) Create(_ context.Context, cfgmap *v1.Config
 
 // Update updates a ConfigMap.
 func (mock *MockConfigMapsInterface) Update(_ context.Context, cfgmap *v1.ConfigMap, _ metav1.UpdateOptions) (*v1.ConfigMap, error) {
+	if mock.updateError != nil {
+		return nil, mock.updateError
+	}
 	name := cfgmap.Name
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
@@ -180,7 +184,8 @@ func newTestFixtureSecrets(t *testing.T, releases ...*rspb.Release) *Secrets {
 type MockSecretsInterface struct {
 	corev1.SecretInterface
 
-	objects map[string]*v1.Secret
+	objects     map[string]*v1.Secret
+	updateError error
 }
 
 // Init initializes the MockSecretsInterface with the set of releases.
@@ -235,6 +240,9 @@ func (mock *MockSecretsInterface) Create(_ context.Context, secret *v1.Secret, _
 
 // Update updates a Secret.
 func (mock *MockSecretsInterface) Update(_ context.Context, secret *v1.Secret, _ metav1.UpdateOptions) (*v1.Secret, error) {
+	if mock.updateError != nil {
+		return nil, mock.updateError
+	}
 	name := secret.Name
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
