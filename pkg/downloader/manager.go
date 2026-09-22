@@ -512,7 +512,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		}
 
 		// When the repoName for a dependency is known we can skip ensuring
-		if _, ok := repoNames[dd.Name]; ok {
+		if _, ok := repoNames[dependencyKey(dd)]; ok {
 			continue
 		}
 
@@ -528,7 +528,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		}
 		rn = managerKeyPrefix + rn
 
-		repoNames[dd.Name] = rn
+		repoNames[dependencyKey(dd)] = rn
 
 		// Assuming the repository is generally available. For Helm managed
 		// access controls the repository needs to be added through the user
@@ -554,6 +554,13 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 	}
 
 	return repoNames, nil
+}
+
+func dependencyKey(dep *chart.Dependency) string {
+	if dep.Alias != "" {
+		return dep.Alias
+	}
+	return dep.Name
 }
 
 // resolveRepoNames returns the repo names of the referenced deps which can be used to fetch the cached index file
@@ -587,12 +594,12 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
 			}
-			reposMap[dd.Name] = dd.Repository
+			reposMap[dependencyKey(dd)] = dd.Repository
 			continue
 		}
 
 		if registry.IsOCI(dd.Repository) {
-			reposMap[dd.Name] = dd.Repository
+			reposMap[dependencyKey(dd)] = dd.Repository
 			continue
 		}
 
@@ -603,11 +610,11 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 				(strings.HasPrefix(dd.Repository, "alias:") && strings.TrimPrefix(dd.Repository, "alias:") == repo.Name) {
 				found = true
 				dd.Repository = repo.URL
-				reposMap[dd.Name] = repo.Name
+				reposMap[dependencyKey(dd)] = repo.Name
 				break
 			} else if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
-				reposMap[dd.Name] = repo.Name
+				reposMap[dependencyKey(dd)] = repo.Name
 				break
 			}
 		}
