@@ -25,6 +25,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -245,13 +246,18 @@ func TestOCIRegistryInstallToKubernetes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h.mustHelm(t, "push", chart(t, tt.chart), "oci://"+repo)
 
+			// Scope the release name to this run. A caller-supplied namespace
+			// may already hold releases, and a fixed name could collide with
+			// one, which cleanup would then uninstall.
+			releaseName := fmt.Sprintf("%s-%s", tt.releaseName, h.runID)
+
 			t.Cleanup(func() {
-				if out, err := h.helm(t, "uninstall", tt.releaseName, "--namespace", namespace, "--ignore-not-found", "--wait"); err != nil {
-					t.Errorf("uninstalling %s failed: %v\n%s", tt.releaseName, err, out)
+				if out, err := h.helm(t, "uninstall", releaseName, "--namespace", namespace, "--ignore-not-found", "--wait"); err != nil {
+					t.Errorf("uninstalling %s failed: %v\n%s", releaseName, err, out)
 				}
 			})
 
-			h.mustHelm(t, "install", tt.releaseName, h.ref(repo, tt.chartName, ""),
+			h.mustHelm(t, "install", releaseName, h.ref(repo, tt.chartName, ""),
 				"--version", tt.chartVersion,
 				"--namespace", namespace,
 				"--create-namespace",
@@ -261,9 +267,9 @@ func TestOCIRegistryInstallToKubernetes(t *testing.T) {
 
 			// Read the release back from cluster storage to confirm the
 			// install really reached the API server.
-			out := h.mustHelm(t, "status", tt.releaseName, "--namespace", namespace, "--output", "json")
+			out := h.mustHelm(t, "status", releaseName, "--namespace", namespace, "--output", "json")
 			if !strings.Contains(out, `"status":"deployed"`) {
-				t.Errorf("expected release %s to be deployed, got:\n%s", tt.releaseName, out)
+				t.Errorf("expected release %s to be deployed, got:\n%s", releaseName, out)
 			}
 		})
 	}
