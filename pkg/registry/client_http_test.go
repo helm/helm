@@ -76,6 +76,10 @@ func (suite *HTTPRegistryClientTestSuite) Test_5_ImageIndex() {
 	suite.Require().NoError(err)
 }
 
+func (suite *HTTPRegistryClientTestSuite) Test_6_PushWithSubject() {
+	testPushWithSubject(&suite.TestRegistry)
+}
+
 func TestHTTPRegistryClientTestSuite(t *testing.T) {
 	suite.Run(t, new(HTTPRegistryClientTestSuite))
 }
