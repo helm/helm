@@ -1,0 +1,86 @@
+name: e2e
+
+on:
+  push:
+    branches:
+      - "main"
+      - "dev-v3"
+      - "release-**"
+  pull_request:
+    branches:
+      - "main"
+      - "dev-v3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KIND_VERSION: v0.31.0
+  REGISTRY_IMAGE: registry:2.8.3
+  HTPASSWD_IMAGE: httpd:2.4-alpine
+
+jobs:
+  # Runs the OCI end-to-end suite against a local, authenticated registry and a
+  # kind cluster. Needs no secrets, so it runs on pull requests from forks.
+  # Cross-registry coverage lives in e2e-registries.yml.
+  local-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # pin@v6.0.0
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
+      - name: Setup Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # pin@6.1.0
+        with:
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
+
+      - name: Start an authenticated local registry
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/registry-auth"
+          docker run --rm --entrypoint htpasswd "${HTPASSWD_IMAGE}" \
+            -Bbn e2euser e2epass > "${RUNNER_TEMP}/registry-auth/htpasswd"
+          docker run -d --name helm-e2e-registry -p 5000:5000 \
+            -v "${RUNNER_TEMP}/registry-auth:/auth" \
+            -e REGISTRY_AUTH=htpasswd \
+            -e REGISTRY_AUTH_HTPASSWD_REALM=Registry \
+            -e REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd \
+            "${REGISTRY_IMAGE}"
+          # Wait for the registry to answer before handing it to the tests. An
+          # unauthenticated /v2/ must be rejected, which also confirms that the
+          # htpasswd file was picked up and the invalid-credential test will
+          # have something to assert against.
+          for _ in $(seq 1 30); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5000/v2/)" = "401" ]; then
+              echo "registry is up and requires authentication"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "local registry did not come up with authentication enabled"
+          docker logs helm-e2e-registry
+          exit 1
+
+      - name: Create a kind cluster
+        run: |
+          set -euo pipefail
+          go install "sigs.k8s.io/kind@${KIND_VERSION}"
+          kind create cluster --name helm-e2e --wait 120s
+          kubectl cluster-info --context kind-helm-e2e
+
+      - name: Run end-to-end tests
+        env:
+          HELM_E2E_REGISTRY: localhost:5000
+          HELM_E2E_REPO: helm-e2e
+          HELM_E2E_USERNAME: e2euser
+          HELM_E2E_PASSWORD: e2epass
+          HELM_E2E_PLAIN_HTTP: "true"
+          HELM_E2E_KUBERNETES: "true"
+        run: make test-e2e
+
+      - name: Collect registry logs on failure
+        if: failure()
+        run: docker logs helm-e2e-registry
