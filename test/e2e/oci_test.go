@@ -370,9 +370,20 @@ func archiveFiles(t *testing.T, path string) map[string][]byte {
 func deleteNamespace(t *testing.T, namespace string) {
 	t.Helper()
 
+	// Select the same context the helm subprocesses used. They inherit
+	// HELM_KUBECONTEXT from the environment, so without this override the
+	// releases would be installed into one cluster while the namespace was
+	// deleted from whichever cluster the kubeconfig's current-context names.
+	// A delete against the wrong cluster returns NotFound, which would look
+	// like success while leaking the namespace.
+	overrides := &clientcmd.ConfigOverrides{}
+	if kubeContext := os.Getenv(envHelmKubeContext); kubeContext != "" {
+		overrides.CurrentContext = kubeContext
+	}
+
 	cfg, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		clientcmd.NewDefaultClientConfigLoadingRules(),
-		&clientcmd.ConfigOverrides{},
+		overrides,
 	).ClientConfig()
 	if err != nil {
 		t.Errorf("building kube client config to delete namespace %s: %v", namespace, err)

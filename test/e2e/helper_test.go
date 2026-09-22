@@ -65,6 +65,10 @@ const (
 	envKubernetes = "HELM_E2E_KUBERNETES"
 	// envNamespace is the namespace the Kubernetes tests install into.
 	envNamespace = "HELM_E2E_NAMESPACE"
+	// envHelmKubeContext is helm's own kubecontext variable. The tests do not
+	// set it, but helm subprocesses inherit it, so cleanup performed through
+	// the Kubernetes API has to honor it too.
+	envHelmKubeContext = "HELM_KUBECONTEXT"
 )
 
 // harness carries the resolved configuration shared by the end-to-end tests.
