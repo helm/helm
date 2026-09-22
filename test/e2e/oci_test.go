@@ -37,7 +37,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+
+	"helm.sh/helm/v4/pkg/cli"
 )
 
 // TestOCIRegistryPushPull pushes chart archives to the configured OCI registry
@@ -370,21 +371,15 @@ func archiveFiles(t *testing.T, path string) map[string][]byte {
 func deleteNamespace(t *testing.T, namespace string) {
 	t.Helper()
 
-	// Select the same context the helm subprocesses used. They inherit
-	// HELM_KUBECONTEXT from the environment, so without this override the
-	// releases would be installed into one cluster while the namespace was
-	// deleted from whichever cluster the kubeconfig's current-context names.
-	// A delete against the wrong cluster returns NotFound, which would look
-	// like success while leaking the namespace.
-	overrides := &clientcmd.ConfigOverrides{}
-	if kubeContext := os.Getenv(envHelmKubeContext); kubeContext != "" {
-		overrides.CurrentContext = kubeContext
-	}
-
-	cfg, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		clientcmd.NewDefaultClientConfigLoadingRules(),
-		overrides,
-	).ClientConfig()
+	// Resolve the cluster exactly the way the helm subprocesses do. They read
+	// their Kubernetes configuration from the environment (HELM_KUBECONTEXT,
+	// HELM_KUBEAPISERVER, HELM_KUBETOKEN, HELM_KUBECAFILE and friends), so
+	// building this client any other way risks installing releases into one
+	// cluster and sending the namespace delete to another. Such a delete
+	// returns NotFound, which would look like success while leaking the
+	// namespace. Going through helm's own settings keeps the two in step
+	// without having to mirror each variable here.
+	cfg, err := cli.New().RESTClientGetter().ToRESTConfig()
 	if err != nil {
 		t.Errorf("building kube client config to delete namespace %s: %v", namespace, err)
 		return
