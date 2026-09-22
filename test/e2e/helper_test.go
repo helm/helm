@@ -136,8 +136,10 @@ func helmBinary(t *testing.T) string {
 		return abs
 	}
 
+	// Build by relative package path rather than module path, so this works
+	// on any branch regardless of the module's major version suffix.
 	bin := filepath.Join(t.TempDir(), "helm")
-	build := exec.Command("go", "build", "-o", bin, "helm.sh/helm/v4/cmd/helm")
+	build := exec.Command("go", "build", "-o", bin, filepath.Join("..", "..", "cmd", "helm"))
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("building helm: %v\n%s", err, out)
 	}

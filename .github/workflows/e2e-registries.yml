@@ -9,8 +9,10 @@ name: e2e-registries
 # e2e.yml. Each registry is a separate matrix leg with fail-fast disabled, so
 # one registry being down does not hide the results of the others.
 #
-# Required secrets, per registry. A leg whose secrets are absent is skipped
-# rather than failed, so registries can be wired up one at a time.
+# Required secrets, per registry. A leg whose registry secret is absent is
+# skipped entirely, so registries can be wired up one at a time. A leg whose
+# registry is set but is missing any of its other secrets is a misconfiguration
+# and fails loudly rather than being silently skipped.
 #
 #   GHCR   HELM_E2E_GHCR_REGISTRY    e.g. ghcr.io/helm
 #          HELM_E2E_GHCR_USERNAME
@@ -71,6 +73,9 @@ jobs:
           # ECR authenticates as the fixed user "AWS" with a token minted below.
           ECR_USERNAME: AWS
           ECR_PASSWORD: ""
+          ECR_REGION: ${{ secrets.HELM_E2E_ECR_REGION }}
+          ECR_ACCESS_KEY_ID: ${{ secrets.HELM_E2E_ECR_ACCESS_KEY_ID }}
+          ECR_SECRET_ACCESS_KEY: ${{ secrets.HELM_E2E_ECR_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
           prefix="$(printf '%s' "${MATRIX_NAME}" | tr '[:lower:]' '[:upper:]')"
@@ -78,12 +83,33 @@ jobs:
           username="${prefix}_USERNAME"
           password="${prefix}_PASSWORD"
 
-          # A registry with no secrets set is skipped rather than failed, so
-          # registries can be wired up one at a time.
+          # A registry with nothing configured is skipped, so registries can be
+          # wired up one at a time.
           if [ -z "${!registry:-}" ]; then
             echo "no registry secret set for ${MATRIX_NAME}, skipping this leg"
             echo "configured=false" >> "$GITHUB_OUTPUT"
             exit 0
+          fi
+
+          # A registry that is configured but incomplete is an error. Skipping
+          # it would quietly report success for a registry nobody is testing,
+          # and letting it through only fails later inside the test harness.
+          missing=""
+          case "${MATRIX_NAME}" in
+            ecr)
+              # ECR mints its password below, but needs AWS credentials to do so.
+              [ -n "${ECR_REGION:-}" ] || missing="${missing} HELM_E2E_ECR_REGION"
+              [ -n "${ECR_ACCESS_KEY_ID:-}" ] || missing="${missing} HELM_E2E_ECR_ACCESS_KEY_ID"
+              [ -n "${ECR_SECRET_ACCESS_KEY:-}" ] || missing="${missing} HELM_E2E_ECR_SECRET_ACCESS_KEY"
+              ;;
+            *)
+              [ -n "${!username:-}" ] || missing="${missing} HELM_E2E_${prefix}_USERNAME"
+              [ -n "${!password:-}" ] || missing="${missing} HELM_E2E_${prefix}_TOKEN"
+              ;;
+          esac
+          if [ -n "${missing}" ]; then
+            echo "::error::${MATRIX_NAME} is partially configured; missing:${missing}"
+            exit 1
           fi
 
           {
