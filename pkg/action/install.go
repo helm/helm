@@ -374,12 +374,10 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 	rel := i.createRelease(chrt, vals, i.Labels)
 
-	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(ctx, chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret, i.PostRenderStrategy)
+	var manifest []byte
+	rel.Hooks, manifest, rel.Info.Notes, err = i.cfg.renderResources(ctx, chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret, i.PostRenderStrategy)
 	// Even for errors, attach this if available
-	if manifestDoc != nil {
-		rel.Manifest = manifestDoc.String()
-	}
+	rel.Manifest = string(manifest)
 	// Check error from render
 	if err != nil {
 		rel.SetStatus(rcommon.StatusFailed, "failed to render resource: "+err.Error())
@@ -391,7 +389,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	rel.SetStatus(rcommon.StatusPendingInstall, "Initial install underway")
 
 	var toBeAdopted kube.ResourceList
-	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
+	resources, err := i.cfg.KubeClient.Build(bytes.NewReader(manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build kubernetes objects from release manifest: %w", err)
 	}

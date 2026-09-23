@@ -276,9 +276,9 @@ func splitAndDeannotate(postrendered, fallbackPrefix string) (map[string]string,
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool, postRenderStrategy PostRenderStrategy) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool, postRenderStrategy PostRenderStrategy) ([]*release.Hook, []byte, string, error) {
 	var hs []*release.Hook
-	b := bytes.NewBuffer(nil)
+	var b []byte
 
 	caps, err := cfg.getCapabilities()
 	if err != nil {
@@ -355,7 +355,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 					if strings.TrimSpace(content) == "" {
 						continue
 					}
-					fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+					b = fmt.Appendf(b, "---\n# Source: %s\n%s\n", name, content)
 				}
 				return hs, b, "", err
 			}
@@ -473,7 +473,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+			b = fmt.Appendf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
 		return hs, b, "", err
 	}
@@ -484,7 +484,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data))
+				b = fmt.Appendf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data))
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data), fileWritten[crd.Filename])
 				if err != nil {
@@ -498,9 +498,9 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	for _, m := range manifests {
 		if outputDir == "" {
 			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
-				fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
+				b = fmt.Appendf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
 			} else {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+				b = fmt.Appendf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 			}
 		} else {
 			newDir := outputDir

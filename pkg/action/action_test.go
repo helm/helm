@@ -1845,7 +1845,7 @@ data:
   name: value
 `
 
-	assert.Equal(t, expectedBuf, buf.String())
+	assert.Equal(t, expectedBuf, string(buf))
 	assert.Len(t, hooks, 1)
 	assert.Equal(t, expectedHook, hooks[0].Manifest)
 }
@@ -1941,7 +1941,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 	assert.Empty(t, notes) // Notes should be empty for this test
 
 	// Verify that the post-renderer modifications are present in the output
-	output := buf.String()
+	output := string(buf)
 	expected := `---
 # Source: hello/templates/goodbye
 goodbye: world
@@ -2036,8 +2036,8 @@ spec:
 	require.NoError(t, err)
 	assert.Len(t, hooks, 1)
 	assert.Equal(t, "my-app", hooks[0].Name)
-	assert.Contains(t, buf.String(), "kind: Deployment")
-	assert.Contains(t, buf.String(), "kind: ServiceAccount")
+	assert.Contains(t, string(buf), "kind: Deployment")
+	assert.Contains(t, string(buf), "kind: ServiceAccount")
 }
 
 func TestRenderResources_PostRenderer_CombinedInvokesOnceWithEverything(t *testing.T) {
@@ -2221,7 +2221,7 @@ metadata:
 	// Hooks still round-trip through the release so they can execute.
 	require.Len(t, hooks, 1)
 	assert.Contains(t, hooks[0].Manifest, "hook-cm")
-	assert.Contains(t, manifestDoc.String(), "template-cm")
+	assert.Contains(t, string(manifestDoc), "template-cm")
 }
 
 func TestRenderResources_PostRenderer_NoHooksWithOnlyHooks(t *testing.T) {
