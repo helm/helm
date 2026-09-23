@@ -33,8 +33,8 @@ import (
 	_ "github.com/lib/pq"
 
 	"helm.sh/helm/v4/internal/logging"
+	rspb "helm.sh/helm/v4/internal/release/v2"
 	"helm.sh/helm/v4/pkg/release"
-	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 var _ Driver = (*SQL)(nil)
@@ -84,7 +84,7 @@ const (
 
 const (
 	sqlReleaseDefaultOwner = "helm"
-	sqlReleaseDefaultType  = "helm.sh/release.v1"
+	sqlReleaseDefaultType  = "helm.sh/release.v2"
 )
 
 // SQL is the sql storage driver implementation.
@@ -614,6 +614,7 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		Set(sqlReleaseTableVersionColumn, int(rls.Version)).
 		Set(sqlReleaseTableStatusColumn, rls.Info.Status.String()).
 		Set(sqlReleaseTableOwnerColumn, sqlReleaseDefaultOwner).
+		Set(sqlReleaseTableTypeColumn, sqlReleaseDefaultType).
 		Set(sqlReleaseTableModifiedAtColumn, int(time.Now().Unix())).
 		Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
 		Where(sq.Eq{sqlReleaseTableNamespaceColumn: namespace}).

@@ -30,11 +30,23 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
-// HelmStorageType is the type field of the Kubernetes storage object which stores the Helm release
-// version. It is modified slightly replacing the '/': sh.helm/release.v1
-// Note: The version 'v1' is incremented if the release object metadata is
-// modified between major releases.
-// This constant is used as a prefix for the Kubernetes storage object name.
+// HelmStorageType is the prefix used for the name of the Kubernetes storage object
+// that holds a release. It is derived from that object's 'Type' field
+// (helm.sh/release.v1) by reversing the domain and replacing the '/' with a '.'.
+//
+// The prefix is deliberately decoupled from the 'Type' field
+// (helm.sh/release.v1, helm.sh/release.v2). Type records the schema
+// of the encoded release body, so it tracks the release object version. This
+// prefix only keeps release names unique, and was added to stop Helm 3 records
+// colliding with Helm 2 ones (https://github.com/helm/helm/issues/6435).
+//
+// The prefix is therefore not incremented with the release object version.
+// Kubernetes objects cannot be renamed in place, so doing so would mean
+// recreating every record and deleting the old one, per revision, per namespace.
+// Until that completed, Get, Update and Delete would all miss, since they address
+// objects by exact key, while List, Query and History would keep returning the old
+// records because they select on labels. The only thing gained is seeing the
+// release object version in the object name, which Type already records.
 const HelmStorageType = "sh.helm.release.v1"
 
 // Storage represents a storage engine for a Release.
