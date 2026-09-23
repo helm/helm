@@ -127,7 +127,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							continue
 						}
 						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, strings.TrimRight(m.Manifest, "\n"))
 						} else {
 							newDir := client.OutputDir
 							if client.UseReleaseName {
@@ -195,7 +195,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						}
 					}
 					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
+						fmt.Fprintf(out, "---\n%s\n", strings.TrimRight(m, "\n"))
 					}
 				} else {
 					fmt.Fprintf(out, "%s", manifests.String())
