@@ -270,6 +270,14 @@ func splitAndDeannotate(postrendered, fallbackPrefix string) (map[string]string,
 	return reconstructed, nil
 }
 
+func appendSourceManifest(b []byte, source, body string) []byte {
+	// Preserve existing trailing newlines: block scalars may retain them.
+	// Adding a missing newline can change a scalar's value, but document
+	// separators require a line break and Kubernetes' YAMLOrJSONDecoder
+	// also adds one to an unterminated final line.
+	return fmt.Appendf(b, "---\n# Source: %s\n%s\n", source, strings.TrimSuffix(body, "\n"))
+}
+
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
@@ -355,7 +363,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 					if strings.TrimSpace(content) == "" {
 						continue
 					}
-					b = fmt.Appendf(b, "---\n# Source: %s\n%s\n", name, content)
+					b = appendSourceManifest(b, name, content)
 				}
 				return hs, b, "", err
 			}
@@ -473,7 +481,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
-			b = fmt.Appendf(b, "---\n# Source: %s\n%s\n", name, content)
+			b = appendSourceManifest(b, name, content)
 		}
 		return hs, b, "", err
 	}
@@ -484,7 +492,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				b = fmt.Appendf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data))
+				b = appendSourceManifest(b, crd.Filename, string(crd.File.Data))
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data), fileWritten[crd.Filename])
 				if err != nil {
@@ -498,9 +506,9 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	for _, m := range manifests {
 		if outputDir == "" {
 			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
-				b = fmt.Appendf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
+				b = appendSourceManifest(b, m.Name, "# HIDDEN: The Secret output has been suppressed\n")
 			} else {
-				b = fmt.Appendf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+				b = appendSourceManifest(b, m.Name, m.Content)
 			}
 		} else {
 			newDir := outputDir

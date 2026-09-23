@@ -22,12 +22,16 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v3"
+	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v4/internal/logging"
@@ -1826,15 +1830,12 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	expectedBuf := `---
 # Source: yellow/templates/foodpie
 foodpie: world
-
 ---
 # Source: yellow/templates/with-partials
 yellow: Earth
-
 ---
 # Source: yellow/templates/yellow
 yellow: world
-
 `
 	expectedHook := `kind: ConfigMap
 metadata:
@@ -1946,17 +1947,14 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 # Source: hello/templates/goodbye
 goodbye: world
 color: blue
-
 ---
 # Source: hello/templates/hello
 hello: world
 color: blue
-
 ---
 # Source: hello/templates/with-partials
 hello: Earth
 color: blue
-
 `
 	assert.Contains(t, output, "color: blue")
 	assert.Equal(t, 3, strings.Count(output, "color: blue"))
@@ -2274,6 +2272,74 @@ metadata:
 
 	require.ErrorContains(t, err, "unknown post-render strategy")
 	assert.ErrorContains(t, err, "bogus")
+}
+
+func TestRenderResources_BlockScalarChomping(t *testing.T) {
+	tests := []struct {
+		name         string
+		indicator    string
+		value        string
+		wantNewlines [3]int // indexed by the number of authored trailing newlines
+	}{
+		{"literal_clip", "|", "line1\nline2", [3]int{1, 1, 1}},
+		{"literal_strip", "|-", "line1\nline2", [3]int{0, 0, 0}},
+		{"literal_keep", "|+", "line1\nline2", [3]int{1, 1, 2}},
+		{"folded_clip", ">", "line1 line2", [3]int{1, 1, 1}},
+		{"folded_strip", ">-", "line1 line2", [3]int{0, 0, 0}},
+		{"folded_keep", ">+", "line1 line2", [3]int{1, 1, 2}},
+	}
+	for _, tc := range tests {
+		for trailing := range 3 {
+			for _, output := range []string{"buffer", "output-dir"} {
+				t.Run(fmt.Sprintf("%s/%d_newlines/%s", tc.name, trailing, output), func(t *testing.T) {
+					var files []*common.File
+					var wantOutput strings.Builder
+					for _, name := range []string{"first", "last"} {
+						body := fmt.Sprintf("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: %s\ndata:\n  cfg: %s\n    line1\n    line2", name, tc.indicator)
+						path := "templates/" + name + ".yaml"
+						files = append(files, &common.File{Name: path, Data: []byte(body + strings.Repeat("\n", trailing))})
+						fmt.Fprintf(&wantOutput, "---\n# Source: hello/%s\n%s%s", path, body, strings.Repeat("\n", max(1, trailing)))
+					}
+
+					outputDir := ""
+					if output == "output-dir" {
+						outputDir = t.TempDir()
+					}
+					cfg := actionConfigFixture(t)
+					_, rendered, _, err := cfg.renderResources(
+						t.Context(), buildChartWithTemplates(files), nil, "test-release", outputDir, false, false, false,
+						nil, false, false, false, PostRenderStrategyCombined,
+					)
+					require.NoError(t, err)
+					if outputDir != "" {
+						assert.Empty(t, rendered)
+						for _, file := range files {
+							data, err := os.ReadFile(filepath.Join(outputDir, "hello", file.Name))
+							require.NoError(t, err)
+							rendered = append(rendered, data...)
+						}
+					}
+					assert.Equal(t, wantOutput.String(), string(rendered))
+
+					var cm struct {
+						Data map[string]string `json:"data" yaml:"data"`
+					}
+					wantValue := tc.value + strings.Repeat("\n", tc.wantNewlines[trailing])
+					// Kubernetes also normalizes a missing newline in a standalone document.
+					require.NoError(t, k8syaml.NewYAMLOrJSONDecoder(bytes.NewReader(files[0].Data), 4096).Decode(&cm))
+					assert.Equal(t, wantValue, cm.Data["cfg"])
+
+					// Decode the whole stream without Kubernetes' implicit EOF newline.
+					decoder := yaml.NewDecoder(bytes.NewReader(rendered))
+					for range 2 {
+						require.NoError(t, decoder.Decode(&cm))
+						assert.Equal(t, wantValue, cm.Data["cfg"])
+					}
+					require.ErrorIs(t, decoder.Decode(&cm), io.EOF)
+				})
+			}
+		}
+	}
 }
 
 func TestDetermineReleaseSSAApplyMethod(t *testing.T) {

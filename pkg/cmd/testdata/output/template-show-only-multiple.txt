@@ -38,4 +38,3 @@ spec:
   selector:
     app.kubernetes.io/name: subcharta
 
-
