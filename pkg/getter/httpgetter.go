@@ -89,13 +89,17 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 
-	slog.Debug("fetching", "url", href)
+	slog.Debug("fetching chart", "url", href)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	slog.Debug("fetch complete", "url", href, "status", resp.Status, "content-length", resp.ContentLength)
+	if resp.Request != nil && resp.Request.URL != nil {
+		slog.Debug("chart fetch response", "url", resp.Request.URL.String(), "status", resp.Status, "content-length", resp.ContentLength)
+	} else {
+		slog.Debug("chart fetch response", "status", resp.Status, "content-length", resp.ContentLength)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
