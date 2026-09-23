@@ -24,26 +24,26 @@ import (
 	"helm.sh/helm/v4/internal/plugin"
 
 	"helm.sh/helm/v4/internal/plugin/schema"
-	"helm.sh/helm/v4/pkg/cli"
 )
 
-// collectGetterPlugins scans for getter plugins.
-// This will load plugins according to the cli.
-func collectGetterPlugins(settings *cli.EnvSettings) (Providers, error) {
+// collectGetterPlugins scans for getter plugins in the plugin directory named
+// by the HELM_PLUGINS entry of the provided environment.
+func collectGetterPlugins(env EnvProvider) (Providers, error) {
+	envVars := env.EnvVars()
 	d := plugin.Descriptor{
 		Type: "getter/v1",
 	}
-	plgs, err := plugin.FindPlugins([]string{settings.PluginsDirectory}, d)
+	plgs, err := plugin.FindPlugins([]string{envVars["HELM_PLUGINS"]}, d)
 	if err != nil {
 		return nil, err
 	}
-	env := plugin.FormatEnv(settings.EnvVars())
+	pluginEnv := plugin.FormatEnv(envVars)
 	pluginConstructorBuilder := func(plg plugin.Plugin) Constructor {
 		return func(option ...Option) (Getter, error) {
 			return &getterPlugin{
 				options: append([]Option{}, option...),
 				plg:     plg,
-				env:     env,
+				env:     pluginEnv,
 			}, nil
 		}
 	}
