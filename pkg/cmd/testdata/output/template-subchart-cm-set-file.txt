@@ -101,7 +101,6 @@ metadata:
     "helm.sh/hook": test
 data:
   message: Hello World
-
 ---
 # Source: subchart/templates/tests/test-nothing.yaml
 apiVersion: v1
@@ -121,4 +120,3 @@ spec:
         - echo
         - "$message"
   restartPolicy: Never
-

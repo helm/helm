@@ -1,0 +1,31 @@
+---
+# Source: trailing-newlines/templates/00-no-newline.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: regular-no-newline
+data:
+  cfg: |+
+    line1
+    line2
+---
+# Source: trailing-newlines/templates/regular.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: regular-one-newline
+data:
+  cfg: |+
+    line1
+    line2
+---
+# Source: trailing-newlines/templates/regular.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: regular-two-newlines
+data:
+  cfg: |+
+    line1
+    line2
+
