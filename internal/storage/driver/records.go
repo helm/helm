@@ -20,7 +20,7 @@ import (
 	"sort"
 	"strconv"
 
-	rspb "helm.sh/helm/v4/pkg/release/v1"
+	rspb "helm.sh/helm/v4/internal/release/v2"
 )
 
 // records holds a list of in-memory release records
@@ -123,6 +123,5 @@ func newRecord(key string, rls *rspb.Release) *record {
 	lbs.set("status", rls.Info.Status.String())
 	lbs.set("version", strconv.Itoa(rls.Version))
 
-	// return &record{key: key, lbs: lbs, rls: proto.Clone(rls).(*rspb.Release)}
 	return &record{key: key, lbs: lbs, rls: rls}
 }
