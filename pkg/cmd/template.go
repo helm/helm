@@ -17,7 +17,6 @@ limitations under the License.
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -118,8 +117,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// We ignore a potential error here because, when the --debug flag was specified,
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
 			if rel != nil {
-				var manifests bytes.Buffer
-				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+				manifests := []byte(rel.Manifest)
 				if !client.DisableHooks {
 					fileWritten := make(map[string]bool)
 					for _, m := range rel.Hooks {
@@ -127,7 +125,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							continue
 						}
 						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+							manifests = fmt.Appendf(manifests, "---\n# Source: %s\n%s\n", m.Path, strings.TrimSuffix(m.Manifest, "\n"))
 						} else {
 							newDir := client.OutputDir
 							if client.UseReleaseName {
@@ -151,7 +149,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				if len(showFiles) > 0 {
 					// This is necessary to ensure consistent manifest ordering when using --show-only
 					// with globs or directory names.
-					splitManifests := releaseutil.SplitManifests(manifests.String())
+					splitManifests := releaseutil.SplitManifests(string(manifests))
 					manifestsKeys := make([]string, 0, len(splitManifests))
 					for k := range splitManifests {
 						manifestsKeys = append(manifestsKeys, k)
@@ -195,10 +193,10 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						}
 					}
 					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
+						fmt.Fprintf(out, "---\n%s\n", strings.TrimSuffix(m, "\n"))
 					}
 				} else {
-					fmt.Fprintf(out, "%s", manifests.String())
+					out.Write(manifests)
 				}
 			}
 
@@ -253,7 +251,7 @@ func writeToFile(outputDir, name, data string, appendData bool) error {
 
 	defer f.Close()
 
-	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, strings.TrimSuffix(data, "\n"))
 	if err != nil {
 		return err
 	}

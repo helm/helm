@@ -4,7 +4,6 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: subchart-sa
-
 ---
 # Source: subchart/templates/subdir/configmap.yaml
 apiVersion: v1
@@ -23,7 +22,6 @@ rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get","list","watch"]
-
 ---
 # Source: subchart/templates/subdir/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -38,7 +36,6 @@ subjects:
 - kind: ServiceAccount
   name: subchart-sa
   namespace: default
-
 ---
 # Source: subchart/charts/subcharta/templates/service.yaml
 apiVersion: v1
@@ -56,7 +53,6 @@ spec:
     name: apache
   selector:
     app.kubernetes.io/name: subcharta
-
 ---
 # Source: subchart/charts/subchartb/templates/service.yaml
 apiVersion: v1
@@ -74,7 +70,6 @@ spec:
     name: nginx
   selector:
     app.kubernetes.io/name: subchartb
-
 ---
 # Source: subchart/templates/service.yaml
 apiVersion: v1
@@ -106,7 +101,6 @@ metadata:
     "helm.sh/hook": test
 data:
   message: Hello World
-
 ---
 # Source: subchart/templates/tests/test-nothing.yaml
 apiVersion: v1
@@ -126,4 +120,3 @@ spec:
         - echo
         - "$message"
   restartPolicy: Never
-
