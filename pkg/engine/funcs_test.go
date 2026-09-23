@@ -195,6 +195,54 @@ keyInElement1 = "valueInElement1"`,
 	}
 }
 
+func TestHtpasswd(t *testing.T) {
+	tests := []struct {
+		name   string
+		tpl    string
+		expect string
+		// if non-empty, the output must have this prefix instead of matching expect exactly
+		prefix string
+	}{
+		{
+			name:   "defaults to bcrypt",
+			tpl:    `{{ htpasswd "user" "pass" }}`,
+			prefix: "user:$2",
+		},
+		{
+			name:   "explicit bcrypt",
+			tpl:    `{{ htpasswd "user" "pass" "bcrypt" }}`,
+			prefix: "user:$2",
+		},
+		{
+			name:   "sha produces {SHA} base64 hash",
+			tpl:    `{{ htpasswd "user" "pass" "sha" }}`,
+			expect: "user:{SHA}nU4eI71bcnBGqeO0t9tXvY1u5oQ=",
+		},
+		{
+			name:   "username containing colon is rejected",
+			tpl:    `{{ htpasswd "bad:user" "pass" }}`,
+			expect: "invalid username: bad:user",
+		},
+		{
+			name:   "unsupported algorithm returns error string",
+			tpl:    `{{ htpasswd "user" "pass" "md5" }}`,
+			expect: "invalid hash algorithm: md5",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			require.NoError(t, template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, nil), tt.tpl)
+			if tt.prefix != "" {
+				assert.Truef(t, strings.HasPrefix(b.String(), tt.prefix), "expected output to start with %q, got %q", tt.prefix, b.String())
+				return
+			}
+			assert.Equal(t, tt.expect, b.String(), tt.tpl)
+		})
+	}
+}
+
 func TestDurationHelpers(t *testing.T) {
 	tests := []struct {
 		name   string
