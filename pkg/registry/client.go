@@ -30,6 +30,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -95,10 +96,21 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
+	// Bound registry operations so an unresponsive registry cannot hang forever.
+	// Apply when no client was provided, or when a custom client left Timeout at the
+	// zero value (no timeout). Callers that need an unlimited client can set a large
+	// positive Timeout explicitly.
+	const defaultHTTPClientTimeout = 30 * time.Second
 	if client.httpClient == nil {
 		client.httpClient = &http.Client{
+			Timeout:   defaultHTTPClientTimeout,
 			Transport: NewTransport(client.debug),
 		}
+	} else if client.httpClient.Timeout == 0 {
+		// Clone so we do not mutate a caller-owned *http.Client.
+		httpClient := *client.httpClient
+		httpClient.Timeout = defaultHTTPClientTimeout
+		client.httpClient = &httpClient
 	}
 
 	storeOptions := credentials.StoreOptions{
