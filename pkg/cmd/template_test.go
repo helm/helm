@@ -19,7 +19,10 @@ package cmd
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
 var chartPath = "testdata/testcharts/subchart"
@@ -174,6 +177,43 @@ func TestTemplateCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestTemplateOCIChartRegistryPullMetadataGoesToStderr(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
+	defer srv.Stop()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t)
+
+	contentTmp := t.TempDir()
+	outdir := srv.Root()
+	cmdStr := fmt.Sprintf("template --generate-name oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --registry-config %s --content-cache %s --plain-http",
+		ociSrv.RegistryURL,
+		filepath.Join(outdir, "config.json"),
+		contentTmp,
+	)
+
+	_, outStr, errStr, err := executeActionCommandErr(storageFixture(), nil, cmdStr)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if strings.Contains(outStr, "Pulled: ") || strings.Contains(outStr, "Digest: ") {
+		t.Fatalf("expected stdout to exclude registry pull metadata, got: %s", outStr)
+	}
+	if !strings.Contains(errStr, "Pulled: ") {
+		t.Fatalf("expected stderr to contain registry pull metadata, got: %s", errStr)
+	}
+	if !strings.Contains(outStr, "# Source:") {
+		t.Fatalf("expected rendered manifests in output, got: %s", outStr)
+	}
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {
