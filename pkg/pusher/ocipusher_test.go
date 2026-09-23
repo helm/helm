@@ -69,6 +69,16 @@ func TestNewOCIPusher(t *testing.T) {
 	op, ok = p.(*OCIPusher)
 	require.True(t, ok, "expected NewOCIPusher to produce an *OCIPusher")
 	assert.Equal(t, registryClient, op.opts.registryClient, "Expected NewOCIPusher to contain %p as RegistryClient, got %p", registryClient, op.opts.registryClient)
+
+	// Test if setting pushResultHandler is being passed to the ops
+	p, err = NewOCIPusher(
+		WithPushResultHandler(func(_ *registry.PushResult) {}),
+	)
+	require.NoError(t, err)
+
+	op, ok = p.(*OCIPusher)
+	require.True(t, ok, "expected NewOCIPusher to produce an *OCIPusher")
+	assert.NotNil(t, op.opts.pushResultHandler, "Expected NewOCIPusher to contain a push result handler")
 }
 
 func TestOCIPusher_Push_ErrorHandling(t *testing.T) {
