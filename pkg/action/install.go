@@ -844,7 +844,7 @@ OUTER:
 			if err != nil {
 				return err
 			}
-			if dac.Name() == rac.Name() {
+			if dac.Name() == rac.Name() && (rac.Version() == "" || chartutil.IsCompatibleRange(rac.Version(), dac.Version())) {
 				continue OUTER
 			}
 		}
