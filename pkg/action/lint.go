@@ -91,7 +91,7 @@ func lintChart(path string, vals map[string]any, namespace string, kubeVersion *
 	var chartPath string
 	linter := support.Linter{}
 
-	if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") {
+	if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") || strings.HasSuffix(path, ".chart") {
 		tempDir, err := os.MkdirTemp("", "helm-lint")
 		if err != nil {
 			return linter, fmt.Errorf("unable to create temp dir to extract tarball: %w", err)
