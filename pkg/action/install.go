@@ -76,6 +76,13 @@ type Install struct {
 
 	ChartPathOptions
 
+	// ChartSource records where the chart was obtained from (a repository URL or
+	// a local chart reference). When non-empty it is persisted on the release's
+	// chart metadata under ReleaseSourceAnnotation after rendering, so it is
+	// surfaced by 'helm list --show-source' and 'helm get metadata' without ever
+	// being exposed to templates via .Chart.Annotations.
+	ChartSource string
+
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the install anyway.
 	//
 	// This should be used with caution.
@@ -386,6 +393,12 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
 	}
+
+	// Record the chart source on the persisted release. This is done after
+	// rendering so the annotation is not visible to templates via
+	// .Chart.Annotations, while still being stored on rel.Chart (which shares
+	// the same chart pointer) for 'helm list'/'helm get metadata'.
+	setChartSourceAnnotation(chrt, i.ChartSource)
 
 	// Mark this release as in-progress
 	rel.SetStatus(rcommon.StatusPendingInstall, "Initial install underway")
