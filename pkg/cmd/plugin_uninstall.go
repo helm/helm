@@ -62,7 +62,7 @@ func (o *pluginUninstallOptions) complete(args []string) error {
 
 func (o *pluginUninstallOptions) run(out io.Writer) error {
 	slog.Debug("loading installer plugins", "dir", settings.PluginsDirectory)
-	plugins, err := plugin.LoadAllDir(settings.PluginsDirectory, plugin.LogIgnorePluginLoadErrorFilterFunc)
+	plugins, err := plugin.FindPlugins(filepath.SplitList(settings.PluginsDirectory), plugin.Descriptor{})
 	if err != nil {
 		return err
 	}
@@ -89,11 +89,13 @@ func uninstallPlugin(p plugin.Plugin) error {
 		return err
 	}
 
-	// Clean up versioned tarball and provenance files from HELM_PLUGINS directory
+	// Clean up versioned tarball and provenance files from the plugins directory
+	// the plugin was installed into. HELM_PLUGINS may list several directories,
+	// so the files are looked up next to the plugin itself.
 	// These files are saved with pattern: PLUGIN_NAME-VERSION.tgz and PLUGIN_NAME-VERSION.tgz.prov
 	pluginName := p.Metadata().Name
 	pluginVersion := p.Metadata().Version
-	pluginsDir := settings.PluginsDirectory
+	pluginsDir := filepath.Dir(p.Dir())
 
 	// Remove versioned files: plugin-name-version.tgz and plugin-name-version.tgz.prov
 	if pluginVersion != "" {
