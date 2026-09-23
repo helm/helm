@@ -128,6 +128,17 @@ func TestIndexFile(t *testing.T) {
 	assert.Equal(t, "0.1.8", cv.Version, "Expected version: 0.1.8")
 }
 
+func TestLoadIndex_RedirectURL(t *testing.T) {
+	yamlData := `
+apiVersion: v1
+redirectURL: https://new-org.github.io/charts
+entries: {}
+`
+	i, err := loadIndex([]byte(yamlData), "test")
+	require.NoError(t, err)
+	assert.Equal(t, "https://new-org.github.io/charts", i.RedirectURL)
+}
+
 func TestLoadIndex(t *testing.T) {
 	tests := []struct {
 		Name     string
