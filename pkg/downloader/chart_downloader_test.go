@@ -16,10 +16,12 @@ limitations under the License.
 package downloader
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -510,4 +512,150 @@ func TestStripDigestAlgorithm(t *testing.T) {
 			assert.Equalf(t, tt.expected, result, "stripDigestAlgorithm(%q) = %q, want %q", tt.input, result, tt.expected)
 		})
 	}
+}
+
+// writeRepoCacheIndex publishes the generated index under the name the repo
+// cache looks for. repotest.Server.LinkIndices symlinks instead of copying,
+// which needs a privilege Windows does not grant by default.
+func writeRepoCacheIndex(t *testing.T, root string) {
+	t.Helper()
+	idx, err := os.ReadFile(filepath.Join(root, "index.yaml"))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "test-index.yaml"), idx, 0o644))
+}
+
+// tamperedChartServer serves a repository whose index records the real digest
+// of signtest-0.1.0.tgz while the archive itself has been replaced. It returns
+// the server, a downloader pointed at it, and the bytes now being served.
+func tamperedChartServer(t *testing.T, contentCache string) (*repotest.Server, *ChartDownloader, []byte) {
+	t.Helper()
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz*"))
+	t.Cleanup(srv.Stop)
+	require.NoError(t, srv.CreateIndex())
+	writeRepoCacheIndex(t, srv.Root())
+
+	served := filepath.Join(srv.Root(), "signtest-0.1.0.tgz")
+	original, err := os.ReadFile(served)
+	require.NoError(t, err)
+	tampered := append(append([]byte(nil), original...), []byte("appended by a rewritten mirror")...)
+	require.NoError(t, os.WriteFile(served, tampered, 0o644))
+
+	repoFile := filepath.Join(srv.Root(), "repositories.yaml")
+	c := &ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyNever,
+		RepositoryConfig: repoFile,
+		RepositoryCache:  srv.Root(),
+		ContentCache:     contentCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoFile,
+			RepositoryCache:  srv.Root(),
+			ContentCache:     contentCache,
+		}),
+		Cache: &DiskCache{Root: contentCache},
+	}
+	return srv, c, tampered
+}
+
+func TestDownloadTo_RejectsChartNotMatchingIndexDigest(t *testing.T) {
+	contentCache := t.TempDir()
+	dest := t.TempDir()
+	_, c, _ := tamperedChartServer(t, contentCache)
+
+	_, _, err := c.DownloadTo("test/signtest", "0.1.0", dest)
+	require.Error(t, err, "a chart that does not match the index digest must not be accepted")
+	assert.Contains(t, err.Error(), "does not match the digest recorded for it in the repository index")
+}
+
+func TestDownloadToCache_RejectsChartNotMatchingIndexDigest(t *testing.T) {
+	contentCache := t.TempDir()
+	_, c, _ := tamperedChartServer(t, contentCache)
+
+	digestString, _, err := c.ResolveChartVersion("test/signtest", "0.1.0")
+	require.NoError(t, err)
+	digestBytes, err := hex.DecodeString(stripDigestAlgorithm(digestString))
+	require.NoError(t, err)
+	var want [sha256.Size]byte
+	copy(want[:], digestBytes)
+
+	_, _, err = c.DownloadToCache("test/signtest", "0.1.0")
+	require.Error(t, err, "a chart that does not match the index digest must not be accepted")
+	assert.Contains(t, err.Error(), "does not match the digest recorded for it in the repository index")
+
+	// The rejected bytes must not have been filed in the content cache under
+	// the digest they failed to match.
+	_, err = c.Cache.Get(want, CacheChart)
+	assert.Error(t, err, "rejected chart must not be written to the content cache")
+}
+
+func TestDownloadToCache_DiscardsCacheEntryNotMatchingItsDigest(t *testing.T) {
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz*"))
+	defer srv.Stop()
+	require.NoError(t, srv.CreateIndex())
+	writeRepoCacheIndex(t, srv.Root())
+
+	repoFile := filepath.Join(srv.Root(), "repositories.yaml")
+	contentCache := t.TempDir()
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyNever,
+		RepositoryConfig: repoFile,
+		RepositoryCache:  srv.Root(),
+		ContentCache:     contentCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoFile,
+			RepositoryCache:  srv.Root(),
+			ContentCache:     contentCache,
+		}),
+		Cache: &DiskCache{Root: contentCache},
+	}
+
+	digestString, _, err := c.ResolveChartVersion("test/signtest", "0.1.0")
+	require.NoError(t, err)
+	digestBytes, err := hex.DecodeString(stripDigestAlgorithm(digestString))
+	require.NoError(t, err)
+	var want [sha256.Size]byte
+	copy(want[:], digestBytes)
+
+	// Poison the content cache the way an older Helm could have: content that
+	// does not hash to the key it is stored under.
+	poison := []byte("not the chart this digest names")
+	_, err = c.Cache.Put(want, bytes.NewBuffer(poison), CacheChart)
+	require.NoError(t, err)
+
+	pth, _, err := c.DownloadToCache("test/signtest", "0.1.0")
+	require.NoError(t, err, "a bad cache entry should be replaced by a fresh download, not returned")
+
+	got, err := os.ReadFile(pth)
+	require.NoError(t, err)
+	assert.NotEqual(t, poison, got, "poisoned cache entry must not be served")
+	assert.Equal(t, want, sha256.Sum256(got), "served chart must hash to the index digest")
+}
+
+func TestIndexDigestVerificationScope(t *testing.T) {
+	good := []byte("chart bytes")
+	want := sha256.Sum256(good)
+	httpURL, err := url.Parse("https://example.com/charts/signtest-0.1.0.tgz")
+	require.NoError(t, err)
+	ociURL, err := url.Parse("oci://example.com/charts/signtest:0.1.0")
+	require.NoError(t, err)
+
+	t.Run("mismatch over http is rejected", func(t *testing.T) {
+		err := verifyIndexDigest("ref", httpURL, hex.EncodeToString(want[:]), want, []byte("other bytes"))
+		assert.Error(t, err)
+	})
+	t.Run("match over http is accepted", func(t *testing.T) {
+		err := verifyIndexDigest("ref", httpURL, hex.EncodeToString(want[:]), want, good)
+		assert.NoError(t, err)
+	})
+	t.Run("no index digest is a no-op", func(t *testing.T) {
+		// A chart referenced by a bare URL has no index entry to check against.
+		err := verifyIndexDigest("ref", httpURL, "", [sha256.Size]byte{}, []byte("anything"))
+		assert.NoError(t, err)
+	})
+	t.Run("oci is left to the registry client", func(t *testing.T) {
+		// The digest resolved for an OCI ref names a manifest, not these bytes.
+		err := verifyIndexDigest("ref", ociURL, hex.EncodeToString(want[:]), want, []byte("other bytes"))
+		assert.NoError(t, err)
+	})
 }
