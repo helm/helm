@@ -26,6 +26,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
@@ -169,7 +170,9 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 		return c, err
 	}
 
-	for n, files := range subcharts {
+	// Stable ordering keeps dependency precedence and rendering reproducible.
+	for _, n := range slices.Sorted(maps.Keys(subcharts)) {
+		files := subcharts[n]
 		var sc *chart.Chart
 		var err error
 		switch {
