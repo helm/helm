@@ -632,6 +632,10 @@ func loadRepoConfig(file string) (*repo.File, error) {
 // against its key. In that case the manifest is fetched (the registry client
 // verifies it against the pinned digest) and the digest of its chart layer is
 // returned instead, which keeps every cache entry keyed by its own content.
+//
+// If the pinned digest names something other than an image manifest, such as
+// an image index, no cache digest is returned. The chart is then downloaded
+// rather than read from the cache, as it already is for a digest-only ref.
 func (c *ChartDownloader) resolveCacheDigest(ref, version string) (string, *url.URL, error) {
 	d, u, err := c.ResolveChartVersion(ref, version)
 	if err != nil || d == "" || u.Scheme != registry.OCIScheme {
@@ -645,7 +649,8 @@ func (c *ChartDownloader) resolveCacheDigest(ref, version string) (string, *url.
 }
 
 // ociChartLayerDigest fetches only the manifest u points at and returns the
-// sha256 digest of its chart layer.
+// sha256 digest of its chart layer, or "" if u does not point at an image
+// manifest.
 func (c *ChartDownloader) ociChartLayerDigest(u *url.URL) (string, error) {
 	generic := c.RegistryClient.Generic()
 	result, err := generic.PullGeneric(strings.TrimPrefix(u.String(), registry.OCIScheme+"://"), registry.GenericPullOptions{
@@ -653,6 +658,9 @@ func (c *ChartDownloader) ociChartLayerDigest(u *url.URL) (string, error) {
 	})
 	if err != nil {
 		return "", err
+	}
+	if result.Manifest.MediaType != ocispec.MediaTypeImageManifest {
+		return "", nil
 	}
 	data, err := generic.GetDescriptorData(result.MemoryStore, result.Manifest)
 	if err != nil {

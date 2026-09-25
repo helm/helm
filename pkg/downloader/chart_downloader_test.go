@@ -17,8 +17,10 @@ package downloader
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -27,8 +29,13 @@ import (
 	"testing"
 	"time"
 
+	godigest "github.com/opencontainers/go-digest"
+	specs "github.com/opencontainers/image-spec/specs-go"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
@@ -659,8 +666,8 @@ func TestIndexDigestVerificationScope(t *testing.T) {
 
 // ociChartDownloader pushes testdata/signtest-0.1.0.tgz to an in-process
 // registry and returns a downloader wired to it, the chart reference pinned to
-// the pushed manifest digest, and the push result.
-func ociChartDownloader(t *testing.T, contentCache string) (*ChartDownloader, string, *registry.PushResult) {
+// the pushed manifest digest, the push result and the registry.
+func ociChartDownloader(t *testing.T, contentCache string) (*ChartDownloader, string, *registry.PushResult, *repotest.OCIServer) {
 	t.Helper()
 	dir := t.TempDir()
 	srv, err := repotest.NewOCIServer(t, dir)
@@ -702,7 +709,7 @@ func ociChartDownloader(t *testing.T, contentCache string) (*ChartDownloader, st
 		Cache:          &DiskCache{Root: contentCache},
 	}
 	ref := "oci://" + srv.RegistryURL + "/u/ocitestuser/signtest@" + pushed.Manifest.Digest
-	return c, ref, pushed
+	return c, ref, pushed, srv
 }
 
 func digestKey(t *testing.T, d string) [sha256.Size]byte {
@@ -717,7 +724,7 @@ func digestKey(t *testing.T, d string) [sha256.Size]byte {
 
 func TestDownloadToCache_OCIKeyedByChartLayerDigest(t *testing.T) {
 	contentCache := t.TempDir()
-	c, ref, pushed := ociChartDownloader(t, contentCache)
+	c, ref, pushed, _ := ociChartDownloader(t, contentCache)
 	layer := digestKey(t, pushed.Chart.Digest)
 
 	pth, _, err := c.DownloadToCache(ref, "0.1.0")
@@ -737,7 +744,7 @@ func TestDownloadToCache_OCIKeyedByChartLayerDigest(t *testing.T) {
 
 func TestDownloadToCache_OCIDiscardsCacheEntryNotMatchingItsDigest(t *testing.T) {
 	contentCache := t.TempDir()
-	c, ref, pushed := ociChartDownloader(t, contentCache)
+	c, ref, pushed, _ := ociChartDownloader(t, contentCache)
 	layer := digestKey(t, pushed.Chart.Digest)
 
 	poison := []byte("not the chart this digest names")
@@ -754,7 +761,7 @@ func TestDownloadToCache_OCIDiscardsCacheEntryNotMatchingItsDigest(t *testing.T)
 func TestDownloadTo_OCIIgnoresCacheEntryNotMatchingItsDigest(t *testing.T) {
 	contentCache := t.TempDir()
 	dest := t.TempDir()
-	c, ref, pushed := ociChartDownloader(t, contentCache)
+	c, ref, pushed, _ := ociChartDownloader(t, contentCache)
 	layer := digestKey(t, pushed.Chart.Digest)
 
 	// Before this change an OCI chart was cached under its manifest digest.
@@ -771,4 +778,61 @@ func TestDownloadTo_OCIIgnoresCacheEntryNotMatchingItsDigest(t *testing.T) {
 	got, err := os.ReadFile(saved)
 	require.NoError(t, err)
 	assert.Equal(t, layer, sha256.Sum256(got), "saved chart must hash to its chart layer digest")
+}
+
+func TestDownloadTo_OCIDigestOnlyRef(t *testing.T) {
+	c, ref, pushed, _ := ociChartDownloader(t, t.TempDir())
+
+	// With no version the registry client resolves no digest for the ref, so
+	// the cache is not consulted and the chart is downloaded directly.
+	saved, _, err := c.DownloadTo(ref, "", t.TempDir())
+	require.NoError(t, err)
+	got, err := os.ReadFile(saved)
+	require.NoError(t, err)
+	assert.Equal(t, digestKey(t, pushed.Chart.Digest), sha256.Sum256(got))
+}
+
+func TestDownloadToCache_OCIImageIndexRoot(t *testing.T) {
+	contentCache := t.TempDir()
+	c, _, pushed, srv := ociChartDownloader(t, contentCache)
+	layer := digestKey(t, pushed.Chart.Digest)
+
+	// Wrap the chart manifest in an image index and move the tag onto it.
+	repo, err := remote.NewRepository(srv.RegistryURL + "/u/ocitestuser/signtest")
+	require.NoError(t, err)
+	repo.PlainHTTP = true
+	repo.Client = &auth.Client{Credential: auth.StaticCredential(srv.RegistryURL, auth.Credential{
+		Username: srv.TestUsername,
+		Password: srv.TestPassword,
+	})}
+	ctx := context.Background()
+	manifest, err := repo.Resolve(ctx, "0.1.0")
+	require.NoError(t, err)
+	index, err := json.Marshal(ocispec.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{manifest},
+	})
+	require.NoError(t, err)
+	indexDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    godigest.FromBytes(index),
+		Size:      int64(len(index)),
+	}
+	require.NoError(t, repo.PushReference(ctx, indexDesc, bytes.NewReader(index), "0.1.0"))
+	ref := "oci://" + srv.RegistryURL + "/u/ocitestuser/signtest@" + indexDesc.Digest.String()
+
+	pth, _, err := c.DownloadToCache(ref, "0.1.0")
+	require.NoError(t, err, "a chart behind an image index must still download")
+	got, err := os.ReadFile(pth)
+	require.NoError(t, err)
+	assert.Equal(t, layer, sha256.Sum256(got))
+	_, err = c.Cache.Get(digestKey(t, indexDesc.Digest.String()), CacheChart)
+	require.ErrorIs(t, err, os.ErrNotExist, "chart must not be cached under the index digest")
+
+	saved, _, err := c.DownloadTo(ref, "0.1.0", t.TempDir())
+	require.NoError(t, err)
+	got, err = os.ReadFile(saved)
+	require.NoError(t, err)
+	assert.Equal(t, layer, sha256.Sum256(got))
 }
