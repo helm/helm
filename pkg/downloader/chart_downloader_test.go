@@ -565,6 +565,11 @@ func TestDownloadTo_RejectsChartNotMatchingIndexDigest(t *testing.T) {
 	_, _, err := c.DownloadTo("test/signtest", "0.1.0", dest)
 	require.Error(t, err, "a chart that does not match the index digest must not be accepted")
 	assert.Contains(t, err.Error(), "does not match the digest recorded for it in the repository index")
+
+	// Nothing may be left behind in dest for a later step to pick up.
+	entries, err := os.ReadDir(dest)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "rejected chart must not be written to the destination")
 }
 
 func TestDownloadToCache_RejectsChartNotMatchingIndexDigest(t *testing.T) {
