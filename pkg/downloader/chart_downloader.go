@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +29,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"helm.sh/helm/v4/internal/fileutil"
 	ifs "helm.sh/helm/v4/internal/third_party/dep/fs"
@@ -106,7 +109,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		c.Cache = &DiskCache{Root: c.ContentCache}
 		slog.Debug("set up default downloader cache")
 	}
-	hash, u, err := c.ResolveChartVersion(ref, version)
+	hash, u, err := c.resolveCacheDigest(ref, version)
 	if err != nil {
 		return "", nil, err
 	}
@@ -138,9 +141,17 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		if pth, err := c.Cache.Get(digest32, CacheChart); err == nil {
 			fdata, err := os.ReadFile(pth)
 			if err == nil {
-				found = true
-				data = bytes.NewBuffer(fdata)
-				slog.Debug("found chart in cache", "id", hash)
+				if verr := verifyIndexDigest(ref, hash, digest32, fdata); verr != nil {
+					// An entry that does not hash to the digest it is filed
+					// under cannot be trusted, whoever wrote it. Drop it and
+					// download the chart again rather than serving it.
+					slog.Debug("discarding cache entry that does not match its digest", "id", hash)
+					_ = os.Remove(pth)
+				} else {
+					found = true
+					data = bytes.NewBuffer(fdata)
+					slog.Debug("found chart in cache", "id", hash)
+				}
 			}
 		}
 	}
@@ -150,6 +161,9 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 		data, err = g.Get(u.String(), c.Options...)
 		if err != nil {
+			return "", nil, err
+		}
+		if err := verifyIndexDigest(ref, hash, digest32, data.Bytes()); err != nil {
 			return "", nil, err
 		}
 	}
@@ -223,7 +237,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 		slog.Debug("set up default downloader cache")
 	}
 
-	digestString, u, err := c.ResolveChartVersion(ref, version)
+	digestString, u, err := c.resolveCacheDigest(ref, version)
 	if err != nil {
 		return "", nil, err
 	}
@@ -248,23 +262,40 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	copy(digest32[:], digest)
 
 	var pth string
+	var cached bool
 	// only fetch from the cache if we have a digest
 	if len(digest) > 0 {
-		pth, err = c.Cache.Get(digest32, CacheChart)
-		if err == nil {
-			slog.Debug("found chart in cache", "id", digestString)
+		cachePath, cerr := c.Cache.Get(digest32, CacheChart)
+		switch {
+		case cerr == nil:
+			// The cache is content addressed, but nothing has been enforcing
+			// that, so an entry written by an older version of Helm may not
+			// hash to the name it is filed under. Check before trusting it.
+			if verr := verifyCachedChart(ref, digestString, digest32, cachePath); verr != nil {
+				slog.Debug("discarding cache entry that does not match its digest", "id", digestString)
+				_ = os.Remove(cachePath)
+			} else {
+				pth = cachePath
+				cached = true
+				slog.Debug("found chart in cache", "id", digestString)
+			}
+		case !os.IsNotExist(cerr):
+			return "", nil, cerr
 		}
 	}
-	if len(digest) == 0 || err != nil {
+	if !cached {
 		slog.Debug("attempting to download chart", "ref", ref, "version", version)
-		if err != nil && !os.IsNotExist(err) {
-			return "", nil, err
-		}
 
 		// Get file not in the cache
 		data, gerr := g.Get(u.String(), c.Options...)
 		if gerr != nil {
 			return "", nil, gerr
+		}
+
+		// Check the bytes against the digest the index published for them
+		// before they are written into the content cache under that digest.
+		if verr := verifyIndexDigest(ref, digestString, digest32, data.Bytes()); verr != nil {
+			return "", nil, verr
 		}
 
 		// Generate the digest
@@ -590,6 +621,116 @@ func loadRepoConfig(file string) (*repo.File, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// resolveCacheDigest resolves ref like ResolveChartVersion, but returns the
+// digest the content cache should use for the chart archive.
+//
+// For a repository chart that is the index digest, which is already the sha256
+// of the archive. For an OCI reference pinned to a digest it is not: that digest
+// names the manifest, so an archive cached under it could never be checked
+// against its key. In that case the manifest is fetched (the registry client
+// verifies it against the pinned digest) and the digest of its chart layer is
+// returned instead, which keeps every cache entry keyed by its own content.
+//
+// If the pinned digest names something other than an image manifest, such as
+// an image index, no cache digest is returned. The chart is then downloaded
+// rather than read from the cache, as it already is for a digest-only ref.
+func (c *ChartDownloader) resolveCacheDigest(ref, version string) (string, *url.URL, error) {
+	d, u, err := c.ResolveChartVersion(ref, version)
+	if err != nil || d == "" || u.Scheme != registry.OCIScheme {
+		return d, u, err
+	}
+	layer, err := c.ociChartLayerDigest(u)
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to resolve chart layer for %s: %w", ref, err)
+	}
+	return layer, u, nil
+}
+
+// ociChartLayerDigest fetches only the manifest u points at and returns the
+// sha256 digest of its chart layer, or "" if u does not point at an image
+// manifest.
+func (c *ChartDownloader) ociChartLayerDigest(u *url.URL) (string, error) {
+	generic := c.RegistryClient.Generic()
+	result, err := generic.PullGeneric(strings.TrimPrefix(u.String(), registry.OCIScheme+"://"), registry.GenericPullOptions{
+		AllowedMediaTypes: []string{ocispec.MediaTypeImageManifest},
+	})
+	if err != nil {
+		return "", err
+	}
+	if result.Manifest.MediaType != ocispec.MediaTypeImageManifest {
+		return "", nil
+	}
+	data, err := generic.GetDescriptorData(result.MemoryStore, result.Manifest)
+	if err != nil {
+		return "", err
+	}
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return "", err
+	}
+	for _, layer := range manifest.Layers {
+		if layer.MediaType != registry.ChartLayerMediaType && layer.MediaType != registry.LegacyChartLayerMediaType {
+			continue
+		}
+		if layer.Digest.Algorithm() != "sha256" {
+			return "", fmt.Errorf("unsupported chart layer digest algorithm %q", layer.Digest.Algorithm())
+		}
+		if err := layer.Digest.Validate(); err != nil {
+			return "", err
+		}
+		return layer.Digest.String(), nil
+	}
+	return "", fmt.Errorf("manifest does not contain a layer with mediatype %s", registry.ChartLayerMediaType)
+}
+
+// verifyIndexDigest checks chart archive bytes against the sha256 digest the
+// repository index publishes for them.
+//
+// An index and the archives it points at are routinely served from different
+// hosts, so for an HTTP repository this digest is the only thing binding the
+// index a user trusts to the bytes they actually receive. It used to be read
+// only as a cache key, so a repository that served an archive not matching its
+// own index was accepted without complaint.
+//
+// It is a no-op when the index carries no digest, which is the case for a chart
+// referenced by a bare URL, so those keep working as before. For an OCI
+// reference the digest is the chart layer digest from resolveCacheDigest.
+func verifyIndexDigest(ref, digestString string, want [sha256.Size]byte, data []byte) error {
+	if digestString == "" {
+		return nil
+	}
+	return compareChartDigest(ref, sha256.Sum256(data), want)
+}
+
+// verifyCachedChart checks an archive already in the content cache against the
+// digest it is filed under, hashing it as a stream so a large chart is not held
+// in memory twice.
+func verifyCachedChart(ref, digestString string, want [sha256.Size]byte, path string) error {
+	if digestString == "" {
+		return nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return err
+	}
+	var got [sha256.Size]byte
+	copy(got[:], h.Sum(nil))
+	return compareChartDigest(ref, got, want)
+}
+
+func compareChartDigest(ref string, got, want [sha256.Size]byte) error {
+	if got != want {
+		return fmt.Errorf("chart %q does not match the digest recorded for it in the repository index: expected sha256:%s, got sha256:%s",
+			ref, hex.EncodeToString(want[:]), hex.EncodeToString(got[:]))
+	}
+	return nil
 }
 
 // stripDigestAlgorithm removes the algorithm prefix (e.g., "sha256:") from a digest string.
