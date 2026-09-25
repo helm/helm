@@ -19,12 +19,13 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -640,27 +641,134 @@ func TestDownloadToCache_DiscardsCacheEntryNotMatchingItsDigest(t *testing.T) {
 func TestIndexDigestVerificationScope(t *testing.T) {
 	good := []byte("chart bytes")
 	want := sha256.Sum256(good)
-	httpURL, err := url.Parse("https://example.com/charts/signtest-0.1.0.tgz")
-	require.NoError(t, err)
-	ociURL, err := url.Parse("oci://example.com/charts/signtest:0.1.0")
-	require.NoError(t, err)
 
-	t.Run("mismatch over http is rejected", func(t *testing.T) {
-		err := verifyIndexDigest("ref", httpURL, hex.EncodeToString(want[:]), want, []byte("other bytes"))
+	t.Run("mismatch is rejected", func(t *testing.T) {
+		err := verifyIndexDigest("ref", hex.EncodeToString(want[:]), want, []byte("other bytes"))
 		assert.Error(t, err)
 	})
-	t.Run("match over http is accepted", func(t *testing.T) {
-		err := verifyIndexDigest("ref", httpURL, hex.EncodeToString(want[:]), want, good)
+	t.Run("match is accepted", func(t *testing.T) {
+		err := verifyIndexDigest("ref", hex.EncodeToString(want[:]), want, good)
 		assert.NoError(t, err)
 	})
 	t.Run("no index digest is a no-op", func(t *testing.T) {
 		// A chart referenced by a bare URL has no index entry to check against.
-		err := verifyIndexDigest("ref", httpURL, "", [sha256.Size]byte{}, []byte("anything"))
+		err := verifyIndexDigest("ref", "", [sha256.Size]byte{}, []byte("anything"))
 		assert.NoError(t, err)
 	})
-	t.Run("oci is left to the registry client", func(t *testing.T) {
-		// The digest resolved for an OCI ref names a manifest, not these bytes.
-		err := verifyIndexDigest("ref", ociURL, hex.EncodeToString(want[:]), want, []byte("other bytes"))
-		assert.NoError(t, err)
-	})
+}
+
+// ociChartDownloader pushes testdata/signtest-0.1.0.tgz to an in-process
+// registry and returns a downloader wired to it, the chart reference pinned to
+// the pushed manifest digest, and the push result.
+func ociChartDownloader(t *testing.T, contentCache string) (*ChartDownloader, string, *registry.PushResult) {
+	t.Helper()
+	dir := t.TempDir()
+	srv, err := repotest.NewOCIServer(t, dir)
+	require.NoError(t, err)
+	go srv.ListenAndServe()
+	dialer := &net.Dialer{Timeout: time.Second}
+	require.Eventually(t, func() bool {
+		conn, err := dialer.DialContext(t.Context(), "tcp", srv.RegistryURL)
+		if err != nil {
+			return false
+		}
+		conn.Close()
+		return true
+	}, 30*time.Second, 20*time.Millisecond)
+
+	client, err := registry.NewClient(
+		registry.ClientOptCredentialsFile(filepath.Join(dir, "config.json")),
+		registry.ClientOptPlainHTTP(),
+	)
+	require.NoError(t, err)
+	require.NoError(t, client.Login(srv.RegistryURL,
+		registry.LoginOptBasicAuth(srv.TestUsername, srv.TestPassword),
+		registry.LoginOptInsecure(true),
+		registry.LoginOptPlainText(true)))
+
+	archive, err := os.ReadFile("testdata/signtest-0.1.0.tgz")
+	require.NoError(t, err)
+	pushed, err := client.Push(archive, srv.RegistryURL+"/u/ocitestuser/signtest:0.1.0")
+	require.NoError(t, err)
+
+	settings := &cli.EnvSettings{ContentCache: contentCache}
+	c := &ChartDownloader{
+		Out:            os.Stderr,
+		Verify:         VerifyNever,
+		ContentCache:   contentCache,
+		Getters:        getter.All(settings),
+		Options:        []getter.Option{getter.WithRegistryClient(client)},
+		RegistryClient: client,
+		Cache:          &DiskCache{Root: contentCache},
+	}
+	ref := "oci://" + srv.RegistryURL + "/u/ocitestuser/signtest@" + pushed.Manifest.Digest
+	return c, ref, pushed
+}
+
+func digestKey(t *testing.T, d string) [sha256.Size]byte {
+	t.Helper()
+	b, err := hex.DecodeString(stripDigestAlgorithm(d))
+	require.NoError(t, err)
+	require.Len(t, b, sha256.Size)
+	var k [sha256.Size]byte
+	copy(k[:], b)
+	return k
+}
+
+func TestDownloadToCache_OCIKeyedByChartLayerDigest(t *testing.T) {
+	contentCache := t.TempDir()
+	c, ref, pushed := ociChartDownloader(t, contentCache)
+	layer := digestKey(t, pushed.Chart.Digest)
+
+	pth, _, err := c.DownloadToCache(ref, "0.1.0")
+	require.NoError(t, err)
+	got, err := os.ReadFile(pth)
+	require.NoError(t, err)
+	assert.Equal(t, layer, sha256.Sum256(got), "cached chart must hash to its chart layer digest")
+
+	// The entry must be filed under the chart layer digest, where it can be
+	// checked, and not under the manifest digest, where it could not.
+	layerPath, err := c.Cache.Get(layer, CacheChart)
+	require.NoError(t, err)
+	assert.Equal(t, layerPath, pth)
+	_, err = c.Cache.Get(digestKey(t, pushed.Manifest.Digest), CacheChart)
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestDownloadToCache_OCIDiscardsCacheEntryNotMatchingItsDigest(t *testing.T) {
+	contentCache := t.TempDir()
+	c, ref, pushed := ociChartDownloader(t, contentCache)
+	layer := digestKey(t, pushed.Chart.Digest)
+
+	poison := []byte("not the chart this digest names")
+	_, err := c.Cache.Put(layer, bytes.NewBuffer(poison), CacheChart)
+	require.NoError(t, err)
+
+	pth, _, err := c.DownloadToCache(ref, "0.1.0")
+	require.NoError(t, err, "a bad cache entry should be replaced by a fresh download, not returned")
+	got, err := os.ReadFile(pth)
+	require.NoError(t, err)
+	assert.Equal(t, layer, sha256.Sum256(got), "served chart must hash to its chart layer digest")
+}
+
+func TestDownloadTo_OCIIgnoresCacheEntryNotMatchingItsDigest(t *testing.T) {
+	contentCache := t.TempDir()
+	dest := t.TempDir()
+	c, ref, pushed := ociChartDownloader(t, contentCache)
+	layer := digestKey(t, pushed.Chart.Digest)
+
+	// Before this change an OCI chart was cached under its manifest digest.
+	// Neither an entry like that nor a bad one under the layer digest may be
+	// served in place of the chart.
+	poison := []byte("not the chart this digest names")
+	_, err := c.Cache.Put(digestKey(t, pushed.Manifest.Digest), bytes.NewBuffer(poison), CacheChart)
+	require.NoError(t, err)
+	_, err = c.Cache.Put(layer, bytes.NewBuffer(poison), CacheChart)
+	require.NoError(t, err)
+
+	saved, _, err := c.DownloadTo(ref, "0.1.0", dest)
+	require.NoError(t, err)
+	got, err := os.ReadFile(saved)
+	require.NoError(t, err)
+	assert.Equal(t, layer, sha256.Sum256(got), "saved chart must hash to its chart layer digest")
 }
