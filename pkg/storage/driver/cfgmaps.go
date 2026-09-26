@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"context"
@@ -75,13 +75,13 @@ func (cfgmaps *ConfigMaps) Get(key string) (release.Releaser, error) {
 			return nil, ErrReleaseNotFound
 		}
 
-		cfgmaps.Logger().Debug("failed to get release", "key", key, slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to get release", slog.String("key", key), slog.Any("error", err))
 		return nil, err
 	}
 	// found the configmap, decode the base64 data string
 	r, err := decodeRelease(obj.Data["release"])
 	if err != nil {
-		cfgmaps.Logger().Debug("failed to decode data", "key", key, slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to decode data", slog.String("key", key), slog.Any("error", err))
 		return nil, err
 	}
 	r.Labels = filterSystemLabels(obj.Labels)
@@ -109,7 +109,7 @@ func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.R
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
-			cfgmaps.Logger().Debug("failed to decode release", "item", item, slog.Any("error", err))
+			cfgmaps.Logger().Debug("failed to decode release", slog.Any("item", item), slog.Any("error", err))
 			continue
 		}
 
@@ -171,7 +171,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rac.Labels())
-	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("createdAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	rel, err := releaserToV1Release(rls)
 	if err != nil {
@@ -181,7 +181,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls release.Releaser) error {
 	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(key, rel, lbs)
 	if err != nil {
-		cfgmaps.Logger().Debug("failed to encode release", "name", rac.Name(), slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to encode release", slog.String("name", rac.Name()), slog.Any("error", err))
 		return err
 	}
 	// push the configmap object out into the kubiverse
@@ -209,12 +209,16 @@ func (cfgmaps *ConfigMaps) Update(key string, rel release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("modifiedAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		cfgmaps.Logger().Debug("failed to encode release", "name", rls.Name, slog.Any("error", err))
+		cfgmaps.Logger().Debug(
+			"failed to encode release",
+			slog.String("name", rls.Name),
+			slog.Any("error", err),
+		)
 		return err
 	}
 	// push the configmap object out into the kubiverse
@@ -233,7 +237,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls release.Releaser, err error) 
 		return nil, err
 	}
 	// delete the release
-	if err = cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{}); err != nil {
+	if err := cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{}); err != nil {
 		return rls, err
 	}
 	return rls, nil

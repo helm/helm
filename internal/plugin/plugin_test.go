@@ -18,8 +18,44 @@ package plugin
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
+
+func TestValidPluginName(t *testing.T) {
+	validNames := map[string]string{
+		"lowercase":       "myplugin",
+		"uppercase":       "MYPLUGIN",
+		"mixed case":      "MyPlugin",
+		"with digits":     "plugin123",
+		"with hyphen":     "my-plugin",
+		"with underscore": "my_plugin",
+		"mixed chars":     "my-awesome_plugin_123",
+	}
+
+	for name, pluginName := range validNames {
+		t.Run("valid/"+name, func(t *testing.T) {
+			assert.Truef(t, validPluginName.MatchString(pluginName), "expected %q to match validPluginName regex", pluginName)
+		})
+	}
+
+	invalidNames := map[string]string{
+		"empty":   "",
+		"space":   "my plugin",
+		"colon":   "plugin:",
+		"period":  "my.plugin",
+		"slash":   "my/plugin",
+		"dollar":  "$plugin",
+		"unicode": "plügîn",
+	}
+
+	for name, pluginName := range invalidNames {
+		t.Run("invalid/"+name, func(t *testing.T) {
+			assert.Falsef(t, validPluginName.MatchString(pluginName), "expected %q to not match validPluginName regex", pluginName)
+		})
+	}
+}
 
 func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginRuntime {
 	t.Helper()
@@ -44,7 +80,7 @@ func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginR
 	return &SubprocessPluginRuntime{
 		metadata: Metadata{
 			Name:       pluginName,
-			Version:    "v0.1.2",
+			Version:    "0.1.2",
 			Type:       "cli/v1",
 			APIVersion: "v1",
 			Runtime:    "subprocess",

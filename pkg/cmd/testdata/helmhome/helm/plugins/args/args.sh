@@ -1,2 +1,2 @@
-#!/bin/bash
-echo $*
+#!/usr/bin/env sh
+echo "$@"

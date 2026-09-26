@@ -18,6 +18,7 @@ package action
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -25,6 +26,8 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
@@ -41,8 +44,9 @@ const (
 //
 // It provides the implementation of 'helm test'.
 type ReleaseTesting struct {
-	cfg     *Configuration
-	Timeout time.Duration
+	cfg         *Configuration
+	Timeout     time.Duration
+	WaitOptions []kube.WaitOption
 	// Used for fetching logs from test pods
 	Namespace string
 	Filters   map[string][]string
@@ -57,24 +61,24 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 }
 
 // Run executes 'helm test' against the given release.
-func (r *ReleaseTesting) Run(name string) (ri.Releaser, error) {
+func (r *ReleaseTesting) Run(name string) (ri.Releaser, ExecuteShutdownFunc, error) {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
-		return nil, err
+		return nil, shutdownNoOp, err
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, fmt.Errorf("releaseTest: Release name is invalid: %s", name)
+		return nil, shutdownNoOp, fmt.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
 	// finds the non-deleted release with the given name
 	reli, err := r.cfg.Releases.Last(name)
 	if err != nil {
-		return reli, err
+		return reli, shutdownNoOp, err
 	}
 
 	rel, err := releaserToV1Release(reli)
 	if err != nil {
-		return rel, err
+		return reli, shutdownNoOp, err
 	}
 
 	skippedHooks := []*release.Hook{}
@@ -102,14 +106,15 @@ func (r *ReleaseTesting) Run(name string) (ri.Releaser, error) {
 	}
 
 	serverSideApply := rel.ApplyMethod == string(release.ApplyMethodServerSideApply)
-	if err := r.cfg.execHook(rel, release.HookTest, kube.StatusWatcherStrategy, r.Timeout, serverSideApply); err != nil {
+	shutdown, err := r.cfg.execHookWithDelayedShutdown(rel, release.HookTest, kube.StatusWatcherStrategy, r.WaitOptions, r.Timeout, serverSideApply)
+	if err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
-		r.cfg.Releases.Update(rel)
-		return rel, err
+		r.cfg.Releases.Update(reli)
+		return reli, shutdown, err
 	}
 
 	rel.Hooks = append(skippedHooks, rel.Hooks...)
-	return rel, r.cfg.Releases.Update(rel)
+	return reli, shutdown, r.cfg.Releases.Update(reli)
 }
 
 // GetPodLogs will write the logs for all test pods in the given release into
@@ -121,9 +126,9 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		return fmt.Errorf("unable to get kubernetes client to fetch pod logs: %w", err)
 	}
 
-	hooksByWight := append([]*release.Hook{}, rel.Hooks...)
-	sort.Stable(hookByWeight(hooksByWight))
-	for _, h := range hooksByWight {
+	hooksByWeight := append([]*release.Hook{}, rel.Hooks...)
+	sort.Stable(hookByWeight(hooksByWeight))
+	for _, h := range hooksByWeight {
 		for _, e := range h.Events {
 			if e == release.HookTest {
 				if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
@@ -132,20 +137,47 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 				if len(r.Filters[IncludeNameFilter]) > 0 && !slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
 					continue
 				}
-				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
-				logReader, err := req.Stream(context.Background())
-				if err != nil {
-					return fmt.Errorf("unable to get pod logs for %s: %w", h.Name, err)
-				}
 
-				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
-				_, err = io.Copy(out, logReader)
-				fmt.Fprintln(out)
-				if err != nil {
-					return fmt.Errorf("unable to write pod logs for %s: %w", h.Name, err)
+				if h.Kind != "Pod" {
+					continue
+				}
+				if err := r.getContainerLogs(out, client, h.Name); err != nil {
+					return err
 				}
 			}
 		}
 	}
 	return nil
+}
+
+// getContainerLogs fetches logs from all containers (init and regular) in the
+// named pod and writes them to out. It continues on per-container errors and
+// returns all of them joined at the end.
+func (r *ReleaseTesting) getContainerLogs(out io.Writer, client kubernetes.Interface, podName string) error {
+	pod, err := client.CoreV1().Pods(r.Namespace).Get(context.Background(), podName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("unable to get pod %s: %w", podName, err)
+	}
+
+	allContainers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+
+	var errs []error
+	for _, c := range allContainers {
+		opts := &v1.PodLogOptions{Container: c.Name}
+		req := client.CoreV1().Pods(r.Namespace).GetLogs(podName, opts)
+		logReader, err := req.Stream(context.Background())
+		if err != nil {
+			errs = append(errs, fmt.Errorf("unable to get logs for pod %s, container %s: %w", podName, c.Name, err))
+			continue
+		}
+
+		fmt.Fprintf(out, "POD LOGS: %s (%s)\n", podName, c.Name)
+		_, err = io.Copy(out, logReader)
+		logReader.Close()
+		fmt.Fprintln(out)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("unable to write logs for pod %s, container %s: %w", podName, c.Name, err))
+		}
+	}
+	return errors.Join(errs...)
 }

@@ -37,7 +37,7 @@ func TestNewGetValues(t *testing.T) {
 	assert.NotNil(t, client)
 	assert.Equal(t, cfg, client.cfg)
 	assert.Equal(t, 0, client.Version)
-	assert.Equal(t, false, client.AllValues)
+	assert.False(t, client.AllValues)
 }
 
 func TestGetValues_Run_UserConfigOnly(t *testing.T) {
@@ -45,12 +45,12 @@ func TestGetValues_Run_UserConfigOnly(t *testing.T) {
 	client := NewGetValues(cfg)
 
 	releaseName := "test-release"
-	userConfig := map[string]interface{}{
-		"database": map[string]interface{}{
+	userConfig := map[string]any{
+		"database": map[string]any{
 			"host": "localhost",
 			"port": 5432,
 		},
-		"app": map[string]interface{}{
+		"app": map[string]any{
 			"name":     "my-app",
 			"replicas": 3,
 		},
@@ -66,9 +66,9 @@ func TestGetValues_Run_UserConfigOnly(t *testing.T) {
 				Name:    "test-chart",
 				Version: "1.0.0",
 			},
-			Values: map[string]interface{}{
+			Values: map[string]any{
 				"defaultKey": "defaultValue",
-				"app": map[string]interface{}{
+				"app": map[string]any{
 					"name":    "default-app",
 					"timeout": 30,
 				},
@@ -79,7 +79,7 @@ func TestGetValues_Run_UserConfigOnly(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -92,19 +92,19 @@ func TestGetValues_Run_AllValues(t *testing.T) {
 	client.AllValues = true
 
 	releaseName := "test-release"
-	userConfig := map[string]interface{}{
-		"database": map[string]interface{}{
+	userConfig := map[string]any{
+		"database": map[string]any{
 			"host": "localhost",
 			"port": 5432,
 		},
-		"app": map[string]interface{}{
+		"app": map[string]any{
 			"name": "my-app",
 		},
 	}
 
-	chartDefaultValues := map[string]interface{}{
+	chartDefaultValues := map[string]any{
 		"defaultKey": "defaultValue",
-		"app": map[string]interface{}{
+		"app": map[string]any{
 			"name":    "default-app",
 			"timeout": 30,
 		},
@@ -127,16 +127,16 @@ func TestGetValues_Run_AllValues(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
 
-	assert.Equal(t, "my-app", result["app"].(map[string]interface{})["name"])
-	assert.Equal(t, 30, result["app"].(map[string]interface{})["timeout"])
+	assert.Equal(t, "my-app", result["app"].(map[string]any)["name"])
+	assert.Equal(t, 30, result["app"].(map[string]any)["timeout"])
 	assert.Equal(t, "defaultValue", result["defaultKey"])
-	assert.Equal(t, "localhost", result["database"].(map[string]interface{})["host"])
-	assert.Equal(t, 5432, result["database"].(map[string]interface{})["port"])
+	assert.Equal(t, "localhost", result["database"].(map[string]any)["host"])
+	assert.Equal(t, 5432, result["database"].(map[string]any)["port"])
 }
 
 func TestGetValues_Run_EmptyValues(t *testing.T) {
@@ -156,16 +156,16 @@ func TestGetValues_Run_EmptyValues(t *testing.T) {
 				Version: "1.0.0",
 			},
 		},
-		Config:    map[string]interface{}{},
+		Config:    map[string]any{},
 		Version:   1,
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{}, result)
+	assert.Equal(t, map[string]any{}, result)
 }
 
 func TestGetValues_Run_UnreachableKubeClient(t *testing.T) {
@@ -177,8 +177,7 @@ func TestGetValues_Run_UnreachableKubeClient(t *testing.T) {
 	client := NewGetValues(cfg)
 
 	_, err := client.Run("test-release")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "connection refused")
+	assert.ErrorContains(t, err, "connection refused")
 }
 
 func TestGetValues_Run_ReleaseNotFound(t *testing.T) {
@@ -186,8 +185,7 @@ func TestGetValues_Run_ReleaseNotFound(t *testing.T) {
 	client := NewGetValues(cfg)
 
 	_, err := client.Run("non-existent-release")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
+	assert.ErrorContains(t, err, "not found")
 }
 
 func TestGetValues_Run_NilConfig(t *testing.T) {
@@ -212,7 +210,7 @@ func TestGetValues_Run_NilConfig(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)

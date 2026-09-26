@@ -155,7 +155,7 @@ type releaseListWriter struct {
 	noColor   bool
 }
 
-func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders bool, noColor bool) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders, noColor bool) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
@@ -254,7 +254,7 @@ func filterReleases(releases []*release.Release, ignoredReleaseNames []string) [
 
 // Provide dynamic auto-completion for release names
 func compListReleases(toComplete string, ignoredReleaseNames []string, cfg *action.Configuration) ([]string, cobra.ShellCompDirective) {
-	cobra.CompDebugln(fmt.Sprintf("compListReleases with toComplete %s", toComplete), settings.Debug)
+	cobra.CompDebugln("compListReleases with toComplete "+toComplete, settings.Debug)
 
 	client := action.NewList(cfg)
 	client.All = true

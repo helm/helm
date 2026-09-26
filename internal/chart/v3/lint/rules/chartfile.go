@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v4/internal/chart/v3/lint/rules"
+package rules
 
 import (
 	"errors"
@@ -69,15 +69,15 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartDependencies(chartFile))
 }
 
-func validateChartVersionType(data map[string]interface{}) error {
+func validateChartVersionType(data map[string]any) error {
 	return isStringValue(data, "version")
 }
 
-func validateChartAppVersionType(data map[string]interface{}) error {
+func validateChartAppVersionType(data map[string]any) error {
 	return isStringValue(data, "appVersion")
 }
 
-func isStringValue(data map[string]interface{}, key string) error {
+func isStringValue(data map[string]any, key string) error {
 	value, ok := data[key]
 	if !ok {
 		return nil
@@ -152,7 +152,7 @@ func validateChartVersion(cf *chart.Metadata) error {
 	valid, msg := c.Validate(version)
 
 	if !valid && len(msg) > 0 {
-		return fmt.Errorf("version %v", msg[0])
+		return fmt.Errorf("version %w", msg[0])
 	}
 
 	return nil
@@ -160,14 +160,14 @@ func validateChartVersion(cf *chart.Metadata) error {
 
 func validateChartMaintainer(cf *chart.Metadata) error {
 	for _, maintainer := range cf.Maintainers {
-		if maintainer == nil {
+		switch {
+		case maintainer == nil:
 			return errors.New("a maintainer entry is empty")
-		}
-		if maintainer.Name == "" {
+		case maintainer.Name == "":
 			return errors.New("each maintainer requires a name")
-		} else if maintainer.Email != "" && !govalidator.IsEmail(maintainer.Email) {
+		case maintainer.Email != "" && !govalidator.IsEmail(maintainer.Email):
 			return fmt.Errorf("invalid email '%s' for maintainer '%s'", maintainer.Email, maintainer.Name)
-		} else if maintainer.URL != "" && !govalidator.IsURL(maintainer.URL) {
+		case maintainer.URL != "" && !govalidator.IsURL(maintainer.URL):
 			return fmt.Errorf("invalid url '%s' for maintainer '%s'", maintainer.URL, maintainer.Name)
 		}
 	}
@@ -205,7 +205,7 @@ func validateChartDependencies(cf *chart.Metadata) error {
 }
 
 func validateChartType(cf *chart.Metadata) error {
-	if len(cf.Type) > 0 && cf.APIVersion != chart.APIVersionV3 {
+	if cf.Type != "" && cf.APIVersion != chart.APIVersionV3 {
 		return fmt.Errorf("chart type is not valid in apiVersion '%s'. It is valid in apiVersion '%s'", cf.APIVersion, chart.APIVersionV3)
 	}
 	return nil
@@ -214,12 +214,12 @@ func validateChartType(cf *chart.Metadata) error {
 // loadChartFileForTypeCheck loads the Chart.yaml
 // in a generic form of a map[string]interface{}, so that the type
 // of the values can be checked
-func loadChartFileForTypeCheck(filename string) (map[string]interface{}, error) {
+func loadChartFileForTypeCheck(filename string) (map[string]any, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	y := make(map[string]interface{})
+	y := make(map[string]any)
 	err = yaml.Unmarshal(b, &y)
 	return y, err
 }

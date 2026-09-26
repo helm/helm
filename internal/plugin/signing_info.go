@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ProtonMail/go-crypto/openpgp/clearsign" //nolint
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 
 	"helm.sh/helm/v4/pkg/helmpath"
 )
@@ -111,7 +111,7 @@ func GetPluginSigningInfo(metadata Metadata) (*SigningInfo, error) {
 	}, nil
 }
 
-func validateProvenanceHash(blockContent string, tarballPath string) bool {
+func validateProvenanceHash(blockContent, tarballPath string) bool {
 	// Parse provenance to get the expected hash
 	_, sums, err := parsePluginMessageBlock([]byte(blockContent))
 	if err != nil {

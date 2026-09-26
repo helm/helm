@@ -58,7 +58,7 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 		client = c
 	}
 
-	ref := strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme))
+	ref := strings.TrimPrefix(href, registry.OCIScheme+"://")
 
 	if version := g.opts.version; version != "" && !strings.Contains(path.Base(ref), ":") {
 		ref = fmt.Sprintf("%s:%s", ref, version)
@@ -165,7 +165,6 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 	}
 
 	client, err := registry.NewClient(opts...)
-
 	if err != nil {
 		return nil, err
 	}

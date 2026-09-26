@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -75,12 +76,12 @@ func (o *pluginVerifyOptions) run(out io.Writer) error {
 
 	// Only support tarball verification
 	if fi.IsDir() {
-		return fmt.Errorf("directory verification not supported - only plugin tarballs can be verified")
+		return errors.New("directory verification not supported - only plugin tarballs can be verified")
 	}
 
 	// Verify it's a tarball
 	if !plugin.IsTarball(o.pluginPath) {
-		return fmt.Errorf("plugin file must be a gzipped tarball (.tar.gz or .tgz)")
+		return errors.New("plugin file must be a gzipped tarball (.tar.gz or .tgz)")
 	}
 
 	// Look for provenance file

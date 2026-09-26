@@ -48,11 +48,11 @@ type Chart struct {
 	// Templates for this chart.
 	Templates []*common.File `json:"templates"`
 	// Values are default config for this chart.
-	Values map[string]interface{} `json:"values"`
+	Values map[string]any `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
 	Schema []byte `json:"schema"`
 	// SchemaModTime the schema was last modified
-	SchemaModTime time.Time `json:"schemamodtime,omitempty"`
+	SchemaModTime time.Time `json:"schemamodtime"`
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*common.File `json:"files"`
@@ -143,7 +143,8 @@ func (ch *Chart) AppVersion() string {
 }
 
 // CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
-// Deprecated: use CRDObjects()
+//
+// Deprecated: Use CRDObjects instead.
 func (ch *Chart) CRDs() []*common.File {
 	files := []*common.File{}
 	// Find all resources in the crds/ directory
@@ -174,6 +175,44 @@ func (ch *Chart) CRDObjects() []CRD {
 		crds = append(crds, dep.CRDObjects()...)
 	}
 	return crds
+}
+
+// StampModTimes sets timestamps on the chart (and dependencies) to t,
+// normalized to UTC and truncated to whole seconds.
+//
+// Normalization is required because Chart.lock's generated: field is written
+// by yaml.Marshal from Lock.Generated. Without UTC/truncate, a caller
+// supplying a local-zone or sub-second time.Time produces a generated: value
+// with a timezone offset or fractional seconds, making the lock file content
+// non-reproducible across machines even when the same SOURCE_DATE_EPOCH is used.
+func (ch *Chart) StampModTimes(t time.Time) {
+	t = t.UTC().Truncate(time.Second)
+	ch.ModTime = t
+	if len(ch.Schema) > 0 {
+		ch.SchemaModTime = t
+	}
+	if ch.Lock != nil {
+		ch.Lock.Generated = t
+	}
+
+	for _, f := range ch.Raw {
+		if f != nil {
+			f.ModTime = t
+		}
+	}
+	for _, f := range ch.Templates {
+		if f != nil {
+			f.ModTime = t
+		}
+	}
+	for _, f := range ch.Files {
+		if f != nil {
+			f.ModTime = t
+		}
+	}
+	for _, dep := range ch.Dependencies() {
+		dep.StampModTimes(t)
+	}
 }
 
 func hasManifestExtension(fname string) bool {

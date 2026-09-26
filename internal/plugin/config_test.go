@@ -27,7 +27,7 @@ import (
 func TestUnmarshaConfig(t *testing.T) {
 	// Test unmarshalling a CLI plugin config
 	{
-		config, err := unmarshaConfig("cli/v1", map[string]any{
+		config, err := unmarshalConfig("cli/v1", map[string]any{
 			"usage":       "usage string",
 			"shortHelp":   "short help string",
 			"longHelp":    "long help string",
@@ -41,16 +41,15 @@ func TestUnmarshaConfig(t *testing.T) {
 			ShortHelp:   "short help string",
 			LongHelp:    "long help string",
 			IgnoreFlags: true,
-		}, *(config.(*schema.ConfigCLIV1)))
+		}, *config.(*schema.ConfigCLIV1))
 	}
 
 	// Test unmarshalling invalid config data
 	{
-		config, err := unmarshaConfig("cli/v1", map[string]any{
+		config, err := unmarshalConfig("cli/v1", map[string]any{
 			"invalid field": "foo",
 		})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "field not found")
+		require.ErrorContains(t, err, "field not found")
 		assert.Nil(t, config)
 	}
 }

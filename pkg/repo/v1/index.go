@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -80,7 +81,7 @@ func (c ChartVersions) Less(a, b int) bool {
 // IndexFile represents the index file in a chart repository
 type IndexFile struct {
 	// This is used ONLY for validation against chartmuseum's index files and is discarded after validation.
-	ServerInfo map[string]interface{}   `json:"serverInfo,omitempty"`
+	ServerInfo map[string]any           `json:"serverInfo,omitempty"`
 	APIVersion string                   `json:"apiVersion"`
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
@@ -150,10 +151,10 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 
 // Add adds a file to the index and logs an error.
 //
-// Deprecated: Use index.MustAdd instead.
+// Deprecated: Use IndexFile.MustAdd instead. Add logs errors; MustAdd returns them.
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
-		slog.Error("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
+		slog.Error("skipping loading invalid entry for chart", "name", md.Name, "version", md.Version, "file", filename, "error", err)
 	}
 }
 
@@ -173,6 +174,19 @@ func (i IndexFile) SortEntries() {
 	for _, versions := range i.Entries {
 		sort.Sort(sort.Reverse(versions))
 	}
+}
+
+// isVersionRange checks if the version string is a range constraint (e.g., "^1", "~1.10")
+// rather than an exact version (e.g., "1.10.0").
+func isVersionRange(version string) bool {
+	if strings.ContainsAny(version, "^~<>=!*") || strings.Contains(version, "||") || strings.Contains(version, " - ") {
+		return true
+	}
+	core := version
+	if idx := strings.IndexAny(version, "-+"); idx != -1 {
+		core = version[:idx]
+	}
+	return strings.ContainsAny(core, "xX")
 }
 
 // Get returns the ChartVersion for the given name.
@@ -200,7 +214,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 	}
 
 	// when customer inputs specific version, check whether there's an exact match first
-	if len(version) != 0 {
+	if version != "" {
 		for _, ver := range vs {
 			if version == ver.Version {
 				return ver, nil
@@ -215,7 +229,11 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 		}
 
 		if constraint.Check(test) {
-			slog.Warn("unable to find exact version; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
+			if version != "" && !isVersionRange(version) {
+				slog.Warn("unable to find exact version requested; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
+			} else if version != "" && isVersionRange(version) {
+				slog.Debug("selected version matching constraint", "chart", name, "constraint", version, "selected", ver.Version)
+			}
 			return ver, nil
 		}
 	}
@@ -268,25 +286,26 @@ func (i *IndexFile) Merge(f *IndexFile) {
 type ChartVersion struct {
 	*chart.Metadata
 	URLs    []string  `json:"urls"`
-	Created time.Time `json:"created,omitempty"`
+	Created time.Time `json:"created"`
 	Removed bool      `json:"removed,omitempty"`
 	Digest  string    `json:"digest,omitempty"`
 
-	// ChecksumDeprecated is deprecated in Helm 3, and therefore ignored. Helm 3 replaced
-	// this with Digest. However, with a strict YAML parser enabled, a field must be
-	// present on the struct for backwards compatibility.
+	// Deprecated: ChecksumDeprecated is ignored (Helm 3 replaced it with Digest). It is
+	// retained only so a strict YAML parser accepts the "checksum" field for backwards
+	// compatibility; do not use it.
 	ChecksumDeprecated string `json:"checksum,omitempty"`
 
-	// EngineDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
-	// YAML parser enabled, this field must be present.
+	// Deprecated: EngineDeprecated is ignored (removed in Helm 3). It is retained only so a
+	// strict YAML parser accepts the "engine" field for backwards compatibility; do not use it.
 	EngineDeprecated string `json:"engine,omitempty"`
 
-	// TillerVersionDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
-	// YAML parser enabled, this field must be present.
+	// Deprecated: TillerVersionDeprecated is ignored (removed in Helm 3). It is retained only
+	// so a strict YAML parser accepts the "tillerVersion" field for backwards compatibility;
+	// do not use it.
 	TillerVersionDeprecated string `json:"tillerVersion,omitempty"`
 
-	// URLDeprecated is deprecated in Helm 3, superseded by URLs. It is ignored. However,
-	// with a strict YAML parser enabled, this must be present on the struct.
+	// Deprecated: URLDeprecated is ignored (superseded by URLs). It is retained only so a
+	// strict YAML parser accepts the "url" field for backwards compatibility; do not use it.
 	URLDeprecated string `json:"url,omitempty"`
 }
 
@@ -300,7 +319,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	moreArchives, err := filepath.Glob(filepath.Join(dir, "**/*.tgz"))
+	moreArchives, err := filepath.Glob(filepath.Join(dir, "**", "*.tgz"))
 	if err != nil {
 		return nil, err
 	}
@@ -354,21 +373,21 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	}
 
 	for name, cvs := range i.Entries {
-		for idx := len(cvs) - 1; idx >= 0; idx-- {
-			if cvs[idx] == nil {
-				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q from %s: empty entry", name, source))
+		for idx, v := range slices.Backward(cvs) {
+			if v == nil {
+				slog.Warn("skipping loading invalid entry for chart: empty entry", "name", name, "source", source)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 				continue
 			}
 			// When metadata section missing, initialize with no data
-			if cvs[idx].Metadata == nil {
-				cvs[idx].Metadata = &chart.Metadata{}
+			if v.Metadata == nil {
+				v.Metadata = &chart.Metadata{}
 			}
-			if cvs[idx].APIVersion == "" {
-				cvs[idx].APIVersion = chart.APIVersionV1
+			if v.APIVersion == "" {
+				v.APIVersion = chart.APIVersionV1
 			}
-			if err := cvs[idx].Validate(); ignoreSkippableChartValidationError(err) != nil {
-				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err))
+			if err := v.Validate(); ignoreSkippableChartValidationError(err) != nil {
+				slog.Warn("skipping loading invalid entry for chart", "name", name, "version", v.Version, "source", source, "error", err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
@@ -389,7 +408,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 // checking its validity as JSON. If the data is valid JSON, it will use the
 // `encoding/json` package to unmarshal it. Otherwise, it will use the
 // `sigs.k8s.io/yaml` package to unmarshal the YAML data.
-func jsonOrYamlUnmarshal(b []byte, i interface{}) error {
+func jsonOrYamlUnmarshal(b []byte, i any) error {
 	if json.Valid(b) {
 		return json.Unmarshal(b, i)
 	}
@@ -403,8 +422,8 @@ func jsonOrYamlUnmarshal(b []byte, i interface{}) error {
 // And repository indexes may be generated by older/non-compliant software, which doesn't
 // conform to all validations.
 func ignoreSkippableChartValidationError(err error) error {
-	verr, ok := err.(chart.ValidationError)
-	if !ok {
+	var verr chart.ValidationError
+	if !errors.As(err, &verr) {
 		return err
 	}
 

@@ -18,9 +18,10 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"strings"
 	"time"
+	"unicode/utf8"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -28,7 +29,12 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
+
+// MaxDescriptionLength is the maximum length allowed for a rollback description,
+// including values provided via the --description flag and Rollback.Description.
+const MaxDescriptionLength = 256
 
 // Rollback is the action for rolling back to a given release.
 //
@@ -39,6 +45,7 @@ type Rollback struct {
 	Version      int
 	Timeout      time.Duration
 	WaitStrategy kube.WaitStrategy
+	WaitOptions  []kube.WaitOption
 	WaitForJobs  bool
 	DisableHooks bool
 	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
@@ -57,18 +64,25 @@ type Rollback struct {
 	ServerSideApply string
 	CleanupOnFail   bool
 	MaxHistory      int // MaxHistory limits the maximum number of revisions saved per release
+	// Description is the description of this rollback operation
+	Description string
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
 func NewRollback(cfg *Configuration) *Rollback {
 	return &Rollback{
-		cfg:            cfg,
-		DryRunStrategy: DryRunNone,
+		cfg:             cfg,
+		ServerSideApply: "auto", // Must always match the CLI default.
+		DryRunStrategy:  DryRunNone,
 	}
 }
 
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
+	if descLen := utf8.RuneCountInString(r.Description); descLen > MaxDescriptionLength {
+		return fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, descLen)
+	}
+
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
 	}
@@ -166,6 +180,12 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, err
 	}
 
+	// Determine the description for this rollback
+	description := r.Description
+	if description == "" {
+		description = fmt.Sprintf("Rollback to %d", previousVersion)
+	}
+
 	// Store a new release object with previous release's configuration
 	targetRelease := &release.Release{
 		Name:      name,
@@ -173,13 +193,14 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Chart:     previousRelease.Chart,
 		Config:    previousRelease.Config,
 		Info: &release.Info{
-			FirstDeployed: currentRelease.Info.FirstDeployed,
-			LastDeployed:  time.Now(),
-			Status:        common.StatusPendingRollback,
-			Notes:         previousRelease.Info.Notes,
+			FirstDeployed:    currentRelease.Info.FirstDeployed,
+			LastDeployed:     time.Now(),
+			Status:           common.StatusPendingRollback,
+			Notes:            previousRelease.Info.Notes,
+			RollbackRevision: previousVersion,
 			// Because we lose the reference to previous version elsewhere, we set the
 			// message here, and only override it later if we experience failure.
-			Description: fmt.Sprintf("Rollback to %d", previousVersion),
+			Description: description,
 		},
 		Version:     currentRelease.Version + 1,
 		Labels:      previousRelease.Labels,
@@ -209,7 +230,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	// pre-rollback hooks
 
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.Timeout, serverSideApply); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -228,7 +249,6 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		kube.ClientUpdateOptionServerSideApply(serverSideApply, r.ForceConflicts),
 		kube.ClientUpdateOptionThreeWayMergeForUnstructured(false),
 		kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
-
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		r.cfg.Logger().Warn(msg)
@@ -250,7 +270,12 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, err
 	}
 
-	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
+	var waiter kube.Waiter
+	if c, supportsOptions := r.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+		waiter, err = c.GetWaiterWithOptions(r.WaitStrategy, r.WaitOptions...)
+	} else {
+		waiter, err = r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("unable to get waiter: %w", err)
 	}
@@ -272,13 +297,13 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.Timeout, serverSideApply); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
 			return targetRelease, err
 		}
 	}
 
 	deployed, err := r.cfg.Releases.DeployedAll(currentRelease.Name)
-	if err != nil && !strings.Contains(err.Error(), "has no deployed releases") {
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
 		return nil, err
 	}
 	// Supersede all previous deployments, see issue #2941.

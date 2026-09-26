@@ -17,9 +17,12 @@ limitations under the License.
 package rules
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/chart/v3/lint/support"
 )
@@ -31,6 +34,34 @@ func TestInvalidCrdsDir(t *testing.T) {
 	Crds(&linter)
 	res := linter.Messages
 
-	assert.Len(t, res, 1)
+	require.Len(t, res, 1)
 	assert.ErrorContains(t, res[0].Err, "not a directory")
+}
+
+// multi-document YAML with empty documents would panic
+func TestCrdWithEmptyDocument(t *testing.T) {
+	chartDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte(
+		`apiVersion: v1
+name: test
+version: 0.1.0
+`), 0o644)
+
+	// CRD with comments before --- (creates empty document)
+	crdsDir := filepath.Join(chartDir, "crds")
+	os.Mkdir(crdsDir, 0o755)
+	os.WriteFile(filepath.Join(crdsDir, "test.yaml"), []byte(
+		`# Comments create empty document
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: test.example.io
+`), 0o644)
+
+	linter := support.Linter{ChartDir: chartDir}
+	Crds(&linter)
+
+	assert.Empty(t, linter.Messages)
 }

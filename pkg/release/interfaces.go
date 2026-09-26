@@ -22,9 +22,9 @@ import (
 	"helm.sh/helm/v4/pkg/chart"
 )
 
-type Releaser interface{}
+type Releaser any
 
-type Hook interface{}
+type Hook any
 
 type Accessor interface {
 	Name() string

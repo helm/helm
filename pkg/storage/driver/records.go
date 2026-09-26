@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"sort"
@@ -114,6 +114,10 @@ func newRecord(key string, rls *rspb.Release) *record {
 	var lbs labels
 
 	lbs.init()
+
+	// apply custom labels
+	lbs.fromMap(rls.Labels)
+
 	lbs.set("name", rls.Name)
 	lbs.set("owner", "helm")
 	lbs.set("status", rls.Info.Status.String())

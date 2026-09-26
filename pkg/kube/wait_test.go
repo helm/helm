@@ -17,12 +17,12 @@ limitations under the License.
 package kube
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -39,7 +39,7 @@ import (
 func TestSelectorsForObject(t *testing.T) {
 	tests := []struct {
 		name           string
-		object         interface{}
+		object         any
 		expectError    bool
 		errorContains  string
 		expectedLabels map[string]string
@@ -227,10 +227,9 @@ func TestSelectorsForObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			selector, err := SelectorsForObject(tt.object.(runtime.Object))
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorContains)
+				require.ErrorContains(t, err, tt.errorContains)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				expected := labels.Set(tt.expectedLabels)
 				assert.True(t, selector.Matches(expected), "expected selector to match")
 			}
@@ -298,17 +297,11 @@ func TestLegacyWaiter_waitForPodSuccess(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			done, err := lw.waitForPodSuccess(tt.obj, "foo")
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error, got none")
-				} else if !strings.Contains(err.Error(), tt.errMessage) {
-					t.Errorf("expected error to contain %q, got %q", tt.errMessage, err.Error())
-				}
-			} else if err != nil {
-				t.Errorf("unexpected error: %v", err)
+				require.ErrorContains(t, err, tt.errMessage)
+			} else {
+				require.NoError(t, err)
 			}
-			if done != tt.wantDone {
-				t.Errorf("got done=%v, want %v", done, tt.wantDone)
-			}
+			assert.Equal(t, tt.wantDone, done, "got done=%v, want %v", done, tt.wantDone)
 		})
 	}
 }
@@ -390,17 +383,10 @@ func TestLegacyWaiter_waitForJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			done, err := lw.waitForJob(tt.obj, "test-job")
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error, got none")
-				} else if !strings.Contains(err.Error(), tt.errMessage) {
-					t.Errorf("expected error to contain %q, got %q", tt.errMessage, err.Error())
-				}
-			} else if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-
-			if done != tt.wantDone {
-				t.Errorf("got done=%v, want %v", done, tt.wantDone)
+				require.ErrorContains(t, err, tt.errMessage)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantDone, done, "got done=%v, want %v", done, tt.wantDone)
 			}
 		})
 	}
@@ -451,7 +437,7 @@ func TestLegacyWaiter_isRetryableError(t *testing.T) {
 		},
 		{
 			name:      "non-status error",
-			err:       fmt.Errorf("some generic error"),
+			err:       errors.New("some generic error"),
 			wantRetry: true,
 		},
 	}
@@ -459,9 +445,7 @@ func TestLegacyWaiter_isRetryableError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := lw.isRetryableError(tt.err, info)
-			if got != tt.wantRetry {
-				t.Errorf("isRetryableError() = %v, want %v", got, tt.wantRetry)
-			}
+			assert.Equal(t, tt.wantRetry, got, "isRetryableError() = %v, want %v", got, tt.wantRetry)
 		})
 	}
 }

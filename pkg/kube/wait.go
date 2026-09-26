@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v4/pkg/kube"
+package kube
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -102,11 +103,21 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 	if err == nil {
 		return false
 	}
-	slog.Debug("error received when checking resource status", "resource", resource.Name, slog.Any("error", err))
-	if ev, ok := err.(*apierrors.StatusError); ok {
+	slog.Debug(
+		"error received when checking resource status",
+		slog.String("resource", resource.Name),
+		slog.Any("error", err),
+	)
+	ev := &apierrors.StatusError{}
+	if errors.As(err, &ev) {
 		statusCode := ev.Status().Code
 		retryable := hw.isRetryableHTTPStatusCode(statusCode)
-		slog.Debug("status code received", "resource", resource.Name, "statusCode", statusCode, "retryable", retryable)
+		slog.Debug(
+			"status code received",
+			slog.String("resource", resource.Name),
+			slog.Int("statusCode", int(statusCode)),
+			slog.Bool("retryable", retryable),
+		)
 		return retryable
 	}
 	slog.Debug("retryable error assumed", "resource", resource.Name)
@@ -137,9 +148,9 @@ func (hw *legacyWaiter) WaitForDelete(deleted ResourceList, timeout time.Duratio
 
 	elapsed := time.Since(startTime).Round(time.Second)
 	if err != nil {
-		slog.Debug("wait for resources failed", "elapsed", elapsed, slog.Any("error", err))
+		slog.Debug("wait for resources failed", slog.Duration("elapsed", elapsed), slog.Any("error", err))
 	} else {
-		slog.Debug("wait for resources succeeded", "elapsed", elapsed)
+		slog.Debug("wait for resources succeeded", slog.Duration("elapsed", elapsed))
 	}
 
 	return err
@@ -235,7 +246,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 
 	// Use a selector on the name of the resource. This should be unique for the
 	// given version and kind
-	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
+	selector, err := fields.ParseSelector("metadata.name=" + info.Name)
 	if err != nil {
 		return err
 	}
@@ -324,6 +335,8 @@ func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool
 		slog.Debug("pod pending", "pod", o.Name)
 	case corev1.PodRunning:
 		slog.Debug("pod running", "pod", o.Name)
+	case corev1.PodUnknown:
+		slog.Debug("pod unknown", "pod", o.Name)
 	}
 
 	return false, nil

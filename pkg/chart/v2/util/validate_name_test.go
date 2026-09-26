@@ -16,7 +16,11 @@ limitations under the License.
 
 package util
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 // TestValidateReleaseName is a regression test for ValidateName
 //
@@ -46,12 +50,11 @@ func TestValidateReleaseName(t *testing.T) {
 		"a1111111111111111111111111111111111111111111111111111111111z": false,
 	}
 	for input, expectPass := range names {
-		if err := ValidateReleaseName(input); (err == nil) != expectPass {
-			st := "fail"
-			if expectPass {
-				st = "succeed"
-			}
-			t.Errorf("Expected %q to %s", input, st)
+		err := ValidateReleaseName(input)
+		if expectPass {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
 		}
 	}
 }
@@ -80,12 +83,11 @@ func TestValidateMetadataName(t *testing.T) {
 			"a1111111111111111111111111111111111111111111111111111111111z": false,
 	}
 	for input, expectPass := range names {
-		if err := ValidateMetadataName(input); (err == nil) != expectPass {
-			st := "fail"
-			if expectPass {
-				st = "succeed"
-			}
-			t.Errorf("Expected %q to %s", input, st)
+		err := ValidateMetadataName(input)
+		if expectPass {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
 		}
 	}
 }

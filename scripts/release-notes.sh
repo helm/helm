@@ -20,10 +20,10 @@ PREVIOUS_RELEASE=${PREVIOUS_RELEASE:-$1}
 ## Ensure Correct Usage
 if [[ -z "${PREVIOUS_RELEASE}" || -z "${RELEASE}" ]]; then
   echo Usage:
-  echo ./scripts/release-notes.sh v3.0.0 v3.1.0
+  echo ./scripts/release-notes.sh v4.0.0 v4.1.0
   echo or
-  echo PREVIOUS_RELEASE=v3.0.0
-  echo RELEASE=v3.1.0
+  echo PREVIOUS_RELEASE=v4.0.0
+  echo RELEASE=v4.1.0
   echo ./scripts/release-notes.sh
   exit 1
 fi
@@ -94,7 +94,7 @@ Download Helm ${RELEASE}. The common platform binaries are here:
 - [Windows amd64](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip.sha256sum) / $(cat _dist/helm-${RELEASE}-windows-amd64.zip.sha256))
 - [Windows arm64](https://get.helm.sh/helm-${RELEASE}-windows-arm64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-arm64.zip.sha256sum) / $(cat _dist/helm-${RELEASE}-windows-arm64.zip.sha256))
 
-The [Quickstart Guide](https://helm.sh/docs/intro/quickstart/) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://helm.sh/docs/intro/install/). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3) on any system with \`bash\`.
+The [Quickstart Guide](https://helm.sh/docs/intro/quickstart/) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://helm.sh/docs/intro/install/). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4) on any system with \`bash\`.
 
 ## What's Next
 

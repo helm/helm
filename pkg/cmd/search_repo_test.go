@@ -61,7 +61,8 @@ func TestSearchRepositoriesCmd(t *testing.T) {
 		cmd:       "search repo syzygy --fail-on-no-result",
 		golden:    "output/search-not-found-error.txt",
 		wantError: true,
-	}, {name: "search for 'syzygy' with json output and --fail-on-no-result, expect failure for no results",
+	}, {
+		name:      "search for 'syzygy' with json output and --fail-on-no-result, expect failure for no results",
 		cmd:       "search repo syzygy --output json --fail-on-no-result",
 		golden:    "output/search-not-found-error.txt",
 		wantError: true,

@@ -30,13 +30,13 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
+type lookupFunc = func(apiversion, resource, namespace, name string) (map[string]any, error)
 
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
 // If the resource does not exist, no error is raised.
 func NewLookupFunction(config *rest.Config) lookupFunc { //nolint:revive
-	return newLookupFunction(clientProviderFromConfig{config: config})
+	return newLookupFunction(context.Background(), clientProviderFromConfig{config: config})
 }
 
 type ClientProvider interface {
@@ -54,12 +54,12 @@ func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic
 	return getDynamicClientOnKind(apiVersion, kind, c.config)
 }
 
-func newLookupFunction(clientProvider ClientProvider) lookupFunc {
-	return func(apiversion string, kind string, namespace string, name string) (map[string]interface{}, error) {
+func newLookupFunction(ctx context.Context, clientProvider ClientProvider) lookupFunc {
+	return func(apiversion, kind, namespace, name string) (map[string]any, error) {
 		var client dynamic.ResourceInterface
 		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
 		if err != nil {
-			return map[string]interface{}{}, err
+			return map[string]any{}, err
 		}
 		if namespaced && namespace != "" {
 			client = c.Namespace(namespace)
@@ -68,37 +68,52 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 		}
 		if name != "" {
 			// this will return a single object
-			obj, err := client.Get(context.Background(), name, metav1.GetOptions{})
+			obj, err := client.Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					// Just return an empty interface when the object was not found.
 					// That way, users can use `if not (lookup ...)` in their templates.
-					return map[string]interface{}{}, nil
+					slog.Debug("lookup: resource not found",
+						slog.String("apiVersion", apiversion),
+						slog.String("kind", kind),
+						slog.String("namespace", namespace),
+						slog.String("name", name),
+					)
+					return map[string]any{}, nil
 				}
-				return map[string]interface{}{}, err
+				return map[string]any{}, err
 			}
 			return obj.UnstructuredContent(), nil
 		}
 		// this will return a list
-		obj, err := client.List(context.Background(), metav1.ListOptions{})
+		obj, err := client.List(ctx, metav1.ListOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// Just return an empty interface when the object was not found.
 				// That way, users can use `if not (lookup ...)` in their templates.
-				return map[string]interface{}{}, nil
+				slog.Debug("lookup: resource list not found",
+					slog.String("apiVersion", apiversion),
+					slog.String("kind", kind),
+					slog.String("namespace", namespace),
+				)
+				return map[string]any{}, nil
 			}
-			return map[string]interface{}{}, err
+			return map[string]any{}, err
 		}
 		return obj.UnstructuredContent(), nil
 	}
 }
 
 // getDynamicClientOnKind returns a dynamic client on an Unstructured type. This client can be further namespaced.
-func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
+func getDynamicClientOnKind(apiversion, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIResourceForGVK(gvk, config)
 	if err != nil {
-		slog.Error("unable to get apiresource", "groupVersionKind", gvk.String(), slog.Any("error", err))
+		slog.Error(
+			"unable to get apiresource",
+			slog.String("groupVersionKind", gvk.String()),
+			slog.Any("error", err),
+		)
 		return nil, false, fmt.Errorf("unable to get apiresource from unstructured: %s: %w", gvk.String(), err)
 	}
 	gvr := schema.GroupVersionResource{
@@ -124,7 +139,11 @@ func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (met
 	}
 	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
 	if err != nil {
-		slog.Error("unable to retrieve resource list", "GroupVersion", gvk.GroupVersion().String(), slog.Any("error", err))
+		slog.Error(
+			"unable to retrieve resource list",
+			slog.String("GroupVersion", gvk.GroupVersion().String()),
+			slog.Any("error", err),
+		)
 		return res, err
 	}
 	for _, resource := range resList.APIResources {

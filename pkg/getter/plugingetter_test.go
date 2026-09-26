@@ -17,7 +17,6 @@ package getter
 
 import (
 	"context"
-
 	"testing"
 	"time"
 
@@ -35,25 +34,18 @@ func TestCollectPlugins(t *testing.T) {
 	env.PluginsDirectory = pluginDir
 
 	p, err := collectGetterPlugins(env)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(p) != 2 {
-		t.Errorf("Expected 2 plugins, got %d: %v", len(p), p)
-	}
+	assert.Len(t, p, 2, "Expected 2 plugins, got %d: %v", len(p), p)
 
-	if _, err := p.ByScheme("test2"); err != nil {
-		t.Error(err)
-	}
+	_, err = p.ByScheme("test2")
+	require.NoError(t, err)
 
-	if _, err := p.ByScheme("test"); err != nil {
-		t.Error(err)
-	}
+	_, err = p.ByScheme("test")
+	require.NoError(t, err)
 
-	if _, err := p.ByScheme("nosuchthing"); err == nil {
-		t.Fatal("did not expect protocol handler for nosuchthing")
-	}
+	_, err = p.ByScheme("nosuchthing")
+	require.Error(t, err, "did not expect protocol handler for nosuchthing")
 }
 
 func TestConvertOptions(t *testing.T) {
@@ -143,4 +135,28 @@ func TestGetterPlugin(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "fake-plugin output", buf.String())
+}
+
+func TestCollectGetterPluginsPassesEnv(t *testing.T) {
+	env := cli.New()
+	env.PluginsDirectory = pluginDir
+	env.Debug = true
+
+	providers, err := collectGetterPlugins(env)
+	require.NoError(t, err)
+	require.NotEmpty(t, providers, "expected at least one plugin provider")
+
+	getter, err := providers.ByScheme("test")
+	require.NoError(t, err)
+
+	gp, ok := getter.(*getterPlugin)
+	require.True(t, ok, "expected getter to be a *getterPlugin")
+
+	require.NotEmpty(t, gp.env, "expected env to be set on getterPlugin")
+	envMap := plugin.ParseEnv(gp.env)
+
+	assert.Contains(t, envMap, "HELM_DEBUG", "expected HELM_DEBUG in env")
+	assert.Equal(t, "true", envMap["HELM_DEBUG"], "expected HELM_DEBUG to be true")
+	assert.Contains(t, envMap, "HELM_PLUGINS", "expected HELM_PLUGINS in env")
+	assert.Equal(t, pluginDir, envMap["HELM_PLUGINS"], "expected HELM_PLUGINS to match pluginsDirectory")
 }

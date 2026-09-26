@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -83,6 +84,7 @@ which can contain sensitive values. To hide Kubernetes Secrets use the
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
+	client.WaitOptions = append(client.WaitOptions, defaultCLIWaitOptions()...)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
@@ -104,7 +106,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+			registryClient, err := newRegistryClient(out, client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -124,7 +126,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				versions, err := histClient.Run(args[0])
-				if err == driver.ErrReleaseNotFound || isReleaseUninstalled(versions) {
+				if errors.Is(err, driver.ErrReleaseNotFound) || isReleaseUninstalled(versions) {
 					// Only print this to stdout for table output
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
@@ -138,6 +140,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
 					instClient.WaitStrategy = client.WaitStrategy
+					instClient.WaitOptions = client.WaitOptions
 					instClient.WaitForJobs = client.WaitForJobs
 					instClient.Devel = client.Devel
 					instClient.Namespace = client.Namespace
@@ -153,6 +156,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.EnableDNS = client.EnableDNS
 					instClient.HideSecret = client.HideSecret
 					instClient.TakeOwnership = client.TakeOwnership
+					instClient.ForceConflicts = client.ForceConflicts
+					instClient.ServerSideApply = client.ServerSideApply != "false"
 
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
@@ -200,30 +205,35 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if req := ac.MetaDependencies(); req != nil {
+			if req := ac.MetaDependencies(); len(req) > 0 {
+				sourceDateEpoch, err := sourceDateEpochFromEnv()
+				if err != nil {
+					return err
+				}
 				if err := action.CheckDependencies(ch, req); err != nil {
-					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
-					if client.DependencyUpdate {
-						man := &downloader.Manager{
-							Out:              out,
-							ChartPath:        chartPath,
-							Keyring:          client.Keyring,
-							SkipUpdate:       false,
-							Getters:          p,
-							RepositoryConfig: settings.RepositoryConfig,
-							RepositoryCache:  settings.RepositoryCache,
-							ContentCache:     settings.ContentCache,
-							Debug:            settings.Debug,
-						}
-						if err := man.Update(); err != nil {
-							return err
-						}
-						// Reload the chart with the updated Chart.lock file.
-						if ch, err = loader.Load(chartPath); err != nil {
-							return fmt.Errorf("failed reloading chart after repo update: %w", err)
-						}
-					} else {
+					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run 'helm dependency build' to fetch missing dependencies: %w", err)
+					if !client.DependencyUpdate {
 						return err
+					}
+					man := &downloader.Manager{
+						Out:              out,
+						ChartPath:        chartPath,
+						Keyring:          client.Keyring,
+						SkipUpdate:       false,
+						Getters:          p,
+						RepositoryConfig: settings.RepositoryConfig,
+						RepositoryCache:  settings.RepositoryCache,
+						ContentCache:     settings.ContentCache,
+						Debug:            settings.Debug,
+						SourceDateEpoch:  sourceDateEpoch,
+						RegistryClient:   registryClient,
+					}
+					if err := man.Update(); err != nil {
+						return err
+					}
+					// Reload the chart with the updated Chart.lock file.
+					if ch, err = loader.Load(chartPath); err != nil {
+						return fmt.Errorf("failed reloading chart after repo update: %w", err)
 					}
 				}
 			}

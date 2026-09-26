@@ -19,6 +19,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -103,10 +104,10 @@ func (i *OCIInstaller) Install() error {
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
 
 	tarballPath := helmpath.DataPath("plugins", filename)
-	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(tarballPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}
-	if err := os.WriteFile(tarballPath, i.pluginData, 0644); err != nil {
+	if err := os.WriteFile(tarballPath, i.pluginData, 0o644); err != nil {
 		return fmt.Errorf("failed to save tarball: %w", err)
 	}
 
@@ -122,18 +123,18 @@ func (i *OCIInstaller) Install() error {
 	// Save prov file if we have the data
 	if i.provData != nil {
 		provPath := tarballPath + ".prov"
-		if err := os.WriteFile(provPath, i.provData, 0644); err != nil {
+		if err := os.WriteFile(provPath, i.provData, 0o644); err != nil {
 			slog.Debug("failed to save provenance file", "error", err)
 		}
 	}
 
 	// Check if this is a gzip compressed file
 	if len(i.pluginData) < 2 || i.pluginData[0] != 0x1f || i.pluginData[1] != 0x8b {
-		return fmt.Errorf("plugin data is not a gzip compressed archive")
+		return errors.New("plugin data is not a gzip compressed archive")
 	}
 
 	// Create cache directory
-	if err := os.MkdirAll(i.CacheDir, 0755); err != nil {
+	if err := os.MkdirAll(i.CacheDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
@@ -214,7 +215,7 @@ func extractTar(r io.Reader, targetDir string) error {
 
 	for {
 		header, err := tarReader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -228,12 +229,12 @@ func extractTar(r io.Reader, targetDir string) error {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(path, 0755); err != nil {
+			if err := os.MkdirAll(path, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
 			dir := filepath.Dir(path)
-			if err := os.MkdirAll(dir, 0755); err != nil {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
 				return err
 			}
 

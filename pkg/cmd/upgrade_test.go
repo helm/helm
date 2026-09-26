@@ -18,12 +18,15 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"reflect"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -34,7 +37,6 @@ import (
 )
 
 func TestUpgradeCmd(t *testing.T) {
-
 	tmpChart := t.TempDir()
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -45,13 +47,9 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
-	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
-		t.Fatalf("Error creating chart for upgrade: %v", err)
-	}
+	require.NoErrorf(t, chartutil.SaveDir(cfile, tmpChart), "Error creating chart for upgrade")
 	ch, err := loader.Load(chartPath)
-	if err != nil {
-		t.Fatalf("Error loading chart: %v", err)
-	}
+	require.NoError(t, err, "Error loading chart")
 	_ = release.Mock(&release.MockReleaseOptions{
 		Name:  "funny-bunny",
 		Chart: ch,
@@ -60,25 +58,17 @@ func TestUpgradeCmd(t *testing.T) {
 	// update chart version
 	cfile.Metadata.Version = "0.1.2"
 
-	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
-		t.Fatalf("Error creating chart: %v", err)
-	}
+	require.NoErrorf(t, chartutil.SaveDir(cfile, tmpChart), "Error creating chart")
 	ch, err = loader.Load(chartPath)
-	if err != nil {
-		t.Fatalf("Error loading updated chart: %v", err)
-	}
+	require.NoError(t, err, "Error loading updated chart")
 
 	// update chart version again
 	cfile.Metadata.Version = "0.1.3"
 
-	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
-		t.Fatalf("Error creating chart: %v", err)
-	}
+	require.NoErrorf(t, chartutil.SaveDir(cfile, tmpChart), "Error creating chart")
 	var ch2 *chart.Chart
 	ch2, err = loader.Load(chartPath)
-	if err != nil {
-		t.Fatalf("Error loading updated chart: %v", err)
-	}
+	require.NoError(t, err, "Error loading updated chart")
 
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
@@ -149,7 +139,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
-			cmd:       fmt.Sprintf("upgrade bonkers-bunny %s", missingDepsPath),
+			cmd:       "upgrade bonkers-bunny " + missingDepsPath,
 			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
@@ -161,7 +151,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:   "upgrade a release with resolving missing dependencies",
-			cmd:    fmt.Sprintf("upgrade --dependency-update funny-bunny %s", presentDepsPath),
+			cmd:    "upgrade --dependency-update funny-bunny " + presentDepsPath,
 			golden: "output/upgrade-with-dependency-update.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 2, ch2)},
 		},
@@ -194,6 +184,58 @@ func TestUpgradeCmd(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+// TestUpgradeDependencyUpdateOCINoPanic is a regression test for a nil-pointer
+// panic in `helm upgrade --dependency-update` when a chart declares an OCI
+// dependency. The upgrade command built its downloader.Manager without a
+// RegistryClient (unlike install, dependency update, and dependency build), so
+// resolving an OCI dependency dereferenced a nil *registry.Client. The command
+// must now return a graceful error instead of panicking.
+func TestUpgradeDependencyUpdateOCINoPanic(t *testing.T) {
+	defer resetEnv()()
+
+	// A stub registry that answers the API-version ping but rejects the tag
+	// lookup, so OCI dependency resolution fails fast and hermetically instead
+	// of reaching a real registry.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	// A chart with an unresolved OCI dependency forces --dependency-update into
+	// the tag-lookup path that previously panicked: the version is a range (an
+	// explicit version would skip the lookup) and the dependency is not present
+	// under charts/.
+	tmp := t.TempDir()
+	parent := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "oci-parent",
+			Version:    "0.1.0",
+			Dependencies: []*chart.Dependency{{
+				Name:       "subchart",
+				Repository: fmt.Sprintf("oci://%s/charts", srv.Listener.Addr()),
+				Version:    "^1.0.0",
+			}},
+		},
+	}
+	require.NoError(t, chartutil.SaveDir(parent, tmp), "Error creating chart")
+	chartPath := filepath.Join(tmp, parent.Metadata.Name)
+	// SaveDir writes only resolved subcharts (Chart.Dependencies()), not the
+	// declared Metadata.Dependencies, so create the empty charts/ directory
+	// explicitly to make the "dependency missing from charts/" state concrete.
+	require.NoError(t, os.MkdirAll(filepath.Join(chartPath, "charts"), 0o755), "Error creating charts dir")
+
+	// The command must return an error (registry rejects the lookup), not panic.
+	_, _, err := executeActionCommandC(storageFixture(),
+		fmt.Sprintf("upgrade --dependency-update --plain-http oci-parent '%s'", chartPath))
+	require.Error(t, err, "expected an error resolving the OCI dependency, got nil")
+}
+
 func TestUpgradeWithValue(t *testing.T) {
 	releaseName := "funny-bunny-v2"
 	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
@@ -206,23 +248,14 @@ func TestUpgradeWithValue(t *testing.T) {
 
 	cmd := fmt.Sprintf("upgrade %s --set favoriteDrink=tea '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	updatedReli, err := store.Get(releaseName, 4)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
+
 	updatedRel, err := releaserToV1Release(updatedReli)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-
-	if !strings.Contains(updatedRel.Manifest, "drink: tea") {
-		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
-	}
-
+	require.NoError(t, err)
+	assert.Contains(t, updatedRel.Manifest, "drink: tea", "The value is not set correctly. manifest: %s", updatedRel.Manifest)
 }
 
 func TestUpgradeWithStringValue(t *testing.T) {
@@ -237,27 +270,17 @@ func TestUpgradeWithStringValue(t *testing.T) {
 
 	cmd := fmt.Sprintf("upgrade %s --set-string favoriteDrink=coffee '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	updatedReli, err := store.Get(releaseName, 4)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
+
 	updatedRel, err := releaserToV1Release(updatedReli)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-
-	if !strings.Contains(updatedRel.Manifest, "drink: coffee") {
-		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
-	}
-
+	require.NoError(t, err)
+	assert.Contains(t, updatedRel.Manifest, "drink: coffee", "The value is not set correctly. manifest: %s", updatedRel.Manifest)
 }
 
 func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
-
 	releaseName := "wacky-bunny-v1"
 	relMock, ch, _ := prepareMockRelease(t, releaseName)
 
@@ -269,31 +292,18 @@ func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
 
 	cmd := fmt.Sprintf("upgrade %s -i --render-subchart-notes '%s'", releaseName, "testdata/testcharts/chart-with-subchart-notes")
 	_, _, err := executeActionCommandC(store, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	upgradedReli, err := store.Get(releaseName, 2)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
+
 	upgradedRel, err := releaserToV1Release(upgradedReli)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-
-	if !strings.Contains(upgradedRel.Info.Notes, "PARENT NOTES") {
-		t.Errorf("The parent notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
-	}
-
-	if !strings.Contains(upgradedRel.Info.Notes, "SUBCHART NOTES") {
-		t.Errorf("The subchart notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
-	}
-
+	require.NoError(t, err)
+	assert.Contains(t, upgradedRel.Info.Notes, "PARENT NOTES", "The parent notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
+	assert.Contains(t, upgradedRel.Info.Notes, "SUBCHART NOTES", "The subchart notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
 }
 
 func TestUpgradeWithValuesFile(t *testing.T) {
-
 	releaseName := "funny-bunny-v4"
 	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
@@ -305,27 +315,17 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 
 	cmd := fmt.Sprintf("upgrade %s --values testdata/testcharts/upgradetest/values.yaml '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	updatedReli, err := store.Get(releaseName, 4)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
+
 	updatedRel, err := releaserToV1Release(updatedReli)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-
-	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
-		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
-	}
-
+	require.NoError(t, err)
+	assert.Contains(t, updatedRel.Manifest, "drink: beer", "The value is not set correctly. manifest: %s", updatedRel.Manifest)
 }
 
 func TestUpgradeWithValuesFromStdin(t *testing.T) {
-
 	releaseName := "funny-bunny-v5"
 	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
@@ -336,32 +336,21 @@ func TestUpgradeWithValuesFromStdin(t *testing.T) {
 	store.Create(relMock(releaseName, 3, ch))
 
 	in, err := os.Open("testdata/testcharts/upgradetest/values.yaml")
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	cmd := fmt.Sprintf("upgrade %s --values - '%s'", releaseName, chartPath)
 	_, _, err = executeActionCommandStdinC(store, in, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	updatedReli, err := store.Get(releaseName, 4)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-	updatedRel, err := releaserToV1Release(updatedReli)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
-	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
-		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
-	}
+	updatedRel, err := releaserToV1Release(updatedReli)
+	require.NoError(t, err)
+	assert.Contains(t, updatedRel.Manifest, "drink: beer", "The value is not set correctly. manifest: %s", updatedRel.Manifest)
 }
 
 func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
-
 	releaseName := "funny-bunny-v6"
 	_, _, chartPath := prepareMockRelease(t, releaseName)
 
@@ -370,38 +359,25 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 	store := storageFixture()
 
 	in, err := os.Open("testdata/testcharts/upgradetest/values.yaml")
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	cmd := fmt.Sprintf("upgrade %s -f - --install '%s'", releaseName, chartPath)
 	_, _, err = executeActionCommandStdinC(store, in, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	updatedReli, err := store.Get(releaseName, 1)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
+
 	updatedRel, err := releaserToV1Release(updatedReli)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-
-	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
-		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
-	}
-
+	require.NoError(t, err)
+	assert.Contains(t, updatedRel.Manifest, "drink: beer", "The value is not set correctly. manifest: %s", updatedRel.Manifest)
 }
 
 func prepareMockRelease(t *testing.T, releaseName string) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
 	t.Helper()
 	tmpChart := t.TempDir()
 	configmapData, err := os.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
-	if err != nil {
-		t.Fatalf("Error loading template yaml %v", err)
-	}
+	require.NoError(t, err, "Error loading template yaml")
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion:  chart.APIVersionV1,
@@ -412,13 +388,9 @@ func prepareMockRelease(t *testing.T, releaseName string) (func(n string, v int,
 		Templates: []*common.File{{Name: "templates/configmap.yaml", ModTime: time.Now(), Data: configmapData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
-	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
-		t.Fatalf("Error creating chart for upgrade: %v", err)
-	}
+	require.NoErrorf(t, chartutil.SaveDir(cfile, tmpChart), "Error creating chart for upgrade")
 	ch, err := loader.Load(chartPath)
-	if err != nil {
-		t.Fatalf("Error loading chart: %v", err)
-	}
+	require.NoError(t, err, "Error loading chart")
 	_ = release.Mock(&release.MockReleaseOptions{
 		Name:  releaseName,
 		Chart: ch,
@@ -443,23 +415,23 @@ func TestUpgradeVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for upgrade version flag",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
@@ -485,35 +457,23 @@ func TestUpgradeInstallWithLabels(t *testing.T) {
 	}
 	cmd := fmt.Sprintf("upgrade %s --install --labels key1=val1,key2=val2 '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	updatedReli, err := store.Get(releaseName, 1)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
-	updatedRel, err := releaserToV1Release(updatedReli)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
-	if !reflect.DeepEqual(updatedRel.Labels, expectedLabels) {
-		t.Errorf("Expected {%v}, got {%v}", expectedLabels, updatedRel.Labels)
-	}
+	updatedRel, err := releaserToV1Release(updatedReli)
+	require.NoError(t, err)
+	assert.Equal(t, expectedLabels, updatedRel.Labels)
 }
 
 func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
 	t.Helper()
 	tmpChart := t.TempDir()
 	configmapData, err := os.ReadFile("testdata/testcharts/chart-with-secret/templates/configmap.yaml")
-	if err != nil {
-		t.Fatalf("Error loading template yaml %v", err)
-	}
+	require.NoError(t, err, "Error loading template yaml")
 	secretData, err := os.ReadFile("testdata/testcharts/chart-with-secret/templates/secret.yaml")
-	if err != nil {
-		t.Fatalf("Error loading template yaml %v", err)
-	}
+	require.NoError(t, err, "Error loading template yaml")
 	modTime := time.Now()
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -525,13 +485,9 @@ func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n stri
 		Templates: []*common.File{{Name: "templates/configmap.yaml", ModTime: modTime, Data: configmapData}, {Name: "templates/secret.yaml", ModTime: modTime, Data: secretData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
-	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
-		t.Fatalf("Error creating chart for upgrade: %v", err)
-	}
+	require.NoErrorf(t, chartutil.SaveDir(cfile, tmpChart), "Error creating chart for upgrade")
 	ch, err := loader.Load(chartPath)
-	if err != nil {
-		t.Fatalf("Error loading chart: %v", err)
-	}
+	require.NoError(t, err, "Error loading chart")
 	_ = release.Mock(&release.MockReleaseOptions{
 		Name:  releaseName,
 		Chart: ch,
@@ -556,52 +512,78 @@ func TestUpgradeWithDryRun(t *testing.T) {
 	// have it available.
 	cmd := fmt.Sprintf("upgrade %s --install '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	_, err = store.Get(releaseName, 1)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	cmd = fmt.Sprintf("upgrade %s --dry-run '%s'", releaseName, chartPath)
 	_, out, err := executeActionCommandC(store, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	// No second release should be stored because this is a dry run.
 	_, err = store.Get(releaseName, 2)
-	if err == nil {
-		t.Error("expected error as there should be no new release but got none")
-	}
-
-	if !strings.Contains(out, "kind: Secret") {
-		t.Error("expected secret in output from --dry-run but found none")
-	}
+	require.Error(t, err, "expected error as there should be no new release but got none")
+	assert.Contains(t, out, "kind: Secret", "expected secret in output from --dry-run but found none")
 
 	// Ensure the secret is not in the output
 	cmd = fmt.Sprintf("upgrade %s --dry-run --hide-secret '%s'", releaseName, chartPath)
 	_, out, err = executeActionCommandC(store, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	// No second release should be stored because this is a dry run.
 	_, err = store.Get(releaseName, 2)
-	if err == nil {
-		t.Error("expected error as there should be no new release but got none")
-	}
-
-	if strings.Contains(out, "kind: Secret") {
-		t.Error("expected no secret in output from --dry-run --hide-secret but found one")
-	}
+	require.Error(t, err, "expected error as there should be no new release but got none")
+	assert.NotContains(t, out, "kind: Secret", "expected no secret in output from --dry-run --hide-secret but found one")
 
 	// Ensure there is an error when --hide-secret used without dry-run
 	cmd = fmt.Sprintf("upgrade %s --hide-secret '%s'", releaseName, chartPath)
 	_, _, err = executeActionCommandC(store, cmd)
-	if err == nil {
-		t.Error("expected error when --hide-secret used without --dry-run")
+	assert.Error(t, err, "expected error when --hide-secret used without --dry-run")
+}
+
+func TestUpgradeInstallServerSideApply(t *testing.T) {
+	_, _, chartPath := prepareMockRelease(t, "ssa-test")
+
+	defer resetEnv()()
+
+	tests := []struct {
+		name                string
+		serverSideFlag      string
+		expectedApplyMethod string
+	}{
+		{
+			name:                "upgrade --install with --server-side=false uses client-side apply",
+			serverSideFlag:      "--server-side=false",
+			expectedApplyMethod: "csa",
+		},
+		{
+			name:                "upgrade --install with --server-side=true uses server-side apply",
+			serverSideFlag:      "--server-side=true",
+			expectedApplyMethod: "ssa",
+		},
+		{
+			name:                "upgrade --install with --server-side=auto uses server-side apply (default for new install)",
+			serverSideFlag:      "--server-side=auto",
+			expectedApplyMethod: "ssa",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := storageFixture()
+			releaseName := "ssa-test-" + tt.expectedApplyMethod
+
+			cmd := fmt.Sprintf("upgrade %s --install %s '%s'", releaseName, tt.serverSideFlag, chartPath)
+			_, _, err := executeActionCommandC(store, cmd)
+			require.NoError(t, err)
+
+			rel, err := store.Get(releaseName, 1)
+			require.NoError(t, err, "unexpected error getting release")
+
+			relV1, err := releaserToV1Release(rel)
+			require.NoError(t, err, "unexpected error converting release")
+			assert.Equal(t, tt.expectedApplyMethod, relV1.ApplyMethod, "expected ApplyMethod %q, got %q", tt.expectedApplyMethod, relV1.ApplyMethod)
+		})
 	}
 }

@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
-	release "helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 // History is the action for checking the release's ledger.

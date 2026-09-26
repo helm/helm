@@ -17,7 +17,6 @@ package plugin
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,7 +62,6 @@ name: "test-plugin"
 }
 
 func TestLoadDir(t *testing.T) {
-
 	makeMetadata := func(apiVersion string) Metadata {
 		usage := "hello [params]..."
 		if apiVersion == "legacy" {
@@ -71,7 +69,7 @@ func TestLoadDir(t *testing.T) {
 		}
 		return Metadata{
 			APIVersion: apiVersion,
-			Name:       fmt.Sprintf("hello-%s", apiVersion),
+			Name:       "hello-" + apiVersion,
 			Version:    "0.1.0",
 			Type:       "cli/v1",
 			Runtime:    "subprocess",
@@ -120,7 +118,7 @@ func TestLoadDir(t *testing.T) {
 			require.NoError(t, err, "error loading plugin from %s", tc.dirname)
 
 			assert.Equal(t, tc.dirname, plug.Dir())
-			assert.EqualValues(t, tc.expect, plug.Metadata())
+			assert.Equal(t, tc.expect, plug.Metadata())
 		})
 	}
 }
@@ -196,25 +194,21 @@ func TestDetectDuplicates(t *testing.T) {
 		mockSubprocessCLIPlugin(t, "foo"),
 		mockSubprocessCLIPlugin(t, "bar"),
 	}
-	if err := detectDuplicates(plugs); err != nil {
-		t.Error("no duplicates in the first set")
-	}
+	require.NoError(t, detectDuplicates(plugs), "no duplicates in the first set")
 	plugs = append(plugs, mockSubprocessCLIPlugin(t, "foo"))
-	if err := detectDuplicates(plugs); err == nil {
-		t.Error("duplicates in the second set")
-	}
+	assert.Error(t, detectDuplicates(plugs), "duplicates in the second set")
 }
 
-func TestLoadAll(t *testing.T) {
-	// Verify that empty dir loads:
-	{
-		plugs, err := LoadAll("testdata")
-		require.NoError(t, err)
-		assert.Len(t, plugs, 0)
-	}
+func TestLoadAllDir_Empty(t *testing.T) {
+	emptyDir := t.TempDir()
+	plugs, err := LoadAllDir(emptyDir, func(_ string, err error) error { return err })
+	require.NoError(t, err)
+	assert.Empty(t, plugs)
+}
 
+func TestLoadAllPluginsDir(t *testing.T) {
 	basedir := "testdata/plugdir/good"
-	plugs, err := LoadAll(basedir)
+	plugs, err := LoadAllDir(basedir, func(_ string, err error) error { return err })
 	require.NoError(t, err)
 	require.NotEmpty(t, plugs, "expected plugins to be loaded from %s", basedir)
 
@@ -233,7 +227,7 @@ func TestLoadAll(t *testing.T) {
 	assert.Contains(t, plugsMap, "postrenderer-v1")
 }
 
-func TestFindPlugins(t *testing.T) {
+func TestLoadAllPluginsDir_Zero(t *testing.T) {
 	cases := []struct {
 		name     string
 		plugdirs string
@@ -241,30 +235,114 @@ func TestFindPlugins(t *testing.T) {
 	}{
 		{
 			name:     "plugdirs is empty",
-			plugdirs: "",
-			expected: 0,
+			plugdirs: t.TempDir(),
 		},
 		{
 			name:     "plugdirs isn't dir",
 			plugdirs: "./plugin_test.go",
-			expected: 0,
 		},
 		{
 			name:     "plugdirs doesn't have plugin",
 			plugdirs: ".",
-			expected: 0,
-		},
-		{
-			name:     "normal",
-			plugdirs: "./testdata/plugdir/good",
-			expected: 7,
 		},
 	}
 	for _, c := range cases {
 		t.Run(t.Name(), func(t *testing.T) {
-			plugin, err := LoadAll(c.plugdirs)
+			plugin, err := LoadAllDir(c.plugdirs, func(_ string, err error) error { return err })
 			require.NoError(t, err)
 			assert.Len(t, plugin, c.expected, "expected %d plugins, got %d", c.expected, len(plugin))
+		})
+	}
+}
+
+func TestLoadMetadataLegacy(t *testing.T) {
+	testCases := map[string]struct {
+		yaml          string
+		expectError   bool
+		errorContains string
+		expectedName  string
+		logNote       string
+	}{
+		"capital name field": {
+			yaml: `Name: my-plugin
+version: 1.0.0
+usage: test plugin
+description: test description
+command: echo test`,
+			expectError:   true,
+			errorContains: `invalid plugin name "": must contain only a-z, A-Z, 0-9, _ and -`,
+			// Legacy plugins: No strict unmarshalling (backwards compatibility)
+			// YAML decoder silently ignores "Name:", then validation catches empty name
+			logNote: "NOTE: V1 plugins use strict unmarshalling and would get: yaml: field Name not found",
+		},
+		"correct name field": {
+			yaml: `name: my-plugin
+version: 1.0.0
+usage: test plugin
+description: test description
+command: echo test`,
+			expectError:  false,
+			expectedName: "my-plugin",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			m, err := loadMetadataLegacy([]byte(tc.yaml))
+
+			if tc.expectError {
+				require.ErrorContains(t, err, tc.errorContains)
+				t.Logf("Legacy error (validation catches empty name): %v", err)
+				if tc.logNote != "" {
+					t.Log(tc.logNote)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedName, m.Name)
+			}
+		})
+	}
+}
+
+func TestLoadMetadataV1(t *testing.T) {
+	testCases := map[string]struct {
+		yaml          string
+		expectError   bool
+		errorContains string
+		expectedName  string
+	}{
+		"capital name field": {
+			yaml: `apiVersion: v1
+Name: my-plugin
+type: cli/v1
+runtime: subprocess
+`,
+			expectError:   true,
+			errorContains: "field Name not found in type plugin.MetadataV1",
+		},
+		"correct name field": {
+			yaml: `apiVersion: v1
+name: my-plugin
+version: 1.0.0
+type: cli/v1
+runtime: subprocess
+`,
+			expectError:  false,
+			expectedName: "my-plugin",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			m, err := loadMetadataV1([]byte(tc.yaml))
+
+			if tc.expectError {
+				require.ErrorContains(t, err, tc.errorContains)
+				t.Logf("V1 error (strict unmarshalling): %v", err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedName, m.Name)
+			}
 		})
 	}
 }

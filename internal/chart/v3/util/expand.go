@@ -52,6 +52,17 @@ func Expand(dir string, r io.Reader) error {
 		return errors.New("chart name not specified")
 	}
 
+	// Reject chart names that are POSIX path dot-segments or dot-dot segments or contain path separators.
+	// A dot-segment name (e.g. ".") causes SecureJoin to resolve to the root
+	// directory and extraction then to write files directly into that extraction root
+	// instead of a per-chart subdirectory.
+	if chartName == "." || chartName == ".." {
+		return fmt.Errorf("chart name %q is not allowed", chartName)
+	}
+	if chartName != filepath.Base(chartName) {
+		return fmt.Errorf("chart name %q must not contain path separators", chartName)
+	}
+
 	// Find the base directory
 	// The directory needs to be cleaned prior to passing to SecureJoin or the location may end up
 	// being wrong or returning an error. This was introduced in v0.4.0.
@@ -59,6 +70,12 @@ func Expand(dir string, r io.Reader) error {
 	chartdir, err := securejoin.SecureJoin(dir, chartName)
 	if err != nil {
 		return err
+	}
+
+	// Defense-in-depth: the chart directory must be a subdirectory of dir,
+	// never dir itself.
+	if chartdir == dir {
+		return fmt.Errorf("chart name %q resolves to the extraction root", chartName)
 	}
 
 	// Copy all files verbatim. We don't parse these files because parsing can remove
@@ -71,11 +88,11 @@ func Expand(dir string, r io.Reader) error {
 
 		// Make sure the necessary subdirs get created.
 		basedir := filepath.Dir(outpath)
-		if err := os.MkdirAll(basedir, 0755); err != nil {
+		if err := os.MkdirAll(basedir, 0o755); err != nil {
 			return err
 		}
 
-		if err := os.WriteFile(outpath, file.Data, 0644); err != nil {
+		if err := os.WriteFile(outpath, file.Data, 0o644); err != nil {
 			return err
 		}
 	}

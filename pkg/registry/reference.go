@@ -17,7 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"fmt"
 	"strings"
 
 	"oras.land/oras-go/v2/registry"
@@ -80,5 +79,5 @@ func (r *reference) String() string {
 
 // IsOCI determines whether a URL is to be treated as an OCI URL
 func IsOCI(url string) bool {
-	return strings.HasPrefix(url, fmt.Sprintf("%s://", OCIScheme))
+	return strings.HasPrefix(url, OCIScheme+"://")
 }

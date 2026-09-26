@@ -16,6 +16,7 @@ limitations under the License.
 package installer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -30,9 +31,6 @@ import (
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
 var ErrMissingMetadata = errors.New("plugin metadata (plugin.yaml) missing")
-
-// Debug enables verbose output.
-var Debug bool
 
 // Options contains options for plugin installation.
 type Options struct {
@@ -75,12 +73,11 @@ type VerificationResult struct {
 
 // InstallWithOptions installs a plugin with options.
 func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) {
-
-	if err := os.MkdirAll(filepath.Dir(i.Path()), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(i.Path()), 0o755); err != nil {
 		return nil, err
 	}
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
-		slog.Warn("plugin already exists", "path", i.Path(), slog.Any("error", pathErr))
+		slog.Warn("plugin already exists", slog.String("path", i.Path()), slog.Any("error", pathErr))
 		return nil, errors.New("plugin already exists")
 	}
 
@@ -90,7 +87,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 	if opts.Verify {
 		verifier, ok := i.(Verifier)
 		if !ok || !verifier.SupportsVerification() {
-			return nil, fmt.Errorf("--verify is only supported for plugin tarballs (.tgz files)")
+			return nil, errors.New("--verify is only supported for plugin tarballs (.tgz files)")
 		}
 
 		// Get verification data (works for both memory and file-based installers)
@@ -101,24 +98,23 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 
 		// Check if provenance data exists
 		if len(provData) == 0 {
-			// No .prov file found - emit warning but continue installation
-			fmt.Fprintf(os.Stderr, "WARNING: No provenance file found for plugin. Plugin is not signed and cannot be verified.\n")
-		} else {
-			// Provenance data exists - verify the plugin
-			verification, err := plugin.VerifyPlugin(archiveData, provData, filename, opts.Keyring)
-			if err != nil {
-				return nil, fmt.Errorf("plugin verification failed: %w", err)
-			}
+			return nil, errors.New("plugin verification failed: no provenance file (.prov) found")
+		}
 
-			// Collect verification info
-			result = &VerificationResult{
-				SignedBy:    make([]string, 0),
-				Fingerprint: fmt.Sprintf("%X", verification.SignedBy.PrimaryKey.Fingerprint),
-				FileHash:    verification.FileHash,
-			}
-			for name := range verification.SignedBy.Identities {
-				result.SignedBy = append(result.SignedBy, name)
-			}
+		// Provenance data exists - verify the plugin
+		verification, err := plugin.VerifyPlugin(archiveData, provData, filename, opts.Keyring)
+		if err != nil {
+			return nil, fmt.Errorf("plugin verification failed: %w", err)
+		}
+
+		// Collect verification info
+		result = &VerificationResult{
+			SignedBy:    make([]string, 0),
+			Fingerprint: fmt.Sprintf("%X", verification.SignedBy.PrimaryKey.Fingerprint),
+			FileHash:    verification.FileHash,
+		}
+		for name := range verification.SignedBy.Identities {
+			result.SignedBy = append(result.SignedBy, name)
 		}
 	}
 
@@ -132,7 +128,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 // Update updates a plugin.
 func Update(i Installer) error {
 	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
-		slog.Warn("plugin does not exist", "path", i.Path(), slog.Any("error", pathErr))
+		slog.Warn("plugin does not exist", slog.String("path", i.Path()), slog.Any("error", pathErr))
 		return errors.New("plugin does not exist")
 	}
 	return i.Update()
@@ -140,15 +136,16 @@ func Update(i Installer) error {
 
 // NewForSource determines the correct Installer for the given source.
 func NewForSource(source, version string) (installer Installer, err error) {
-	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
+	switch {
+	case strings.HasPrefix(source, registry.OCIScheme+"://"):
 		// Source is an OCI registry reference
 		installer, err = NewOCIInstaller(source)
-	} else if isLocalReference(source) {
+	case isLocalReference(source):
 		// Source is a local directory
 		installer, err = NewLocalInstaller(source)
-	} else if isRemoteHTTPArchive(source) {
+	case isRemoteHTTPArchive(source):
 		installer, err = NewHTTPInstaller(source)
-	} else {
+	default:
 		installer, err = NewVCSInstaller(source, version)
 	}
 
@@ -156,14 +153,18 @@ func NewForSource(source, version string) (installer Installer, err error) {
 		return installer, fmt.Errorf("cannot get information about plugin source %q (if it's a local directory, does it exist?), last error was: %w", source, err)
 	}
 
-	return
+	return installer, err
 }
 
 // FindSource determines the correct Installer for the given source.
 func FindSource(location string) (Installer, error) {
 	installer, err := existingVCSRepo(location)
 	if err != nil && err.Error() == "Cannot detect VCS" {
-		slog.Warn("cannot get information about plugin source", "location", location, slog.Any("error", err))
+		slog.Warn(
+			"cannot get information about plugin source",
+			slog.String("location", location),
+			slog.Any("error", err),
+		)
 		return installer, errors.New("cannot get information about plugin source")
 	}
 	return installer, err
@@ -190,12 +191,17 @@ func isRemoteHTTPArchive(source string) bool {
 		}
 
 		// If no suffix match, try HEAD request to check content type
-		res, err := http.Head(source)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodHead, source, http.NoBody)
 		if err != nil {
 			// If we get an error at the network layer, we can't install it. So
 			// we return false.
 			return false
 		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return false
+		}
+		defer res.Body.Close()
 
 		// Next, we look for the content type or content disposition headers to see
 		// if they have matching extractors.

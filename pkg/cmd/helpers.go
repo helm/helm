@@ -43,7 +43,6 @@ func addDryRunFlag(cmd *cobra.Command) {
 // Determine the `action.DryRunStrategy` given -dry-run=<value>` flag (or absence of)
 // Legacy usage of the flag: boolean values, and `--dry-run` (without value) are supported, and log warnings emitted
 func cmdGetDryRunFlagStrategy(cmd *cobra.Command, isTemplate bool) (action.DryRunStrategy, error) {
-
 	f := cmd.Flag("dry-run")
 	v := f.Value.String()
 

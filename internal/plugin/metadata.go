@@ -19,8 +19,16 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Masterminds/semver/v3"
+
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
+
+// isValidSemver checks if the given string is a valid semantic version
+func isValidSemver(v string) bool {
+	_, err := semver.StrictNewVersion(v)
+	return err == nil
+}
 
 // Metadata of a plugin, converted from the "on-disk" legacy or v1 plugin.yaml
 // Specifically, Config and RuntimeConfig are converted to their respective types based on the plugin type and runtime
@@ -54,27 +62,32 @@ func (m Metadata) Validate() error {
 	var errs []error
 
 	if !validPluginName.MatchString(m.Name) {
-		errs = append(errs, fmt.Errorf("invalid name"))
+		errs = append(errs, fmt.Errorf("invalid plugin name %q: must contain only a-z, A-Z, 0-9, _ and -", m.Name))
+	}
+
+	// Require version to be valid semver if specified
+	if m.Version != "" && !isValidSemver(m.Version) {
+		errs = append(errs, fmt.Errorf("invalid plugin version %q: must be valid semver", m.Version))
 	}
 
 	if m.APIVersion == "" {
-		errs = append(errs, fmt.Errorf("empty APIVersion"))
+		errs = append(errs, errors.New("empty APIVersion"))
 	}
 
 	if m.Type == "" {
-		errs = append(errs, fmt.Errorf("empty type field"))
+		errs = append(errs, errors.New("empty type field"))
 	}
 
 	if m.Runtime == "" {
-		errs = append(errs, fmt.Errorf("empty runtime field"))
+		errs = append(errs, errors.New("empty runtime field"))
 	}
 
 	if m.Config == nil {
-		errs = append(errs, fmt.Errorf("missing config field"))
+		errs = append(errs, errors.New("missing config field"))
 	}
 
 	if m.RuntimeConfig == nil {
-		errs = append(errs, fmt.Errorf("missing runtimeConfig field"))
+		errs = append(errs, errors.New("missing runtimeConfig field"))
 	}
 
 	// Validate the config itself
@@ -141,8 +154,7 @@ func buildLegacyConfig(m MetadataLegacy, pluginType string) Config {
 func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 	var protocolCommands []SubprocessProtocolCommand
 	if len(m.Downloaders) > 0 {
-		protocolCommands =
-			make([]SubprocessProtocolCommand, 0, len(m.Downloaders))
+		protocolCommands = make([]SubprocessProtocolCommand, 0, len(m.Downloaders))
 		for _, d := range m.Downloaders {
 			protocolCommands = append(protocolCommands, SubprocessProtocolCommand{
 				Protocols:       d.Protocols,
@@ -152,7 +164,7 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 	}
 
 	platformCommand := m.PlatformCommand
-	if len(platformCommand) == 0 && len(m.Command) > 0 {
+	if len(platformCommand) == 0 && m.Command != "" {
 		platformCommand = []PlatformCommand{{Command: m.Command}}
 	}
 
@@ -174,13 +186,12 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 }
 
 func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
-
-	config, err := unmarshaConfig(mv1.Type, mv1.Config)
+	config, err := unmarshalConfig(mv1.Type, mv1.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	runtimeConfig, err := convertMetdataRuntimeConfig(mv1.Runtime, mv1.RuntimeConfig)
+	runtimeConfig, err := convertMetadataRuntimeConfig(mv1.Runtime, mv1.RuntimeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +208,7 @@ func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
 	}, nil
 }
 
-func convertMetdataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string]any) (RuntimeConfig, error) {
+func convertMetadataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string]any) (RuntimeConfig, error) {
 	var runtimeConfig RuntimeConfig
 	var err error
 

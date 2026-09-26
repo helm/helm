@@ -17,8 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"testing"
 
@@ -32,7 +30,7 @@ type HTTPRegistryClientTestSuite struct {
 
 func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	setup(&suite.TestRegistry, false, false)
+	setup(&suite.TestRegistry, false, false, "htpasswd")
 }
 
 func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {
@@ -41,15 +39,13 @@ func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
-	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().Error(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth("badverybad", "ohsobad"),
-		LoginOptPlainText(true))
-	suite.NotNil(err, "error logging into registry with bad credentials")
+		LoginOptPlainText(true)), "error logging into registry with bad credentials")
 
-	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().NoError(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptPlainText(true))
-	suite.Nil(err, "no error logging into registry with good credentials")
+		LoginOptPlainText(true)), "no error logging into registry with good credentials")
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {
@@ -65,12 +61,19 @@ func (suite *HTTPRegistryClientTestSuite) Test_3_Tags() {
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
-	ref := fmt.Sprintf("%s/testrepo/supposedlysafechart:9.9.9", suite.CompromisedRegistryHost)
+	ref := suite.CompromisedRegistryHost + "/testrepo/supposedlysafechart:9.9.9"
 
 	// returns content that does not match the expected digest
 	_, err := suite.RegistryClient.Pull(ref)
-	suite.NotNil(err)
-	suite.True(errors.Is(err, content.ErrMismatchedDigest))
+	suite.Require().Error(err)
+	suite.ErrorIs(err, content.ErrMismatchedDigest)
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_5_ImageIndex() {
+	ref := suite.FakeRegistryHost + "/testrepo/image-index:0.1.0"
+
+	_, err := suite.RegistryClient.Pull(ref)
+	suite.Require().NoError(err)
 }
 
 func TestHTTPRegistryClientTestSuite(t *testing.T) {

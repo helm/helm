@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/term"
@@ -58,6 +59,8 @@ type Package struct {
 	KeyFile               string
 	CaFile                string
 	InsecureSkipTLSVerify bool
+	// SourceDateEpoch, when set, normalizes chart timestamps for reproducible archives.
+	SourceDateEpoch *time.Time
 }
 
 const (
@@ -70,7 +73,7 @@ func NewPackage() *Package {
 }
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
-func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
+func (p *Package) Run(path string, _ map[string]any) (string, error) {
 	chrt, err := loader.LoadDir(path)
 	if err != nil {
 		return "", err
@@ -103,7 +106,11 @@ func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 		ch.Metadata.AppVersion = p.AppVersion
 	}
 
-	if reqs := ac.MetaDependencies(); reqs != nil {
+	if p.SourceDateEpoch != nil {
+		ch.StampModTimes(*p.SourceDateEpoch)
+	}
+
+	if reqs := ac.MetaDependencies(); len(reqs) > 0 {
 		if err := CheckDependencies(ch, reqs); err != nil {
 			return "", err
 		}
@@ -194,7 +201,7 @@ func (p *Package) Clearsign(filename string) error {
 		return err
 	}
 
-	return os.WriteFile(filename+".prov", []byte(sig), 0644)
+	return os.WriteFile(filename+".prov", []byte(sig), 0o644)
 }
 
 // promptUser implements provenance.PassphraseFetcher

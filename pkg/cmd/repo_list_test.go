@@ -48,6 +48,12 @@ func TestRepoList(t *testing.T) {
 			golden:    "output/repo-list.txt",
 			wantError: false,
 		},
+		{
+			name:      "list without headers",
+			cmd:       fmt.Sprintf("repo list --repository-config %s --repository-cache %s --no-headers", repoFile2, rootDir),
+			golden:    "output/repo-list-no-headers.txt",
+			wantError: false,
+		},
 	}
 
 	runTestCmd(t, tests)

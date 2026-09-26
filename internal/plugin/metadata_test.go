@@ -16,12 +16,15 @@ limitations under the License.
 package plugin
 
 import (
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidatePluginData(t *testing.T) {
-
 	// A mock plugin with no commands
 	mockNoCommand := mockSubprocessCLIPlugin(t, "foo")
 	mockNoCommand.metadata.RuntimeConfig = &RuntimeConfigSubprocess{
@@ -53,22 +56,57 @@ func TestValidatePluginData(t *testing.T) {
 	}{
 		{true, mockSubprocessCLIPlugin(t, "abcdefghijklmnopqrstuvwxyz0123456789_-ABC"), ""},
 		{true, mockSubprocessCLIPlugin(t, "foo-bar-FOO-BAR_1234"), ""},
-		{false, mockSubprocessCLIPlugin(t, "foo -bar"), "invalid name"},
-		{false, mockSubprocessCLIPlugin(t, "$foo -bar"), "invalid name"}, // Test leading chars
-		{false, mockSubprocessCLIPlugin(t, "foo -bar "), "invalid name"}, // Test trailing chars
-		{false, mockSubprocessCLIPlugin(t, "foo\nbar"), "invalid name"},  // Test newline
+		{false, mockSubprocessCLIPlugin(t, "foo -bar"), "invalid plugin name"},
+		{false, mockSubprocessCLIPlugin(t, "$foo -bar"), "invalid plugin name"}, // Test leading chars
+		{false, mockSubprocessCLIPlugin(t, "foo -bar "), "invalid plugin name"}, // Test trailing chars
+		{false, mockSubprocessCLIPlugin(t, "foo\nbar"), "invalid plugin name"},  // Test newline
 		{true, mockNoCommand, ""},     // Test no command metadata works
 		{true, mockLegacyCommand, ""}, // Test legacy command metadata works
 	} {
-		err := item.plug.Metadata().Validate()
-		if item.pass && err != nil {
-			t.Errorf("failed to validate case %d: %s", i, err)
-		} else if !item.pass && err == nil {
-			t.Errorf("expected case %d to fail", i)
-		}
-		if !item.pass && err.Error() != item.errString {
-			t.Errorf("index [%d]: expected the following error: %s, but got: %s", i, item.errString, err.Error())
-		}
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			err := item.plug.Metadata().Validate()
+			if item.pass {
+				require.NoError(t, err, "failed to validate case %d", i)
+			} else {
+				require.Error(t, err, "expected case %d to fail", i)
+				assert.ErrorContains(t, err, item.errString, "expected case %d error to contain %q", i, item.errString)
+			}
+		})
+	}
+}
+
+func TestMetadataValidateVersion(t *testing.T) {
+	testValid := map[string]struct {
+		version string
+	}{
+		"valid semver":                 {version: "1.0.0"},
+		"valid semver with prerelease": {version: "1.2.3-alpha.1+build.123"},
+		"empty version":                {version: ""},
+	}
+
+	testInvalid := map[string]struct {
+		version string
+	}{
+		"valid semver with v prefix": {version: "v1.0.0"},
+		"path traversal":             {version: "../../../../tmp/evil"},
+		"path traversal in version":  {version: "1.0.0/../../etc"},
+		"not a version":              {version: "not-a-version"},
+	}
+
+	for name, tc := range testValid {
+		t.Run(name, func(t *testing.T) {
+			m := mockSubprocessCLIPlugin(t, "testplugin")
+			m.metadata.Version = tc.version
+			assert.NoError(t, m.Metadata().Validate())
+		})
+	}
+
+	for name, tc := range testInvalid {
+		t.Run(name, func(t *testing.T) {
+			m := mockSubprocessCLIPlugin(t, "testplugin")
+			m.metadata.Version = tc.version
+			assert.ErrorContains(t, m.Metadata().Validate(), "invalid plugin version")
+		})
 	}
 }
 
@@ -84,15 +122,13 @@ func TestMetadataValidateMultipleErrors(t *testing.T) {
 	}
 
 	err := metadata.Validate()
-	if err == nil {
-		t.Fatal("expected validation to fail with multiple errors")
-	}
+	require.Error(t, err, "expected validation to fail with multiple errors")
 
 	errStr := err.Error()
 
 	// Check that all expected errors are present in the joined error
 	expectedErrors := []string{
-		"invalid name",
+		"invalid plugin name",
 		"empty APIVersion",
 		"empty type field",
 		"empty runtime field",
@@ -101,9 +137,7 @@ func TestMetadataValidateMultipleErrors(t *testing.T) {
 	}
 
 	for _, expectedErr := range expectedErrors {
-		if !strings.Contains(errStr, expectedErr) {
-			t.Errorf("expected error to contain %q, but got: %v", expectedErr, errStr)
-		}
+		require.ErrorContains(t, err, expectedErr)
 	}
 
 	// Verify that the error contains the correct number of error messages
@@ -114,7 +148,5 @@ func TestMetadataValidateMultipleErrors(t *testing.T) {
 		}
 	}
 
-	if errorCount < len(expectedErrors) {
-		t.Errorf("expected %d errors, but only found %d in: %v", len(expectedErrors), errorCount, errStr)
-	}
+	assert.GreaterOrEqual(t, errorCount, len(expectedErrors), "expected %d errors, but only found %d in: %v", len(expectedErrors), errorCount, errStr)
 }

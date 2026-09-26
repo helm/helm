@@ -18,7 +18,6 @@ package registry
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -34,8 +33,9 @@ import (
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
+	_ "github.com/distribution/distribution/v3/registry/auth/token"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
-	"github.com/stretchr/testify/require"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -55,24 +55,26 @@ var (
 	testHtpasswdFileBasename = "authtest.htpasswd"
 	testUsername             = "myuser"
 	testPassword             = "mypass"
+	testIssuer               = "testissuer"
+	testService              = "testservice"
 )
 
 type TestRegistry struct {
 	suite.Suite
 	Out                     io.Writer
+	FakeRegistryHost        string
 	DockerRegistryHost      string
+	AuthServerHost          string
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
 	dockerRegistry          *registry.Registry
 }
 
-func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
+func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	suite.WorkspaceDir = testWorkspaceDir
-	err := os.RemoveAll(suite.WorkspaceDir)
-	require.NoError(suite.T(), err, "no error removing test workspace dir")
-	err = os.Mkdir(suite.WorkspaceDir, 0700)
-	require.NoError(suite.T(), err, "no error creating test workspace dir")
+	suite.Require().NoError(os.RemoveAll(suite.WorkspaceDir), "no error removing test workspace dir")
+	suite.Require().NoError(os.Mkdir(suite.WorkspaceDir, 0o700), "no error creating test workspace dir")
 
 	var out bytes.Buffer
 
@@ -88,6 +90,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 		ClientOptBasicAuth(testUsername, testPassword),
 	}
 
+	var err error
 	if tlsEnabled {
 		var tlsConf *tls.Config
 		if insecure {
@@ -105,43 +108,64 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 				TLSClientConfig: tlsConf,
 			},
 		}
-		suite.Nil(err, "no error loading tls config")
+		suite.Require().NoError(err, "no error loading tls config")
 		opts = append(opts, ClientOptHTTPClient(httpClient))
 	} else {
 		opts = append(opts, ClientOptPlainHTTP())
 	}
 
 	suite.RegistryClient, err = NewClient(opts...)
-	suite.Nil(err, "no error creating registry client")
+	suite.Require().NoError(err, "no error creating registry client")
 
 	// create htpasswd file (w BCrypt, which is required)
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
-	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
+	suite.Require().NoError(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0644)
-	suite.Nil(err, "no error creating test htpasswd file")
+	suite.Require().NoError(os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644), "no error creating test htpasswd file")
 
 	// Registry config
 	config := &configuration.Configuration{}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	suite.Nil(err, "no error finding free port for test registry")
+	lnCfg := net.ListenConfig{}
+	ln, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
+	suite.Require().NoError(err, "no error finding free port for test registry")
 	defer func() { _ = ln.Close() }()
 
-	// Change the registry host to another host which is not localhost.
-	// This is required because Docker enforces HTTP if the registry
-	// host is localhost/127.0.0.1.
+	// Use localhost for HTTP tests and helm-test-registry for TLS tests.
+	// TLS tests need a different hostname to match the certificate.
 	port := ln.Addr().(*net.TCPAddr).Port
-	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+	if tlsEnabled {
+		suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+	} else {
+		suite.DockerRegistryHost = fmt.Sprintf("127.0.0.1:%d", port)
+	}
 
 	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
-	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
 
-	config.Auth = configuration.Auth{
-		"htpasswd": configuration.Parameters{
-			"realm": "localhost",
-			"path":  htpasswdPath,
-		},
+	if auth == "token" {
+		ln, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
+		suite.Require().NoError(err, "no error finding free port for test auth server")
+		defer ln.Close()
+
+		// set test auth server host
+		suite.AuthServerHost = ln.Addr().String()
+
+		config.Auth = configuration.Auth{
+			"token": configuration.Parameters{
+				"realm":          "http://" + suite.AuthServerHost + "/auth",
+				"service":        testService,
+				"issuer":         testIssuer,
+				"rootcertbundle": tlsServerCert,
+			},
+		}
+	} else {
+		config.Auth = configuration.Auth{
+			"htpasswd": configuration.Parameters{
+				"realm": "localhost",
+				"path":  htpasswdPath,
+			},
+		}
 	}
 
 	// config tls
@@ -156,9 +180,10 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 			config.HTTP.TLS.ClientCAs = []string{tlsCA}
 		}
 	}
-	suite.dockerRegistry, err = registry.NewRegistry(context.Background(), config)
-	suite.Nil(err, "no error creating test registry")
+	suite.dockerRegistry, err = registry.NewRegistry(suite.T().Context(), config)
+	suite.Require().NoError(err, "no error creating test registry")
 
+	suite.FakeRegistryHost = initFakeRegistryTestServer()
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
 	go func() {
 		_ = suite.dockerRegistry.ListenAndServe()
@@ -167,13 +192,14 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 
 func teardown(suite *TestRegistry) {
 	if suite.dockerRegistry != nil {
-		_ = suite.dockerRegistry.Shutdown(context.Background())
+		_ = suite.dockerRegistry.Shutdown(suite.T().Context())
 	}
 }
 
 func initCompromisedRegistryTestServer() string {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "manifests") {
+		switch {
+		case strings.Contains(r.URL.Path, "manifests"):
 			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
 			w.WriteHeader(http.StatusOK)
 
@@ -190,87 +216,251 @@ func initCompromisedRegistryTestServer() string {
     }
   ]
 }`, ConfigMediaType, ChartLayerMediaType)
-		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133" {
+		case r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("{\"name\":\"mychart\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\\n" +
 				"an 'application' or a 'library' chart.\",\"apiVersion\":\"v2\",\"appVersion\":\"1.16.0\",\"type\":" +
 				"\"application\"}"))
-		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb" {
+		case r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb":
 			w.Header().Set("Content-Type", ChartLayerMediaType)
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("b"))
-		} else {
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}))
 
 	u, _ := url.Parse(s.URL)
-	return fmt.Sprintf("localhost:%s", u.Port())
+	return "localhost:" + u.Port()
+}
+
+func initFakeRegistryTestServer() string {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/testrepo/image-index/manifests/0.1.0":
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageIndex)
+			w.Write([]byte(`{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:2771e37a12b7bcb2902456ecf3f29bf9ee11ec348e66e8eb322d9780ad7fc2df",
+      "size": 1035,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "annotations": {
+        "com.docker.official-images.bashbrew.arch": "amd64",
+        "org.opencontainers.image.base.name": "scratch",
+        "org.opencontainers.image.created": "2025-08-13T22:16:57Z",
+        "org.opencontainers.image.revision": "6930d60e10e81283a57be3ee3a2b5ca328a40304",
+        "org.opencontainers.image.source": "https://github.com/docker-library/hello-world.git#6930d60e10e81283a57be3ee3a2b5ca328a40304:amd64/hello-world",
+        "org.opencontainers.image.url": "https://hub.docker.com/_/hello-world",
+        "org.opencontainers.image.version": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:6b75187531c5e9b6a85c8946d5d82e4ef3801e051fbff338f382f3edfa60e3d2",
+      "size": 566,
+      "platform": {
+        "architecture": "unknown",
+        "os": "unknown"
+      },
+      "annotations": {
+        "com.docker.official-images.bashbrew.arch": "amd64",
+        "vnd.docker.reference.digest": "sha256:2771e37a12b7bcb2902456ecf3f29bf9ee11ec348e66e8eb322d9780ad7fc2df",
+        "vnd.docker.reference.type": "attestation-manifest"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:7fbdc47de56b45d092f8f419e8b6183adf0159d00e05574c01787231b54fe28f",
+      "size": 815
+    }
+  ]
+}`))
+
+		case "/v2/testrepo/image-index/manifests/sha256:2771e37a12b7bcb2902456ecf3f29bf9ee11ec348e66e8eb322d9780ad7fc2df":
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Write([]byte(`{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:1b44b5a3e06a9aae883e7bf25e45c100be0bb81a0e01b32de604f3ac44711634",
+    "size": 547
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:17eec7bbc9d79fa397ac95c7283ecd04d1fe6978516932a3db110c6206430809",
+      "size": 2380
+    }
+  ],
+  "annotations": {
+    "com.docker.official-images.bashbrew.arch": "amd64",
+    "org.opencontainers.image.base.name": "scratch",
+    "org.opencontainers.image.created": "2025-08-08T19:05:17Z",
+    "org.opencontainers.image.revision": "6930d60e10e81283a57be3ee3a2b5ca328a40304",
+    "org.opencontainers.image.source": "https://github.com/docker-library/hello-world.git#6930d60e10e81283a57be3ee3a2b5ca328a40304:amd64/hello-world",
+    "org.opencontainers.image.url": "https://hub.docker.com/_/hello-world",
+    "org.opencontainers.image.version": "linux"
+  }
+}`))
+
+		case "/v2/testrepo/image-index/manifests/sha256:6b75187531c5e9b6a85c8946d5d82e4ef3801e051fbff338f382f3edfa60e3d2":
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Write([]byte(`{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:ec4b6233950725be4c816667d1eb2782ad59dc65b12f7ac53f1ffa0ad5b95b5b",
+    "size": 167
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.in-toto+json",
+      "digest": "sha256:ea52d2000f90ad63267302cba134025ee586b07a63c47aa9467471a395aee6c2",
+      "size": 4822,
+      "annotations": {
+        "in-toto.io/predicate-type": "https://slsa.dev/provenance/v0.2"
+      }
+    }
+  ]
+}`))
+
+		case "/v2/testrepo/image-index/manifests/sha256:7fbdc47de56b45d092f8f419e8b6183adf0159d00e05574c01787231b54fe28f":
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Write([]byte(`{
+  "schemaVersion": 2,
+  "config": {
+    "mediaType": "application/vnd.cncf.helm.config.v1+json",
+    "digest": "sha256:24de43e4a9f5ed9427479f27dd7bab9d158227abe593302a6f54d1e13a903ac3",
+    "size": 112
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.cncf.helm.chart.provenance.v1.prov",
+      "digest": "sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
+      "size": 695
+    },
+    {
+      "mediaType": "application/vnd.cncf.helm.chart.content.v1.tar+gzip",
+      "digest": "sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55",
+      "size": 973
+    }
+  ],
+  "annotations": {
+    "org.opencontainers.image.description": "A Helm chart for Kubernetes",
+    "org.opencontainers.image.title": "signtest",
+    "org.opencontainers.image.version": "0.1.0"
+  }
+}`))
+
+		case "/v2/testrepo/image-index/blobs/sha256:24de43e4a9f5ed9427479f27dd7bab9d158227abe593302a6f54d1e13a903ac3":
+			w.Header().Set("Content-Type", ConfigMediaType)
+			w.Write([]byte(`{
+  "name":"signtest",
+  "version":"0.1.0",
+  "description":"A Helm chart for Kubernetes",
+  "apiVersion":"v1"
+}`))
+
+		case "/v2/testrepo/image-index/blobs/sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256":
+			data, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+			} else {
+				w.Header().Set("Content-Type", ProvLayerMediaType)
+				w.Write(data)
+			}
+
+		case "/v2/testrepo/image-index/blobs/sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55":
+			data, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+			} else {
+				w.Header().Set("Content-Type", ChartLayerMediaType)
+				w.Write(data)
+			}
+
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+
+	u, _ := url.Parse(s.URL)
+	return "localhost:" + u.Port()
 }
 
 func testPush(suite *TestRegistry) {
-
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
 
 	// Bad bytes
-	ref := fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost)
+	ref := suite.DockerRegistryHost + "/testrepo/testchart:1.2.3"
 	_, err := suite.RegistryClient.Push([]byte("hello"), ref, PushOptCreationTime(testingChartCreationTime))
-	suite.NotNil(err, "error pushing non-chart bytes")
+	suite.Require().Error(err, "error pushing non-chart bytes")
 
 	// Load a test chart
 	chartData, err := os.ReadFile("../repo/v1/repotest/testdata/examplechart-0.1.0.tgz")
-	suite.Nil(err, "no error loading test chart")
+	suite.Require().NoError(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
-	suite.Nil(err, "no error extracting chart meta")
+	suite.Require().NoError(err, "no error extracting chart meta")
 
 	// non-strict ref (chart name)
 	ref = fmt.Sprintf("%s/testrepo/boop:%s", suite.DockerRegistryHost, meta.Version)
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
-	suite.NotNil(err, "error pushing non-strict ref (bad basename)")
+	suite.Require().Error(err, "error pushing non-strict ref (bad basename)")
 
 	// non-strict ref (chart name), with strict mode disabled
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptCreationTime(testingChartCreationTime))
-	suite.Nil(err, "no error pushing non-strict ref (bad basename), with strict mode disabled")
+	suite.Require().NoError(err, "no error pushing non-strict ref (bad basename), with strict mode disabled")
 
 	// non-strict ref (chart version)
 	ref = fmt.Sprintf("%s/testrepo/%s:latest", suite.DockerRegistryHost, meta.Name)
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
-	suite.NotNil(err, "error pushing non-strict ref (bad tag)")
+	suite.Require().Error(err, "error pushing non-strict ref (bad tag)")
 
 	// non-strict ref (chart version), with strict mode disabled
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptCreationTime(testingChartCreationTime))
-	suite.Nil(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
+	suite.Require().NoError(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
 
 	// basic push, good ref
 	chartData, err = os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
-	suite.Nil(err, "no error loading test chart")
+	suite.Require().NoError(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
-	suite.Nil(err, "no error extracting chart meta")
+	suite.Require().NoError(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
-	suite.Nil(err, "no error pushing good ref")
+	suite.Require().NoError(err, "no error pushing good ref")
 
 	_, err = suite.RegistryClient.Pull(ref)
-	suite.Nil(err, "no error pulling a simple chart")
+	suite.Require().NoError(err, "no error pulling a simple chart")
 
 	// Load another test chart
 	chartData, err = os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
-	suite.Nil(err, "no error loading test chart")
+	suite.Require().NoError(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
-	suite.Nil(err, "no error extracting chart meta")
+	suite.Require().NoError(err, "no error extracting chart meta")
 
 	// Load prov file
 	provData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
-	suite.Nil(err, "no error loading test prov")
+	suite.Require().NoError(err, "no error loading test prov")
 
 	// push with prov
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptCreationTime(testingChartCreationTime))
-	suite.Nil(err, "no error pushing good ref with prov")
+	suite.Require().NoError(err, "no error pushing good ref with prov")
 
 	_, err = suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Nil(err, "no error pulling a simple chart")
+	suite.Require().NoError(err, "no error pulling a simple chart")
 
 	// Validate the output
 	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
@@ -298,52 +488,52 @@ func testPush(suite *TestRegistry) {
 
 func testPull(suite *TestRegistry) {
 	// bad/missing ref
-	ref := fmt.Sprintf("%s/testrepo/no-existy:1.2.3", suite.DockerRegistryHost)
+	ref := suite.DockerRegistryHost + "/testrepo/no-existy:1.2.3"
 	_, err := suite.RegistryClient.Pull(ref)
-	suite.NotNil(err, "error on bad/missing ref")
+	suite.Require().Error(err, "error on bad/missing ref")
 
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
-	suite.Nil(err, "no error loading test chart")
+	suite.Require().NoError(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
-	suite.Nil(err, "no error extracting chart meta")
+	suite.Require().NoError(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 
 	// Simple pull, chart only
 	_, err = suite.RegistryClient.Pull(ref)
-	suite.Nil(err, "no error pulling a simple chart")
+	suite.Require().NoError(err, "no error pulling a simple chart")
 
 	// Simple pull with prov (no prov uploaded)
 	_, err = suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.NotNil(err, "error pulling a chart with prov when no prov exists")
+	suite.Require().Error(err, "error pulling a chart with prov when no prov exists")
 
 	// Simple pull with prov, ignoring missing prov
 	_, err = suite.RegistryClient.Pull(ref,
 		PullOptWithProv(true),
 		PullOptIgnoreMissingProv(true))
-	suite.Nil(err,
+	suite.Require().NoError(err,
 		"no error pulling a chart with prov when no prov exists, ignoring missing")
 
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err = os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
-	suite.Nil(err, "no error loading test chart")
+	suite.Require().NoError(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
-	suite.Nil(err, "no error extracting chart meta")
+	suite.Require().NoError(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 
 	// Load prov file
 	provData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
-	suite.Nil(err, "no error loading test prov")
+	suite.Require().NoError(err, "no error loading test prov")
 
 	// no chart and no prov causes error
 	_, err = suite.RegistryClient.Pull(ref,
 		PullOptWithChart(false),
 		PullOptWithProv(false))
-	suite.NotNil(err, "error on both no chart and no prov")
+	suite.Require().Error(err, "error on both no chart and no prov")
 
 	// full pull with chart and prov
 	result, err := suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Require().Nil(err, "no error pulling a chart with prov")
+	suite.Require().NoError(err, "no error pulling a chart with prov")
 
 	// Validate the output
 	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
@@ -367,9 +557,9 @@ func testPull(suite *TestRegistry) {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
-	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
+	suite.JSONEq("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
 		string(result.Manifest.Data))
-	suite.Equal("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
+	suite.JSONEq("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
 		string(result.Config.Data))
 	suite.Equal(chartData, result.Chart.Data)
 	suite.Equal(provData, result.Prov.Data)
@@ -378,13 +568,13 @@ func testPull(suite *TestRegistry) {
 func testTags(suite *TestRegistry) {
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
-	suite.Nil(err, "no error loading test chart")
+	suite.Require().NoError(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
-	suite.Nil(err, "no error extracting chart meta")
+	suite.Require().NoError(err, "no error extracting chart meta")
 	ref := fmt.Sprintf("%s/testrepo/%s", suite.DockerRegistryHost, meta.Name)
 
 	// Query for tags and validate length
 	tags, err := suite.RegistryClient.Tags(ref)
-	suite.Nil(err, "no error retrieving tags")
-	suite.Equal(1, len(tags))
+	suite.Require().NoError(err, "no error retrieving tags")
+	suite.Len(tags, 1)
 }

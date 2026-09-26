@@ -37,8 +37,10 @@ import (
 // The default value is 100 MiB.
 var MaxDecompressedChartSize int64 = 100 * 1024 * 1024 // Default 100 MiB
 
-// MaxDecompressedFileSize is the size of the largest file that Helm will attempt to load.
-// The size of the file is the decompressed version of it when it is stored in an archive.
+// MaxDecompressedFileSize was the per-file size limit enforced during chart loading.
+// It is no longer used internally; aggregate chart size is enforced via MaxDecompressedChartSize.
+//
+// Deprecated: Retained for backward compatibility with external callers. Will be removed in Helm v5.
 var MaxDecompressedFileSize int64 = 5 * 1024 * 1024 // Default 5 MiB
 
 var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
@@ -68,7 +70,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 	for {
 		b := bytes.NewBuffer(nil)
 		hd, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -128,10 +130,6 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d", MaxDecompressedChartSize)
 		}
 
-		if hd.Size > MaxDecompressedFileSize {
-			return nil, fmt.Errorf("decompressed chart file %q is larger than the maximum file size %d", hd.Name, MaxDecompressedFileSize)
-		}
-
 		limitedReader := io.LimitReader(tr, remainingSize)
 
 		bytesWritten, err := io.Copy(b, limitedReader)
@@ -172,7 +170,7 @@ func EnsureArchive(name string, raw *os.File) error {
 	buffer := make([]byte, 512)
 	_, err := raw.Read(buffer)
 	if err != nil && err != io.EOF {
-		return fmt.Errorf("file '%s' cannot be read: %s", name, err)
+		return fmt.Errorf("file '%s' cannot be read: %w", name, err)
 	}
 
 	// Helm may identify achieve of the application/x-gzip as application/vnd.ms-fontobject.

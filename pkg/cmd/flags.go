@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -59,10 +60,29 @@ func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 	cmd.Flags().Var(
 		newWaitValue(kube.HookOnlyStrategy, wait),
 		"wait",
-		"if specified, wait until resources are ready (up to --timeout). Values: 'watcher' (default), 'hookOnly', and 'legacy'.",
+		"wait until resources are ready (up to --timeout). Use '--wait' alone for 'watcher' strategy, or specify one of: 'watcher', 'hookOnly', 'legacy'. Default when flag is omitted: 'hookOnly'.",
 	)
-	// Sets the strategy to use the watcher strategy if `--wait` is used without an argument
 	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
+}
+
+// cliDefaultStatusComputeWorkers is the number of concurrent status-compute
+// workers the Helm CLI enables by default. This prevents the informer
+// notification pipeline from being blocked by slow API calls (e.g. LIST
+// ReplicaSets/Pods for Deployments) when many resources are updated
+// simultaneously. See https://github.com/fluxcd/cli-utils/pull/20.
+//
+// SDK consumers (e.g. helm-controller) inherit the zero value and can opt in
+// via kube.WithStatusComputeWorkers when they want the same behavior.
+const cliDefaultStatusComputeWorkers = 8
+
+// defaultCLIWaitOptions returns the set of WaitOptions the Helm CLI applies
+// by default to every wait-enabled command. Keeping these in one place keeps
+// behavior consistent across install/upgrade/rollback/uninstall and makes the
+// CLI-vs-SDK default asymmetry explicit.
+func defaultCLIWaitOptions() []kube.WaitOption {
+	return []kube.WaitOption{
+		kube.WithStatusComputeWorkers(cliDefaultStatusComputeWorkers),
+	}
 }
 
 type waitValue kube.WaitStrategy
@@ -120,7 +140,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o",
-		fmt.Sprintf("prints the output in the specified format. Allowed values: %s", strings.Join(output.Formats(), ", ")))
+		"prints the output in the specified format. Allowed values: "+strings.Join(output.Formats(), ", "))
 
 	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
@@ -132,7 +152,6 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 		sort.Strings(formatNames)
 		return formatNames, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -196,7 +215,7 @@ func (p *postRendererString) Set(val string) error {
 		return nil
 	}
 	if p.options.pluginName != "" {
-		return fmt.Errorf("cannot specify --post-renderer flag more than once")
+		return errors.New("cannot specify --post-renderer flag more than once")
 	}
 	p.options.pluginName = val
 	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)
@@ -220,7 +239,6 @@ func (p *postRendererArgsSlice) Type() string {
 }
 
 func (p *postRendererArgsSlice) Set(val string) error {
-
 	// a post-renderer defined by a user may accept empty arguments
 	p.options.args = append(p.options.args, val)
 
@@ -250,7 +268,7 @@ func (p *postRendererArgsSlice) GetSlice() []string {
 	return p.options.args
 }
 
-func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirective) {
+func compVersionFlag(chartRef, _ string) ([]string, cobra.ShellCompDirective) {
 	chartInfo := strings.Split(chartRef, "/")
 	if len(chartInfo) != 2 {
 		return nil, cobra.ShellCompDirectiveNoFileComp

@@ -24,14 +24,15 @@ on:
   schedule:
     - cron: '29 6 * * 6'
 
-permissions:  
-  contents: read
-  security-events: write
+permissions: {}
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     strategy:
       fail-fast: false
@@ -43,11 +44,11 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # pin@v5.0.0
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@e296a935590eb16afc0c0108289f68c87e2a89a5 # pinv4.30.7
+      uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # pinv4.38.1
       with:
         languages: ${{ matrix.language }}
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -58,7 +59,7 @@ jobs:
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
     - name: Autobuild
-      uses: github/codeql-action/autobuild@e296a935590eb16afc0c0108289f68c87e2a89a5 # pinv4.30.7
+      uses: github/codeql-action/autobuild@1c5b675653bb5c22dbe9b12b556ec555138e09fd # pinv4.38.1
 
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 https://git.io/JvXDl
@@ -72,4 +73,4 @@ jobs:
     #   make release
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@e296a935590eb16afc0c0108289f68c87e2a89a5 # pinv4.30.7
+      uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # pinv4.38.1

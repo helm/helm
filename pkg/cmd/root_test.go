@@ -17,11 +17,17 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/helmpath/xdg"
 )
@@ -83,9 +89,8 @@ func TestRootCmd(t *testing.T) {
 				t.Setenv(k, v)
 			}
 
-			if _, _, err := executeActionCommand(tt.args); err != nil {
-				t.Fatalf("unexpected error: %s", err)
-			}
+			_, _, err := executeActionCommand(tt.args)
+			require.NoError(t, err)
 
 			// NOTE(bacongobbler): we need to check here after calling ensure.HelmHome so we
 			// load the proper paths after XDG_*_HOME is set
@@ -101,15 +106,9 @@ func TestRootCmd(t *testing.T) {
 				tt.dataPath = filepath.Join(os.Getenv(xdg.DataHomeEnvVar), "helm")
 			}
 
-			if helmpath.CachePath() != tt.cachePath {
-				t.Errorf("expected cache path %q, got %q", tt.cachePath, helmpath.CachePath())
-			}
-			if helmpath.ConfigPath() != tt.configPath {
-				t.Errorf("expected config path %q, got %q", tt.configPath, helmpath.ConfigPath())
-			}
-			if helmpath.DataPath() != tt.dataPath {
-				t.Errorf("expected data path %q, got %q", tt.dataPath, helmpath.DataPath())
-			}
+			assert.Equal(t, tt.cachePath, helmpath.CachePath(), "expected cache path %q, got %q", tt.cachePath, helmpath.CachePath())
+			assert.Equal(t, tt.configPath, helmpath.ConfigPath(), "expected config path %q, got %q", tt.configPath, helmpath.ConfigPath())
+			assert.Equal(t, tt.dataPath, helmpath.DataPath(), "expected data path %q, got %q", tt.dataPath, helmpath.DataPath())
 		})
 	}
 }
@@ -117,9 +116,7 @@ func TestRootCmd(t *testing.T) {
 func TestUnknownSubCmd(t *testing.T) {
 	_, _, err := executeActionCommand("foobar")
 
-	if err == nil || err.Error() != `unknown command "foobar" for "helm"` {
-		t.Errorf("Expect unknown command error, got %q", err)
-	}
+	assert.EqualErrorf(t, err, `unknown command "foobar" for "helm"`, "Expect unknown command error")
 }
 
 // Need the release of Cobra following 1.0 to be able to disable
@@ -129,3 +126,16 @@ func TestUnknownSubCmd(t *testing.T) {
 // func TestRootFileCompletion(t *testing.T) {
 // 	checkFileCompletion(t, "", false)
 // }
+
+func TestRootCmdLogger(t *testing.T) {
+	args := []string{}
+	buf := new(bytes.Buffer)
+	actionConfig := action.NewConfiguration()
+	_, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
+	require.NoError(t, err)
+
+	l1 := actionConfig.Logger()
+	l2 := slog.Default()
+
+	assert.Equal(t, l2.Handler(), l1.Handler(), "expected actionConfig logger to be the slog default logger")
+}

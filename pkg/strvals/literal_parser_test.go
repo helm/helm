@@ -20,13 +20,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"sigs.k8s.io/yaml"
 )
 
 func TestParseLiteral(t *testing.T) {
 	cases := []struct {
 		str    string
-		expect map[string]interface{}
+		expect map[string]any
 		err    bool
 	}{
 		{
@@ -35,61 +38,61 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "name=",
-			expect: map[string]interface{}{"name": ""},
+			expect: map[string]any{"name": ""},
 		},
 		{
 			str:    "name=value",
-			expect: map[string]interface{}{"name": "value"},
+			expect: map[string]any{"name": "value"},
 			err:    false,
 		},
 		{
 			str:    "long_int_string=1234567890",
-			expect: map[string]interface{}{"long_int_string": "1234567890"},
+			expect: map[string]any{"long_int_string": "1234567890"},
 			err:    false,
 		},
 		{
 			str:    "boolean=true",
-			expect: map[string]interface{}{"boolean": "true"},
+			expect: map[string]any{"boolean": "true"},
 			err:    false,
 		},
 		{
 			str:    "is_null=null",
-			expect: map[string]interface{}{"is_null": "null"},
+			expect: map[string]any{"is_null": "null"},
 			err:    false,
 		},
 		{
 			str:    "zero=0",
-			expect: map[string]interface{}{"zero": "0"},
+			expect: map[string]any{"zero": "0"},
 			err:    false,
 		},
 		{
 			str:    "name1=null,name2=value2",
-			expect: map[string]interface{}{"name1": "null,name2=value2"},
+			expect: map[string]any{"name1": "null,name2=value2"},
 			err:    false,
 		},
 		{
 			str:    "name1=value,,,tail",
-			expect: map[string]interface{}{"name1": "value,,,tail"},
+			expect: map[string]any{"name1": "value,,,tail"},
 			err:    false,
 		},
 		{
 			str:    "leading_zeros=00009",
-			expect: map[string]interface{}{"leading_zeros": "00009"},
+			expect: map[string]any{"leading_zeros": "00009"},
 			err:    false,
 		},
 		{
 			str:    "name=one two three",
-			expect: map[string]interface{}{"name": "one two three"},
+			expect: map[string]any{"name": "one two three"},
 			err:    false,
 		},
 		{
 			str:    "outer.inner=value",
-			expect: map[string]interface{}{"outer": map[string]interface{}{"inner": "value"}},
+			expect: map[string]any{"outer": map[string]any{"inner": "value"}},
 			err:    false,
 		},
 		{
 			str:    "outer.middle.inner=value",
-			expect: map[string]interface{}{"outer": map[string]interface{}{"middle": map[string]interface{}{"inner": "value"}}},
+			expect: map[string]any{"outer": map[string]any{"middle": map[string]any{"inner": "value"}}},
 			err:    false,
 		},
 		{
@@ -98,7 +101,7 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "name1.name2=",
-			expect: map[string]interface{}{"name1": map[string]interface{}{"name2": ""}},
+			expect: map[string]any{"name1": map[string]any{"name2": ""}},
 			err:    false,
 		},
 		{
@@ -111,20 +114,20 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "name1={value1,value2}",
-			expect: map[string]interface{}{"name1": "{value1,value2}"},
+			expect: map[string]any{"name1": "{value1,value2}"},
 		},
 
 		// List support
 		{
 			str:    "list[0]=foo",
-			expect: map[string]interface{}{"list": []string{"foo"}},
+			expect: map[string]any{"list": []string{"foo"}},
 			err:    false,
 		},
 		{
 			str: "list[0].foo=bar",
-			expect: map[string]interface{}{
-				"list": []interface{}{
-					map[string]interface{}{"foo": "bar"},
+			expect: map[string]any{
+				"list": []any{
+					map[string]any{"foo": "bar"},
 				},
 			},
 			err: false,
@@ -135,7 +138,7 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "list[3]=bar",
-			expect: map[string]interface{}{"list": []interface{}{nil, nil, nil, "bar"}},
+			expect: map[string]any{"list": []any{nil, nil, nil, "bar"}},
 			err:    false,
 		},
 		{
@@ -144,162 +147,152 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "noval[0]",
-			expect: map[string]interface{}{"noval": []interface{}{}},
+			expect: map[string]any{"noval": []any{}},
 			err:    false,
 		},
 		{
 			str:    "noval[0]=",
-			expect: map[string]interface{}{"noval": []interface{}{""}},
+			expect: map[string]any{"noval": []any{""}},
 			err:    false,
 		},
 		{
 			str:    "nested[0][0]=1",
-			expect: map[string]interface{}{"nested": []interface{}{[]interface{}{"1"}}},
+			expect: map[string]any{"nested": []any{[]any{"1"}}},
 			err:    false,
 		},
 		{
 			str:    "nested[1][1]=1",
-			expect: map[string]interface{}{"nested": []interface{}{nil, []interface{}{nil, "1"}}},
+			expect: map[string]any{"nested": []any{nil, []any{nil, "1"}}},
 			err:    false,
 		},
 		{
 			str: "name1.name2[0].foo=bar",
-			expect: map[string]interface{}{
-				"name1": map[string]interface{}{
-					"name2": []map[string]interface{}{{"foo": "bar"}},
+			expect: map[string]any{
+				"name1": map[string]any{
+					"name2": []map[string]any{{"foo": "bar"}},
 				},
 			},
 		},
 		{
 			str: "name1.name2[1].foo=bar",
-			expect: map[string]interface{}{
-				"name1": map[string]interface{}{
-					"name2": []map[string]interface{}{nil, {"foo": "bar"}},
+			expect: map[string]any{
+				"name1": map[string]any{
+					"name2": []map[string]any{nil, {"foo": "bar"}},
 				},
 			},
 		},
 		{
 			str: "name1.name2[1].foo=bar",
-			expect: map[string]interface{}{
-				"name1": map[string]interface{}{
-					"name2": []map[string]interface{}{nil, {"foo": "bar"}},
+			expect: map[string]any{
+				"name1": map[string]any{
+					"name2": []map[string]any{nil, {"foo": "bar"}},
 				},
 			},
 		},
 		{
 			str:    "]={}].",
-			expect: map[string]interface{}{"]": "{}]."},
+			expect: map[string]any{"]": "{}]."},
 			err:    false,
 		},
 
 		// issue test cases: , = $ ( ) { } . \ \\
 		{
 			str:    "name=val,val",
-			expect: map[string]interface{}{"name": "val,val"},
+			expect: map[string]any{"name": "val,val"},
 			err:    false,
 		},
 		{
 			str:    "name=val.val",
-			expect: map[string]interface{}{"name": "val.val"},
+			expect: map[string]any{"name": "val.val"},
 			err:    false,
 		},
 		{
 			str:    "name=val=val",
-			expect: map[string]interface{}{"name": "val=val"},
+			expect: map[string]any{"name": "val=val"},
 			err:    false,
 		},
 		{
 			str:    "name=val$val",
-			expect: map[string]interface{}{"name": "val$val"},
+			expect: map[string]any{"name": "val$val"},
 			err:    false,
 		},
 		{
 			str:    "name=(value",
-			expect: map[string]interface{}{"name": "(value"},
+			expect: map[string]any{"name": "(value"},
 			err:    false,
 		},
 		{
 			str:    "name=value)",
-			expect: map[string]interface{}{"name": "value)"},
+			expect: map[string]any{"name": "value)"},
 			err:    false,
 		},
 		{
 			str:    "name=(value)",
-			expect: map[string]interface{}{"name": "(value)"},
+			expect: map[string]any{"name": "(value)"},
 			err:    false,
 		},
 		{
 			str:    "name={value",
-			expect: map[string]interface{}{"name": "{value"},
+			expect: map[string]any{"name": "{value"},
 			err:    false,
 		},
 		{
 			str:    "name=value}",
-			expect: map[string]interface{}{"name": "value}"},
+			expect: map[string]any{"name": "value}"},
 			err:    false,
 		},
 		{
 			str:    "name={value}",
-			expect: map[string]interface{}{"name": "{value}"},
+			expect: map[string]any{"name": "{value}"},
 			err:    false,
 		},
 		{
 			str:    "name={value1,value2}",
-			expect: map[string]interface{}{"name": "{value1,value2}"},
+			expect: map[string]any{"name": "{value1,value2}"},
 			err:    false,
 		},
 		{
 			str:    `name=val\val`,
-			expect: map[string]interface{}{"name": `val\val`},
+			expect: map[string]any{"name": `val\val`},
 			err:    false,
 		},
 		{
 			str:    `name=val\\val`,
-			expect: map[string]interface{}{"name": `val\\val`},
+			expect: map[string]any{"name": `val\\val`},
 			err:    false,
 		},
 		{
 			str:    `name=val\\\val`,
-			expect: map[string]interface{}{"name": `val\\\val`},
+			expect: map[string]any{"name": `val\\\val`},
 			err:    false,
 		},
 		{
 			str:    `name={val,.?*v\0a!l)some`,
-			expect: map[string]interface{}{"name": `{val,.?*v\0a!l)some`},
+			expect: map[string]any{"name": `{val,.?*v\0a!l)some`},
 			err:    false,
 		},
 		{
 			str:    `name=em%GT)tqUDqz,i-\h+Mbqs-!:.m\\rE=mkbM#rR}@{-k@`,
-			expect: map[string]interface{}{"name": `em%GT)tqUDqz,i-\h+Mbqs-!:.m\\rE=mkbM#rR}@{-k@`},
+			expect: map[string]any{"name": `em%GT)tqUDqz,i-\h+Mbqs-!:.m\\rE=mkbM#rR}@{-k@`},
 		},
 	}
 
 	for _, tt := range cases {
-		got, err := ParseLiteral(tt.str)
-		if err != nil {
-			if !tt.err {
-				t.Fatalf("%s: %s", tt.str, err)
+		t.Run(tt.str, func(t *testing.T) {
+			got, err := ParseLiteral(tt.str)
+			if tt.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				y1, err := yaml.Marshal(tt.expect)
+				require.NoError(t, err)
+
+				y2, err := yaml.Marshal(got)
+				require.NoError(t, err, "Error serializing parsed value")
+
+				assert.YAMLEq(t, string(y1), string(y2), tt.str)
 			}
-			continue
-		}
-
-		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.str)
-		}
-
-		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		y2, err := yaml.Marshal(got)
-		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
-		}
-
-		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
-		}
+		})
 	}
 }
 
@@ -307,31 +300,32 @@ func TestParseLiteralInto(t *testing.T) {
 	tests := []struct {
 		input  string
 		input2 string
-		got    map[string]interface{}
-		expect map[string]interface{}
+		got    map[string]any
+		expect map[string]any
 		err    bool
 	}{
 		{
 			input: "outer.inner1=value1,outer.inner3=value3,outer.inner4=4",
-			got: map[string]interface{}{
-				"outer": map[string]interface{}{
+			got: map[string]any{
+				"outer": map[string]any{
 					"inner1": "overwrite",
 					"inner2": "value2",
 				},
 			},
-			expect: map[string]interface{}{
-				"outer": map[string]interface{}{
+			expect: map[string]any{
+				"outer": map[string]any{
 					"inner1": "value1,outer.inner3=value3,outer.inner4=4",
 					"inner2": "value2",
-				}},
+				},
+			},
 			err: false,
 		},
 		{
 			input:  "listOuter[0][0].type=listValue",
 			input2: "listOuter[0][0].status=alive",
-			got:    map[string]interface{}{},
-			expect: map[string]interface{}{
-				"listOuter": [][]interface{}{{map[string]string{
+			got:    map[string]any{},
+			expect: map[string]any{
+				"listOuter": [][]any{{map[string]string{
 					"type":   "listValue",
 					"status": "alive",
 				}}},
@@ -341,9 +335,9 @@ func TestParseLiteralInto(t *testing.T) {
 		{
 			input:  "listOuter[0][0].type=listValue",
 			input2: "listOuter[1][0].status=alive",
-			got:    map[string]interface{}{},
-			expect: map[string]interface{}{
-				"listOuter": [][]interface{}{
+			got:    map[string]any{},
+			expect: map[string]any{
+				"listOuter": [][]any{
 					{
 						map[string]string{"type": "listValue"},
 					},
@@ -357,17 +351,17 @@ func TestParseLiteralInto(t *testing.T) {
 		{
 			input:  "listOuter[0][1][0].type=listValue",
 			input2: "listOuter[0][0][1].status=alive",
-			got: map[string]interface{}{
-				"listOuter": []interface{}{
-					[]interface{}{
-						[]interface{}{
+			got: map[string]any{
+				"listOuter": []any{
+					[]any{
+						[]any{
 							map[string]string{"exited": "old"},
 						},
 					},
 				},
 			},
-			expect: map[string]interface{}{
-				"listOuter": [][][]interface{}{
+			expect: map[string]any{
+				"listOuter": [][][]any{
 					{
 						{
 							map[string]string{"exited": "old"},
@@ -384,35 +378,25 @@ func TestParseLiteralInto(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if err := ParseLiteralInto(tt.input, tt.got); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, ParseLiteralInto(tt.input, tt.got))
 		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.input)
+			assert.Fail(t, "Expected error. Got nil", tt.input)
 		}
 
 		if tt.input2 != "" {
-			if err := ParseLiteralInto(tt.input2, tt.got); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, ParseLiteralInto(tt.input2, tt.got))
 			if tt.err {
-				t.Errorf("%s: Expected error. Got nil", tt.input2)
+				assert.Fail(t, "Expected error. Got nil", tt.input2)
 			}
 		}
 
 		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		y2, err := yaml.Marshal(tt.got)
-		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
-		}
+		require.NoError(t, err, "Error serializing parsed value")
 
-		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
-		}
+		assert.YAMLEq(t, string(y1), string(y2), tt.input)
 	}
 }
 
@@ -422,20 +406,20 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 	for i := 1; i <= MaxNestedNameLevel+2; i++ {
 		tmpStr := fmt.Sprintf("name%d", i)
 		if i <= MaxNestedNameLevel+1 {
-			tmpStr = tmpStr + "."
+			tmpStr += "."
 		}
 		keyMultipleNestedLevels.WriteString(tmpStr)
 	}
 
 	tests := []struct {
 		str    string
-		expect map[string]interface{}
+		expect map[string]any
 		err    bool
 		errStr string
 	}{
 		{
 			"outer.middle.inner=value",
-			map[string]interface{}{"outer": map[string]interface{}{"middle": map[string]interface{}{"inner": "value"}}},
+			map[string]any{"outer": map[string]any{"middle": map[string]any{"inner": "value"}}},
 			false,
 			"",
 		},
@@ -447,35 +431,23 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := ParseLiteral(tt.str)
-		if err != nil {
+		t.Run(tt.str, func(t *testing.T) {
+			got, err := ParseLiteral(tt.str)
 			if tt.err {
+				require.Error(t, err)
 				if tt.errStr != "" {
-					if err.Error() != tt.errStr {
-						t.Errorf("Expected error: %s. Got error: %s", tt.errStr, err.Error())
-					}
+					require.EqualError(t, err, tt.errStr)
 				}
-				continue
+			} else {
+				require.NoError(t, err)
+				y1, err := yaml.Marshal(tt.expect)
+				require.NoError(t, err)
+
+				y2, err := yaml.Marshal(got)
+				require.NoError(t, err, "Error serializing parsed value")
+
+				assert.YAMLEq(t, string(y1), string(y2), tt.str)
 			}
-			t.Fatalf("%s: %s", tt.str, err)
-		}
-
-		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.str)
-		}
-
-		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		y2, err := yaml.Marshal(got)
-		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
-		}
-
-		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
-		}
+		})
 	}
 }

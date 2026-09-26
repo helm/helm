@@ -16,12 +16,12 @@ limitations under the License.
 package require
 
 import (
-	"fmt"
 	"io"
-	"strings"
+	"strconv"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArgs(t *testing.T) {
@@ -65,7 +65,7 @@ type testCase struct {
 func runTestCases(t *testing.T, testCases []testCase) {
 	t.Helper()
 	for i, tc := range testCases {
-		t.Run(fmt.Sprint(i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			cmd := &cobra.Command{
 				Use:  "root",
 				Run:  func(*cobra.Command, []string) {},
@@ -77,16 +77,10 @@ func runTestCases(t *testing.T, testCases []testCase) {
 
 			err := cmd.Execute()
 			if tc.wantError == "" {
-				if err != nil {
-					t.Fatalf("unexpected error, got '%v'", err)
-				}
-				return
-			}
-			if !strings.Contains(err.Error(), tc.wantError) {
-				t.Fatalf("unexpected error \n\nWANT:\n%q\n\nGOT:\n%q\n", tc.wantError, err)
-			}
-			if !strings.Contains(err.Error(), "Usage:") {
-				t.Fatalf("unexpected error: want Usage string\n\nGOT:\n%q\n", err)
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tc.wantError)
+				require.ErrorContains(t, err, "Usage:")
 			}
 		})
 	}

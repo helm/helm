@@ -33,7 +33,7 @@ func VerifyPlugin(archiveData, provData []byte, filename, keyring string) (*prov
 	return sig.Verify(archiveData, provData, filename)
 }
 
-// isTarball checks if a file has a tarball extension
+// IsTarball checks if a file has a tarball extension
 func IsTarball(filename string) bool {
 	return filepath.Ext(filename) == ".gz" || filepath.Ext(filename) == ".tgz"
 }

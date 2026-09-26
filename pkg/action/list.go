@@ -172,13 +172,12 @@ func (l *List) Run() ([]ri.Releaser, error) {
 
 		return true
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
 	if results == nil {
-		return results, nil
+		return nil, nil
 	}
 
 	rresults, err := releaseListToV1List(results)
@@ -264,7 +263,7 @@ func filterLatestReleases(releases []*release.Release) []*release.Release {
 		latestReleases[key] = rls
 	}
 
-	var list = make([]*release.Release, 0, len(latestReleases))
+	list := make([]*release.Release, 0, len(latestReleases))
 	for _, rls := range latestReleases {
 		list = append(list, rls)
 	}

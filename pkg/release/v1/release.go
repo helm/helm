@@ -22,8 +22,10 @@ import (
 
 type ApplyMethod string
 
-const ApplyMethodClientSideApply ApplyMethod = "csa"
-const ApplyMethodServerSideApply ApplyMethod = "ssa"
+const (
+	ApplyMethodClientSideApply ApplyMethod = "csa"
+	ApplyMethodServerSideApply ApplyMethod = "ssa"
+)
 
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.
@@ -36,7 +38,7 @@ type Release struct {
 	Chart *chart.Chart `json:"chart,omitempty"`
 	// Config is the set of extra Values added to the chart.
 	// These values override the default values inside of the chart.
-	Config map[string]interface{} `json:"config,omitempty"`
+	Config map[string]any `json:"config,omitempty"`
 	// Manifest is the string representation of the rendered template.
 	Manifest string `json:"manifest,omitempty"`
 	// Hooks are all of the hooks declared for this release.

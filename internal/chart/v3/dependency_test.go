@@ -17,6 +17,8 @@ package v3
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateDependency(t *testing.T) {
@@ -35,10 +37,10 @@ func TestValidateDependency(t *testing.T) {
 	} {
 		dep.Alias = value
 		res := dep.Validate()
-		if res != nil && !shouldFail {
-			t.Errorf("Failed on case %q", dep.Alias)
-		} else if res == nil && shouldFail {
-			t.Errorf("Expected failure for %q", dep.Alias)
+		if shouldFail {
+			assert.Errorf(t, res, "Expected failure for %q", dep.Alias)
+		} else {
+			assert.NoErrorf(t, res, "Failed on case %q", dep.Alias)
 		}
 	}
 }

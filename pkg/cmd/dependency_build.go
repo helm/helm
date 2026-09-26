@@ -16,8 +16,10 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -54,7 +56,11 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+			sourceDateEpoch, err := sourceDateEpochFromEnv()
+			if err != nil {
+				return err
+			}
+			registryClient, err := newRegistryClient(out, client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -71,12 +77,13 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 				RepositoryCache:  settings.RepositoryCache,
 				ContentCache:     settings.ContentCache,
 				Debug:            settings.Debug,
+				SourceDateEpoch:  sourceDateEpoch,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
 			err = man.Build()
-			if e, ok := err.(downloader.ErrRepoNotFound); ok {
+			if e, ok := errors.AsType[downloader.ErrRepoNotFound](err); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}
 			return err
@@ -90,9 +97,25 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 }
 
 // defaultKeyring returns the expanded path to the default keyring.
+//
+// The legacy pubring.gpg file is preferred and treated as absent only when
+// stat fails with "not exist" — any other stat error (e.g. permissions)
+// keeps the legacy path so the real error surfaces when the file is opened.
+// If the legacy file is absent, the file-backed pubring.kbx path takes over
+// under the same rule. When neither exists, the legacy path is returned so
+// error messages keep pointing at the traditional default.
 func defaultKeyring() string {
+	gnupgHome := filepath.Join(homedir.HomeDir(), ".gnupg")
 	if v, ok := os.LookupEnv("GNUPGHOME"); ok {
-		return filepath.Join(v, "pubring.gpg")
+		gnupgHome = v
 	}
-	return filepath.Join(homedir.HomeDir(), ".gnupg", "pubring.gpg")
+	legacy := filepath.Join(gnupgHome, "pubring.gpg")
+	if _, err := os.Stat(legacy); !errors.Is(err, fs.ErrNotExist) {
+		return legacy
+	}
+	keybox := filepath.Join(gnupgHome, "pubring.kbx")
+	if _, err := os.Stat(keybox); !errors.Is(err, fs.ErrNotExist) {
+		return keybox
+	}
+	return legacy
 }

@@ -20,23 +20,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
 func TestToRenderValues(t *testing.T) {
-
-	chartValues := map[string]interface{}{
+	chartValues := map[string]any{
 		"name": "al Rashid",
-		"where": map[string]interface{}{
+		"where": map[string]any{
 			"city":  "Basrah",
 			"title": "caliph",
 		},
 	}
 
-	overrideValues := map[string]interface{}{
+	overrideValues := map[string]any{
 		"name": "Haroun",
-		"where": map[string]interface{}{
+		"where": map[string]any{
 			"city": "Baghdad",
 			"date": "809 CE",
 		},
@@ -62,51 +64,34 @@ func TestToRenderValues(t *testing.T) {
 	}
 
 	res, err := ToRenderValuesWithSchemaValidation(c, overrideValues, o, nil, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Ensure that the top-level values are all set.
-	metamap := res["Chart"].(map[string]interface{})
-	if name := metamap["Name"]; name.(string) != "test" {
-		t.Errorf("Expected chart name 'test', got %q", name)
-	}
-	relmap := res["Release"].(map[string]interface{})
-	if name := relmap["Name"]; name.(string) != "Seven Voyages" {
-		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
-	}
-	if namespace := relmap["Namespace"]; namespace.(string) != "default" {
-		t.Errorf("Expected namespace 'default', got %q", namespace)
-	}
-	if revision := relmap["Revision"]; revision.(int) != 1 {
-		t.Errorf("Expected revision '1', got %d", revision)
-	}
-	if relmap["IsUpgrade"].(bool) {
-		t.Error("Expected upgrade to be false.")
-	}
-	if !relmap["IsInstall"].(bool) {
-		t.Errorf("Expected install to be true.")
-	}
-	if !res["Capabilities"].(*common.Capabilities).APIVersions.Has("v1") {
-		t.Error("Expected Capabilities to have v1 as an API")
-	}
-	if res["Capabilities"].(*common.Capabilities).KubeVersion.Major != "1" {
-		t.Error("Expected Capabilities to have a Kube version")
-	}
+	metamap := res["Chart"].(map[string]any)
+	name := metamap["Name"]
+	assert.Equalf(t, "test", name.(string), "Expected chart name 'test', got %q", name)
+	relmap := res["Release"].(map[string]any)
+	name = relmap["Name"]
+	assert.Equalf(t, "Seven Voyages", name.(string), "Expected release name 'Seven Voyages', got %q", name)
+	namespace := relmap["Namespace"]
+	assert.Equalf(t, "default", namespace.(string), "Expected namespace 'default', got %q", namespace)
+	revision := relmap["Revision"]
+	assert.Equalf(t, 1, revision.(int), "Expected revision '1', got %d", revision)
+	assert.False(t, relmap["IsUpgrade"].(bool), "Expected upgrade to be false.")
+	assert.True(t, relmap["IsInstall"].(bool), "Expected install to be true.")
+	assert.True(t, res["Capabilities"].(*common.Capabilities).APIVersions.Has("v1"), "Expected Capabilities to have v1 as an API")
+	assert.Equal(t, "1", res["Capabilities"].(*common.Capabilities).KubeVersion.Major, "Expected Capabilities to have a Kube version")
 
 	vals := res["Values"].(common.Values)
-	if vals["name"] != "Haroun" {
-		t.Errorf("Expected 'Haroun', got %q (%v)", vals["name"], vals)
-	}
-	where := vals["where"].(map[string]interface{})
+	assert.Equal(t, "Haroun", vals["name"], "Expected 'Haroun', got %q (%v)", vals["name"], vals)
+	where := vals["where"].(map[string]any)
 	expects := map[string]string{
 		"city":  "Baghdad",
 		"date":  "809 CE",
 		"title": "caliph",
 	}
 	for field, expect := range expects {
-		if got := where[field]; got != expect {
-			t.Errorf("Expected %q, got %q (%v)", expect, got, where)
-		}
+		got := where[field]
+		assert.Equalf(t, got, expect, "Expected %q, got %q (%v)", expect, got, where)
 	}
 }

@@ -113,6 +113,21 @@ func TestCopy_Slice(t *testing.T) {
 		input[0]["key1"] = "modified"
 		assert.Equal(t, "value1", resultSlice[0]["key1"])
 	})
+
+	t.Run("slice with nil elements", func(t *testing.T) {
+		input := []any{
+			"value1",
+			nil,
+			"value2",
+		}
+		result, err := Copy(input)
+		require.NoError(t, err)
+
+		resultSlice, ok := result.([]any)
+		require.True(t, ok)
+		assert.Equal(t, input, resultSlice)
+		assert.Nil(t, resultSlice[1])
+	})
 }
 
 func TestCopy_Map(t *testing.T) {

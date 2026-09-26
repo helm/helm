@@ -16,11 +16,11 @@ limitations under the License.
 package plugin
 
 import (
-	"reflect"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPrepareCommand(t *testing.T) {
@@ -36,19 +36,12 @@ func TestPrepareCommand(t *testing.T) {
 
 	env := map[string]string{}
 	cmd, args, err := PrepareCommands(platformCommand, true, []string{}, env)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cmd != cmdMain {
-		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
-	}
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.NoError(t, err)
+	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
+	require.Equalf(t, args, cmdArgs, "Expected %v, got %v", cmdArgs, args)
 }
 
 func TestPrepareCommandExtraArgs(t *testing.T) {
-
 	cmdMain := "sh"
 	cmdArgs := []string{"-c", "echo \"test\""}
 	platformCommand := []PlatformCommand{
@@ -95,9 +88,7 @@ func TestPrepareCommandExtraArgs(t *testing.T) {
 
 			env := map[string]string{}
 			cmd, args, err := PrepareCommands(platformCommand, true, testExtraArgs, env)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.expected.cmdMain, cmd, "Expected command to match")
 			assert.Equal(t, tc.expected.args, args, "Expected args to match")
 		})
@@ -117,15 +108,9 @@ func TestPrepareCommands(t *testing.T) {
 
 	env := map[string]string{}
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cmd != cmdMain {
-		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
-	}
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.NoError(t, err)
+	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
+	require.Equalf(t, args, cmdArgs, "Expected %v, got %v", cmdArgs, args)
 }
 
 func TestPrepareCommandsExtraArgs(t *testing.T) {
@@ -144,15 +129,9 @@ func TestPrepareCommandsExtraArgs(t *testing.T) {
 
 	env := map[string]string{}
 	cmd, args, err := PrepareCommands(cmds, true, extraArgs, env)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cmd != cmdMain {
-		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
-	}
-	if !reflect.DeepEqual(args, expectedArgs) {
-		t.Fatalf("Expected %v, got %v", expectedArgs, args)
-	}
+	require.NoError(t, err)
+	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
+	require.Equalf(t, expectedArgs, args, "Expected %v, got %v", expectedArgs, args)
 }
 
 func TestPrepareCommandsNoArch(t *testing.T) {
@@ -167,15 +146,9 @@ func TestPrepareCommandsNoArch(t *testing.T) {
 
 	env := map[string]string{}
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cmd != cmdMain {
-		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
-	}
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.NoError(t, err)
+	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
+	require.Equalf(t, args, cmdArgs, "Expected %v, got %v", cmdArgs, args)
 }
 
 func TestPrepareCommandsNoOsNoArch(t *testing.T) {
@@ -190,15 +163,9 @@ func TestPrepareCommandsNoOsNoArch(t *testing.T) {
 
 	env := map[string]string{}
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cmd != cmdMain {
-		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
-	}
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.NoError(t, err)
+	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
+	require.Equalf(t, args, cmdArgs, "Expected %v, got %v", cmdArgs, args)
 }
 
 func TestPrepareCommandsNoMatch(t *testing.T) {
@@ -209,60 +176,51 @@ func TestPrepareCommandsNoMatch(t *testing.T) {
 	}
 
 	env := map[string]string{}
-	if _, _, err := PrepareCommands(cmds, true, []string{}, env); err == nil {
-		t.Fatalf("Expected error to be returned")
-	}
+	_, _, err := PrepareCommands(cmds, true, []string{}, env)
+	require.Error(t, err, "Expected error to be returned")
 }
 
 func TestPrepareCommandsNoCommands(t *testing.T) {
 	cmds := []PlatformCommand{}
 
 	env := map[string]string{}
-	if _, _, err := PrepareCommands(cmds, true, []string{}, env); err == nil {
-		t.Fatalf("Expected error to be returned")
-	}
+	_, _, err := PrepareCommands(cmds, true, []string{}, env)
+	require.Error(t, err, "Expected error to be returned")
 }
 
 func TestPrepareCommandsExpand(t *testing.T) {
-	t.Setenv("TEST", "test")
 	cmdMain := "sh"
-	cmdArgs := []string{"-c", "echo \"${TEST}\""}
+	cmdArgs := []string{"-c", "echo \"${TESTX}${TESTY}\""}
 	cmds := []PlatformCommand{
 		{OperatingSystem: "", Architecture: "", Command: cmdMain, Args: cmdArgs},
 	}
 
-	expectedArgs := []string{"-c", "echo \"test\""}
+	expectedArgs := []string{"-c", "echo \"testxtesty\""}
 
-	env := map[string]string{}
+	env := map[string]string{
+		"TESTX": "testx",
+		"TESTY": "testy",
+	}
+
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cmd != cmdMain {
-		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
-	}
-	if !reflect.DeepEqual(args, expectedArgs) {
-		t.Fatalf("Expected %v, got %v", expectedArgs, args)
-	}
+	require.NoError(t, err)
+	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
+	require.Equalf(t, expectedArgs, args, "Expected %v, got %v", expectedArgs, args)
 }
 
 func TestPrepareCommandsNoExpand(t *testing.T) {
-	t.Setenv("TEST", "test")
 	cmdMain := "sh"
 	cmdArgs := []string{"-c", "echo \"${TEST}\""}
 	cmds := []PlatformCommand{
 		{OperatingSystem: "", Architecture: "", Command: cmdMain, Args: cmdArgs},
 	}
 
-	env := map[string]string{}
+	env := map[string]string{
+		"TEST": "test",
+	}
+
 	cmd, args, err := PrepareCommands(cmds, false, []string{}, env)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cmd != cmdMain {
-		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
-	}
-	if !reflect.DeepEqual(args, cmdArgs) {
-		t.Fatalf("Expected %v, got %v", cmdArgs, args)
-	}
+	require.NoError(t, err)
+	require.Equal(t, cmdMain, cmd, "Expected %q, got %q", cmdMain, cmd)
+	require.Equalf(t, args, cmdArgs, "Expected %v, got %v", cmdArgs, args)
 }

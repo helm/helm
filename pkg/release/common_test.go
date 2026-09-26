@@ -21,7 +21,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	v2release "helm.sh/helm/v4/internal/release/v2"
 	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -30,6 +32,7 @@ func TestNewDefaultAccessor(t *testing.T) {
 	// Testing the default implementation rather than NewAccessor which can be
 	// overridden by developers.
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Create release
 	info := &rspb.Info{Status: common.StatusDeployed, LastDeployed: time.Now().Add(1000)}
@@ -54,7 +57,7 @@ func TestNewDefaultAccessor(t *testing.T) {
 	// can't be used with interfaces. The accessors enable access to the underlying data
 	// in a manner that works with Go interfaces.
 	accessor, err := newDefaultAccessor(rel)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Verify information
 	is.Equal(rel.Name, accessor.Name())
@@ -62,4 +65,75 @@ func TestNewDefaultAccessor(t *testing.T) {
 	is.Equal(rel.Version, accessor.Version())
 	is.Equal(rel.ApplyMethod, accessor.ApplyMethod())
 	is.Equal(rel.Labels, accessor.Labels())
+}
+
+func TestNewDefaultAccessorV2(t *testing.T) {
+	// Testing the default implementation for v2 releases (charts/v3)
+	is := assert.New(t)
+	req := require.New(t)
+
+	// Create v2 release
+	info := &v2release.Info{Status: common.StatusDeployed, LastDeployed: time.Now().Add(1000), Notes: "test notes"}
+	labels := make(map[string]string)
+	labels["foo"] = "bar"
+	rel := &v2release.Release{
+		Name:        "happy-cats-v2",
+		Version:     3,
+		Info:        info,
+		Labels:      labels,
+		Namespace:   "test-namespace",
+		ApplyMethod: "ssa",
+		Manifest:    "test manifest content",
+		Hooks: []*v2release.Hook{
+			{
+				Name:     "test-hook",
+				Kind:     "Job",
+				Path:     "templates/hook.yaml",
+				Manifest: "hook manifest",
+			},
+		},
+	}
+
+	// Test accessor creation
+	accessor, err := newDefaultAccessor(rel)
+	req.NoError(err)
+
+	// Verify all accessor methods return correct values
+	is.Equal(rel.Name, accessor.Name())
+	is.Equal(rel.Namespace, accessor.Namespace())
+	is.Equal(rel.Version, accessor.Version())
+	is.Equal(rel.ApplyMethod, accessor.ApplyMethod())
+	is.Equal(rel.Labels, accessor.Labels())
+	is.Equal(rel.Manifest, accessor.Manifest())
+	is.Equal(rel.Info.Notes, accessor.Notes())
+	is.Equal(rel.Info.Status.String(), accessor.Status())
+	is.Equal(rel.Info.LastDeployed, accessor.DeployedAt())
+
+	// Verify hooks are accessible
+	hooks := accessor.Hooks()
+	is.Len(hooks, 1)
+
+	// Test hook accessor
+	hookAccessor, err := newDefaultHookAccessor(hooks[0])
+	req.NoError(err)
+	is.Equal("templates/hook.yaml", hookAccessor.Path())
+	is.Equal("hook manifest", hookAccessor.Manifest())
+}
+
+func TestNewDefaultAccessorV2ByValue(t *testing.T) {
+	// Test that passing v2 release by value also works
+	is := assert.New(t)
+	req := require.New(t)
+
+	info := &v2release.Info{Status: common.StatusDeployed, LastDeployed: time.Now()}
+	rel := v2release.Release{
+		Name:      "test-release",
+		Version:   1,
+		Info:      info,
+		Namespace: "default",
+	}
+
+	accessor, err := newDefaultAccessor(rel)
+	req.NoError(err)
+	is.Equal("test-release", accessor.Name())
 }

@@ -197,9 +197,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 			}
 			_, _ = fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n",
 				h.Name,
-				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt.Format(time.ANSIC)),
-				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt.Format(time.ANSIC)),
-				fmt.Sprintf("Phase:          %s", h.LastRun.Phase),
+				"Last Started:   "+h.LastRun.StartedAt.Format(time.ANSIC),
+				"Last Completed: "+h.LastRun.CompletedAt.Format(time.ANSIC),
+				"Phase:          "+h.LastRun.Phase,
 			)
 		}
 	}
@@ -236,7 +236,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	}
 
 	// Hide notes from output - option in install and upgrades
-	if !s.hideNotes && len(rel.Info.Notes) > 0 {
+	if !s.hideNotes && rel.Info.Notes != "" {
 		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(rel.Info.Notes))
 	}
 	return nil

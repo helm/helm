@@ -17,6 +17,7 @@ package strvals
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -25,8 +26,8 @@ import (
 // ParseLiteral parses a set line interpreting the value as a literal string.
 //
 // A set line is of the form name1=value1
-func ParseLiteral(s string) (map[string]interface{}, error) {
-	vals := map[string]interface{}{}
+func ParseLiteral(s string) (map[string]any, error) {
+	vals := map[string]any{}
 	scanner := bytes.NewBufferString(s)
 	t := newLiteralParser(scanner, vals)
 	err := t.parse()
@@ -38,7 +39,7 @@ func ParseLiteral(s string) (map[string]interface{}, error) {
 //
 // If the strval string has a key that exists in dest, it overwrites the
 // dest version.
-func ParseLiteralInto(s string, dest map[string]interface{}) error {
+func ParseLiteralInto(s string, dest map[string]any) error {
 	scanner := bytes.NewBufferString(s)
 	t := newLiteralParser(scanner, dest)
 	return t.parse()
@@ -53,10 +54,10 @@ func ParseLiteralInto(s string, dest map[string]interface{}) error {
 // where data is the final parsed data from the parses with correct types
 type literalParser struct {
 	sc   *bytes.Buffer
-	data map[string]interface{}
+	data map[string]any
 }
 
-func newLiteralParser(sc *bytes.Buffer, data map[string]interface{}) *literalParser {
+func newLiteralParser(sc *bytes.Buffer, data map[string]any) *literalParser {
 	return &literalParser{sc: sc, data: data}
 }
 
@@ -66,7 +67,7 @@ func (t *literalParser) parse() error {
 		if err == nil {
 			continue
 		}
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		return err
@@ -87,7 +88,7 @@ func runesUntilLiteral(in io.RuneReader, stop map[rune]bool) ([]rune, rune, erro
 	}
 }
 
-func (t *literalParser) key(data map[string]interface{}, nestedNameLevel int) (reterr error) {
+func (t *literalParser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to parse key: %s", r)
@@ -105,7 +106,7 @@ func (t *literalParser) key(data map[string]interface{}, nestedNameLevel int) (r
 		case lastRune == '=':
 			// found end of key: swallow the '=' and get the value
 			value, err := t.val()
-			if err == nil && err != io.EOF {
+			if err == nil && !errors.Is(err, io.EOF) {
 				return err
 			}
 			set(data, string(key), string(value))
@@ -119,9 +120,9 @@ func (t *literalParser) key(data map[string]interface{}, nestedNameLevel int) (r
 			}
 
 			// first, create or find the target map in the given data
-			inner := map[string]interface{}{}
+			inner := map[string]any{}
 			if _, ok := data[string(key)]; ok {
-				inner = data[string(key)].(map[string]interface{})
+				inner = data[string(key)].(map[string]any)
 			}
 
 			// recurse on sub-tree with remaining data
@@ -143,9 +144,9 @@ func (t *literalParser) key(data map[string]interface{}, nestedNameLevel int) (r
 			kk := string(key)
 
 			// find or create target list
-			list := []interface{}{}
+			list := []any{}
 			if _, ok := data[kk]; ok {
-				list = data[kk].([]interface{})
+				list = data[kk].([]any)
 			}
 
 			// now we need to get the value after the ]
@@ -168,7 +169,7 @@ func (t *literalParser) keyIndex() (int, error) {
 	return strconv.Atoi(string(v))
 }
 
-func (t *literalParser) listItem(list []interface{}, i, nestedNameLevel int) ([]interface{}, error) {
+func (t *literalParser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 	if i < 0 {
 		return list, fmt.Errorf("negative %d index not allowed", i)
 	}
@@ -183,21 +184,21 @@ func (t *literalParser) listItem(list []interface{}, i, nestedNameLevel int) ([]
 
 	case lastRune == '=':
 		value, err := t.val()
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return list, err
 		}
 		return setIndex(list, i, string(value))
 
 	case lastRune == '.':
 		// we have a nested object. Send to t.key
-		inner := map[string]interface{}{}
+		inner := map[string]any{}
 		if len(list) > i {
 			var ok bool
-			inner, ok = list[i].(map[string]interface{})
+			inner, ok = list[i].(map[string]any)
 			if !ok {
 				// We have indices out of order. Initialize empty value.
-				list[i] = map[string]interface{}{}
-				inner = list[i].(map[string]interface{})
+				list[i] = map[string]any{}
+				inner = list[i].(map[string]any)
 			}
 		}
 
@@ -214,12 +215,12 @@ func (t *literalParser) listItem(list []interface{}, i, nestedNameLevel int) ([]
 		if err != nil {
 			return list, fmt.Errorf("error parsing index: %w", err)
 		}
-		var crtList []interface{}
+		var crtList []any
 		if len(list) > i {
 			// If nested list already exists, take the value of list to next cycle.
 			existed := list[i]
 			if existed != nil {
-				crtList = list[i].([]interface{})
+				crtList = list[i].([]any)
 			}
 		}
 

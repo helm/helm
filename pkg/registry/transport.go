@@ -18,6 +18,7 @@ package registry
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -52,22 +53,10 @@ type LoggingTransport struct {
 
 // NewTransport creates and returns a new instance of LoggingTransport
 func NewTransport(debug bool) *retry.Transport {
-	type cloner[T any] interface {
-		Clone() T
-	}
-
-	// try to copy (clone) the http.DefaultTransport so any mutations we
-	// perform on it (e.g. TLS config) are not reflected globally
-	// follow https://github.com/golang/go/issues/39299 for a more elegant
-	// solution in the future
+	// clone http.DefaultTransport so mutations (e.g. TLS config) are not
+	// reflected globally
 	transport := http.DefaultTransport
-	if t, ok := transport.(cloner[*http.Transport]); ok {
-		transport = t.Clone()
-	} else if t, ok := transport.(cloner[http.RoundTripper]); ok {
-		// this branch will not be used with go 1.20, it was added
-		// optimistically to try to clone if the http.DefaultTransport
-		// implementation changes, still the Clone method in that case
-		// might not return http.RoundTripper...
+	if t, ok := transport.(*http.Transport); ok {
 		transport = t.Clone()
 	}
 	if debug {
@@ -83,11 +72,12 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 
 	slog.Debug(req.Method, "id", id, "url", req.URL, "header", logHeader(req.Header))
 	resp, err = t.RoundTripper.RoundTrip(req)
-	if err != nil {
+	switch {
+	case err != nil:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "error", err)
-	} else if resp != nil {
+	case resp != nil:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "status", resp.Status, "header", logHeader(resp.Header), "body", logResponseBody(resp))
-	} else {
+	default:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "response", "nil")
 	}
 
@@ -137,12 +127,12 @@ func logResponseBody(resp *http.Response) string {
 		Closer: body,
 	}
 	// read the body up to limit+1 to check if the body exceeds the limit
-	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && err != io.EOF {
+	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
 
 	readBody := buf.String()
-	if len(readBody) == 0 {
+	if readBody == "" {
 		return "   Response body is empty"
 	}
 	if containsCredentials(readBody) {

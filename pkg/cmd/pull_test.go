@@ -22,7 +22,11 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
@@ -35,14 +39,10 @@ func TestPullCmd(t *testing.T) {
 	defer srv.Stop()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ociSrv.Run(t)
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	helmTestKeyOut := "Signed by: Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>\n" +
 		"Using Key With Fingerprint: 5E615389B53CA37F0EE60BD3843BBF981FC18762\n" +
@@ -106,16 +106,16 @@ func TestPullCmd(t *testing.T) {
 		{
 			name:         "Fetch untar when file with same name existed",
 			args:         "test/test1 --untar --untardir test1",
-			existFile:    "test1",
+			existFile:    "test1/test1",
 			wantError:    true,
-			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test1")),
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test1", "test1")),
 		},
 		{
 			name:         "Fetch untar when dir with same name existed",
-			args:         "test/test2 --untar --untardir test2",
-			existDir:     "test2",
+			args:         "test/test --untar --untardir test2",
+			existDir:     "test2/test",
 			wantError:    true,
-			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test2")),
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test2", "test")),
 		},
 		{
 			name:         "Fetch, verify, untar",
@@ -178,9 +178,10 @@ func TestPullCmd(t *testing.T) {
 		},
 		{
 			name:         "OCI Fetch untar when dir with same name existed",
-			args:         fmt.Sprintf("oci-test-chart oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --untar --untardir ocitest2 --untar --untardir ocitest2", ociSrv.RegistryURL),
+			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --untar --untardir ocitest2", ociSrv.RegistryURL),
+			existDir:     "ocitest2/oci-dependent-chart",
 			wantError:    true,
-			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "ocitest2")),
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "ocitest2", "oci-dependent-chart")),
 		},
 		{
 			name:       "Fail fetching non-existent OCI chart",
@@ -189,10 +190,9 @@ func TestPullCmd(t *testing.T) {
 			wantError:  true,
 		},
 		{
-			name:         "Fail fetching OCI chart without version specified",
-			args:         fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing", ociSrv.RegistryURL),
-			wantErrorMsg: "Error: --version flag is explicitly required for OCI registries",
-			wantError:    true,
+			name:      "Fail fetching OCI chart without version specified",
+			args:      fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing", ociSrv.RegistryURL),
+			wantError: true,
 		},
 		{
 			name:       "Fetching OCI chart without version option specified",
@@ -207,7 +207,7 @@ func TestPullCmd(t *testing.T) {
 		{
 			name:         "Fail fetching OCI chart with version mismatch",
 			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
-			wantErrorMsg: "Error: chart reference and version mismatch: 0.2.0 is not 0.1.0",
+			wantErrorMsg: "chart reference and version mismatch: 0.1.0 is not 0.2.0",
 			wantError:    true,
 		},
 	}
@@ -228,44 +228,31 @@ func TestPullCmd(t *testing.T) {
 			// Create file or Dir before helm pull --untar, see: https://github.com/helm/helm/issues/7182
 			if tt.existFile != "" {
 				file := filepath.Join(outdir, tt.existFile)
-				_, err := os.Create(file)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.MkdirAll(filepath.Dir(file), 0o755))
+				_, err = os.Create(file)
+				require.NoError(t, err)
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.Mkdir(file, 0755)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.MkdirAll(file, 0o755))
 			}
 			_, out, err := executeActionCommand(cmd)
-			if err != nil {
-				if tt.wantError {
-					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
-						t.Fatalf("Actual error %s, not equal to expected error %s", err, tt.wantErrorMsg)
-					}
-					return
+			if tt.wantError {
+				if tt.wantErrorMsg != "" {
+					require.EqualError(t, err, tt.wantErrorMsg, "Actual error '%s', not equal to expected error '%s'", err, tt.wantErrorMsg)
 				}
-				t.Fatalf("%q reported error: %s", tt.name, err)
-			}
+			} else {
+				require.NoError(t, err)
 
-			if tt.expectVerify {
-				outString := helmTestKeyOut + tt.expectSha + "\n"
-				if out != outString {
-					t.Errorf("%q: expected verification output %q, got %q", tt.name, outString, out)
+				if tt.expectVerify {
+					outString := helmTestKeyOut + tt.expectSha + "\n"
+					assert.Equal(t, outString, out, "%q: expected verification output %q, got %q", tt.name, outString, out)
 				}
 
-			}
-
-			ef := filepath.Join(outdir, tt.expectFile)
-			fi, err := os.Stat(ef)
-			if err != nil {
-				t.Errorf("%q: expected a file at %s. %s", tt.name, ef, err)
-			}
-			if fi.IsDir() != tt.expectDir {
-				t.Errorf("%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
+				ef := filepath.Join(outdir, tt.expectFile)
+				fi, err := os.Stat(ef)
+				require.NoError(t, err, "%q: expected a file at %s.", tt.name, ef)
+				assert.Equal(t, tt.expectDir, fi.IsDir(), "%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
 			}
 		})
 	}
@@ -281,7 +268,8 @@ func runPullTests(t *testing.T, tests []struct {
 	wantErrorMsg string
 	expectFile   string
 	expectDir    bool
-}, outdir string, additionalFlags string) {
+}, outdir, additionalFlags string,
+) {
 	t.Helper()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -297,35 +285,24 @@ func runPullTests(t *testing.T, tests []struct {
 			if tt.existFile != "" {
 				file := filepath.Join(outdir, tt.existFile)
 				_, err := os.Create(file)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.Mkdir(file, 0755)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.MkdirAll(file, 0o755))
 			}
 			_, _, err := executeActionCommand(cmd)
-			if err != nil {
-				if tt.wantError {
-					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
-						t.Fatalf("Actual error %s, not equal to expected error %s", err, tt.wantErrorMsg)
-					}
-					return
+			if tt.wantError {
+				require.Error(t, err, "%q: expected error but got none", tt.name)
+				if tt.wantErrorMsg != "" {
+					require.EqualErrorf(t, err, tt.wantErrorMsg, "Actual error '%s', not equal to expected error '%s'", err, tt.wantErrorMsg)
 				}
-				t.Fatalf("%q reported error: %s", tt.name, err)
-			}
-
-			ef := filepath.Join(outdir, tt.expectFile)
-			fi, err := os.Stat(ef)
-			if err != nil {
-				t.Errorf("%q: expected a file at %s. %s", tt.name, ef, err)
-			}
-			if fi.IsDir() != tt.expectDir {
-				t.Errorf("%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
+			} else {
+				require.NoError(t, err, "%q reported error", tt.name)
+				ef := filepath.Join(outdir, tt.expectFile)
+				fi, err := os.Stat(ef)
+				require.NoError(t, err, "%q: expected a file at %s.", tt.name, ef)
+				assert.Equal(t, tt.expectDir, fi.IsDir(), "%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
 			}
 		})
 	}
@@ -335,7 +312,7 @@ func runPullTests(t *testing.T, tests []struct {
 func buildOCIURL(registryURL, chartName, version, username, password string) string {
 	baseURL := fmt.Sprintf("oci://%s/u/ocitestuser/%s", registryURL, chartName)
 	if version != "" {
-		baseURL += fmt.Sprintf(" --version %s", version)
+		baseURL += " --version " + version
 	}
 	if username != "" && password != "" {
 		baseURL += fmt.Sprintf(" --username %s --password %s", username, password)
@@ -356,9 +333,7 @@ func TestPullWithCredentialsCmd(t *testing.T) {
 	}))
 	defer srv2.Close()
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	// all flags will get "-d outdir" appended.
 	tests := []struct {
@@ -409,23 +384,23 @@ func TestPullVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for pull version flag",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for pull version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for pull version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete pull --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for pull version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for pull version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete pull invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
@@ -439,14 +414,10 @@ func TestPullWithCredentialsCmdOCIRegistry(t *testing.T) {
 	defer srv.Stop()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ociSrv.Run(t)
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	// all flags will get "-d outdir" appended.
 	tests := []struct {
@@ -487,10 +458,9 @@ func TestPullWithCredentialsCmdOCIRegistry(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name:         "Fail fetching OCI chart without version specified",
-			args:         buildOCIURL(ociSrv.RegistryURL, "nosuchthing", "", ociSrv.TestUsername, ociSrv.TestPassword),
-			wantErrorMsg: "Error: --version flag is explicitly required for OCI registries",
-			wantError:    true,
+			name:      "Fail fetching OCI chart without version specified",
+			args:      buildOCIURL(ociSrv.RegistryURL, "nosuchthing", "", ociSrv.TestUsername, ociSrv.TestPassword),
+			wantError: true,
 		},
 	}
 
@@ -500,4 +470,48 @@ func TestPullWithCredentialsCmdOCIRegistry(t *testing.T) {
 func TestPullFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "pull", false)
 	checkFileCompletion(t, "pull repo/chart", false)
+}
+
+// TestPullOCIWithTagAndDigest tests pulling an OCI chart with both tag and digest specified.
+// This is a regression test for https://github.com/helm/helm/issues/31600
+func TestPullOCIWithTagAndDigest(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
+	defer srv.Stop()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	require.NoError(t, err)
+	result := ociSrv.RunWithReturn(t)
+
+	contentCache := t.TempDir()
+	outdir := t.TempDir()
+
+	// Test: pull with tag and digest (the fixed bug from issue #31600)
+	// Previously this failed with "encoding/hex: invalid byte: U+0073 's'"
+	ref := fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0@%s",
+		ociSrv.RegistryURL, result.PushedChart.Manifest.Digest)
+
+	cmd := fmt.Sprintf("pull %s -d '%s' --registry-config %s --content-cache %s --plain-http",
+		ref,
+		outdir,
+		filepath.Join(srv.Root(), "config.json"),
+		contentCache,
+	)
+
+	_, _, err = executeActionCommand(cmd)
+	require.NoError(t, err, "pull with tag+digest failed")
+
+	// Verify the file was downloaded
+	// When digest is present, the filename uses the digest format (e.g. chart@sha256-hex.tgz)
+	expectedFile := filepath.Join(outdir, "oci-dependent-chart-0.1.0.tgz")
+	if _, err := os.Stat(expectedFile); err != nil {
+		// Try the digest-based filename; parse algorithm:hex to avoid fixed-offset assumptions
+		algorithm, digestPart, ok := strings.Cut(result.PushedChart.Manifest.Digest, ":")
+		require.True(t, ok, "digest must be in algorithm:hex format, got %q", result.PushedChart.Manifest.Digest)
+		expectedFile = filepath.Join(outdir, fmt.Sprintf("oci-dependent-chart@%s-%s.tgz", algorithm, digestPart))
+		_, err := os.Stat(expectedFile)
+		assert.NoErrorf(t, err, "expected chart file not found")
+	}
 }

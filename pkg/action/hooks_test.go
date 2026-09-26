@@ -18,6 +18,8 @@ package action
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -26,6 +28,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -172,9 +175,10 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
-		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
+		expectedOutput = "attempted to output logs for namespace: " + expectedNamespace
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	outBuffer := &bytes.Buffer{}
@@ -185,12 +189,12 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
 		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
-	is.NoError(err)
+	req.NoError(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(rcommon.StatusDeployed, res.Info.Status)
 }
@@ -199,13 +203,14 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
-		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
+		expectedOutput = "attempted to output logs for namespace: " + expectedNamespace
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	failingClient := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failingClient.WatchUntilReadyError = fmt.Errorf("failed watch")
+	failingClient.WatchUntilReadyError = errors.New("failed watch")
 	instAction.cfg.KubeClient = failingClient
 	outBuffer := &bytes.Buffer{}
 	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
@@ -215,12 +220,12 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
 		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
-	is.Error(err)
+	req.Error(err)
 	res, err := releaserToV1Release(resi)
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(res.Info.Description, "failed pre-install")
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(rcommon.StatusFailed, res.Info.Status)
@@ -247,7 +252,6 @@ func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList
 	configMap := &v1.ConfigMap{}
 
 	err := yaml.NewYAMLOrJSONDecoder(reader, 1000).Decode(configMap)
-
 	if err != nil {
 		return kube.ResourceList{}, err
 	}
@@ -278,8 +282,8 @@ func (h *HookFailingKubeClient) Delete(resources kube.ResourceList, deletionProp
 	return h.PrintingKubeClient.Delete(resources, deletionPropagation)
 }
 
-func (h *HookFailingKubeClient) GetWaiter(strategy kube.WaitStrategy) (kube.Waiter, error) {
-	waiter, _ := h.PrintingKubeClient.GetWaiter(strategy)
+func (h *HookFailingKubeClient) GetWaiterWithOptions(strategy kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
+	waiter, _ := h.PrintingKubeClient.GetWaiterWithOptions(strategy, opts...)
 	return &HookFailingKubeWaiter{
 		PrintingKubeWaiter: waiter.(*kubefake.PrintingKubeWaiter),
 		failOn:             h.failOn,
@@ -353,10 +357,12 @@ data:
 						},
 					},
 				},
-			}, resource.Info{
+			},
+			resource.Info{
 				Name:      "build-config-2",
 				Namespace: "test",
-			}, []resource.Info{
+			},
+			[]resource.Info{
 				{
 					// This should be in the record for `before-hook-creation`
 					Name:      "build-config-1",
@@ -377,7 +383,8 @@ data:
 					Name:      "build-config-1",
 					Namespace: "test",
 				},
-			}, true,
+			},
+			true,
 		},
 	}
 
@@ -394,18 +401,14 @@ data:
 			}
 
 			serverSideApply := true
-			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600, serverSideApply)
+			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, nil, 600, serverSideApply)
 
-			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
-				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
-			}
+			require.Truef(t, reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord), "Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
 
-			if err != nil && !tc.expectError {
-				t.Fatalf("Got an unexpected error.")
-			}
-
-			if err == nil && tc.expectError {
-				t.Fatalf("Expected and error but did not get it.")
+			if !tc.expectError {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
 			}
 		})
 	}
@@ -441,4 +444,52 @@ func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
 			assert.Equal(t, tt.expected, h.DeletePolicies)
 		})
 	}
+}
+
+func TestExecHook_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	failer := &kubefake.FailingKubeClient{
+		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+	}
+
+	configuration := &Configuration{
+		Releases:     storage.Init(driver.NewMemory()),
+		KubeClient:   failer,
+		Capabilities: common.DefaultCapabilities,
+	}
+
+	rel := &release.Release{
+		Name:      "test-release",
+		Namespace: "test",
+		Hooks: []*release.Hook{
+			{
+				Name: "test-hook",
+				Kind: "ConfigMap",
+				Path: "templates/hook.yaml",
+				Manifest: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-hook
+  namespace: test
+data:
+  foo: bar
+`,
+				Weight: 0,
+				Events: []release.HookEvent{
+					release.HookPreInstall,
+				},
+			},
+		},
+	}
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	waitOptions := []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	req.NoError(configuration.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, waitOptions, 600, false))
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }

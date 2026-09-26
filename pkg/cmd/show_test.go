@@ -19,8 +19,10 @@ package cmd
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
@@ -32,9 +34,7 @@ func TestShowPreReleaseChart(t *testing.T) {
 	)
 	defer srv.Stop()
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	tests := []struct {
 		name        string
@@ -76,16 +76,11 @@ func TestShowPreReleaseChart(t *testing.T) {
 				outdir,
 				contentTmp,
 			)
-			//_, out, err := executeActionCommand(cmd)
 			_, _, err := executeActionCommand(cmd)
-			if err != nil {
-				if tt.fail {
-					if !strings.Contains(err.Error(), tt.expectedErr) {
-						t.Errorf("%q expected error: %s, got: %s", tt.name, tt.expectedErr, err.Error())
-					}
-					return
-				}
-				t.Errorf("%q reported error: %s", tt.name, err)
+			if tt.fail {
+				assert.ErrorContains(t, err, tt.expectedErr)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -99,35 +94,35 @@ func TestShowVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for show version flag",
-		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show chart testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete show chart testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete show chart --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show chart --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for show version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show chart testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for show version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete show chart invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show chart invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for show version flag with all",
-		cmd:    fmt.Sprintf("%s __complete show all testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show all testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag with readme",
-		cmd:    fmt.Sprintf("%s __complete show readme testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show readme testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag with values",
-		cmd:    fmt.Sprintf("%s __complete show values testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show values testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}}
 	runTestCmd(t, tests)

@@ -16,7 +16,7 @@ limitations under the License.
 package plugin
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"runtime"
 	"strings"
@@ -48,12 +48,12 @@ func getPlatformCommand(cmds []PlatformCommand) ([]string, []string) {
 			return strings.Split(c.Command, " "), c.Args
 		}
 
-		if (len(c.OperatingSystem) > 0 && !eq(c.OperatingSystem, runtime.GOOS)) || len(c.Architecture) > 0 {
+		if (c.OperatingSystem != "" && !eq(c.OperatingSystem, runtime.GOOS)) || c.Architecture != "" {
 			// Skip if OS is not empty and doesn't match or if arch is set as a set arch requires an OS match
 			continue
 		}
 
-		if !foundOs && len(c.OperatingSystem) > 0 && eq(c.OperatingSystem, runtime.GOOS) {
+		if !foundOs && c.OperatingSystem != "" && eq(c.OperatingSystem, runtime.GOOS) {
 			// First OS match with empty arch, can only be overridden by a direct match
 			command = strings.Split(c.Command, " ")
 			args = c.Args
@@ -80,17 +80,18 @@ func getPlatformCommand(cmds []PlatformCommand) ([]string, []string) {
 func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string, env map[string]string) (string, []string, error) {
 	cmdParts, args := getPlatformCommand(cmds)
 	if len(cmdParts) == 0 || cmdParts[0] == "" {
-		return "", nil, fmt.Errorf("no plugin command is applicable")
+		return "", nil, errors.New("no plugin command is applicable")
+	}
+	envMappingFunc := func(key string) string {
+		return env[key]
 	}
 
-	main := os.Expand(cmdParts[0], func(key string) string {
-		return env[key]
-	})
+	main := os.Expand(cmdParts[0], envMappingFunc)
 	baseArgs := []string{}
 	if len(cmdParts) > 1 {
 		for _, cmdPart := range cmdParts[1:] {
 			if expandArgs {
-				baseArgs = append(baseArgs, os.ExpandEnv(cmdPart))
+				baseArgs = append(baseArgs, os.Expand(cmdPart, envMappingFunc))
 			} else {
 				baseArgs = append(baseArgs, cmdPart)
 			}
@@ -99,7 +100,7 @@ func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string
 
 	for _, arg := range args {
 		if expandArgs {
-			baseArgs = append(baseArgs, os.ExpandEnv(arg))
+			baseArgs = append(baseArgs, os.Expand(arg, envMappingFunc))
 		} else {
 			baseArgs = append(baseArgs, arg)
 		}

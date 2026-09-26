@@ -46,6 +46,16 @@ Render chart templates locally and display the output.
 Any values that would normally be looked up or retrieved in-cluster will be
 faked locally. Additionally, none of the server-side testing of chart validity
 (e.g. whether an API is supported) is done.
+
+To specify the Kubernetes API versions used for Capabilities.APIVersions, use
+the '--api-versions' flag. This flag can be specified multiple times or as a
+comma-separated list:
+
+    $ helm template --api-versions networking.k8s.io/v1 --api-versions cert-manager.io/v1 mychart ./mychart
+
+or
+
+    $ helm template --api-versions networking.k8s.io/v1,cert-manager.io/v1 mychart ./mychart
 `
 
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -70,12 +80,12 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if kubeVersion != "" {
 				parsedKubeVersion, err := common.ParseKubeVersion(kubeVersion)
 				if err != nil {
-					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
+					return fmt.Errorf("invalid kube version '%s': %w", kubeVersion, err)
 				}
 				client.KubeVersion = parsedKubeVersion
 			}
 
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+			registryClient, err := newRegistryClient(cmd.ErrOrStderr(), client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -103,6 +113,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return err
 			}
+			installErr := err
 
 			// We ignore a potential error here because, when the --debug flag was specified,
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
@@ -132,7 +143,6 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 								return err
 							}
 						}
-
 					}
 				}
 
@@ -177,6 +187,10 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							missing = false
 						}
 						if missing {
+							if installErr != nil && settings.Debug {
+								// assume the manifest itself is too malformed to be rendered
+								return installErr
+							}
 							return fmt.Errorf("could not find template %s in chart", f)
 						}
 					}
@@ -188,7 +202,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			return err
+			return installErr
 		},
 	}
 
@@ -224,8 +238,8 @@ func isTestHook(h *release.Hook) bool {
 // bug introduced by #8156. As part of the todo to refactor renderResources
 // this duplicate code should be removed. It is added here so that the API
 // surface area is as minimally impacted as possible in fixing the issue.
-func writeToFile(outputDir string, name string, data string, appendData bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+func writeToFile(outputDir, name, data string, appendData bool) error {
+	outfileName := outputDir + string(filepath.Separator) + name
 
 	err := ensureDirectoryForFile(outfileName)
 	if err != nil {
@@ -240,7 +254,6 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 	defer f.Close()
 
 	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
-
 	if err != nil {
 		return err
 	}
@@ -251,7 +264,7 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 	if appendData {
-		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o600)
 	}
 	return os.Create(filename)
 }
@@ -263,5 +276,5 @@ func ensureDirectoryForFile(file string) error {
 		return err
 	}
 
-	return os.MkdirAll(baseDir, 0755)
+	return os.MkdirAll(baseDir, 0o755)
 }

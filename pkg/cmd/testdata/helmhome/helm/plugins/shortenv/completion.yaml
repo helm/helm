@@ -1,4 +1,4 @@
-name: env
+name: shortenv
 commands:
   - name: list
     flags:

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"context"
@@ -103,7 +103,10 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Logger().Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
+			secrets.Logger().Debug(
+				"list failed to decode release", slog.String("key", item.Name),
+				slog.Any("error", err),
+			)
 			continue
 		}
 
@@ -142,7 +145,11 @@ func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, err
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Logger().Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
+			secrets.Logger().Debug(
+				"failed to decode release",
+				slog.String("key", item.Name),
+				slog.Any("error", err),
+			)
 			continue
 		}
 		rls.Labels = item.Labels
@@ -164,7 +171,7 @@ func (secrets *Secrets) Create(key string, rel release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("createdAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	// create a new secret to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
@@ -195,7 +202,7 @@ func (secrets *Secrets) Update(key string, rel release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("modifiedAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	// create a new secret object to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)

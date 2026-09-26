@@ -81,7 +81,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 		return err
 	}
 	if !fi.IsDir() {
-		return fmt.Errorf("plugin package only supports directories, not tarballs")
+		return errors.New("plugin package only supports directories, not tarballs")
 	}
 
 	// Load and validate plugin metadata
@@ -91,7 +91,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 	}
 
 	// Create destination directory if needed
-	if err := os.MkdirAll(o.destination, 0755); err != nil {
+	if err := os.MkdirAll(o.destination, 0o755); err != nil {
 		return err
 	}
 
@@ -119,7 +119,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 		}
 	} else {
 		// User explicitly disabled signing
-		fmt.Fprintf(out, "WARNING: Skipping plugin signing. This is not recommended for plugins intended for distribution.\n")
+		fmt.Fprint(out, "WARNING: Skipping plugin signing. This is not recommended for plugins intended for distribution.\n")
 	}
 
 	// Now create the tarball (only after signing prerequisites are met)
@@ -158,7 +158,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 
 		// Write the signature
 		provFile := tarballPath + ".prov"
-		if err := os.WriteFile(provFile, []byte(sig), 0644); err != nil {
+		if err := os.WriteFile(provFile, []byte(sig), 0o644); err != nil {
 			os.Remove(tarballPath)
 			return err
 		}

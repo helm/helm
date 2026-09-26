@@ -29,7 +29,7 @@ type InsecureTLSRegistryClientTestSuite struct {
 
 func (suite *InsecureTLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	setup(&suite.TestRegistry, true, true)
+	setup(&suite.TestRegistry, true, true, "htpasswd")
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) TearDownSuite() {
@@ -38,15 +38,13 @@ func (suite *InsecureTLSRegistryClientTestSuite) TearDownSuite() {
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) Test_0_Login() {
-	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().Error(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth("badverybad", "ohsobad"),
-		LoginOptInsecure(true))
-	suite.NotNil(err, "error logging into registry with bad credentials")
+		LoginOptInsecure(true)), "error logging into registry with bad credentials")
 
-	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().NoError(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptInsecure(true))
-	suite.Nil(err, "no error logging into registry with good credentials")
+		LoginOptInsecure(true)), "no error logging into registry with good credentials")
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) Test_1_Push() {
@@ -65,11 +63,10 @@ func (suite *InsecureTLSRegistryClientTestSuite) Test_4_Logout() {
 	err := suite.RegistryClient.Logout("this-host-aint-real:5000")
 	if err != nil {
 		// credential backend for mac generates an error
-		suite.NotNil(err, "failed to delete the credential for this-host-aint-real:5000")
+		suite.Require().Error(err, "failed to delete the credential for this-host-aint-real:5000")
 	}
 
-	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
-	suite.Nil(err, "no error logging out of registry")
+	suite.Require().NoError(suite.RegistryClient.Logout(suite.DockerRegistryHost), "no error logging out of registry")
 }
 
 func TestInsecureTLSRegistryClientTestSuite(t *testing.T) {
