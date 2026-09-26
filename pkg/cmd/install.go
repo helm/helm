@@ -151,13 +151,13 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cfg.Logger(), cmd, false)
 			if err != nil {
 				return err
 			}
 			client.DryRunStrategy = dryRunStrategy
 
-			rel, err := runInstall(args, client, valueOpts, out)
+			rel, err := runInstall(cfg.Logger(), args, client, valueOpts, out)
 			if err != nil {
 				return fmt.Errorf("INSTALLATION FAILED: %w", err)
 			}
@@ -173,7 +173,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	addInstallFlags(cmd, f, client, valueOpts)
+	addInstallFlags(cmd, f, client, valueOpts, cfg.Logger())
 	// hide-secret is not available in all places the install flags are used so
 	// it is added separately
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
@@ -184,7 +184,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
+func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options, logger *slog.Logger) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
@@ -233,7 +233,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-	AddWaitFlag(cmd, &client.WaitStrategy)
+	addWaitFlag(cmd, &client.WaitStrategy, logger)
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 
@@ -252,10 +252,10 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	}
 }
 
-func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {
-	slog.Debug("Original chart version", "version", client.Version)
+func runInstall(logger *slog.Logger, args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {
+	logger.Debug("Original chart version", "version", client.Version)
 	if client.Version == "" && client.Devel {
-		slog.Debug("setting version to >0.0.0-0")
+		logger.Debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
 
@@ -270,7 +270,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	slog.Debug("Chart path", "path", cp)
+	logger.Debug("Chart path", "path", cp)
 
 	p := getter.All(settings)
 	vals, err := valueOpts.MergeValues(p)
@@ -294,7 +294,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	if ac.Deprecated() {
-		slog.Warn("this chart is deprecated")
+		logger.Warn("this chart is deprecated")
 	}
 
 	if req := ac.MetaDependencies(); len(req) > 0 {

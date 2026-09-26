@@ -98,7 +98,7 @@ func runOCIChartCommand(t *testing.T, argsFn func(ref, registryConfig, contentCa
 		Capabilities: common.DefaultCapabilities,
 	}
 
-	root, err := newRootCmdWithConfig(actionConfig, stdout, args, SetupLogging)
+	root, err := newRootCmdWithConfig(actionConfig, stdout, args, NewLogger)
 	require.NoError(t, err)
 	root.SetOut(stdout)
 	root.SetErr(stderr)

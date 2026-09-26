@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"bytes"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -26,10 +27,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/helmpath/xdg"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 func TestRootCmd(t *testing.T) {
@@ -128,14 +132,130 @@ func TestUnknownSubCmd(t *testing.T) {
 // }
 
 func TestRootCmdLogger(t *testing.T) {
+	origDefault := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(origDefault) })
+
 	args := []string{}
 	buf := new(bytes.Buffer)
 	actionConfig := action.NewConfiguration()
-	_, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
+	_, err := newRootCmdWithConfig(actionConfig, buf, args, loggerFromSetup(SetupLogging))
 	require.NoError(t, err)
 
 	l1 := actionConfig.Logger()
 	l2 := slog.Default()
 
 	assert.Equal(t, l2.Handler(), l1.Handler(), "expected actionConfig logger to be the slog default logger")
+}
+
+func TestRootCmdWithLoggerLeavesDefaultUntouched(t *testing.T) {
+	origDefault := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(origDefault) })
+	sentinel := slog.New(slog.DiscardHandler)
+	slog.SetDefault(sentinel)
+
+	var gotDebug bool
+	injected := slog.New(slog.NewTextHandler(new(bytes.Buffer), nil))
+	actionConfig := action.NewConfiguration()
+	_, err := newRootCmdWithConfig(actionConfig, io.Discard, []string{"--debug"}, func(debug bool) *slog.Logger {
+		gotDebug = debug
+		return injected
+	})
+	require.NoError(t, err)
+
+	assert.True(t, gotDebug, "expected the --debug flag value to be passed to the logger constructor")
+	assert.Same(t, sentinel, slog.Default(), "expected the slog default logger to be left untouched")
+	assert.Equal(t, injected.Handler(), actionConfig.Logger().Handler(), "expected actionConfig to use the injected logger")
+}
+
+func TestRootCmdWithNilLogger(t *testing.T) {
+	origDefault := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(origDefault) })
+	sentinel := slog.New(slog.DiscardHandler)
+	slog.SetDefault(sentinel)
+
+	tests := map[string]func(bool) *slog.Logger{
+		"nil constructor":        nil,
+		"constructor return nil": func(bool) *slog.Logger { return nil },
+	}
+	for name, newLogger := range tests {
+		t.Run(name, func(t *testing.T) {
+			actionConfig := action.NewConfiguration()
+			_, err := newRootCmdWithConfig(actionConfig, io.Discard, []string{}, newLogger)
+			require.NoError(t, err)
+
+			assert.Same(t, sentinel, slog.Default(), "expected the slog default logger to be left untouched")
+			assert.IsType(t, &logging.DebugCheckHandler{}, actionConfig.Logger().Handler(), "expected the Helm CLI logger as the fallback")
+		})
+	}
+}
+
+func TestRootCmdWithLoggerRoutesCommandLogs(t *testing.T) {
+	defer resetEnv()()
+
+	// A record logged through the slog default logger instead of the injected
+	// one ends up in globalBuf.
+	origDefault := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(origDefault) })
+	var globalBuf bytes.Buffer
+	sentinel := slog.New(slog.NewTextHandler(&globalBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	slog.SetDefault(sentinel)
+
+	repoFile := "testdata/helmhome/helm/repositories.yaml"
+	repoCache := "testdata/helmhome/helm/repository"
+
+	tests := []struct {
+		name    string
+		cmd     string
+		wantLog string
+	}{
+		{
+			name:    "install --wait=true deprecation warning",
+			cmd:     "install aeneas testdata/testcharts/empty --wait=true",
+			wantLog: "--wait=true is deprecated",
+		},
+		{
+			name:    "template --dry-run deprecation warning",
+			cmd:     "template testdata/testcharts/empty --dry-run",
+			wantLog: "--dry-run is deprecated",
+		},
+		{
+			name:    "upgrade --install debug output",
+			cmd:     "upgrade --install funny-bunny testdata/testcharts/empty --dry-run=true",
+			wantLog: "Original chart version",
+		},
+		{
+			name:    "search repo debug output",
+			cmd:     "search repo alpine --repository-config " + repoFile + " --repository-cache " + repoCache,
+			wantLog: "original chart version",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			globalBuf.Reset()
+			var injectedBuf bytes.Buffer
+			injected := slog.New(slog.NewTextHandler(&injectedBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+			// Mirror action.Configuration.Init, which hands the configuration's
+			// logger to the storage driver.
+			mem := driver.NewMemory()
+			mem.SetLogger(injected.Handler())
+			store := storage.Init(mem)
+
+			_, _, err := executeActionCommandWithLoggerC(store, nil, func(bool) *slog.Logger { return injected }, tt.cmd)
+			require.NoError(t, err)
+
+			assert.Contains(t, injectedBuf.String(), tt.wantLog)
+			assert.NotContains(t, globalBuf.String(), tt.wantLog, "expected the record not to go through the slog default logger")
+			assert.Same(t, sentinel, slog.Default(), "expected the slog default logger to be left untouched")
+		})
+	}
+}
+
+func TestNewLogger(t *testing.T) {
+	ctx := t.Context()
+
+	assert.False(t, NewLogger(false).Enabled(ctx, slog.LevelDebug), "expected debug records to be dropped without --debug")
+	assert.True(t, NewLogger(false).Enabled(ctx, slog.LevelWarn))
+	assert.True(t, NewLogger(true).Enabled(ctx, slog.LevelDebug), "expected debug records with --debug")
 }
