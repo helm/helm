@@ -18,6 +18,8 @@ package downloader
 import (
 	"bytes"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -698,4 +700,42 @@ func TestDownloadAll_RejectsDependencyNotMatchingIndexDigest(t *testing.T) {
 			assert.ErrorIs(t, err, fs.ErrNotExist, "rejected dependency must not be saved to charts/")
 		})
 	}
+}
+
+func TestDownloadAll_ChecksEachIndexDigestForSharedURL(t *testing.T) {
+	ensure.HelmHome(t)
+	contentCache := t.TempDir()
+	srv, _, _ := tamperedChartServer(t, contentCache)
+
+	// A second repository lists the same archive URL without a digest. When
+	// its entry is downloaded first, the one that does carry a digest must
+	// still be checked rather than skipped as already downloaded.
+	idx, err := repo.LoadIndexFile(filepath.Join(srv.Root(), "index.yaml"))
+	require.NoError(t, err)
+	for _, cv := range idx.Entries["signtest"] {
+		cv.Digest = ""
+	}
+	noDigest, err := yaml.Marshal(idx)
+	require.NoError(t, err)
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(noDigest)
+	}))
+	t.Cleanup(other.Close)
+
+	chartPath := t.TempDir()
+	m := &Manager{
+		Out:              new(bytes.Buffer),
+		ChartPath:        chartPath,
+		RepositoryConfig: filepath.Join(t.TempDir(), "repositories.yaml"),
+		RepositoryCache:  srv.Root(),
+		ContentCache:     contentCache,
+		Getters:          getter.All(&cli.EnvSettings{}),
+	}
+	deps := []*chart.Dependency{
+		{Name: "signtest", Repository: other.URL, Version: "0.1.0"},
+		{Name: "signtest", Repository: srv.URL(), Version: "0.1.0", Alias: "signtest-indexed"},
+	}
+
+	err = m.downloadAll(deps)
+	require.ErrorContains(t, err, "does not match the digest recorded for it in the repository index")
 }

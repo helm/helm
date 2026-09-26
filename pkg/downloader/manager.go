@@ -275,7 +275,11 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
-	churls := make(map[string]struct{})
+	// Downloads are deduplicated by digest as well as URL, so an archive that
+	// another repository listed under a different digest, or none, is still
+	// checked against this one.
+	type download struct{ url, digest string }
+	churls := make(map[download]struct{})
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
@@ -324,7 +328,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			break
 		}
 
-		if _, ok := churls[churl]; ok {
+		if _, ok := churls[download{churl, digest}]; ok {
 			fmt.Fprintf(m.Out, "Already downloaded %s from repo %s\n", dep.Name, dep.Repository)
 			continue
 		}
@@ -365,7 +369,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			break
 		}
 
-		churls[churl] = struct{}{}
+		churls[download{churl, digest}] = struct{}{}
 	}
 
 	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
