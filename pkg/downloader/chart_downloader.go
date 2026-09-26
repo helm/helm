@@ -85,6 +85,13 @@ type ChartDownloader struct {
 
 	// Cache specifies the cache implementation to use.
 	Cache Cache
+
+	// IndexDigest is the digest a repository index records for the chart when
+	// the caller has already resolved the index entry to an absolute URL and
+	// passes that URL as the ref, as `--repo` and dependency downloads do. The
+	// downloaded archive is checked against it. It is ignored for any other
+	// kind of ref.
+	IndexDigest string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -424,7 +431,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 			if errors.Is(err, ErrNoOwnerRepo) {
 				// Make sure to add the ref URL as the URL for the getter
 				c.Options = append(c.Options, getter.WithURL(ref))
-				return "", u, nil
+				return c.IndexDigest, u, nil
 			}
 			return "", u, err
 		}
@@ -445,7 +452,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 				getter.WithPassCredentialsAll(rc.PassCredentialsAll),
 			)
 		}
-		return "", u, nil
+		return c.IndexDigest, u, nil
 	}
 
 	// See if it's of the form: repo/path_to_chart
@@ -629,8 +636,9 @@ func loadRepoConfig(file string) (*repo.File, error) {
 // only as a cache key, so a repository that served an archive not matching its
 // own index was accepted without complaint.
 //
-// It is a no-op when the index carries no digest, which is the case for a chart
-// referenced by a bare URL, so those keep working as before. OCI references are
+// It is a no-op when there is no index digest to check against, which is the
+// case for a chart referenced by a bare URL with no IndexDigest set, so those
+// keep working as before. OCI references are
 // excluded on purpose: the digest resolved for them identifies a manifest
 // rather than the archive bytes, and the registry client already checks it.
 func verifyIndexDigest(ref string, u *url.URL, digestString string, want [sha256.Size]byte, data []byte) error {

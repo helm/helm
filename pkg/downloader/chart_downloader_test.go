@@ -664,3 +664,44 @@ func TestIndexDigestVerificationScope(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestDownload_ResolvedURLCheckedAgainstIndexDigest(t *testing.T) {
+	// Callers such as `helm pull --repo` and dependency downloads look the
+	// chart up in the index themselves and pass on only its absolute URL, so
+	// the index digest has to come in through IndexDigest.
+	setup := func(t *testing.T) (*ChartDownloader, string) {
+		t.Helper()
+		srv, c, _ := tamperedChartServer(t, t.TempDir())
+		idx, err := repo.LoadIndexFile(filepath.Join(srv.Root(), "index.yaml"))
+		require.NoError(t, err)
+		cv, err := idx.Get("signtest", "0.1.0")
+		require.NoError(t, err)
+		require.NotEmpty(t, cv.Digest)
+		c.IndexDigest = cv.Digest
+		return c, srv.URL() + "/signtest-0.1.0.tgz"
+	}
+
+	t.Run("DownloadTo", func(t *testing.T) {
+		c, chartURL := setup(t)
+		dest := t.TempDir()
+		_, _, err := c.DownloadTo(chartURL, "", dest)
+		require.ErrorContains(t, err, "does not match the digest recorded for it in the repository index")
+
+		entries, err := os.ReadDir(dest)
+		require.NoError(t, err)
+		assert.Empty(t, entries, "rejected chart must not be written to the destination")
+	})
+
+	t.Run("DownloadToCache", func(t *testing.T) {
+		c, chartURL := setup(t)
+		_, _, err := c.DownloadToCache(chartURL, "")
+		require.ErrorContains(t, err, "does not match the digest recorded for it in the repository index")
+
+		digestBytes, err := hex.DecodeString(stripDigestAlgorithm(c.IndexDigest))
+		require.NoError(t, err)
+		var want [sha256.Size]byte
+		copy(want[:], digestBytes)
+		_, err = c.Cache.Get(want, CacheChart)
+		assert.Error(t, err, "rejected chart must not be written to the content cache")
+	})
+}

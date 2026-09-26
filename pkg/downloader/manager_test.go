@@ -27,9 +27,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/internal/test/ensure"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
@@ -66,7 +68,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos)
+	churl, _, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos)
 	require.NoError(t, err)
 
 	assert.Equal(t, "https://charts.helm.sh/stable/alpine-0.1.0.tgz", churl, "Unexpected URL %q", churl)
@@ -79,7 +81,7 @@ func TestFindChartURL(t *testing.T) {
 	version = "1.2.3"
 	repoURL = "https://example-https-insecureskiptlsverify.com"
 
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	churl, _, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
 	require.NoError(t, err)
 
 	assert.True(t, insecureSkipTLSVerify, "Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
@@ -92,7 +94,7 @@ func TestFindChartURL(t *testing.T) {
 	version = "1.2.3"
 	repoURL = "http://example.com/helm"
 
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	churl, _, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
 	require.NoError(t, err)
 
 	assert.Equal(t, "http://example.com/helm/charts/foo-1.2.3.tgz", churl, "Unexpected URL %q", churl)
@@ -654,4 +656,46 @@ func TestWriteLock(t *testing.T) {
 		require.NoError(t, os.WriteFile(filePath, []byte("file"), 0o644))
 		assert.Error(t, writeLock(filePath, lock, false))
 	})
+}
+
+func TestDownloadAll_RejectsDependencyNotMatchingIndexDigest(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured bool
+	}{
+		{name: "repository in repositories.yaml", configured: true},
+		{name: "repository not in repositories.yaml", configured: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ensure.HelmHome(t)
+			contentCache := t.TempDir()
+			srv, _, _ := tamperedChartServer(t, contentCache)
+
+			repoConfig := filepath.Join(srv.Root(), "repositories.yaml")
+			if !tt.configured {
+				repoConfig = filepath.Join(t.TempDir(), "repositories.yaml")
+			}
+			chartPath := t.TempDir()
+			m := &Manager{
+				Out:              new(bytes.Buffer),
+				ChartPath:        chartPath,
+				RepositoryConfig: repoConfig,
+				RepositoryCache:  srv.Root(),
+				ContentCache:     contentCache,
+				Getters:          getter.All(&cli.EnvSettings{}),
+			}
+			dep := &chart.Dependency{
+				Name:       "signtest",
+				Repository: srv.URL(),
+				Version:    "0.1.0",
+			}
+
+			err := m.downloadAll([]*chart.Dependency{dep})
+			require.ErrorContains(t, err, "does not match the digest recorded for it in the repository index")
+
+			_, err = os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz"))
+			assert.ErrorIs(t, err, fs.ErrNotExist, "rejected dependency must not be saved to charts/")
+		})
+	}
 }

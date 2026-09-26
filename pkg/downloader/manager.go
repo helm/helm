@@ -318,7 +318,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, digest, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = fmt.Errorf("could not find %s: %w", churl, err)
 			break
@@ -340,6 +340,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			ContentCache:     m.ContentCache,
 			RegistryClient:   m.RegistryClient,
 			Getters:          m.Getters,
+			IndexDigest:      digest,
 			Options: []getter.Option{
 				getter.WithBasicAuth(username, password),
 				getter.WithPassCredentialsAll(passCredentialsAll),
@@ -722,9 +723,9 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureSkipTLSVerify, passCredentialsAll bool, caFile, certFile, keyFile string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, digest, username, password string, insecureSkipTLSVerify, passCredentialsAll bool, caFile, certFile, keyFile string, err error) {
 	if registry.IsOCI(repoURL) {
-		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
+		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", "", false, false, "", "", "", nil
 	}
 
 	for _, cr := range repos {
@@ -735,17 +736,18 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 		entry, err = findEntryByName(name, cr)
 		if err != nil {
 			// TODO: Consider refactoring this function to reduce the number of returned values while preserving behavior.
-			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
+			return url, digest, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		var ve *repo.ChartVersion
 		ve, err = findVersionedEntry(version, entry)
 		if err != nil {
-			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
+			return url, digest, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
 		url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
 		if err != nil {
-			return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
+			return url, digest, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 		}
+		digest = ve.Digest
 		username = cr.Config.Username
 		password = cr.Config.Password
 		passCredentialsAll = cr.Config.PassCredentialsAll
@@ -754,14 +756,14 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 		certFile = cr.Config.CertFile
 		keyFile = cr.Config.KeyFile
 
-		return url, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
+		return url, digest, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
+	url, digest, err = repo.FindChartInRepoURLWithDigest(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
-		return url, username, password, false, false, "", "", "", nil
+		return url, digest, username, password, false, false, "", "", "", nil
 	}
 	err = fmt.Errorf("chart %s not found in %s: %w", name, repoURL, err)
-	return url, username, password, false, false, "", "", "", err
+	return url, digest, username, password, false, false, "", "", "", err
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.
