@@ -90,25 +90,70 @@ func (b *builder) buildLevel(chrt *chart.Chart, manifests []releaseutil.Manifest
 	for _, subchartBatch := range subchartBatches {
 		for _, name := range subchartBatch {
 			declared[name] = true
-			if err := b.buildSubchart(chrt, chartPath, name, grouped[name], depth, levelIdx); err != nil {
-				return err
-			}
+		}
+		if err := b.buildSubchartsTogether(chrt, chartPath, subchartBatch, grouped, depth, levelIdx); err != nil {
+			return err
 		}
 	}
 
+	var undeclared []string
 	for _, name := range slices.Sorted(maps.Keys(grouped)) {
 		if name == "" || declared[name] {
 			continue
 		}
-		b.plan.Levels[levelIdx].Undeclared = append(b.plan.Levels[levelIdx].Undeclared, name)
+		undeclared = append(undeclared, name)
 		b.warnf(WarningKindUndeclaredSubchart, chartPath, "rendered subchart %q is not declared in Chart.yaml dependencies; sequencing it after declared subcharts", name)
-		if err := b.buildSubchart(chrt, chartPath, name, grouped[name], depth, levelIdx); err != nil {
-			return err
-		}
+	}
+	b.plan.Levels[levelIdx].Undeclared = undeclared
+	if err := b.buildSubchartsTogether(chrt, chartPath, undeclared, grouped, depth, levelIdx); err != nil {
+		return err
 	}
 	slices.Sort(b.plan.Levels[levelIdx].Unresolved)
 
 	return b.appendChartBatches(chartPath, depth, grouped[""])
+}
+
+// buildSubchartsTogether plans subcharts that do not depend on each other.
+// They deploy side by side: stage i of the result holds stage i of every
+// subchart, so each keeps its own order and the next level starts only after
+// all of them are ready.
+func (b *builder) buildSubchartsTogether(parent *chart.Chart, chartPath string, names []string, grouped map[string][]releaseutil.Manifest, depth, parentLevelIdx int) error {
+	var stages [][][]Batch
+	for _, name := range names {
+		start := len(b.plan.Batches)
+		if err := b.buildSubchart(parent, chartPath, name, grouped[name], depth, parentLevelIdx); err != nil {
+			return err
+		}
+		stages = append(stages, splitStages(b.plan.Batches[start:]))
+		b.plan.Batches = b.plan.Batches[:start]
+	}
+	for i := 0; ; i++ {
+		start := len(b.plan.Batches)
+		for _, subchart := range stages {
+			if i < len(subchart) {
+				b.plan.Batches = append(b.plan.Batches, subchart[i]...)
+			}
+		}
+		if len(b.plan.Batches) == start {
+			return nil
+		}
+		for j := start; j < len(b.plan.Batches); j++ {
+			b.plan.Batches[j].Wait = j == len(b.plan.Batches)-1
+		}
+	}
+}
+
+// splitStages cuts a batch list after every batch that ends a stage.
+func splitStages(batches []Batch) [][]Batch {
+	var stages [][]Batch
+	start := 0
+	for i, batch := range batches {
+		if batch.Wait || i == len(batches)-1 {
+			stages = append(stages, slices.Clone(batches[start:i+1]))
+			start = i + 1
+		}
+	}
+	return stages
 }
 
 func (b *builder) buildSubchart(parent *chart.Chart, chartPath, name string, manifests []releaseutil.Manifest, depth, parentLevelIdx int) error {

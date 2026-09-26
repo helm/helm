@@ -174,6 +174,33 @@ func TestSequencedApply_DependenciesBeforeDependents(t *testing.T) {
 	assert.Equal(t, []string{"create:grand", "wait:grand", "create:child", "wait:child", "create:parent", "wait:parent"}, client.operations)
 }
 
+func stagedSequencePlan() *sequence.Plan {
+	return &sequence.Plan{Batches: []sequence.Batch{
+		{ChartPath: "parent/charts/nginx", Depth: 1, Manifests: []releaseutil.Manifest{sequenceManifest("parent/charts/nginx/templates/nginx.yaml", "nginx")}},
+		{ChartPath: "parent/charts/rabbitmq", Depth: 1, Manifests: []releaseutil.Manifest{sequenceManifest("parent/charts/rabbitmq/templates/rabbitmq.yaml", "rabbitmq")}, Wait: true},
+		{ChartPath: "parent", Manifests: []releaseutil.Manifest{sequenceManifest("parent/templates/parent.yaml", "parent")}, Wait: true},
+	}}
+}
+
+func TestSequencedApply_WaitsForWholeStage(t *testing.T) {
+	client := &recordingSequenceClient{}
+	require.NoError(t, newSequenceDeployment(client).apply(context.Background(), stagedSequencePlan()))
+	assert.Equal(t, []string{"create:nginx", "create:rabbitmq", "wait:nginx,rabbitmq", "create:parent", "wait:parent"}, client.operations)
+}
+
+func TestDeleteSequencedBatches_WaitsForWholeStage(t *testing.T) {
+	client := &recordingSequenceClient{}
+	waiter := &recordingSequenceWaiter{client: client}
+	_, _, err := newSequenceDeployment(client).deleteSequencedBatches(
+		stagedSequencePlan().Reverse(), metav1.DeletePropagationBackground, waiter, nil,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"delete:parent", "wait-delete:parent",
+		"delete:rabbitmq", "delete:nginx", "wait-delete:rabbitmq,nginx",
+	}, client.operations)
+}
+
 func TestSequencedApply_BatchFailureStopsLaterBatches(t *testing.T) {
 	client := &recordingSequenceClient{waitError: assert.AnError, waitErrorAt: 2}
 	err := newSequenceDeployment(client).apply(context.Background(), threeLevelSequencePlan())

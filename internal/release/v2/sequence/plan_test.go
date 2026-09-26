@@ -59,6 +59,18 @@ func TestPlanReverse(t *testing.T) {
 	assert.Nil(t, (*Plan)(nil).Reverse())
 }
 
+func TestPlanReverse_KeepsStageBoundaries(t *testing.T) {
+	t.Parallel()
+
+	batch := func(name string, wait bool) Batch {
+		return Batch{ChartPath: name, Wait: wait}
+	}
+	plan := &Plan{Batches: []Batch{batch("a", false), batch("b", true), batch("c", true)}}
+
+	assert.Equal(t, []Batch{batch("c", true), batch("b", false), batch("a", true)}, plan.Reverse().Batches)
+	assert.Equal(t, plan, plan.Reverse().Reverse())
+}
+
 func TestDisplayPath(t *testing.T) {
 	t.Parallel()
 

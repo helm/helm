@@ -23,7 +23,10 @@ import (
 	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 )
 
-// Batch is one apply-and-wait unit in a deployment plan.
+// Batch is one apply unit in a deployment plan. Wait marks the end of a stage:
+// the executor waits for every resource applied since the previous stage
+// before it continues. Batches of independent subcharts share a stage, so only
+// the last batch of such a stage has Wait set.
 type Batch struct {
 	ChartPath string
 	Depth     int
@@ -65,7 +68,8 @@ type Plan struct {
 	Warnings []Warning
 }
 
-// Reverse returns a new Plan with batches in exact reverse order.
+// Reverse returns a new Plan with batches in exact reverse order. Stages keep
+// their boundaries, so Wait moves to the last batch of each reversed stage.
 // Levels and Warnings are shared unchanged.
 func (p *Plan) Reverse() *Plan {
 	if p == nil {
@@ -74,6 +78,7 @@ func (p *Plan) Reverse() *Plan {
 
 	reversed := make([]Batch, len(p.Batches))
 	for i, batch := range p.Batches {
+		batch.Wait = i == 0 || p.Batches[i-1].Wait
 		reversed[len(p.Batches)-1-i] = batch
 	}
 

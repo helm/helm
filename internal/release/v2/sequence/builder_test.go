@@ -137,6 +137,46 @@ func TestBuild_SubchartDependencyOrder(t *testing.T) {
 	assert.Equal(t, [][]string{{"postgres"}, {"rabbitmq"}, {"app"}}, plan.Levels[0].SubchartBatches)
 }
 
+func TestBuild_IndependentSubchartsShareAStage(t *testing.T) {
+	t.Parallel()
+
+	exporter := newTestChart("exporter")
+	nginx := newTestChart("nginx")
+	nginx.Metadata.Dependencies = []*chart.Dependency{{Name: "exporter", Enabled: true}}
+	nginx.SetDependencies(exporter)
+	parent := newTestChart("parent")
+	parent.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "nginx", Enabled: true},
+		{Name: "rabbitmq", Enabled: true},
+		{Name: "bar", DependsOn: []string{"nginx", "rabbitmq"}, Enabled: true},
+	}
+	parent.SetDependencies(nginx, newTestChart("rabbitmq"), newTestChart("bar"))
+	manifests := []releaseutil.Manifest{
+		{Name: "parent/templates/parent.yaml"},
+		{Name: "parent/charts/bar/templates/bar.yaml"},
+		{Name: "parent/charts/rabbitmq/templates/rabbitmq.yaml"},
+		{Name: "parent/charts/nginx/templates/nginx.yaml"},
+		{Name: "parent/charts/nginx/charts/exporter/templates/exporter.yaml"},
+	}
+
+	plan, err := Build(parent, manifests)
+	require.NoError(t, err)
+	// nginx and rabbitmq start together; nginx keeps its own exporter-first order;
+	// bar waits for both.
+	assert.Equal(t, []string{
+		"parent/charts/nginx/charts/exporter",
+		"parent/charts/rabbitmq",
+		"parent/charts/nginx",
+		"parent/charts/bar",
+		"parent",
+	}, planBatchPaths(plan))
+	waits := make([]bool, len(plan.Batches))
+	for i, batch := range plan.Batches {
+		waits[i] = batch.Wait
+	}
+	assert.Equal(t, []bool{false, true, true, true, true}, waits)
+}
+
 func TestBuild_Aliases_RealPipeline(t *testing.T) {
 	t.Parallel()
 

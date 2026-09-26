@@ -64,6 +64,9 @@ type sequencedDeployment struct {
 
 	upgradeMode, upgradeCSAFieldManager, threeWayMergeForUnstructured bool
 	currentResources, createdResources                                kube.ResourceList
+
+	// stage collects what was applied since the last batch that ended a stage.
+	stage kube.ResourceList
 }
 
 func logPlanWarnings(logger *slog.Logger, plan *sequence.Plan) {
@@ -91,7 +94,7 @@ func (s *sequencedDeployment) apply(ctx context.Context, plan *sequence.Plan) er
 			return err
 		}
 	}
-	return nil
+	return s.waitForStage()
 }
 
 func (s *sequencedDeployment) applyBatch(ctx context.Context, batch sequence.Batch) error {
@@ -145,13 +148,21 @@ func (s *sequencedDeployment) applyBatch(ctx context.Context, batch sequence.Bat
 		}
 	}
 	s.createdResources = append(s.createdResources, result.Created...)
+	s.stage = append(s.stage, target...)
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if !batch.Wait {
 		return nil
 	}
-	return s.waitForResources(target)
+	return s.waitForStage()
+}
+
+// waitForStage waits for everything applied since the previous stage ended.
+func (s *sequencedDeployment) waitForStage() error {
+	resources := s.stage
+	s.stage = nil
+	return s.waitForResources(resources)
 }
 
 func (s *sequencedDeployment) batchWaitTimeout() (time.Duration, error) {
@@ -193,36 +204,37 @@ func (s *sequencedDeployment) deleteRemoved(reversedPlan *sequence.Plan, removed
 	if s.deadline.IsZero() {
 		s.deadline = computeDeadline(s.timeout)
 	}
-	for _, batch := range reversedPlan.Batches {
-		if len(batch.Manifests) == 0 {
-			continue
-		}
-		resources, err := s.kubeClient.Build(bytes.NewBufferString(buildManifestYAML(batch.Manifests)), false)
-		if err != nil {
-			return fmt.Errorf("building removed-resource batch: %w", err)
-		}
-		toDelete := make(kube.ResourceList, 0, len(resources))
-		for _, resource := range resources {
-			if removedKeys[objectKey(resource)] {
-				toDelete = append(toDelete, resource)
+	var stage kube.ResourceList
+	for i, batch := range reversedPlan.Batches {
+		if len(batch.Manifests) > 0 {
+			resources, err := s.kubeClient.Build(bytes.NewBufferString(buildManifestYAML(batch.Manifests)), false)
+			if err != nil {
+				return fmt.Errorf("building removed-resource batch: %w", err)
+			}
+			toDelete := make(kube.ResourceList, 0, len(resources))
+			for _, resource := range resources {
+				if removedKeys[objectKey(resource)] {
+					toDelete = append(toDelete, resource)
+				}
+			}
+			if len(toDelete) > 0 {
+				if _, errs := s.kubeClient.Delete(toDelete, metav1.DeletePropagationBackground); len(errs) > 0 {
+					return fmt.Errorf("deleting removed resources: %w", joinErrors(errs, ", "))
+				}
+				stage = append(stage, toDelete...)
 			}
 		}
-		if len(toDelete) == 0 {
-			continue
-		}
-		if _, errs := s.kubeClient.Delete(toDelete, metav1.DeletePropagationBackground); len(errs) > 0 {
-			return fmt.Errorf("deleting removed resources: %w", joinErrors(errs, ", "))
-		}
-		if !batch.Wait {
+		if len(stage) == 0 || (!batch.Wait && i < len(reversedPlan.Batches)-1) {
 			continue
 		}
 		waitTimeout, err := s.batchWaitTimeout()
 		if err != nil {
 			return err
 		}
-		if err := waiter.WaitForDelete(toDelete, waitTimeout); err != nil {
+		if err := waiter.WaitForDelete(stage, waitTimeout); err != nil {
 			return fmt.Errorf("waiting for removed resources to be deleted: %w", err)
 		}
+		stage = nil
 	}
 	return nil
 }
@@ -251,36 +263,35 @@ func (s *sequencedDeployment) deleteSequencedBatches(
 		}
 	}
 
-	var deleted kube.ResourceList
-	for _, batch := range reversedPlan.Batches {
+	var deleted, stage kube.ResourceList
+	for i, batch := range reversedPlan.Batches {
 		if !s.deadline.IsZero() && time.Until(s.deadline) <= 0 {
 			return deleted, report.String(), fmt.Errorf("uninstall timed out after %s before all batches were deleted", s.timeout)
 		}
-		if len(batch.Manifests) == 0 {
-			continue
-		}
-		resources, err := s.kubeClient.Build(bytes.NewBufferString(buildManifestYAML(batch.Manifests)), false)
-		if err != nil {
-			return deleted, report.String(), fmt.Errorf("building resource batch for delete: %w", err)
-		}
-		owned, skipped, err := verifySequencedOwnedForDelete(resources, s.logger, s.releaseName, s.releaseNamespace)
-		if err != nil {
-			return deleted, report.String(), err
-		}
-		if skipped != "" {
-			if report.Len() > 0 {
-				report.WriteString("\n")
+		if len(batch.Manifests) > 0 {
+			resources, err := s.kubeClient.Build(bytes.NewBufferString(buildManifestYAML(batch.Manifests)), false)
+			if err != nil {
+				return deleted, report.String(), fmt.Errorf("building resource batch for delete: %w", err)
 			}
-			report.WriteString(skipped)
+			owned, skipped, err := verifySequencedOwnedForDelete(resources, s.logger, s.releaseName, s.releaseNamespace)
+			if err != nil {
+				return deleted, report.String(), err
+			}
+			if skipped != "" {
+				if report.Len() > 0 {
+					report.WriteString("\n")
+				}
+				report.WriteString(skipped)
+			}
+			if len(owned) > 0 {
+				deleted = append(deleted, owned...)
+				if _, errs := s.kubeClient.Delete(owned, deletionPropagation); len(errs) > 0 {
+					return deleted, report.String(), fmt.Errorf("deleting resource batch: %w", joinErrors(errs, ", "))
+				}
+				stage = append(stage, owned...)
+			}
 		}
-		if len(owned) == 0 {
-			continue
-		}
-		deleted = append(deleted, owned...)
-		if _, errs := s.kubeClient.Delete(owned, deletionPropagation); len(errs) > 0 {
-			return deleted, report.String(), fmt.Errorf("deleting resource batch: %w", joinErrors(errs, ", "))
-		}
-		if !batch.Wait {
+		if len(stage) == 0 || (!batch.Wait && i < len(reversedPlan.Batches)-1) {
 			continue
 		}
 		if !s.deadline.IsZero() && time.Until(s.deadline) <= 0 {
@@ -290,9 +301,10 @@ func (s *sequencedDeployment) deleteSequencedBatches(
 		if err != nil {
 			return deleted, report.String(), err
 		}
-		if err := waiter.WaitForDelete(owned, waitTimeout); err != nil {
+		if err := waiter.WaitForDelete(stage, waitTimeout); err != nil {
 			return deleted, report.String(), fmt.Errorf("waiting for resource batch deletion: %w", err)
 		}
+		stage = nil
 	}
 	return deleted, report.String(), nil
 }
