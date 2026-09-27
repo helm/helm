@@ -593,6 +593,12 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		return err
 	}
 
+	transaction, err := s.db.Beginx()
+	if err != nil {
+		s.Logger().Debug("failed to start SQL transaction", slog.Any("error", err))
+		return fmt.Errorf("error beginning transaction: %w", err)
+	}
+
 	query, args, err := s.statementBuilder.
 		Update(sqlReleaseTableName).
 		Set(sqlReleaseTableBodyColumn, body).
@@ -605,13 +611,68 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		Where(sq.Eq{sqlReleaseTableNamespaceColumn: namespace}).
 		ToSql()
 	if err != nil {
+		transaction.Rollback()
 		s.Logger().Debug("failed to build update query", slog.Any("error", err))
 		return err
 	}
 
-	if _, err := s.db.Exec(query, args...); err != nil {
+	if _, err := transaction.Exec(query, args...); err != nil {
+		transaction.Rollback()
 		s.Logger().Debug("failed to update release in SQL database", slog.String("key", key), slog.Any("error", err))
 		return err
+	}
+
+	// Custom labels aren't part of the release body update above, so they must be
+	// reconciled separately: clear out whatever was stored for this release and
+	// re-seed it from the current label set, mirroring how Create seeds labels.
+	// Without this, labels added, changed, or removed after the initial Create are
+	// silently dropped on every subsequent Update.
+	deleteLabelsQuery, args, err := s.statementBuilder.
+		Delete(sqlCustomLabelsTableName).
+		Where(sq.Eq{
+			sqlCustomLabelsTableReleaseKeyColumn:       key,
+			sqlCustomLabelsTableReleaseNamespaceColumn: namespace,
+		}).
+		ToSql()
+	if err != nil {
+		transaction.Rollback()
+		s.Logger().Debug("failed to build delete labels query", slog.Any("error", err))
+		return err
+	}
+
+	if _, err := transaction.Exec(deleteLabelsQuery, args...); err != nil {
+		transaction.Rollback()
+		s.Logger().Debug("failed to clear existing labels", slog.Any("error", err))
+		return err
+	}
+
+	for k, v := range filterSystemLabels(rls.Labels) {
+		insertLabelsQuery, args, err := s.statementBuilder.
+			Insert(sqlCustomLabelsTableName).
+			Columns(
+				sqlCustomLabelsTableReleaseKeyColumn,
+				sqlCustomLabelsTableReleaseNamespaceColumn,
+				sqlCustomLabelsTableKeyColumn,
+				sqlCustomLabelsTableValueColumn,
+			).
+			Values(key, namespace, k, v).
+			ToSql()
+		if err != nil {
+			transaction.Rollback()
+			s.Logger().Debug("failed to build insert labels query", slog.Any("error", err))
+			return err
+		}
+
+		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
+			transaction.Rollback()
+			s.Logger().Debug("failed to write updated labels", slog.Any("error", err))
+			return err
+		}
+	}
+
+	if err := transaction.Commit(); err != nil {
+		s.Logger().Debug("failed to commit transaction", slog.Any("error", err))
+		return fmt.Errorf("error committing transaction: %w", err)
 	}
 
 	return nil
