@@ -18,9 +18,13 @@ package util
 
 import (
 	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/loader"
@@ -30,20 +34,14 @@ func TestCreate(t *testing.T) {
 	tdir := t.TempDir()
 
 	c, err := Create("foo", tdir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	dir := filepath.Join(tdir, "foo")
 
 	mychart, err := loader.LoadDir(c)
-	if err != nil {
-		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
-	}
+	require.NoError(t, err, "Failed to load newly created chart %q", c)
 
-	if mychart.Name() != "foo" {
-		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
-	}
+	assert.Equal(t, "foo", mychart.Name(), "Expected name to be 'foo', got %q", mychart.Name())
 
 	for _, f := range []string{
 		ChartfileName,
@@ -58,9 +56,8 @@ func TestCreate(t *testing.T) {
 		TestConnectionName,
 		ValuesfileName,
 	} {
-		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		}
+		_, err := os.Stat(filepath.Join(dir, f))
+		assert.NoErrorf(t, err, "Expected %s file", f)
 	}
 }
 
@@ -74,38 +71,27 @@ func TestCreateFrom(t *testing.T) {
 	}
 	srcdir := "./testdata/frobnitz/charts/mariner"
 
-	if err := CreateFrom(cf, tdir, srcdir); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, CreateFrom(cf, tdir, srcdir))
 
 	dir := filepath.Join(tdir, "foo")
 	c := filepath.Join(tdir, cf.Name)
 	mychart, err := loader.LoadDir(c)
-	if err != nil {
-		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
-	}
+	require.NoError(t, err, "Failed to load newly created chart %q", c)
 
-	if mychart.Name() != "foo" {
-		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
-	}
+	assert.Equal(t, "foo", mychart.Name(), "Expected name to be 'foo', got %q", mychart.Name())
 
 	for _, f := range []string{
 		ChartfileName,
 		ValuesfileName,
 		filepath.Join(TemplatesDir, "placeholder.tpl"),
 	} {
-		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		}
+		_, err := os.Stat(filepath.Join(dir, f))
+		require.NoErrorf(t, err, "Expected %s file", f)
 
 		// Check each file to make sure <CHARTNAME> has been replaced
 		b, err := os.ReadFile(filepath.Join(dir, f))
-		if err != nil {
-			t.Errorf("Unable to read file %s: %s", f, err)
-		}
-		if bytes.Contains(b, []byte("<CHARTNAME>")) {
-			t.Errorf("File %s contains <CHARTNAME>", f)
-		}
+		require.NoError(t, err, "Unable to read file %s", f)
+		assert.Falsef(t, bytes.Contains(b, []byte("<CHARTNAME>")), "File %s contains <CHARTNAME>", f)
 	}
 }
 
@@ -113,35 +99,30 @@ func TestCreateFrom(t *testing.T) {
 func TestCreate_Overwrite(t *testing.T) {
 	tdir := t.TempDir()
 
-	var errlog bytes.Buffer
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
 
-	if _, err := Create("foo", tdir); err != nil {
-		t.Fatal(err)
-	}
+	var logBuf bytes.Buffer
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logBuf, nil)))
+
+	_, err := Create("foo", tdir)
+	require.NoError(t, err)
 
 	dir := filepath.Join(tdir, "foo")
 
-	tplname := filepath.Join(dir, "templates/hpa.yaml")
+	tplname := filepath.Join(dir, "templates", "hpa.yaml")
 	writeFile(tplname, []byte("FOO"))
 
 	// Now re-run the create
-	Stderr = &errlog
-	if _, err := Create("foo", tdir); err != nil {
-		t.Fatal(err)
-	}
+	_, err = Create("foo", tdir)
+	require.NoError(t, err)
 
 	data, err := os.ReadFile(tplname)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if string(data) == "FOO" {
-		t.Fatal("File that should have been modified was not.")
-	}
+	require.NotEqual(t, "FOO", string(data), "File that should have been modified was not.")
 
-	if errlog.Len() == 0 {
-		t.Error("Expected warnings about overwriting files.")
-	}
+	assert.NotEqual(t, 0, logBuf.Len(), "Expected warnings about overwriting files.")
 }
 
 func TestValidateChartName(t *testing.T) {
@@ -165,8 +146,11 @@ func TestValidateChartName(t *testing.T) {
 			"abcdefghijklmnopqrstuvwxyz-_." +
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": false,
 	} {
-		if err := validateChartName(name); (err != nil) == shouldPass {
-			t.Errorf("test for %q failed", name)
+		err := validateChartName(name)
+		if shouldPass {
+			assert.NoErrorf(t, err, "Expected chart name %q to pass validation", name)
+		} else {
+			assert.Errorf(t, err, "Expected chart name %q to fail validation, but it passed", name)
 		}
 	}
 }

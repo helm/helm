@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util // import "helm.sh/helm/v4/pkg/release/v1/util"
+package util
 
 import (
 	"helm.sh/helm/v4/pkg/release/common"
@@ -41,7 +41,7 @@ func (fn FilterFunc) Filter(rels []*rspb.Release) (rets []*rspb.Release) {
 			rets = append(rets, rel)
 		}
 	}
-	return
+	return rets
 }
 
 // Any returns a FilterFunc that filters a list of releases

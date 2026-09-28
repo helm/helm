@@ -19,8 +19,10 @@ package cmd
 import (
 	"bytes"
 	"io"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -71,11 +73,7 @@ func TestReleaseTestNotesHandling(t *testing.T) {
 	cmd1 := newReleaseTestCmd(actionConfig, &buf1)
 	cmd1.SetArgs([]string{"test-release"})
 	err1 := cmd1.Execute()
-	if err1 != nil {
-		t.Fatalf("Unexpected error for default test: %v", err1)
-	}
+	require.NoError(t, err1, "Unexpected error for default test")
 	output1 := buf1.String()
-	if strings.Contains(output1, "NOTES:") {
-		t.Errorf("Expected notes to be hidden by default, but found NOTES section in output: %s", output1)
-	}
+	assert.NotContains(t, output1, "NOTES:", "Expected notes to be hidden by default, but found NOTES section in output: %s", output1)
 }

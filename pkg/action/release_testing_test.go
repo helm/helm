@@ -147,6 +147,7 @@ func TestReleaseTestingGetPodLogs_SkipNonPodHooks(t *testing.T) {
 
 func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	config := actionConfigFixture(t)
 
 	// Create a release with a test hook
@@ -165,7 +166,7 @@ func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
 	failer := config.KubeClient.(*kubefake.FailingKubeClient)
 
 	_, _, err := client.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
@@ -189,8 +190,7 @@ func TestGetContainerLogs_MultipleContainers(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	err := rt.getContainerLogs(&buf, client, "test-pod")
-	require.NoError(t, err)
+	require.NoError(t, rt.getContainerLogs(&buf, client, "test-pod"))
 	output := buf.String()
 	assert.Contains(t, output, "POD LOGS: test-pod (main)")
 	assert.Contains(t, output, "POD LOGS: test-pod (sidecar)")
@@ -216,8 +216,7 @@ func TestGetContainerLogs_WithInitContainers(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	err := rt.getContainerLogs(&buf, client, "test-pod")
-	require.NoError(t, err)
+	require.NoError(t, rt.getContainerLogs(&buf, client, "test-pod"))
 	output := buf.String()
 	// Init containers should appear before regular containers
 	assert.Contains(t, output, "POD LOGS: test-pod (init-setup)")
@@ -229,9 +228,7 @@ func TestGetContainerLogs_PodNotFound(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	err := rt.getContainerLogs(&buf, client, "nonexistent-pod")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unable to get pod nonexistent-pod")
+	assert.ErrorContains(t, rt.getContainerLogs(&buf, client, "nonexistent-pod"), "unable to get pod nonexistent-pod")
 }
 
 func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
@@ -252,8 +249,7 @@ func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	err := rt.getContainerLogs(&buf, client, "multi-test")
-	require.NoError(t, err)
+	require.NoError(t, rt.getContainerLogs(&buf, client, "multi-test"))
 	output := buf.String()
 	assert.Contains(t, output, "POD LOGS: multi-test (container-a)")
 	assert.Contains(t, output, "POD LOGS: multi-test (container-b)")

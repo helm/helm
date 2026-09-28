@@ -66,7 +66,6 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

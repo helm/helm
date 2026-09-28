@@ -154,8 +154,7 @@ func buildLegacyConfig(m MetadataLegacy, pluginType string) Config {
 func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 	var protocolCommands []SubprocessProtocolCommand
 	if len(m.Downloaders) > 0 {
-		protocolCommands =
-			make([]SubprocessProtocolCommand, 0, len(m.Downloaders))
+		protocolCommands = make([]SubprocessProtocolCommand, 0, len(m.Downloaders))
 		for _, d := range m.Downloaders {
 			protocolCommands = append(protocolCommands, SubprocessProtocolCommand{
 				Protocols:       d.Protocols,
@@ -165,7 +164,7 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 	}
 
 	platformCommand := m.PlatformCommand
-	if len(platformCommand) == 0 && len(m.Command) > 0 {
+	if len(platformCommand) == 0 && m.Command != "" {
 		platformCommand = []PlatformCommand{{Command: m.Command}}
 	}
 

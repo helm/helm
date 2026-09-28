@@ -18,6 +18,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -46,7 +47,7 @@ type RuntimeConfigSubprocess struct {
 	PlatformHooks PlatformHooks `yaml:"platformHooks"`
 	// ProtocolCommands allows the plugin to specify protocol specific commands
 	//
-	// Obsolete/deprecated: This is a compatibility hangover from the old plugin downloader mechanism, which was extended
+	// Deprecated: This is an obsolete compatibility hangover from the old plugin downloader mechanism, which was extended
 	// to support multiple protocols in a given plugin. The command supplied in PlatformCommand should implement protocol
 	// specific logic by inspecting the download URL
 	ProtocolCommands []SubprocessProtocolCommand `yaml:"protocolCommands,omitempty"`
@@ -73,7 +74,7 @@ func (r *RuntimeSubprocess) CreatePlugin(pluginDir string, metadata *Metadata) (
 	return &SubprocessPluginRuntime{
 		metadata:      *metadata,
 		pluginDir:     pluginDir,
-		RuntimeConfig: *(metadata.RuntimeConfig.(*RuntimeConfigSubprocess)),
+		RuntimeConfig: *metadata.RuntimeConfig.(*RuntimeConfigSubprocess),
 		EnvVars:       maps.Clone(r.EnvVars),
 	}, nil
 }
@@ -111,7 +112,7 @@ func (r *SubprocessPluginRuntime) Invoke(ctx context.Context, input *Input) (*Ou
 
 // InvokeWithEnv executes a plugin command with custom environment and I/O streams
 // This method allows execution with different command/args than the plugin's default
-func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env []string, stdin io.Reader, stdout, stderr io.Writer) error {
+func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv, env []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	mainCmdExp := os.ExpandEnv(main)
 	cmd := exec.CommandContext(context.Background(), mainCmdExp, argv...)
 	cmd.Env = slices.Clone(os.Environ())
@@ -125,11 +126,7 @@ func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env 
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
-		return err
-	}
-
-	return nil
+	return executeCmd(cmd, r.metadata.Name)
 }
 
 func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
@@ -156,7 +153,7 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 
 	slog.Debug("executing plugin hook command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
 	if err := cmd.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
+		if eerr, ok := errors.AsType[*exec.ExitError](err); ok {
 			os.Stderr.Write(eerr.Stderr)
 			return fmt.Errorf("plugin %s hook for %q exited with error", event, r.metadata.Name)
 		}
@@ -170,7 +167,7 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 // then replace the other three with a call to this func
 func executeCmd(prog *exec.Cmd, pluginName string) error {
 	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
+		if eerr, ok := errors.AsType[*exec.ExitError](err); ok {
 			slog.Debug(
 				"plugin execution failed",
 				slog.String("pluginName", pluginName),

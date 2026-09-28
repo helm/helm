@@ -73,7 +73,7 @@ type Interface interface {
 	// by "\n---\n")
 	//
 	// Validates against OpenAPI schema if validate is true.
-	// TODO Helm 4: Integrate into Build with an argument
+	// TODO Helm v5: Integrate into Build with an argument
 	BuildTable(reader io.Reader, validate bool) (ResourceList, error)
 }
 
@@ -103,7 +103,7 @@ type Waiter interface {
 // InterfaceWaitOptions defines an interface that extends Interface with
 // methods that accept wait options.
 //
-// TODO Helm 5: Remove InterfaceWaitOptions and integrate its method(s) into the Interface.
+// TODO Helm v5: Remove InterfaceWaitOptions and integrate its method(s) into the Interface.
 type InterfaceWaitOptions interface {
 	// GetWaiter gets the Kube.Waiter with options.
 	GetWaiterWithOptions(ws WaitStrategy, opts ...WaitOption) (Waiter, error)

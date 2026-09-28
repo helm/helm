@@ -77,7 +77,7 @@ func (a *v1Accessor) Version() int {
 }
 
 func (a *v1Accessor) Hooks() []Hook {
-	var hooks = make([]Hook, len(a.rel.Hooks))
+	hooks := make([]Hook, len(a.rel.Hooks))
 	for i, h := range a.rel.Hooks {
 		hooks[i] = h
 	}
@@ -141,7 +141,7 @@ func (a *v2Accessor) Version() int {
 }
 
 func (a *v2Accessor) Hooks() []Hook {
-	var hooks = make([]Hook, len(a.rel.Hooks))
+	hooks := make([]Hook, len(a.rel.Hooks))
 	for i, h := range a.rel.Hooks {
 		hooks[i] = h
 	}

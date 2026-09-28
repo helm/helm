@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v4/internal/plugin/installer"
+package installer
 
 import (
 	"archive/tar"
@@ -48,7 +48,7 @@ var Extractors = map[string]Extractor{
 
 // Convert a media type to an extractor extension.
 //
-// This should be refactored in Helm 4, combined with the extension-based mechanism.
+// TODO Helm v5: refactor this, combined with the extension-based mechanism.
 func mediaTypeToExtension(mt string) (string, bool) {
 	switch strings.ToLower(mt) {
 	case "application/gzip", "application/x-gzip", "application/x-tgz", "application/x-gtar":
@@ -132,7 +132,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 		return err
 	}
 
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return err
 	}
 
@@ -153,12 +153,12 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(path, 0755); err != nil {
+			if err := os.MkdirAll(path, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
 			// Ensure parent directory exists
-			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return err
 			}
 			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
@@ -189,6 +189,6 @@ func stripPluginName(name string) string {
 			break
 		}
 	}
-	re := regexp.MustCompile(`(.*)-[0-9]+\..*`)
+	re := regexp.MustCompile(`(.*)-\d+\..*`)
 	return re.ReplaceAllString(strippedName, `$1`)
 }

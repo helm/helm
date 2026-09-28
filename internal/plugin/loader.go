@@ -216,7 +216,6 @@ func findPlugins(pluginsDirs []string, findFn findFunc, filterFn filterFunc) ([]
 	var found []Plugin
 	for _, pluginsDir := range pluginsDirs {
 		ps, err := findFn(pluginsDir)
-
 		if err != nil {
 			return nil, err
 		}

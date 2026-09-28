@@ -59,8 +59,10 @@ func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 	is.Nil(res)
 	is.NoError(err)
 }
+
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
@@ -83,9 +85,9 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 		  "password": "password"
 		}
 	}`
-	require.NoError(t, unAction.cfg.Releases.Create(rel))
+	req.NoError(unAction.cfg.Releases.Create(rel))
 	res, err := unAction.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 	expected := `These resources were kept due to the resource policy:
 [Secret] secret
 `
@@ -94,6 +96,7 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 
 func TestUninstallRelease_Wait(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
@@ -113,16 +116,16 @@ func TestUninstallRelease_Wait(t *testing.T) {
 		  "password": "password"
 		}
 	}`
-	require.NoError(t, unAction.cfg.Releases.Create(rel))
+	req.NoError(unAction.cfg.Releases.Create(rel))
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitForDeleteError = errors.New("U timed out")
 	unAction.cfg.KubeClient = failer
 	resi, err := unAction.Run(rel.Name)
-	is.Error(err)
-	is.Contains(err.Error(), "U timed out")
+	req.Error(err)
+	req.ErrorContains(err, "U timed out")
 	res, err := releaserToV1Release(resi.Release)
-	is.NoError(err)
-	is.Equal(res.Info.Status, common.StatusUninstalled)
+	req.NoError(err)
+	is.Equal(common.StatusUninstalled, res.Info.Status)
 }
 
 func TestUninstallRelease_Cascade(t *testing.T) {
@@ -161,7 +164,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	unAction.cfg.KubeClient = failer
 	_, err := unAction.Run(rel.Name)
 	require.Error(t, err)
-	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+	is.ErrorContains(err, "failed to delete release: come-fail-away")
 }
 
 func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
@@ -180,6 +183,7 @@ func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
 
 func TestUninstallRelease_OwnershipVerification(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Create a buffer to capture log output
 	logBuffer := &bytes.Buffer{}
@@ -207,7 +211,7 @@ metadata:
     meta.helm.sh/release-namespace: default
 data:
   key: value`
-	require.NoError(t, config.Releases.Create(rel))
+	req.NoError(config.Releases.Create(rel))
 
 	// Create dummy resources with proper ownership metadata
 	labels := map[string]string{
@@ -224,10 +228,10 @@ data:
 	failer.DummyResources = dummyResources
 
 	resi, err := unAction.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 	is.NotNil(resi)
 	res, err := releaserToV1Release(resi.Release)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal(common.StatusUninstalled, res.Info.Status)
 
 	// Verify log contains debug message about deleting owned resource
@@ -239,6 +243,7 @@ data:
 
 func TestUninstallRelease_OwnershipVerification_WithKeepPolicy(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Create a buffer to capture log output
 	logBuffer := &bytes.Buffer{}
@@ -280,7 +285,7 @@ metadata:
     meta.helm.sh/release-namespace: default
 data:
   key: value`
-	require.NoError(t, config.Releases.Create(rel))
+	req.NoError(config.Releases.Create(rel))
 
 	// Create dummy resources - one unowned to test logging
 	dummyResources := kube.ResourceList{
@@ -290,7 +295,7 @@ data:
 	failer.DummyResources = dummyResources
 
 	res, err := unAction.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 	is.NotNil(res)
 	// Should contain info about kept resources
 	is.Contains(res.Info, "kept due to the resource policy")
@@ -303,6 +308,7 @@ data:
 
 func TestUninstallRelease_DryRun_OwnershipVerification(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	// Create a buffer to capture log output
 	logBuffer := &bytes.Buffer{}
@@ -329,7 +335,7 @@ metadata:
     meta.helm.sh/release-namespace: default
 data:
   key: value`
-	require.NoError(t, config.Releases.Create(rel))
+	req.NoError(config.Releases.Create(rel))
 
 	// Create dummy resources - one unowned to test dry-run logging
 	dummyResources := kube.ResourceList{
@@ -339,11 +345,11 @@ data:
 	failer.DummyResources = dummyResources
 
 	resi, err := unAction.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 	is.NotNil(resi)
 	is.NotNil(resi.Release)
 	res, err := releaserToV1Release(resi.Release)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("dryrun-ownership", res.Name)
 
 	// Verify log contains dry-run warning about resources that would be skipped

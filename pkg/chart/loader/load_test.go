@@ -24,9 +24,11 @@ import (
 	"io"
 	"maps"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	c3 "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/pkg/chart"
@@ -55,24 +57,17 @@ description: A test chart
 	for name, data := range files {
 		header := &tar.Header{
 			Name:    filepath.Join(chartName, name),
-			Mode:    0644,
+			Mode:    0o644,
 			Size:    int64(len(data)),
 			ModTime: time.Now(),
 		}
-		if err := tw.WriteHeader(header); err != nil {
-			t.Fatalf("Failed to write tar header for %s: %v", name, err)
-		}
-		if _, err := tw.Write(data); err != nil {
-			t.Fatalf("Failed to write tar data for %s: %v", name, err)
-		}
+		require.NoErrorf(t, tw.WriteHeader(header), "Failed to write tar header for %s", name)
+		_, err := tw.Write(data)
+		require.NoErrorf(t, err, "Failed to write tar data for %s", name)
 	}
 
-	if err := tw.Close(); err != nil {
-		t.Fatalf("Failed to close tar writer: %v", err)
-	}
-	if err := gw.Close(); err != nil {
-		t.Fatalf("Failed to close gzip writer: %v", err)
-	}
+	require.NoErrorf(t, tw.Close(), "Failed to close tar writer")
+	require.NoErrorf(t, gw.Close(), "Failed to close gzip writer")
 	return &buf
 }
 
@@ -149,37 +144,26 @@ func TestLoadArchive(t *testing.T) {
 			loadedChart, err := LoadArchive(reader)
 
 			if tc.expectedError != "" {
-				if err == nil || !strings.Contains(err.Error(), tc.expectedError) {
-					t.Errorf("Expected error containing %q, but got %v", tc.expectedError, err)
+				require.Errorf(t, err, "Expected error containing %q, but got no error", tc.expectedError)
+				assert.ErrorContains(t, err, tc.expectedError)
+			} else {
+				require.NoError(t, err)
+
+				lac, err := chart.NewAccessor(loadedChart)
+				require.NoError(t, err)
+
+				eac, err := chart.NewAccessor(tc.expectedChart)
+				require.NoError(t, err)
+				assert.Equalf(t, lac.Name(), eac.Name(), "Expected chart name %q, got %q", eac.Name(), lac.Name())
+
+				var loadedAPIVersion string
+				switch lc := loadedChart.(type) {
+				case *c2.Chart:
+					loadedAPIVersion = lc.Metadata.APIVersion
+				case *c3.Chart:
+					loadedAPIVersion = lc.Metadata.APIVersion
 				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-			lac, err := chart.NewAccessor(loadedChart)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-			eac, err := chart.NewAccessor(tc.expectedChart)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			if lac.Name() != eac.Name() {
-				t.Errorf("Expected chart name %q, got %q", eac.Name(), lac.Name())
-			}
-
-			var loadedAPIVersion string
-			switch lc := loadedChart.(type) {
-			case *c2.Chart:
-				loadedAPIVersion = lc.Metadata.APIVersion
-			case *c3.Chart:
-				loadedAPIVersion = lc.Metadata.APIVersion
-			}
-			if loadedAPIVersion != tc.apiVersion {
-				t.Errorf("Expected API version %q, got %q", tc.apiVersion, loadedAPIVersion)
+				assert.Equalf(t, loadedAPIVersion, tc.apiVersion, "Expected API version %q, got %q", tc.apiVersion, loadedAPIVersion)
 			}
 		})
 	}

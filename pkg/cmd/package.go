@@ -59,6 +59,11 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errors.New("need at least one argument, the path to the chart")
 			}
+			sourceDateEpoch, err := sourceDateEpochFromEnv()
+			if err != nil {
+				return err
+			}
+			client.SourceDateEpoch = sourceDateEpoch
 			if client.Sign {
 				if client.Key == "" {
 					return errors.New("--key is required for signing a package")
@@ -101,6 +106,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						RepositoryConfig: settings.RepositoryConfig,
 						RepositoryCache:  settings.RepositoryCache,
 						ContentCache:     settings.ContentCache,
+						SourceDateEpoch:  sourceDateEpoch,
 					}
 
 					if err := downloadManager.Update(); err != nil {

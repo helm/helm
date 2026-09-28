@@ -272,8 +272,7 @@ func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Obje
 	objects := []runtime.Object{}
 	for _, manifest := range manifests {
 		m := make(map[string]any)
-		err := yaml.Unmarshal([]byte(manifest), &m)
-		assert.NoError(t, err)
+		require.NoError(t, yaml.Unmarshal([]byte(manifest), &m))
 		resource := &unstructured.Unstructured{Object: m}
 		objects = append(objects, resource)
 	}
@@ -285,7 +284,7 @@ func getResourceListFromRuntimeObjs(t *testing.T, c *Client, objs []runtime.Obje
 	resourceList := ResourceList{}
 	for _, obj := range objs {
 		list, err := c.Build(objBody(obj), false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		resourceList = append(resourceList, list...)
 	}
 	return resourceList
@@ -332,8 +331,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			for _, objToCreate := range objsToCreate {
 				u := objToCreate.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 			objsToDelete := getRuntimeObjFromManifests(t, tt.manifestsToDelete)
 			for _, objToDelete := range objsToDelete {
@@ -341,8 +339,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 				gvr := getGVR(t, fakeMapper, u)
 				go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
 					time.Sleep(timeUntilPodDelete)
-					err := fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
-					assert.NoError(t, err)
+					assert.NoError(t, fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
 				}(gvr, u)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objsToCreate)
@@ -350,11 +347,11 @@ func TestStatusWaitForDelete(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -375,8 +372,7 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	// Don't create the object to test that the wait for delete works when the object doesn't exist
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
 	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
-	err := statusWaiter.WaitForDelete(resourceList, timeout)
-	assert.NoError(t, err)
+	assert.NoError(t, statusWaiter.WaitForDelete(resourceList, timeout))
 }
 
 func TestStatusWait(t *testing.T) {
@@ -433,19 +429,18 @@ func TestStatusWait(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -490,19 +485,18 @@ func TestWaitForJobComplete(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -553,19 +547,18 @@ func TestWatchForReady(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -657,8 +650,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 
 			if strings.Contains(tt.name, "delete") {
@@ -668,8 +660,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 					gvr := getGVR(t, fakeMapper, u)
 					go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
 						time.Sleep(timeUntilDelete)
-						err := fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
-						assert.NoError(t, err)
+						assert.NoError(t, fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
 					}(gvr, u)
 				}
 			}
@@ -679,11 +670,11 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -839,8 +830,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 
 			if strings.Contains(tt.name, "delet") {
@@ -850,8 +840,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 					gvr := getGVR(t, fakeMapper, u)
 					go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
 						time.Sleep(timeUntilDelete)
-						err := baseFakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
-						assert.NoError(t, err)
+						assert.NoError(t, baseFakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
 					}(gvr, u)
 				}
 			}
@@ -861,12 +850,12 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErr.Error())
+					require.ErrorContains(t, err, expectedErr.Error())
 				}
-				return
+			} else {
+				require.NoError(t, err)
+				assert.False(t, restrictedConfig.clusterScopedListAttempted)
 			}
-			assert.NoError(t, err)
-			assert.False(t, restrictedConfig.clusterScopedListAttempted)
 		})
 	}
 }
@@ -947,8 +936,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 
 			if strings.Contains(tt.name, "delet") {
@@ -958,8 +946,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 					gvr := getGVR(t, fakeMapper, u)
 					go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
 						time.Sleep(timeUntilDelete)
-						err := baseFakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
-						assert.NoError(t, err)
+						assert.NoError(t, baseFakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
 					}(gvr, u)
 				}
 			}
@@ -969,12 +956,12 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErr.Error())
+					require.ErrorContains(t, err, expectedErr.Error())
 				}
-				return
+			} else {
+				require.NoError(t, err)
+				assert.False(t, restrictedConfig.clusterScopedListAttempted)
 			}
-			assert.NoError(t, err)
-			assert.False(t, restrictedConfig.clusterScopedListAttempted)
 		})
 	}
 }
@@ -1067,19 +1054,18 @@ func TestStatusWaitWithCustomReaders(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -1139,16 +1125,15 @@ func TestStatusWaitWithJobsAndCustomReaders(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -1238,19 +1223,18 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := tt.testFunc(&sw, resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -1293,6 +1277,28 @@ func TestWaitOptionFunctions(t *testing.T) {
 		WithWaitForDeleteMethodContext(ctx)(opts)
 		assert.Equal(t, ctx, opts.waitForDeleteCtx)
 	})
+
+	t.Run("WithStatusComputeWorkers sets statusComputeWorkers", func(t *testing.T) {
+		t.Parallel()
+		opts := &waitOptions{}
+		WithStatusComputeWorkers(8)(opts)
+		assert.Equal(t, 8, opts.statusComputeWorkers)
+	})
+
+	t.Run("WithStatusComputeWorkers clamps negative values to zero", func(t *testing.T) {
+		t.Parallel()
+		opts := &waitOptions{}
+		WithStatusComputeWorkers(-1)(opts)
+		assert.Equal(t, 0, opts.statusComputeWorkers,
+			"negative worker counts must not propagate to the underlying watcher")
+	})
+
+	t.Run("waitOptions.statusComputeWorkers defaults to zero", func(t *testing.T) {
+		t.Parallel()
+		opts := &waitOptions{}
+		assert.Equal(t, 0, opts.statusComputeWorkers,
+			"SDK consumers must opt in to concurrent status computation")
+	})
 }
 
 func TestMethodSpecificContextCancellation(t *testing.T) {
@@ -1321,15 +1327,12 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.WatchUntilReady(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, sw.WatchUntilReady(resourceList, time.Second*3), "context canceled")
 	})
 
 	t.Run("Wait uses method-specific context", func(t *testing.T) {
@@ -1355,15 +1358,12 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.Wait(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, sw.Wait(resourceList, time.Second*3), "context canceled")
 	})
 
 	t.Run("WaitWithJobs uses method-specific context", func(t *testing.T) {
@@ -1389,15 +1389,12 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.WaitWithJobs(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, sw.WaitWithJobs(resourceList, time.Second*3), "context canceled")
 	})
 
 	t.Run("WaitForDelete uses method-specific context", func(t *testing.T) {
@@ -1423,15 +1420,12 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.WaitForDelete(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, sw.WaitForDelete(resourceList, time.Second*3), "context canceled")
 	})
 }
 
@@ -1461,15 +1455,12 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.WatchUntilReady(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, sw.WatchUntilReady(resourceList, time.Second*3), "context canceled")
 	})
 
 	t.Run("Wait falls back to general context when method context is nil", func(t *testing.T) {
@@ -1495,15 +1486,12 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.Wait(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, sw.Wait(resourceList, time.Second*3), "context canceled")
 	})
 
 	t.Run("WaitWithJobs falls back to general context when method context is nil", func(t *testing.T) {
@@ -1529,15 +1517,12 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.WaitWithJobs(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, sw.WaitWithJobs(resourceList, time.Second*3), "context canceled")
 	})
 
 	t.Run("WaitForDelete falls back to general context when method context is nil", func(t *testing.T) {
@@ -1563,15 +1548,12 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.WaitForDelete(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, sw.WaitForDelete(resourceList, time.Second*3), "context canceled")
 	})
 }
 
@@ -1601,14 +1583,12 @@ func TestMethodContextOverridesGeneralContext(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.WatchUntilReady(resourceList, time.Second*3)
 		// Should succeed because method context is used and it's not cancelled
-		assert.NoError(t, err)
+		assert.NoError(t, sw.WatchUntilReady(resourceList, time.Second*3))
 	})
 
 	t.Run("method-specific context overrides general context for Wait", func(t *testing.T) {
@@ -1634,14 +1614,12 @@ func TestMethodContextOverridesGeneralContext(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.Wait(resourceList, time.Second*3)
 		// Should succeed because method context is used and it's not cancelled
-		assert.NoError(t, err)
+		assert.NoError(t, sw.Wait(resourceList, time.Second*3))
 	})
 
 	t.Run("method-specific context overrides general context for WaitWithJobs", func(t *testing.T) {
@@ -1667,14 +1645,12 @@ func TestMethodContextOverridesGeneralContext(t *testing.T) {
 		for _, obj := range objs {
 			u := obj.(*unstructured.Unstructured)
 			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 		}
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 
-		err := sw.WaitWithJobs(resourceList, time.Second*3)
 		// Should succeed because method context is used and it's not cancelled
-		assert.NoError(t, err)
+		assert.NoError(t, sw.WaitWithJobs(resourceList, time.Second*3))
 	})
 
 	t.Run("method-specific context overrides general context for WaitForDelete", func(t *testing.T) {
@@ -1703,9 +1679,8 @@ func TestMethodContextOverridesGeneralContext(t *testing.T) {
 		// immediately cancelled and the call would return a context error.
 		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-		err := sw.WaitForDelete(resourceList, time.Second)
 		// Should succeed because method context is used and it's not cancelled
-		assert.NoError(t, err)
+		assert.NoError(t, sw.WaitForDelete(resourceList, time.Second))
 	})
 }
 
@@ -1787,19 +1762,18 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
-				return
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }

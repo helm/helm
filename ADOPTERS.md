@@ -12,7 +12,7 @@
 - [New Relic](https://www.newrelic.com)  
 - [Octopus Deploy](https://octopus.com/)  
 - [Omnistrate](https://omnistrate.com)  
-- [Oracle](www.oracle.com)  
+- [Oracle](https://www.oracle.com)  
 - [Percona](https://www.percona.com)  
 - [Qovery](https://www.qovery.com/)  
 - [Samsung SDS](https://www.samsungsds.com/)  

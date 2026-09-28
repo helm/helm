@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repo // import "helm.sh/helm/v4/pkg/repo/v1"
+package repo
 
 import (
 	"fmt"
@@ -118,7 +118,7 @@ func (r *File) WriteFile(path string, perm os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(path, data, perm)

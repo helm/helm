@@ -85,7 +85,7 @@ func (r *v2Accessor) IsLibraryChart() bool {
 }
 
 func (r *v2Accessor) Dependencies() []Charter {
-	var deps = make([]Charter, len(r.chrt.Dependencies()))
+	deps := make([]Charter, len(r.chrt.Dependencies()))
 	for i, c := range r.chrt.Dependencies() {
 		deps[i] = c
 	}
@@ -93,7 +93,7 @@ func (r *v2Accessor) Dependencies() []Charter {
 }
 
 func (r *v2Accessor) MetaDependencies() []Dependency {
-	var deps = make([]Dependency, len(r.chrt.Metadata.Dependencies))
+	deps := make([]Dependency, len(r.chrt.Metadata.Dependencies))
 	for i, c := range r.chrt.Metadata.Dependencies {
 		deps[i] = c
 	}
@@ -154,7 +154,7 @@ func (r *v3Accessor) IsLibraryChart() bool {
 }
 
 func (r *v3Accessor) Dependencies() []Charter {
-	var deps = make([]Charter, len(r.chrt.Dependencies()))
+	deps := make([]Charter, len(r.chrt.Dependencies()))
 	for i, c := range r.chrt.Dependencies() {
 		deps[i] = c
 	}
@@ -162,7 +162,7 @@ func (r *v3Accessor) Dependencies() []Charter {
 }
 
 func (r *v3Accessor) MetaDependencies() []Dependency {
-	var deps = make([]Dependency, len(r.chrt.Dependencies()))
+	deps := make([]Dependency, len(r.chrt.Dependencies()))
 	for i, c := range r.chrt.Metadata.Dependencies {
 		deps[i] = c
 	}

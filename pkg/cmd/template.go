@@ -85,7 +85,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.KubeVersion = parsedKubeVersion
 			}
 
-			registryClient, err := newRegistryClient(out, client.CertFile, client.KeyFile, client.CaFile,
+			registryClient, err := newRegistryClient(cmd.ErrOrStderr(), client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -238,8 +238,8 @@ func isTestHook(h *release.Hook) bool {
 // bug introduced by #8156. As part of the todo to refactor renderResources
 // this duplicate code should be removed. It is added here so that the API
 // surface area is as minimally impacted as possible in fixing the issue.
-func writeToFile(outputDir string, name string, data string, appendData bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+func writeToFile(outputDir, name, data string, appendData bool) error {
+	outfileName := outputDir + string(filepath.Separator) + name
 
 	err := ensureDirectoryForFile(outfileName)
 	if err != nil {
@@ -254,7 +254,6 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 	defer f.Close()
 
 	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
-
 	if err != nil {
 		return err
 	}
@@ -265,7 +264,7 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 	if appendData {
-		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o600)
 	}
 	return os.Create(filename)
 }
@@ -277,5 +276,5 @@ func ensureDirectoryForFile(file string) error {
 		return err
 	}
 
-	return os.MkdirAll(baseDir, 0755)
+	return os.MkdirAll(baseDir, 0o755)
 }

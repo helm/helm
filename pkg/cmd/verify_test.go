@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVerifyCmd(t *testing.T) {
@@ -73,18 +76,11 @@ func TestVerifyCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, out, err := executeActionCommand(tt.cmd)
 			if tt.wantError {
-				if err == nil {
-					t.Errorf("Expected error, but got none: %q", out)
-				}
-				if err.Error() != tt.expect {
-					t.Errorf("Expected error %q, got %q", tt.expect, err)
-				}
-				return
-			} else if err != nil {
-				t.Errorf("Unexpected error: %s", err)
-			}
-			if out != tt.expect {
-				t.Errorf("Expected %q, got %q", tt.expect, out)
+				require.Error(t, err, "Expected error, but got none: %q", out)
+				assert.EqualError(t, err, tt.expect, "Expected error %q", tt.expect)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expect, out, "Expected %q, got %q", tt.expect, out)
 			}
 		})
 	}

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -56,9 +57,7 @@ func TestList(t *testing.T) {
 		},
 	} {
 		buf := bytes.Buffer{}
-		if err := NewDependency().List(tcase.chart, &buf); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, NewDependency().List(tcase.chart, &buf))
 		test.AssertGoldenString(t, buf.String(), tcase.golden)
 	}
 }
@@ -70,22 +69,16 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 	dir := t.TempDir()
 
 	chartpath := filepath.Join(dir, "charts")
-	if err := os.MkdirAll(chartpath, 0700); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(chartpath, 0o700))
 
 	// Add some fake charts
 	first := buildChart(withName("first-chart"))
 	_, err := chartutil.Save(first, chartpath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	second := buildChart(withName("first-chart-second-chart"))
 	_, err = chartutil.Save(second, chartpath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	dep := &chart.Dependency{
 		Name:    "first-chart",
@@ -94,9 +87,7 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 
 	// Now try to get the deps
 	stat := NewDependency().dependencyStatus(dir, dep, first)
-	if stat != "ok" {
-		t.Errorf("Unexpected status: %q", stat)
-	}
+	assert.Equal(t, "ok", stat, "Unexpected status: %q", stat)
 }
 
 func TestStatArchiveForStatus(t *testing.T) {
@@ -104,9 +95,7 @@ func TestStatArchiveForStatus(t *testing.T) {
 	dir := t.TempDir()
 
 	chartpath := filepath.Join(dir, "charts")
-	if err := os.MkdirAll(chartpath, 0700); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(chartpath, 0o700))
 
 	// unsaved chart
 	lilith := buildChart(withName("lilith"))
@@ -118,13 +107,14 @@ func TestStatArchiveForStatus(t *testing.T) {
 	}
 
 	is := assert.New(t)
+	req := require.New(t)
 
 	lilithpath := filepath.Join(chartpath, "lilith-1.2.3.tgz")
 	is.Empty(statArchiveForStatus(lilithpath, dep))
 
 	// save the chart (version 0.1.0, because that is the default)
 	where, err := chartutil.Save(lilith, chartpath)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Should get "wrong version" because we asked for 1.2.3 and got 0.1.0
 	is.Equal("wrong version", statArchiveForStatus(where, dep))

@@ -94,7 +94,7 @@ func TestDiskCache_PutAndGet(t *testing.T) {
 
 		// Get should return ErrNotExist for empty files
 		_, err = cache.Get(emptyKey, CacheChart)
-		assert.ErrorIs(t, err, os.ErrNotExist, "Get for an empty file should return os.ErrNotExist")
+		require.ErrorIs(t, err, os.ErrNotExist, "Get for an empty file should return os.ErrNotExist")
 
 		// But the file should exist
 		_, err = os.Stat(path)
@@ -105,10 +105,9 @@ func TestDiskCache_PutAndGet(t *testing.T) {
 	t.Run("GetDirectory", func(t *testing.T) {
 		dirKey := sha256.Sum256([]byte("i am a directory"))
 		dirPath := cache.fileName(dirKey, CacheChart)
-		err := os.MkdirAll(dirPath, 0755)
-		require.NoError(t, err)
+		require.NoError(t, os.MkdirAll(dirPath, 0o755))
 
-		_, err = cache.Get(dirKey, CacheChart)
+		_, err := cache.Get(dirKey, CacheChart)
 		assert.EqualError(t, err, "is a directory")
 	})
 }
@@ -117,6 +116,6 @@ func TestDiskCache_fileName(t *testing.T) {
 	cache := &DiskCache{Root: "/tmp/cache"}
 	key := sha256.Sum256([]byte("some data"))
 
-	assert.Equal(t, filepath.Join("/tmp/cache", "13", "1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee.chart"), cache.fileName(key, CacheChart))
-	assert.Equal(t, filepath.Join("/tmp/cache", "13", "1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee.prov"), cache.fileName(key, CacheProv))
+	assert.Equal(t, filepath.FromSlash("/tmp/cache/13/1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee.chart"), cache.fileName(key, CacheChart))
+	assert.Equal(t, filepath.FromSlash("/tmp/cache/13/1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee.prov"), cache.fileName(key, CacheProv))
 }

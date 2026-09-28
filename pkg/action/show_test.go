@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -47,9 +48,7 @@ func TestShow(t *testing.T) {
 	}
 
 	output, err := client.Run("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expect := `name: alpine
 
@@ -69,9 +68,7 @@ bar
 baz
 
 `
-	if output != expect {
-		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
-	}
+	assert.Equal(t, expect, output, "Expected\n%q\nGot\n%q\n", expect, output)
 }
 
 func TestShowNoValues(t *testing.T) {
@@ -82,13 +79,9 @@ func TestShowNoValues(t *testing.T) {
 	// Regression tests for missing values. See issue #1024.
 	client.OutputFormat = ShowValues
 	output, err := client.Run("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(output) != 0 {
-		t.Errorf("expected empty values buffer, got %s", output)
-	}
+	assert.Empty(t, output, "expected empty values buffer, got %s", output)
 }
 
 func TestShowValuesByJsonPathFormat(t *testing.T) {
@@ -97,13 +90,9 @@ func TestShowValuesByJsonPathFormat(t *testing.T) {
 	client.JSONPathTemplate = "{$.nestedKey.simpleKey}"
 	client.chart = buildChart(withSampleValues())
 	output, err := client.Run("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expect := "simpleValue"
-	if output != expect {
-		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
-	}
+	assert.Equal(t, expect, output, "Expected\n%q\nGot\n%q\n", expect, output)
 }
 
 func TestShowCRDs(t *testing.T) {
@@ -121,9 +110,7 @@ func TestShowCRDs(t *testing.T) {
 	}
 
 	output, err := client.Run("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expect := `---
 foo
@@ -135,9 +122,7 @@ bar
 baz
 
 `
-	if output != expect {
-		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
-	}
+	assert.Equal(t, expect, output, "Expected\n%q\nGot\n%q\n", expect, output)
 }
 
 func TestShowNoReadme(t *testing.T) {
@@ -154,9 +139,7 @@ func TestShowNoReadme(t *testing.T) {
 	}
 
 	output, err := client.Run("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expect := `name: alpine
 
@@ -167,9 +150,7 @@ foo
 bar
 
 `
-	if output != expect {
-		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
-	}
+	assert.Equal(t, expect, output, "Expected\n%q\nGot\n%q\n", expect, output)
 }
 
 func TestShowSetRegistryClient(t *testing.T) {

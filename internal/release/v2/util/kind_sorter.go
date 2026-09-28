@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util // import "helm.sh/helm/v4/internal/release/v2/util"
+package util
 
 import (
 	"sort"
@@ -137,7 +137,7 @@ func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.H
 	return h
 }
 
-func lessByKind(_ any, _ any, kindA string, kindB string, o KindSortOrder) bool {
+func lessByKind(_, _ any, kindA, kindB string, o KindSortOrder) bool {
 	ordering := make(map[string]int, len(o))
 	for v, k := range o {
 		ordering[k] = v

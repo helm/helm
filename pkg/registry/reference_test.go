@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func verify(t *testing.T, actual reference, registry, repository, tag, digest string) {
@@ -45,30 +46,30 @@ func verify(t *testing.T, actual reference, registry, repository, tag, digest st
 
 func TestNewReference(t *testing.T) {
 	actual, err := newReference("registry.example.com/repository:1.0@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	verify(t, actual, "registry.example.com", "repository", "1.0", "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 
 	actual, err = newReference("oci://registry.example.com/repository:1.0@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	verify(t, actual, "registry.example.com", "repository", "1.0", "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 
 	actual, err = newReference("a/b:1@c")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	verify(t, actual, "a", "b", "1", "c")
 
 	actual, err = newReference("a/b:@")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	verify(t, actual, "a", "b", "", "")
 
 	actual, err = newReference("registry.example.com/repository:1.0+001")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	verify(t, actual, "registry.example.com", "repository", "1.0_001", "")
 
 	actual, err = newReference("thing:1.0")
-	assert.Error(t, err)
+	require.Error(t, err)
 	verify(t, actual, "", "", "", "")
 
 	actual, err = newReference("registry.example.com/the/repository@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	verify(t, actual, "registry.example.com", "the/repository", "", "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 }

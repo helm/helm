@@ -77,9 +77,7 @@ func TestMetadataV1ValidateVersion(t *testing.T) {
 		t.Run("invalid/"+name, func(t *testing.T) {
 			m := base()
 			m.Version = tc.version
-			err := m.Validate()
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), tc.errMsg)
+			assert.ErrorContains(t, m.Validate(), tc.errMsg)
 		})
 	}
 }

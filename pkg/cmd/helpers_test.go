@@ -56,17 +56,14 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 
 				storage := storageFixture()
 				for _, rel := range tt.rels {
-					if err := storage.Create(rel); err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, storage.Create(rel))
 				}
 				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
 				_, out, err := executeActionCommandC(storage, tt.cmd)
-				if tt.wantError && err == nil {
-					t.Errorf("expected error, got success with the following output:\n%s", out)
-				}
-				if !tt.wantError && err != nil {
-					t.Errorf("expected no error, got: '%v'", err)
+				if tt.wantError {
+					require.Error(t, err, "expected error, got success with the following output:\n%s", out)
+				} else {
+					require.NoError(t, err, "expected no error")
 				}
 				if tt.golden != "" {
 					test.AssertGoldenString(t, out, tt.golden)
@@ -286,16 +283,15 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, tc.IsTemplate)
 			if tc.ExpectedError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tc.ExpectedStrategy, dryRunStrategy)
 			}
 
 			if tc.ExpectedLog != nil {
 				logResult := map[string]string{}
-				err = json.Unmarshal(logBuf.Bytes(), &logResult)
-				require.NoError(t, err)
+				require.NoError(t, json.Unmarshal(logBuf.Bytes(), &logResult))
 
 				assert.Equal(t, tc.ExpectedLog.Level, logResult["level"])
 				assert.Equal(t, tc.ExpectedLog.Msg, logResult["msg"])

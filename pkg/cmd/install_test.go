@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
@@ -39,9 +41,7 @@ func TestInstall(t *testing.T) {
 	}))
 	defer srv2.Close()
 
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, srv.LinkIndices())
 
 	repoFile := filepath.Join(srv.Root(), "repositories.yaml")
 

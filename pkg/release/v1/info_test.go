@@ -253,17 +253,17 @@ func TestInfoUnmarshalJSON(t *testing.T) {
 			err := json.Unmarshal([]byte(tt.input), &info)
 			if tt.wantErr {
 				assert.Error(t, err)
-				return
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected.FirstDeployed.Unix(), info.FirstDeployed.Unix())
+				assert.Equal(t, tt.expected.LastDeployed.Unix(), info.LastDeployed.Unix())
+				assert.Equal(t, tt.expected.Deleted.Unix(), info.Deleted.Unix())
+				assert.Equal(t, tt.expected.Description, info.Description)
+				assert.Equal(t, tt.expected.Status, info.Status)
+				assert.Equal(t, tt.expected.RollbackRevision, info.RollbackRevision)
+				assert.Equal(t, tt.expected.Notes, info.Notes)
+				assert.Equal(t, tt.expected.Resources, info.Resources)
 			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected.FirstDeployed.Unix(), info.FirstDeployed.Unix())
-			assert.Equal(t, tt.expected.LastDeployed.Unix(), info.LastDeployed.Unix())
-			assert.Equal(t, tt.expected.Deleted.Unix(), info.Deleted.Unix())
-			assert.Equal(t, tt.expected.Description, info.Description)
-			assert.Equal(t, tt.expected.Status, info.Status)
-			assert.Equal(t, tt.expected.RollbackRevision, info.RollbackRevision)
-			assert.Equal(t, tt.expected.Notes, info.Notes)
-			assert.Equal(t, tt.expected.Resources, info.Resources)
 		})
 	}
 }
@@ -284,9 +284,7 @@ func TestInfoRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	var decoded Info
-	err = json.Unmarshal(data, &decoded)
-	require.NoError(t, err)
-
+	require.NoError(t, json.Unmarshal(data, &decoded))
 	assert.Equal(t, original.FirstDeployed.Unix(), decoded.FirstDeployed.Unix())
 	assert.Equal(t, original.LastDeployed.Unix(), decoded.LastDeployed.Unix())
 	assert.Equal(t, original.Deleted.Unix(), decoded.Deleted.Unix())
@@ -330,9 +328,7 @@ func TestInfoRollbackRevisionRoundTrip(t *testing.T) {
 			require.NoError(t, err)
 
 			var decoded Info
-			err = json.Unmarshal(data, &decoded)
-			require.NoError(t, err)
-
+			require.NoError(t, json.Unmarshal(data, &decoded))
 			assert.Equal(t, tt.info.RollbackRevision, decoded.RollbackRevision)
 			assert.Equal(t, tt.info.FirstDeployed.Unix(), decoded.FirstDeployed.Unix())
 			assert.Equal(t, tt.info.LastDeployed.Unix(), decoded.LastDeployed.Unix())
@@ -342,8 +338,7 @@ func TestInfoRollbackRevisionRoundTrip(t *testing.T) {
 			// Verify omitempty behavior: zero rollback_revision should not appear in JSON
 			if tt.info.RollbackRevision == 0 {
 				var raw map[string]any
-				err = json.Unmarshal(data, &raw)
-				require.NoError(t, err)
+				require.NoError(t, json.Unmarshal(data, &raw))
 				assert.NotContains(t, raw, "rollback_revision")
 			}
 		})
@@ -356,13 +351,12 @@ func TestInfoEmptyStringRoundTrip(t *testing.T) {
 	input := `{"first_deployed":"","last_deployed":"","deleted":"","status":"deployed","description":"test"}`
 
 	var info Info
-	err := json.Unmarshal([]byte(input), &info)
-	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal([]byte(input), &info))
 
 	// Verify time fields are zero values
-	assert.True(t, info.FirstDeployed.IsZero())
-	assert.True(t, info.LastDeployed.IsZero())
-	assert.True(t, info.Deleted.IsZero())
+	assert.Zero(t, info.FirstDeployed)
+	assert.Zero(t, info.LastDeployed)
+	assert.Zero(t, info.Deleted)
 	assert.Equal(t, common.StatusDeployed, info.Status)
 	assert.Equal(t, "test", info.Description)
 
@@ -371,8 +365,7 @@ func TestInfoEmptyStringRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	var result map[string]any
-	err = json.Unmarshal(data, &result)
-	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &result))
 
 	// Zero time values should be omitted due to omitzero tag
 	assert.NotContains(t, result, "first_deployed")

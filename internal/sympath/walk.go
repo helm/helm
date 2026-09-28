@@ -21,6 +21,7 @@ limitations under the License.
 package sympath
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -40,7 +41,7 @@ func Walk(root string, walkFn filepath.WalkFunc) error {
 	} else {
 		err = symwalk(root, info, walkFn)
 	}
-	if err == filepath.SkipDir {
+	if errors.Is(err, filepath.SkipDir) {
 		return nil
 	}
 	return err
@@ -75,7 +76,7 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}
-		if err := symwalk(path, info, walkFn); err != nil && err != filepath.SkipDir {
+		if err := symwalk(path, info, walkFn); err != nil && !errors.Is(err, filepath.SkipDir) {
 			return err
 		}
 		return nil
@@ -98,13 +99,13 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		filename := filepath.Join(path, name)
 		fileInfo, err := os.Lstat(filename)
 		if err != nil {
-			if err := walkFn(filename, fileInfo, err); err != nil && err != filepath.SkipDir {
+			if err := walkFn(filename, fileInfo, err); err != nil && !errors.Is(err, filepath.SkipDir) {
 				return err
 			}
 		} else {
 			err = symwalk(filename, fileInfo, walkFn)
 			if err != nil {
-				if (!fileInfo.IsDir() && !IsSymlink(fileInfo)) || err != filepath.SkipDir {
+				if (!fileInfo.IsDir() && !IsSymlink(fileInfo)) || !errors.Is(err, filepath.SkipDir) {
 					return err
 				}
 			}

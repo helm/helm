@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -51,7 +50,7 @@ func TestNewTLSConfig(t *testing.T) {
 			WithCertKeyPairFiles(certFile, keyFile),
 			WithCAFile(caCertFile),
 		)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		require.Len(t, cfg.Certificates, 1)
 		require.False(t, cfg.InsecureSkipVerify, "insecure skip verify mismatch, expecting false")
@@ -62,7 +61,7 @@ func TestNewTLSConfig(t *testing.T) {
 			WithInsecureSkipVerify(insecureSkipTLSVerify),
 			WithCAFile(caCertFile),
 		)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		require.Empty(t, cfg.Certificates)
 		require.False(t, cfg.InsecureSkipVerify, "insecure skip verify mismatch, expecting false")
@@ -74,7 +73,7 @@ func TestNewTLSConfig(t *testing.T) {
 			WithInsecureSkipVerify(insecureSkipTLSVerify),
 			WithCertKeyPairFiles(certFile, keyFile),
 		)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		require.Len(t, cfg.Certificates, 1)
 		require.False(t, cfg.InsecureSkipVerify, "insecure skip verify mismatch, expecting false")

@@ -51,7 +51,6 @@ var (
 			panic(fmt.Sprintf("failed to create default capabilities: %v", err))
 		}
 		return caps
-
 	}()
 )
 
@@ -92,7 +91,9 @@ func (kv *KubeVersion) String() string {
 
 // GitVersion returns the full Kubernetes version string.
 //
-// Deprecated: use KubeVersion.Version.
+// Deprecated: Use KubeVersion.Version.
+//
+//go:fix inline
 func (kv *KubeVersion) GitVersion() string { return kv.Version }
 
 // ParseKubeVersion parses kubernetes version from string

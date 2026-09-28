@@ -42,24 +42,25 @@ func TestServer(t *testing.T) {
 
 	c, err := srv.CopyCharts("testdata/*.tgz")
 	require.NoError(t, err)
-
-	assert.Len(t, c, 1)
-
+	require.Len(t, c, 1)
 	assert.Equal(t, "examplechart-0.1.0.tgz", filepath.Base(c[0]))
 
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL()+"/examplechart-0.1.0.tgz", http.NoBody)
 	require.NoError(t, err)
+
 	client := http.DefaultClient
 	res, err := client.Do(req)
 	require.NoError(t, err)
-	res.Body.Close()
 
+	res.Body.Close()
 	assert.GreaterOrEqual(t, res.ContentLength, int64(500))
 
 	req, err = http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL()+"/index.yaml", http.NoBody)
 	require.NoError(t, err)
+
 	res, err = client.Do(req)
 	require.NoError(t, err)
+
 	data, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	require.NoError(t, err)

@@ -34,7 +34,7 @@ var (
 	//
 	// Increment major number for new feature additions and behavioral changes.
 	// Increment minor number for bug fixes and performance enhancements.
-	version = "v4.2"
+	version = "v4.3"
 
 	// metadata is extra build time data
 	metadata = ""

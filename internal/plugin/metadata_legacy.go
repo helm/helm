@@ -81,7 +81,7 @@ func (m *MetadataLegacy) Validate() error {
 
 	m.Usage = sanitizeString(m.Usage)
 
-	if len(m.PlatformCommand) > 0 && len(m.Command) > 0 {
+	if len(m.PlatformCommand) > 0 && m.Command != "" {
 		return errors.New("both platformCommand and command are set")
 	}
 

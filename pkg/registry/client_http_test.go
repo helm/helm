@@ -39,15 +39,13 @@ func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
-	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().Error(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth("badverybad", "ohsobad"),
-		LoginOptPlainText(true))
-	suite.Require().Error(err, "error logging into registry with bad credentials")
+		LoginOptPlainText(true)), "error logging into registry with bad credentials")
 
-	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+	suite.Require().NoError(suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptPlainText(true))
-	suite.Require().NoError(err, "no error logging into registry with good credentials")
+		LoginOptPlainText(true)), "no error logging into registry with good credentials")
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {

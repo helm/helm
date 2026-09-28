@@ -16,8 +16,10 @@ limitations under the License.
 package v3
 
 import (
-	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidate(t *testing.T) {
@@ -192,21 +194,13 @@ func TestValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		result := tt.md.Validate()
-		if !errors.Is(result, tt.err) {
-			t.Errorf("expected %q, got %q in test %q", tt.err, result, tt.name)
-		}
+		assert.ErrorIsf(t, result, tt.err, "expected %q, got %q in test %q", tt.err, result, tt.name)
 	}
 }
 
 func TestValidate_sanitize(t *testing.T) {
 	md := &Metadata{APIVersion: "3", Name: "test", Version: "1.0", Description: "\adescr\u0081iption\rtest", Maintainers: []*Maintainer{{Name: "\r"}}}
-	if err := md.Validate(); err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
-	if md.Description != "description test" {
-		t.Fatalf("description was not sanitized: %q", md.Description)
-	}
-	if md.Maintainers[0].Name != " " {
-		t.Fatal("maintainer name was not sanitized")
-	}
+	require.NoError(t, md.Validate())
+	require.Equalf(t, "description test", md.Description, "description was not sanitized: %q", md.Description)
+	require.Equal(t, " ", md.Maintainers[0].Name, "maintainer name was not sanitized")
 }

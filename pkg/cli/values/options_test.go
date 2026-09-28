@@ -91,7 +91,7 @@ func TestReadFile(t *testing.T) {
 				tmpDir := t.TempDir()
 				filePath := filepath.Join(tmpDir, "test.txt")
 				content := []byte("local file content")
-				require.NoError(t, os.WriteFile(filePath, content, 0644))
+				require.NoError(t, os.WriteFile(filePath, content, 0o644))
 				return filePath, func() {} // cleanup handled by t.TempDir()
 			},
 			expectError:  false,
@@ -152,7 +152,7 @@ func TestReadFile(t *testing.T) {
 				fileName := "ftp_file.txt" // Valid filename for filesystem
 				filePath := filepath.Join(tmpDir, fileName)
 				content := []byte("local fallback content")
-				require.NoError(t, os.WriteFile(filePath, content, 0644))
+				require.NoError(t, os.WriteFile(filePath, content, 0o644))
 				return filePath, func() {}
 			},
 			expectError:  false,
@@ -215,19 +215,17 @@ func TestReadFile(t *testing.T) {
 				got, err := readFile(actualFilePath, tt.providers)
 				require.NoError(t, err, "readFile() expected no error for stdin")
 				assert.Equal(t, testData, got)
-				return
-			}
-
-			// Regular test cases
-			got, err := readFile(actualFilePath, tt.providers)
-			if tt.expectError {
-				assert.Error(t, err)
-				return
-			}
-			assert.NoError(t, err)
-
-			if tt.expectedData != nil {
-				assert.Equal(t, tt.expectedData, got)
+			} else {
+				// Regular test cases
+				got, err := readFile(actualFilePath, tt.providers)
+				if tt.expectError {
+					assert.Error(t, err)
+				} else {
+					require.NoError(t, err)
+					if tt.expectedData != nil {
+						assert.Equal(t, tt.expectedData, got)
+					}
+				}
 			}
 		})
 	}
@@ -258,8 +256,7 @@ func TestReadFileErrorMessages(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := readFile(tt.filePath, tt.providers)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
+			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }
@@ -357,10 +354,10 @@ func TestMergeValuesCLI(t *testing.T) {
 			got, err := tt.opts.MergeValues(getter.Providers{})
 			if tt.wantErr {
 				assert.Error(t, err)
-				return
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, got)
 			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, got)
 		})
 	}
 }

@@ -101,11 +101,15 @@ type ChartVersion struct {
 // Search performs a search against the monocular search API
 //
 // Deprecated: Use SearchWithContext instead.
+//
+//go:fix inline
 func (c *Client) Search(term string) ([]SearchResult, error) {
 	return c.SearchWithContext(context.Background(), term)
 }
 
 // SearchWithContext performs a search against the monocular search API
+//
+// TODO Helm v5: Rename this to Search (remove the current deprecated Search method) and 'go:fix inline' SearchWithContext method to call Search.
 func (c *Client) SearchWithContext(ctx context.Context, term string) ([]SearchResult, error) {
 	// Create the URL to the search endpoint
 	// Note, this is currently an internal API for the Hub. This should be
