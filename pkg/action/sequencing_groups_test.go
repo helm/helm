@@ -20,16 +20,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/resource"
+	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	releaseutil "helm.sh/helm/v4/internal/release/v2/manifest"
 	"helm.sh/helm/v4/internal/release/v2/resourcegroup"
 	"helm.sh/helm/v4/internal/release/v2/sequence"
+	"helm.sh/helm/v4/pkg/kube"
 )
 
 func TestGroupSequencedApply_OrderAndFailureBoundaries(t *testing.T) {
@@ -177,4 +185,132 @@ func groupActionBatchKinds(plan *sequence.Plan) []sequence.BatchKind {
 		kinds[i] = batch.Kind
 	}
 	return kinds
+}
+
+func TestStripSequencingAnnotations(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		want        map[string]string
+	}{
+		{
+			name: "removes only the dependency key",
+			annotations: map[string]string{
+				resourcegroup.AnnotationResourceGroup:           "app",
+				resourcegroup.AnnotationDependsOnResourceGroups: `["database"]`,
+				"example.com/other":                             "kept",
+			},
+			want: map[string]string{
+				resourcegroup.AnnotationResourceGroup: "app",
+				"example.com/other":                   "kept",
+			},
+		},
+		{
+			name:        "dependency key alone",
+			annotations: map[string]string{resourcegroup.AnnotationDependsOnResourceGroups: `["database"]`},
+			want:        map[string]string{},
+		},
+		{
+			name:        "no annotations",
+			annotations: nil,
+			want:        nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := &unstructured.Unstructured{Object: map[string]any{"apiVersion": "v1", "kind": "ConfigMap"}}
+			u.SetName("cm")
+			u.SetAnnotations(tt.annotations)
+			require.NoError(t, stripSequencingAnnotations(kube.ResourceList{{Name: "cm", Object: u}}))
+			assert.Equal(t, tt.want, u.GetAnnotations())
+		})
+	}
+}
+
+// annotationRecordingClient decodes manifests and records the annotations of
+// every object sent to Create or Update.
+type annotationRecordingClient struct {
+	recordingSequenceClient
+	sent []map[string]string
+}
+
+func (c *annotationRecordingClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	var resources kube.ResourceList
+	for document := range strings.SplitSeq(string(data), "---\n") {
+		if strings.TrimSpace(document) == "" {
+			continue
+		}
+		object := map[string]any{}
+		if err := yaml.Unmarshal([]byte(document), &object); err != nil {
+			return nil, err
+		}
+		u := &unstructured.Unstructured{Object: object}
+		u.SetNamespace("spaced")
+		resources = append(resources, &resource.Info{
+			Name: u.GetName(), Namespace: u.GetNamespace(), Object: u,
+			Mapping: &meta.RESTMapping{
+				Resource:         schema.GroupVersionResource{Version: "v1", Resource: "configmaps"},
+				GroupVersionKind: schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"},
+				Scope:            meta.RESTScopeNamespace,
+			},
+		})
+	}
+	return resources, nil
+}
+
+func (c *annotationRecordingClient) record(resources kube.ResourceList) {
+	for _, info := range resources {
+		accessor, err := meta.Accessor(info.Object)
+		if err == nil {
+			c.sent = append(c.sent, accessor.GetAnnotations())
+		}
+	}
+}
+
+func (c *annotationRecordingClient) Create(resources kube.ResourceList, _ ...kube.ClientCreateOption) (*kube.Result, error) {
+	c.record(resources)
+	return &kube.Result{Created: resources}, nil
+}
+
+func (c *annotationRecordingClient) Update(current, target kube.ResourceList, _ ...kube.ClientUpdateOption) (*kube.Result, error) {
+	c.record(current)
+	c.record(target)
+	return &kube.Result{Updated: target}, nil
+}
+
+func TestSequencedApply_DependsOnAnnotationNeverSent(t *testing.T) {
+	manifest := func(name string) releaseutil.Manifest {
+		return releaseutil.Manifest{
+			Name: "parent/templates/" + name + ".yaml",
+			Content: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: " + name + "\n  annotations:\n" +
+				"    " + resourcegroup.AnnotationResourceGroup + ": app\n" +
+				"    " + resourcegroup.AnnotationDependsOnResourceGroups + ": '[\"database\"]'\n",
+		}
+	}
+	plan := &sequence.Plan{Batches: []sequence.Batch{{ChartPath: "parent", Manifests: []releaseutil.Manifest{manifest("app")}, Wait: true}}}
+
+	for _, upgrade := range []bool{false, true} {
+		t.Run(fmt.Sprintf("upgrade=%t", upgrade), func(t *testing.T) {
+			client := &annotationRecordingClient{}
+			deployment := newSequenceDeployment(&client.recordingSequenceClient)
+			deployment.kubeClient = client
+			deployment.upgradeMode = upgrade
+			if upgrade {
+				current, err := client.Build(strings.NewReader(manifest("app").Content), false)
+				require.NoError(t, err)
+				deployment.currentResources = current
+			}
+
+			require.NoError(t, deployment.apply(context.Background(), plan))
+			require.NotEmpty(t, client.sent)
+			for _, annotations := range client.sent {
+				assert.NotContains(t, annotations, resourcegroup.AnnotationDependsOnResourceGroups)
+				assert.Equal(t, "app", annotations[resourcegroup.AnnotationResourceGroup])
+			}
+		})
+	}
 }

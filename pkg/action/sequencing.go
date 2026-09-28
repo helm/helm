@@ -114,7 +114,9 @@ func (s *sequencedDeployment) applyBatch(ctx context.Context, batch sequence.Bat
 	if err := target.Visit(setMetadataVisitor(s.releaseName, s.releaseNamespace, true)); err != nil {
 		return fmt.Errorf("setting metadata for resource batch: %w", err)
 	}
-	// PR2 extension point: strip manifest-level sequencing annotations here.
+	if err := stripSequencingAnnotations(target); err != nil {
+		return fmt.Errorf("removing sequencing annotations from resource batch: %w", err)
+	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -127,6 +129,9 @@ func (s *sequencedDeployment) applyBatch(ctx context.Context, batch sequence.Bat
 		if targetKeys[objectKey(resource)] {
 			matchingCurrent = append(matchingCurrent, resource)
 		}
+	}
+	if err := stripSequencingAnnotations(matchingCurrent); err != nil {
+		return fmt.Errorf("removing sequencing annotations from current resources: %w", err)
 	}
 	var result *kube.Result
 	if s.upgradeMode || len(matchingCurrent) > 0 {
