@@ -107,7 +107,7 @@ metadata:
   name: app
   annotations:
     helm.sh/resource-group: app
-    helm.sh/depends-on-resource-groups: '["database"]'
+    helm.sh/depends-on/resource-groups: '["database"]'
 `
 	chrt := newTestChart("parent")
 	manifests, err := ParseStoredManifests(storedManifest)

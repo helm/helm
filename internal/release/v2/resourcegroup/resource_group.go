@@ -29,8 +29,10 @@ const (
 	AnnotationResourceGroup = "helm.sh/resource-group"
 
 	// AnnotationDependsOnResourceGroups declares prerequisite resource groups for a
-	// resource's group as a JSON string array.
-	AnnotationDependsOnResourceGroups = "helm.sh/depends-on-resource-groups"
+	// resource's group as a JSON string array. The key is spelled as in HIP-0025.
+	// It has two '/' characters, which Kubernetes does not accept in an
+	// annotation key, so Helm removes it from objects before they are applied.
+	AnnotationDependsOnResourceGroups = "helm.sh/depends-on/resource-groups"
 )
 
 // Result holds the output of ParseResourceGroups.

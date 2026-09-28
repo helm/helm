@@ -34,15 +34,17 @@ type (
 	SimpleHead = releasev2manifest.SimpleHead
 )
 
-func TestSequencingAnnotationKeysAreValidKubernetesKeys(t *testing.T) {
+func TestSequencingAnnotationKeyValidity(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name string
-		key  string
+		name  string
+		key   string
+		valid bool
 	}{
-		{name: "resource group", key: AnnotationResourceGroup},
-		{name: "resource group dependencies", key: AnnotationDependsOnResourceGroups},
+		{name: "resource group", key: AnnotationResourceGroup, valid: true},
+		// HIP-0025 spelling: two '/' characters. Helm must remove it before apply.
+		{name: "resource group dependencies", key: AnnotationDependsOnResourceGroups, valid: false},
 	}
 
 	for _, tt := range tests {
@@ -53,7 +55,7 @@ func TestSequencingAnnotationKeysAreValidKubernetesKeys(t *testing.T) {
 				map[string]string{tt.key: "x"},
 				field.NewPath("metadata", "annotations"),
 			)
-			assert.Empty(t, errs)
+			assert.Equal(t, tt.valid, len(errs) == 0, "validation errors: %v", errs)
 		})
 	}
 }

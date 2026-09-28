@@ -4,7 +4,7 @@ metadata:
   name: app
   annotations:
     helm.sh/resource-group: app
-    helm.sh/depends-on-resource-groups: '["databases"]'
+    helm.sh/depends-on/resource-groups: '["databases"]'
 spec:
   selector:
     matchLabels:
