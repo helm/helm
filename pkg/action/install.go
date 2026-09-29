@@ -937,7 +937,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Verify = downloader.VerifyAlways
 	}
 	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInRepoURL(
+		chartURL, digest, err := repo.FindChartInRepoURLWithDigest(
 			c.RepoURL,
 			name,
 			getter.All(settings),
@@ -951,6 +951,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			return "", err
 		}
 		name = chartURL
+		dl.IndexDigest = digest
 
 		// Only pass the user/pass on when the user has said to or when the
 		// location of the chart repo and the chart are the same domain.
