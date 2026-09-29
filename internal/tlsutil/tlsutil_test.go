@@ -112,3 +112,22 @@ func TestNewClientTLS(t *testing.T) {
 		t.Fatalf("mismatch tls RootCAs, expecting nil")
 	}
 }
+
+func TestClientConfigWithoutClientCert(t *testing.T) {
+	opts := Options{
+		InsecureSkipVerify: true,
+	}
+
+	cfg, err := ClientConfig(opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg == nil {
+		t.Fatal("expected non-nil tls.Config")
+	}
+
+	if len(cfg.Certificates) != 0 {
+		t.Fatalf("expected empty Certificates slice, got %d", len(cfg.Certificates))
+	}
+}
