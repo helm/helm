@@ -25,3 +25,9 @@ const ResourcePolicyAnno = "helm.sh/resource-policy"
 //
 //	during an uninstallRelease action.
 const KeepPolicy = "keep"
+
+// ReleaseNameAnnotation is the annotation that tracks which release owns a resource
+const ReleaseNameAnnotation = "meta.helm.sh/release-name"
+
+// ReleaseNamespaceAnnotation is the annotation that tracks which release namespace owns a resource
+const ReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
