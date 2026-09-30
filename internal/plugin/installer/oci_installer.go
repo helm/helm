@@ -238,12 +238,15 @@ func extractTar(r io.Reader, targetDir string) error {
 				return err
 			}
 
-			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
+			if err := func() error {
+				outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+				if err != nil {
+					return err
+				}
+				defer outFile.Close()
+				_, err = io.Copy(outFile, tarReader)
 				return err
-			}
-			defer outFile.Close()
-			if _, err := io.Copy(outFile, tarReader); err != nil {
+			}(); err != nil {
 				return err
 			}
 		case tar.TypeXGlobalHeader, tar.TypeXHeader:
