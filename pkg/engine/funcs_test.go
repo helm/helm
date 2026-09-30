@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"text/template"
@@ -37,6 +38,10 @@ func TestFuncs(t *testing.T) {
 		tpl:    `{{ toYamlPretty . }}`,
 		expect: "baz:\n  - 1\n  - 2\n  - 3",
 		vars:   map[string]interface{}{"baz": []int{1, 2, 3}},
+	}, {
+		tpl:    `{{ toYamlPretty (fromYaml .) }}`,
+		expect: "foo: 1000000",
+		vars:   "foo: !!int 1000000",
 	}, {
 		tpl:    `{{ toToml . }}`,
 		expect: "foo = \"bar\"\n",
@@ -135,6 +140,79 @@ keyInElement1 = "valueInElement1"`,
 		assert.NoError(t, err)
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
 	}
+}
+
+func TestNormalizeYAMLScalars(t *testing.T) {
+	firstUnsafeInteger := float64(maxSafeYAMLInteger + 1)
+	aboveSafeInteger := math.Nextafter(maxSafeYAMLInteger, math.Inf(1))
+
+	tests := []struct {
+		name   string
+		input  any
+		expect any
+	}{
+		{
+			name:   "non-integer floats stay floats",
+			input:  map[string]any{"value": 1.5},
+			expect: map[string]any{"value": 1.5},
+		},
+		{
+			name:   "safe integer floats become integers",
+			input:  map[string]any{"value": 1.0},
+			expect: map[string]any{"value": int64(1)},
+		},
+		{
+			name:   "max safe integer float becomes integer",
+			input:  map[string]any{"value": float64(maxSafeYAMLInteger)},
+			expect: map[string]any{"value": int64(maxSafeYAMLInteger)},
+		},
+		{
+			name:   "first unsafe integer float stays float",
+			input:  map[string]any{"value": firstUnsafeInteger},
+			expect: map[string]any{"value": firstUnsafeInteger},
+		},
+		{
+			name:   "unsafe integer floats stay floats",
+			input:  map[string]any{"value": aboveSafeInteger},
+			expect: map[string]any{"value": aboveSafeInteger},
+		},
+		{
+			name:   "safe negative integer floats become integers",
+			input:  map[string]any{"value": -float64(maxSafeYAMLInteger)},
+			expect: map[string]any{"value": -int64(maxSafeYAMLInteger)},
+		},
+		{
+			name:   "unsafe negative integer floats stay floats",
+			input:  map[string]any{"value": -aboveSafeInteger},
+			expect: map[string]any{"value": -aboveSafeInteger},
+		},
+		{
+			name: "map keys and nested values are normalized",
+			input: map[any]any{
+				float64(2): float64(3),
+				"nested": map[any]any{
+					float64(4): []any{float64(5)},
+				},
+			},
+			expect: map[any]any{
+				int64(2): int64(3),
+				"nested": map[any]any{
+					int64(4): []any{int64(5)},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expect, normalizeYAMLScalars(tt.input))
+		})
+	}
+}
+
+func TestNormalizeYAMLMapKey(t *testing.T) {
+	assert.Equal(t, int64(1), normalizeYAMLMapKey(float64(1)))
+	assert.Equal(t, "[1 key]", normalizeYAMLMapKey([]any{float64(1), "key"}))
 }
 
 // This test to check a function provided by sprig is due to a change in a
