@@ -63,7 +63,7 @@ func RunAll(baseDir string, values map[string]any, namespace string, options ...
 		values,
 		rules.TemplateLinterKubeVersion(lo.KubeVersion),
 		rules.TemplateLinterSkipSchemaValidation(lo.SkipSchemaValidation))
-	rules.Dependencies(&result)
+	rules.DependenciesWithValues(&result, values)
 	rules.Crds(&result)
 
 	return result
