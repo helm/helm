@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"reflect"
@@ -88,8 +89,15 @@ func funcMap() template.FuncMap {
 		"tpl":      func(string, any) any { return "not implemented" },
 		"required": func(string, any) (any, error) { return "not implemented", nil },
 		// Provide a placeholder for the "lookup" function, which requires a kubernetes
-		// connection.
-		"lookup": func(string, string, string, string) (map[string]any, error) {
+		// connection. Emits a debug log so `helm template --debug` surfaces the fact
+		// that a chart's `lookup` calls are being silently short-circuited.
+		"lookup": func(apiVersion, kind, namespace, name string) (map[string]any, error) {
+			slog.Debug("lookup: no Kubernetes client available, returning empty result",
+				slog.String("apiVersion", apiVersion),
+				slog.String("kind", kind),
+				slog.String("namespace", namespace),
+				slog.String("name", name),
+			)
 			return map[string]any{}, nil
 		},
 	}
