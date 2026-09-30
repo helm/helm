@@ -386,6 +386,32 @@ func TestVerify(t *testing.T) {
 	}
 }
 
+func TestVerifyFilenameDiffersFromProvenance(t *testing.T) {
+	signer, err := NewFromFiles(testKeyfile, testPubfile)
+	require.NoError(t, err)
+
+	archiveData, err := os.ReadFile(testChartfile)
+	require.NoError(t, err)
+
+	sigData, err := os.ReadFile(testSigBlock)
+	require.NoError(t, err)
+
+	// helm pull --verify names the archive from the repository path, which can
+	// differ from the Chart.yaml name recorded in the provenance Files map.
+	ver, err := signer.Verify(archiveData, sigData, "otherrepo-1.2.3.tgz")
+	require.NoError(t, err)
+	assert.Equal(t, "hashtest-1.2.3.tgz", ver.FileName)
+	assert.Equal(t, "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888", ver.FileHash)
+
+	_, err = signer.Verify([]byte("not the signed archive"), sigData, "otherrepo-1.2.3.tgz")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `provenance does not contain a SHA for a file named "otherrepo-1.2.3.tgz"`)
+
+	_, err = signer.Verify([]byte("not the signed archive"), sigData, filepath.Base(testChartfile))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "sha256 sum does not match")
+}
+
 // TestVerifyKeyboxKeyring mirrors TestVerify with the keyring loaded from a
 // GnuPG keybox instead of the legacy binary format.
 func TestVerifyKeyboxKeyring(t *testing.T) {
