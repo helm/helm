@@ -28,7 +28,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -700,8 +700,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 
 	// sort layers for determinism, similar to how ORAS v1 does it
-	sort.Slice(layers, func(i, j int) bool {
-		return layers[i].Digest < layers[j].Digest
+	slices.SortFunc(layers, func(a, b ocispec.Descriptor) int {
+		return strings.Compare(a.Digest.String(), b.Digest.String())
 	})
 
 	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
