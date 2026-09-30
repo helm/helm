@@ -171,9 +171,9 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 		t := "-"
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
 			if timeFormat != "" {
-				t = tspb.Format(timeFormat)
+				t = tspb.Local().Format(timeFormat)
 			} else {
-				t = tspb.String()
+				t = tspb.Local().String()
 			}
 		}
 		element.Updated = t

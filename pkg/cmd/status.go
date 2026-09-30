@@ -147,7 +147,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	rel := s.getV1Release()
 	_, _ = fmt.Fprintf(out, "NAME: %s\n", rel.Name)
 	if !rel.Info.LastDeployed.IsZero() {
-		_, _ = fmt.Fprintf(out, "LAST DEPLOYED: %s\n", rel.Info.LastDeployed.Format(time.ANSIC))
+		_, _ = fmt.Fprintf(out, "LAST DEPLOYED: %s\n", rel.Info.LastDeployed.Local().Format(time.ANSIC))
 	}
 	_, _ = fmt.Fprintf(out, "NAMESPACE: %s\n", coloroutput.ColorizeNamespace(rel.Namespace, s.noColor))
 	_, _ = fmt.Fprintf(out, "STATUS: %s\n", coloroutput.ColorizeStatus(rel.Info.Status, s.noColor))
@@ -197,8 +197,8 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 			}
 			_, _ = fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n",
 				h.Name,
-				"Last Started:   "+h.LastRun.StartedAt.Format(time.ANSIC),
-				"Last Completed: "+h.LastRun.CompletedAt.Format(time.ANSIC),
+				"Last Started:   "+h.LastRun.StartedAt.Local().Format(time.ANSIC),
+				"Last Completed: "+h.LastRun.CompletedAt.Local().Format(time.ANSIC),
 				"Phase:          "+h.LastRun.Phase,
 			)
 		}
