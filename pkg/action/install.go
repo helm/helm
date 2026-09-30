@@ -447,10 +447,20 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 			return nil, err
 		}
 
-		if _, err := i.cfg.KubeClient.Create(
-			resourceList,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
-			return nil, err
+		// Skip creation if the namespace already exists, as the user may have
+		// permission to get namespaces but not to create them
+		toCreate := resourceList.Filter(func(info *resource.Info) bool {
+			helper := resource.NewHelper(info.Client, info.Mapping)
+			_, err := helper.Get(info.Namespace, info.Name)
+			return err != nil
+		})
+
+		if len(toCreate) > 0 {
+			if _, err := i.cfg.KubeClient.Create(
+				toCreate,
+				kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
+				return nil, err
+			}
 		}
 	}
 
