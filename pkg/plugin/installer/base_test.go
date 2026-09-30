@@ -15,6 +15,7 @@ package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -32,6 +33,10 @@ func TestPath(t *testing.T) {
 			source:         "https://github.com/jkroepke/helm-secrets",
 			helmPluginsDir: "/helm/data/plugins",
 			expectPath:     "/helm/data/plugins/helm-secrets",
+		}, {
+			source:         "https://github.com/jkroepke/helm-secrets",
+			helmPluginsDir: "/helm/user/plugins" + string(filepath.ListSeparator) + "/helm/shared/plugins",
+			expectPath:     "/helm/user/plugins/helm-secrets",
 		},
 	}
 
