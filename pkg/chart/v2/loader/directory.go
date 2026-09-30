@@ -82,6 +82,11 @@ func loadDir(dir string, budget int64) (*chart.Chart, error) {
 		n = filepath.ToSlash(n)
 
 		if err != nil {
+			// A symlink that cannot be resolved is skipped only if a
+			// .helmignore rule matches it.
+			if fi != nil && sympath.IsSymlink(fi) && rules.Ignore(n, fi) {
+				return nil
+			}
 			return err
 		}
 		if fi.IsDir() {
