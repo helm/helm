@@ -72,7 +72,7 @@ func funcMap() template.FuncMap {
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
 		"gzip":          gzipFunc,
-		"ungzip":        ungzipFunc,
+		"gunzip":        gunzipFunc,
 
 		// Duration helpers
 		"mustToDuration":       mustToDuration,
@@ -487,13 +487,17 @@ func durationTruncateTo(v, m any) time.Duration {
 //
 // This is designed to be called from a template.
 func gzipFunc(str string) (string, error) {
+	if !utf8.ValidString(str) {
+		return "", errors.New("gzip: content is not valid UTF-8 text")
+	}
+
 	var b bytes.Buffer
 	w := gzip.NewWriter(&b)
 	if _, err := w.Write([]byte(str)); err != nil {
-		return "", err
+		return "", fmt.Errorf("gzip: write failed: %w", err)
 	}
 	if err := w.Close(); err != nil {
-		return "", err
+		return "", fmt.Errorf("gzip: close failed: %w", err)
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(b.Bytes())
@@ -507,27 +511,27 @@ func gzipFunc(str string) (string, error) {
 	return encoded, nil
 }
 
-// ungzipFunc decodes a base64 encoded and gzip-compressed string.
+// gunzipFunc decodes a base64 encoded and gzip-compressed string.
 //
 // It enforces a size limit (1MB) on the input and output to prevent abuse.
 //
 // This is designed to be called from a template.
-func ungzipFunc(str string) (string, error) {
+func gunzipFunc(str string) (string, error) {
 	// Kubernetes limit for Secret/ConfigMap is 1MB.
 	const maxLimit = 1048576
 
 	if len(str) > maxLimit {
-		return "", fmt.Errorf("ungzip: input size %d exceeds limit of %d bytes", len(str), maxLimit)
+		return "", fmt.Errorf("gunzip: input size %d exceeds limit of %d bytes", len(str), maxLimit)
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
-		return "", fmt.Errorf("ungzip: base64 decode failed: %w", err)
+		return "", fmt.Errorf("gunzip: base64 decode failed: %w", err)
 	}
 
 	r, err := gzip.NewReader(bytes.NewReader(decoded))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("gunzip: gzip reader failed: %w", err)
 	}
 	defer r.Close()
 
@@ -536,16 +540,16 @@ func ungzipFunc(str string) (string, error) {
 
 	b, err := io.ReadAll(limitR)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("gunzip: read failed: %w", err)
 	}
 
 	if len(b) > maxLimit {
-		return "", fmt.Errorf("ungzip: decompressed content exceeds size limit of %d bytes", maxLimit)
+		return "", fmt.Errorf("gunzip: decompressed content exceeds size limit of %d bytes", maxLimit)
 	}
 
 	// Ensure the content is valid text (UTF-8) to prevent binary obfuscation.
 	if !utf8.Valid(b) {
-		return "", errors.New("ungzip: content is not valid UTF-8 text")
+		return "", errors.New("gunzip: content is not valid UTF-8 text")
 	}
 
 	return string(b), nil
