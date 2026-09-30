@@ -223,6 +223,11 @@ func TestListCmd(t *testing.T) {
 		golden: "output/list-superseded.txt",
 		rels:   releaseFixture,
 	}, {
+		name:   "list deployed and superseded releases",
+		cmd:    "list --deployed --superseded",
+		golden: "output/list-deployed-superseded.txt",
+		rels:   releaseFixture,
+	}, {
 		name:   "list uninstalled releases",
 		cmd:    "list --uninstalled",
 		golden: "output/list-uninstalled.txt",
