@@ -17,6 +17,9 @@ limitations under the License.
 package engine
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"math"
 	"strings"
 	"testing"
@@ -130,6 +133,14 @@ keyInElement1 = "valueInElement1"`,
 		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
 		expect: `map[]`,
 		vars:   `["one", "two"]`,
+	}, {
+		tpl:    `{{ "hello world" | gzip }}`,
+		expect: `H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=`,
+		vars:   nil,
+	}, {
+		tpl:    `{{ "H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=" | gunzip }}`,
+		expect: `hello world`,
+		vars:   nil,
 	}}
 
 	for _, tt := range tests {
@@ -492,4 +503,50 @@ func TestMerge(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expected, dict["dst"])
+}
+
+// TestGunzipDecompressionBomb verifies that the gunzip template function
+// correctly mitigates decompression bomb (zip bomb) attacks by strictly
+// enforcing a 1MB limit on the decompressed output.
+func TestGunzipDecompressionBomb(t *testing.T) {
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+
+	// Generate a 2MB payload of highly compressible zeros. This simulates
+	// a malicious payload that is small when compressed but expands rapidly.
+	zeros := make([]byte, 2*1024*1024)
+	if _, err := w.Write(zeros); err != nil {
+		t.Fatalf("failed to write zeros: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("failed to close gzip: %v", err)
+	}
+
+	// Base64 encode the compressed bomb as expected by gunzipFunc
+	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+	// Attempting to gunzip should result in an error since it exceeds 1MB limit
+	_, err := gunzipFunc(encoded)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "gunzip: decompressed content exceeds size limit of 1048576 bytes")
+}
+
+func TestGzipGunzipUTF8Validation(t *testing.T) {
+	// gzipFunc rejects invalid UTF-8 string
+	invalidUTF8 := string([]byte{0xff, 0xfe, 0xfd})
+	_, err := gzipFunc(invalidUTF8)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "gzip: content is not valid UTF-8 text")
+
+	// gunzipFunc rejects decompressed content that is not valid UTF-8
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	_, err = w.Write([]byte{0xff, 0xfe, 0xfd})
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+	_, err = gunzipFunc(encoded)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "gunzip: content is not valid UTF-8 text")
 }
