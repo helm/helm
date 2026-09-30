@@ -86,6 +86,42 @@ func TestLoadDirWithSymlink(t *testing.T) {
 	verifyDependenciesLock(t, c)
 }
 
+func TestLoadDirWithIgnoredBrokenSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires additional privileges on Windows")
+	}
+
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "Chart.yaml"), []byte("apiVersion: v2\nname: broken-symlink\nversion: 0.1.0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".helmignore"), []byte("templates/broken-link\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "templates"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("missing-target", filepath.Join(dir, "templates", "broken-link")); err != nil {
+		t.Fatal(err)
+	}
+
+	l, err := Loader(dir)
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+
+	c, err := l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load chart with ignored broken symlink: %s", err)
+	}
+	for _, f := range c.Raw {
+		if f.Name == "templates/broken-link" {
+			t.Fatalf("ignored broken symlink was loaded")
+		}
+	}
+}
+
 func TestBomTestData(t *testing.T) {
 	testFiles := []string{"frobnitz_with_bom/.helmignore", "frobnitz_with_bom/templates/template.tpl", "frobnitz_with_bom/Chart.yaml"}
 	for _, file := range testFiles {
