@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -35,6 +36,40 @@ func TestGetManifest(t *testing.T) {
 		wantError: true,
 	}}
 	runTestCmd(t, tests)
+}
+
+func TestGetManifestPrintsStoredManifestVerbatim(t *testing.T) {
+	const annotationLine = `    helm.sh/depends-on/resource-groups: '["db"]'`
+	manifest := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sequenced
+  annotations:
+    helm.sh/resource-group: app
+` + annotationLine + `
+data:
+  key: value
+`
+	rel := release.Mock(&release.MockReleaseOptions{Name: "sequenced"})
+	rel.Manifest = manifest
+
+	store := storageFixture()
+	if err := store.Create(rel); err != nil {
+		t.Fatal(err)
+	}
+	_, out, err := executeActionCommandC(store, "get manifest sequenced")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Invariant pin: get manifest prints the stored release record verbatim,
+	// including sequencing annotations that template output strips.
+	if !strings.Contains(out, "helm.sh/depends-on/resource-groups") {
+		t.Fatalf("expected stored sequencing annotation key in output:\n%s", out)
+	}
+	if !strings.Contains(out, annotationLine) {
+		t.Fatalf("expected exact stored sequencing annotation line in output:\n%s", out)
+	}
 }
 
 func TestGetManifestCompletion(t *testing.T) {
