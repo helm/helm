@@ -104,18 +104,20 @@ type LogHolder struct {
 	logger atomic.Pointer[slog.Logger]
 }
 
-// Logger returns the logger for the LogHolder. If nil, returns slog.Default().
+// Logger returns the logger for the LogHolder. When no logger has been set,
+// it returns slog.Default() so log records are not silently dropped.
 func (l *LogHolder) Logger() *slog.Logger {
 	if lg := l.logger.Load(); lg != nil {
 		return lg
 	}
-	return slog.New(slog.DiscardHandler) // Should never be reached
+	return slog.Default()
 }
 
-// SetLogger sets the logger for the LogHolder. If nil, sets the default logger.
+// SetLogger sets the logger for the LogHolder. A nil handler clears the logger,
+// so Logger() falls back to slog.Default() again.
 func (l *LogHolder) SetLogger(newHandler slog.Handler) {
 	if newHandler == nil {
-		l.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
+		l.logger.Store(nil)
 		return
 	}
 	l.logger.Store(slog.New(newHandler))
