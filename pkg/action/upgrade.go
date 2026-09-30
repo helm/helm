@@ -90,6 +90,13 @@ type Upgrade struct {
 	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
 	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
 	ForceConflicts bool
+	// ForcePending overrides the pessimistic lock that a pending-install/upgrade/rollback
+	// revision holds, marking that revision as failed before proceeding. It exists to recover
+	// releases left stuck by an abruptly terminated Helm process (SIGKILL, CI runner death).
+	//
+	// This is a disaster-recovery escape hatch: if another Helm process really is still
+	// operating on the release, using this causes concurrent writes and corrupt history.
+	ForcePending bool
 	// ServerSideApply enables changes to be applied via Kubernetes server-side apply
 	// Can be the string: "true", "false" or "auto"
 	// When "auto", sever-side usage will be based upon the releases previous usage
@@ -245,7 +252,31 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 
 	// Concurrent `helm upgrade`s will either fail here with `errPending` or when creating the release with "already exists". This should act as a pessimistic lock.
 	if lastRelease.Info.Status.IsPending() {
-		return nil, nil, false, errPending
+		if !u.ForcePending {
+			return nil, nil, false, errPending
+		}
+
+		// The operator explicitly asked to break the lock. Record the stuck revision as
+		// failed so it stops blocking and `helm history` shows why it was superseded.
+		// Mutating the in-memory copy also lets the currentRelease lookup below fall back
+		// to it when there is no deployed revision (a stuck pending-install).
+		wasStatus := lastRelease.Info.Status
+		u.cfg.Logger().Warn("Overriding a pending release. If another Helm process is still operating on this release, its history may be corrupted.",
+			"name", name, "revision", lastRelease.Version, "status", wasStatus)
+
+		// Copy rather than mutate in place: drivers that hand back the stored object
+		// (the in-memory one) would otherwise see the new status even on a dry run.
+		healed, healedInfo := *lastRelease, *lastRelease.Info
+		healedInfo.Status = rcommon.StatusFailed
+		healedInfo.Description = fmt.Sprintf("Release marked as failed by subsequent upgrade using --force-pending (was %s)", wasStatus)
+		healed.Info = &healedInfo
+		lastRelease = &healed
+
+		if !isDryRun(u.DryRunStrategy) {
+			if err := u.cfg.Releases.Update(lastRelease); err != nil {
+				return nil, nil, false, fmt.Errorf("failed to mark pending release as failed: %w", err)
+			}
+		}
 	}
 
 	var currentRelease *release.Release

@@ -175,6 +175,18 @@ func TestUpgradeCmd(t *testing.T) {
 			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusPendingInstall)},
 		},
 		{
+			name:   "upgrade a pending install release with --force-pending",
+			cmd:    fmt.Sprintf("upgrade funny-bunny --force-pending '%s'", chartPath),
+			golden: "output/upgrade.txt",
+			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusPendingInstall)},
+		},
+		{
+			name:   "upgrade -i a pending install release with --force-pending",
+			cmd:    fmt.Sprintf("upgrade funny-bunny -i --force-pending '%s'", chartPath),
+			golden: "output/upgrade.txt",
+			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusPendingInstall)},
+		},
+		{
 			name:   "install a previously uninstalled release with '--keep-history' using 'upgrade --install'",
 			cmd:    fmt.Sprintf("upgrade funny-bunny -i '%s'", chartPath),
 			golden: "output/upgrade-uninstalled-with-keep-history.txt",
