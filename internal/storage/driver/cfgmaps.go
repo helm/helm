@@ -196,8 +196,8 @@ func (cfgmaps *ConfigMaps) Create(key string, rls release.Releaser) error {
 	return nil
 }
 
-// Update updates the ConfigMap holding the release. If not found
-// the ConfigMap is created to hold the release.
+// Update updates the ConfigMap holding the release. If not found,
+// ErrReleaseNotFound is returned.
 func (cfgmaps *ConfigMaps) Update(key string, rel release.Releaser) error {
 	// set labels for configmaps object meta data
 	var lbs labels
@@ -224,6 +224,10 @@ func (cfgmaps *ConfigMaps) Update(key string, rel release.Releaser) error {
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return ErrReleaseNotFound
+		}
+
 		cfgmaps.Logger().Debug("failed to update release", slog.Any("error", err))
 		return err
 	}
