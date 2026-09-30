@@ -24,6 +24,7 @@ These dependencies are expressed as interfaces so that alternate implementations
 package cli
 
 import (
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -133,8 +134,21 @@ func New() *EnvSettings {
 		WrapConfigFn: func(config *rest.Config) *rest.Config {
 			config.Burst = env.BurstLimit
 			config.QPS = env.QPS
+			// One session ID per client build: a CLI invocation builds one
+			// client, so all requests from a single command execution share a
+			// session, while SDK clients building a client per operation get
+			// distinct sessions. Logged at debug level so a user can quote it
+			// to their cluster admin, who will see the same value in the
+			// helm-session request header in the Kubernetes audit log.
+			sessionID := kubeenv.NewSessionID()
+			slog.Debug("created Kubernetes client session", "helm-session", sessionID)
 			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
-				return &kubeenv.RetryingRoundTripper{Wrapped: rt}
+				return &kubeenv.SessionRoundTripper{
+					// Session wrapper stays outside the retry wrapper so
+					// retries keep the same session ID.
+					Wrapped:   &kubeenv.RetryingRoundTripper{Wrapped: rt},
+					SessionID: sessionID,
+				}
 			})
 			config.UserAgent = version.GetUserAgent()
 			return config
