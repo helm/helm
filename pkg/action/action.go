@@ -173,6 +173,19 @@ const (
 	filenameAnnotation = "postrenderer.helm.sh/postrender-filename"
 )
 
+// clearFlowStyle recursively clears the flow-style formatting flag from a YAML
+// node and its descendants, forcing block-style output when the node is later
+// serialized.
+func clearFlowStyle(node *kyaml.Node) {
+	if node == nil {
+		return
+	}
+	node.Style &^= kyaml.FlowStyle
+	for _, child := range node.Content {
+		clearFlowStyle(child)
+	}
+}
+
 // annotateAndMerge combines multiple YAML files into a single stream of documents,
 // adding filename annotations to each document for later reconstruction.
 func annotateAndMerge(files map[string]string) (string, error) {
@@ -212,6 +225,15 @@ func annotateAndMerge(files map[string]string) (string, error) {
 				if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
 					return "", fmt.Errorf("annotating %s: %w", fname, err)
 				}
+				// kyaml preserves the flow style of documents that were
+				// originally written as JSON. Left as-is, the annotated
+				// document can be re-emitted starting with '{' while
+				// containing YAML-only syntax (unquoted keys, single-quoted
+				// strings), which k8s.io/apimachinery's YAML decoder
+				// misidentifies as pure JSON and fails to parse. Clearing
+				// the flow style forces block-style output, which is always
+				// unambiguous YAML.
+				clearFlowStyle(manifest.YNode())
 				combinedManifests = append(combinedManifests, manifest)
 			}
 		}
