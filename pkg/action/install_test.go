@@ -1182,56 +1182,14 @@ func TestInstallCRDs_WaiterError(t *testing.T) {
 	require.Error(t, instAction.installCRDs(crdsToInstall), "wait error")
 }
 
-// strategyAwareWaitKubeClient is a fake kube.Interface that records which
-// WaitStrategy installCRDs() requests a waiter for, and returns a waiter
-// that mimics the real hookOnlyWaiter: its Wait() is a no-op under
-// HookOnlyStrategy and reports the CRD as not yet established otherwise.
-type strategyAwareWaitKubeClient struct {
-	kubefake.PrintingKubeClient
-	requestedStrategy kube.WaitStrategy
-}
-
-func (k *strategyAwareWaitKubeClient) Build(_ io.Reader, _ bool) (kube.ResourceList, error) {
-	var resInfo resource.Info
-	resInfo.Name = "dummyName"
-	resInfo.Namespace = "dummyNamespace"
-	var resourceList kube.ResourceList
-	resourceList.Append(&resInfo)
-	return resourceList, nil
-}
-
-func (k *strategyAwareWaitKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error) {
-	return k.GetWaiterWithOptions(ws)
-}
-
-func (k *strategyAwareWaitKubeClient) GetWaiterWithOptions(ws kube.WaitStrategy, _ ...kube.WaitOption) (kube.Waiter, error) {
-	k.requestedStrategy = ws
-	return &strategyAwareWaiter{strategy: ws}, nil
-}
-
-type strategyAwareWaiter struct {
-	kubefake.PrintingKubeWaiter
-	strategy kube.WaitStrategy
-}
-
-func (w *strategyAwareWaiter) Wait(_ kube.ResourceList, _ time.Duration) error {
-	if w.strategy == kube.HookOnlyStrategy {
-		return nil
-	}
-	return errors.New("CRD not yet established")
-}
-
 // TestInstallCRDs_HookOnlyStrategyStillWaitsForEstablishment guards against
-// the regression reported in https://github.com/helm/helm/issues/32671: with
-// WaitStrategy set to HookOnlyStrategy, installCRDs() must still wait for
-// CRD establishment instead of relying on HookOnlyStrategy's waiter, whose
-// Wait() no-ops for general chart resources by design. Before the fix, this
-// test failed because installCRDs() requested a HookOnlyStrategy waiter
-// (whose no-op Wait() returned nil), swallowing the wait entirely.
+// https://github.com/helm/helm/issues/32671: HookOnlyStrategy's waiter does not
+// wait on general resources, so installCRDs() must request a
+// StatusWatcherStrategy waiter for CRD establishment instead.
 func TestInstallCRDs_HookOnlyStrategyStillWaitsForEstablishment(t *testing.T) {
 	config := actionConfigFixture(t)
-	fakeClient := &strategyAwareWaitKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}}
-	config.KubeClient = fakeClient
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, BuildDummy: true}
+	config.KubeClient = &failingKubeClient
 	instAction := NewInstall(config)
 	instAction.WaitStrategy = kube.HookOnlyStrategy
 
@@ -1242,10 +1200,8 @@ func TestInstallCRDs_HookOnlyStrategyStillWaitsForEstablishment(t *testing.T) {
 	mockChart := buildChart(withFile(mockFile))
 	crdsToInstall := mockChart.CRDObjects()
 
-	err := instAction.installCRDs(crdsToInstall)
-	require.Error(t, err, "installCRDs should still wait for CRD establishment under HookOnlyStrategy")
-	assert.Contains(t, err.Error(), "CRD not yet established")
-	assert.Equal(t, kube.StatusWatcherStrategy, fakeClient.requestedStrategy, "CRD establishment wait must not use HookOnlyStrategy's no-op waiter")
+	require.NoError(t, instAction.installCRDs(crdsToInstall))
+	assert.Equal(t, []kube.WaitStrategy{kube.StatusWatcherStrategy}, failingKubeClient.RecordedWaitStrategies)
 }
 
 func TestCheckDependencies(t *testing.T) {
