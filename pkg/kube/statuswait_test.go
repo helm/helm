@@ -1789,6 +1789,73 @@ spec:
    ttlSecondsAfterFinished: 0
 `
 
+// TestDeletionIsSuccess covers which disappearing resources may end a wait
+// successfully. A failed hook must not pass just because the TTL controller
+// removed it afterwards: the delete event replaces Failed with NotFound in the
+// collector, so the failure has to be remembered.
+func TestDeletionIsSuccess(t *testing.T) {
+	t.Parallel()
+	id := object.ObjMetadata{
+		GroupKind: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+		Namespace: "qual",
+		Name:      "test",
+	}
+	other := id
+	other.Name = "other"
+
+	tests := []struct {
+		name     string
+		present  bool
+		failed   bool
+		ttl      bool
+		expected bool
+	}{
+		{
+			name:     "TTL Job seen running and then deleted",
+			present:  true,
+			ttl:      true,
+			expected: true,
+		},
+		{
+			name:     "TTL Job that failed before being deleted",
+			present:  true,
+			failed:   true,
+			ttl:      true,
+			expected: false,
+		},
+		{
+			name:     "TTL Job that was never seen running",
+			ttl:      true,
+			expected: false,
+		},
+		{
+			name:     "resource deletion is not expected for",
+			present:  true,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			observed := &observedResources{}
+			if tt.present {
+				observed.markPresent(id)
+			}
+			if tt.failed {
+				observed.markFailed(id)
+			}
+			deletedIsDone := map[object.ObjMetadata]struct{}{}
+			if tt.ttl {
+				deletedIsDone[id] = struct{}{}
+			}
+			assert.Equal(t, tt.expected, observed.deletionIsSuccess(id, deletedIsDone))
+			// An unrelated resource is never covered by the exception.
+			assert.False(t, observed.deletionIsSuccess(other, deletedIsDone))
+		})
+	}
+}
+
 // TestWatchUntilReadyHookDeleted covers hooks that disappear while Helm waits.
 // A Job that sets .spec.ttlSecondsAfterFinished is removed by the TTL
 // controller as soon as it completes, so its deletion ends the wait. Any other

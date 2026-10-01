@@ -247,10 +247,8 @@ func (w *statusWaiter) waitFor(ctx context.Context, resourceList ResourceList, s
 		if rs.Status == status.CurrentStatus {
 			continue
 		}
-		if rs.Status == status.NotFoundStatus && observed.wasPresent(id) {
-			if _, ok := deletedIsDone[id]; ok {
-				continue
-			}
+		if rs.Status == status.NotFoundStatus && observed.deletionIsSuccess(id, deletedIsDone) {
+			continue
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
 			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
@@ -278,12 +276,14 @@ func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Con
 	return watchtools.ContextWithOptionalTimeout(ctx, timeout)
 }
 
-// observedResources records the resources that were seen on the cluster while
-// waiting, so that a resource which disappears can be told apart from one that
-// was never there.
+// observedResources records what was seen on the cluster while waiting, so that
+// a resource which disappears can be told apart from one that was never there,
+// and so that a failure is not forgotten when the resource is deleted
+// afterwards.
 type observedResources struct {
 	mu      sync.Mutex
 	present map[object.ObjMetadata]struct{}
+	failed  map[object.ObjMetadata]struct{}
 }
 
 func (o *observedResources) markPresent(id object.ObjMetadata) {
@@ -302,6 +302,33 @@ func (o *observedResources) wasPresent(id object.ObjMetadata) bool {
 	return ok
 }
 
+func (o *observedResources) markFailed(id object.ObjMetadata) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.failed == nil {
+		o.failed = map[object.ObjMetadata]struct{}{}
+	}
+	o.failed[id] = struct{}{}
+}
+
+func (o *observedResources) hasFailed(id object.ObjMetadata) bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	_, ok := o.failed[id]
+	return ok
+}
+
+// deletionIsSuccess reports whether a resource that is no longer found should
+// end the wait successfully: it has to be one of the resources deletion is
+// expected for, it has to have been seen running, and it must not have failed
+// while it was.
+func (o *observedResources) deletionIsSuccess(id object.ObjMetadata, deletedIsDone map[object.ObjMetadata]struct{}) bool {
+	if _, ok := deletedIsDone[id]; !ok {
+		return false
+	}
+	return o.wasPresent(id) && !o.hasFailed(id)
+}
+
 func statusObserver(cancel context.CancelFunc, desired status.Status, deletedIsDone map[object.ObjMetadata]struct{}, observed *observedResources, logger *slog.Logger) collector.ObserverFunc {
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
@@ -315,23 +342,28 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, deletedIsD
 			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
 				continue
 			}
+			if rs.Status != status.NotFoundStatus {
+				observed.markPresent(rs.Identifier)
+			}
+			// Remember the failure: the resource may be deleted shortly after,
+			// and the delete event would otherwise replace Failed with NotFound
+			// and hide it.
+			if rs.Status == status.FailedStatus {
+				observed.markFailed(rs.Identifier)
+			}
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
 			// that has already failed, as intervention is required to resolve the failure.
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
 				continue
 			}
-			if rs.Status != status.NotFoundStatus {
-				observed.markPresent(rs.Identifier)
-			}
 			// A Job hook that sets .spec.ttlSecondsAfterFinished is deleted by
 			// the TTL controller once it completes, so its disappearance ends
 			// the wait rather than blocking it. This only applies to a hook that
-			// was seen on the cluster first: one that is already gone when the
-			// wait starts was never observed running and is still an error.
-			if rs.Status == status.NotFoundStatus && observed.wasPresent(rs.Identifier) {
-				if _, ok := deletedIsDone[rs.Identifier]; ok {
-					continue
-				}
+			// was seen running on the cluster and did not fail: one that is
+			// already gone when the wait starts, or that failed before being
+			// deleted, is still an error.
+			if rs.Status == status.NotFoundStatus && observed.deletionIsSuccess(rs.Identifier, deletedIsDone) {
+				continue
 			}
 			rss = append(rss, rs)
 			if rs.Status != desired {
