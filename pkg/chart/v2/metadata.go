@@ -52,6 +52,9 @@ type Metadata struct {
 	Home string `json:"home,omitempty"`
 	// Source is the URL to the source code of this chart
 	Sources []string `json:"sources,omitempty"`
+	// The URL from which the chart was obtained (a Helm repository URL,
+	// an OCI reference, or a direct artifact URL). Used to record provenance.
+	RepoURL string `json:"repoURL,omitempty"`
 	// A version string of the chart. Required.
 	Version string `json:"version,omitempty"`
 	// A one-sentence description of the chart
@@ -93,6 +96,7 @@ func (md *Metadata) Validate() error {
 	md.Name = sanitizeString(md.Name)
 	md.Description = sanitizeString(md.Description)
 	md.Home = sanitizeString(md.Home)
+	md.RepoURL = sanitizeString(md.RepoURL)
 	md.Icon = sanitizeString(md.Icon)
 	md.Condition = sanitizeString(md.Condition)
 	md.Tags = sanitizeString(md.Tags)
