@@ -1,0 +1,12 @@
+---
+# Source: trailing-newlines/templates/00-no-newline-hook.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-no-newline
+  annotations:
+    helm.sh/hook: pre-install
+data:
+  cfg: |+
+    line1
+    line2

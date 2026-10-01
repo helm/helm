@@ -1,0 +1,25 @@
+---
+# Source: trailing-newlines/templates/hooks.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-one-newline
+  annotations:
+    helm.sh/hook: pre-install
+data:
+  cfg: |+
+    line1
+    line2
+---
+# Source: trailing-newlines/templates/hooks.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-two-newlines
+  annotations:
+    helm.sh/hook: pre-install
+data:
+  cfg: |+
+    line1
+    line2
+
