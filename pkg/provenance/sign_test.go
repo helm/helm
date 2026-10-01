@@ -217,10 +217,7 @@ func rewrapArmoredKey(armored []byte, lineLen int) []byte {
 			if b64.Len() > 0 {
 				raw := b64.String()
 				for i := 0; i < len(raw); i += lineLen {
-					end := i + lineLen
-					if end > len(raw) {
-						end = len(raw)
-					}
+					end := min(i+lineLen, len(raw))
 					out = append(out, raw[i:end])
 				}
 				b64.Reset()
@@ -240,10 +237,7 @@ func rewrapArmoredKey(armored []byte, lineLen int) []byte {
 			if b64.Len() > 0 {
 				raw := b64.String()
 				for i := 0; i < len(raw); i += lineLen {
-					end := i + lineLen
-					if end > len(raw) {
-						end = len(raw)
-					}
+					end := min(i+lineLen, len(raw))
 					out = append(out, raw[i:end])
 				}
 				b64.Reset()
@@ -269,7 +263,6 @@ func TestLoadKeyRingArmoredMultiBlockLineAlignments(t *testing.T) {
 		})
 	}
 }
-
 
 func TestLoadArmoredKeyRingRejectsNonKeyBlocks(t *testing.T) {
 	var buf bytes.Buffer
