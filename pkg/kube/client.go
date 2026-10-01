@@ -572,7 +572,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		transformRequests)
 }
 
-func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateApplyFunc, updateApplyFunc UpdateApplyFunc) (*Result, error) {
+func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateApplyFunc, updateApplyFunc UpdateApplyFunc, dryRun bool) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
@@ -655,7 +655,7 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 	}
 
 	for _, info := range originals.Difference(targets) {
-		c.Logger().Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
+		c.Logger().Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "dryRun", dryRun)
 
 		if err := info.Get(); err != nil {
 			c.Logger().Debug(
@@ -681,7 +681,7 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 			c.Logger().Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
-		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
+		if err := deleteResource(info, metav1.DeletePropagationBackground, dryRun); err != nil {
 			c.Logger().Debug(
 				"failed to delete resource",
 				slog.String("namespace", info.Namespace),
@@ -796,6 +796,43 @@ func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManag
 	}
 }
 
+// ParsedCreateOptions holds the resolved values of ClientCreateOption varargs.
+// Intended for use in tests that need to assert which options were passed.
+type ParsedCreateOptions struct {
+	DryRun          bool
+	ServerSideApply bool
+	ForceConflicts  bool
+}
+
+// ParseCreateOptions applies opts and returns the resolved values.
+func ParseCreateOptions(opts []ClientCreateOption) (ParsedCreateOptions, error) {
+	o := clientCreateOptions{serverSideApply: true, fieldValidationDirective: FieldValidationDirectiveStrict}
+	errs := make([]error, 0, len(opts))
+	for _, fn := range opts {
+		errs = append(errs, fn(&o))
+	}
+	return ParsedCreateOptions{DryRun: o.dryRun, ServerSideApply: o.serverSideApply, ForceConflicts: o.forceConflicts}, errors.Join(errs...)
+}
+
+// ParsedUpdateOptions holds the resolved values of ClientUpdateOption varargs.
+// Intended for use in tests that need to assert which options were passed.
+type ParsedUpdateOptions struct {
+	DryRun          bool
+	ServerSideApply bool
+	ForceReplace    bool
+	ForceConflicts  bool
+}
+
+// ParseUpdateOptions applies opts and returns the resolved values.
+func ParseUpdateOptions(opts []ClientUpdateOption) (ParsedUpdateOptions, error) {
+	o := clientUpdateOptions{serverSideApply: true, fieldValidationDirective: FieldValidationDirectiveStrict}
+	errs := make([]error, 0, len(opts))
+	for _, fn := range opts {
+		errs = append(errs, fn(&o))
+	}
+	return ParsedUpdateOptions{DryRun: o.dryRun, ServerSideApply: o.serverSideApply, ForceReplace: o.forceReplace, ForceConflicts: o.forceConflicts}, errors.Join(errs...)
+}
+
 // Update takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
@@ -829,6 +866,10 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 
 	if updateOptions.serverSideApply && updateOptions.forceReplace {
 		return &Result{}, errors.New("invalid operation: cannot use server-side apply and force replace together")
+	}
+
+	if updateOptions.dryRun && !updateOptions.serverSideApply {
+		return &Result{}, errors.New("invalid operation: dry run requires server-side apply")
 	}
 
 	createApplyFunc := c.makeCreateApplyFunc(
@@ -902,7 +943,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		}
 	}
 
-	return c.update(originals, targets, createApplyFunc, makeUpdateApplyFunc())
+	return c.update(originals, targets, createApplyFunc, makeUpdateApplyFunc(), updateOptions.dryRun)
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -915,7 +956,7 @@ func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagatio
 	mtx := sync.Mutex{}
 	err := perform(resources, func(target *resource.Info) error {
 		c.Logger().Debug("starting delete resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(target, policy)
+		err := deleteResource(target, policy, false)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
 				c.Logger().Debug(
@@ -1062,11 +1103,14 @@ func createResource(info *resource.Info) error {
 		})
 }
 
-func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
+func deleteResource(info *resource.Info, policy metav1.DeletionPropagation, dryRun bool) error {
 	return retry.RetryOnConflict(
 		retry.DefaultRetry,
 		func() error {
 			opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
+			if dryRun {
+				opts.DryRun = []string{metav1.DryRunAll}
+			}
 			_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
 			return err
 		})

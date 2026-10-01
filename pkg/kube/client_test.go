@@ -19,6 +19,7 @@ package kube
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -588,6 +589,87 @@ func TestUpdate(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.ExpectedActions, actions)
+		})
+	}
+}
+
+// TestUpdateDryRunDelete verifies that the dry-run option is propagated to the
+// deletions Update performs when a resource present in the original release is
+// absent from the target. Without this, a server-side dry-run upgrade would
+// really remove pruned resources from the cluster.
+func TestUpdateDryRunDelete(t *testing.T) {
+	for name, dryRun := range map[string]bool{"dry run": true, "normal": false} {
+		t.Run(name, func(t *testing.T) {
+			listOriginal := newPodList("starfish", "squid")
+			listTarget := newPodList("starfish")
+
+			expectedDryRun := ""
+			var expectedDeleteDryRun []string
+			if dryRun {
+				expectedDryRun = "All"
+				expectedDeleteDryRun = []string{metav1.DryRunAll}
+			}
+
+			c := newTestClient(t)
+			cb := func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				p, m := req.URL.Path, req.Method
+
+				switch {
+				case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &listOriginal.Items[0])
+				case p == "/namespaces/default/pods/starfish" && m == http.MethodPatch:
+					assert.Equal(t, expectedDryRun, req.URL.Query().Get("dryRun"))
+					return newResponse(http.StatusOK, &listTarget.Items[0])
+				case p == "/namespaces/default/pods/squid" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &listOriginal.Items[1])
+				case p == "/namespaces/default/pods/squid" && m == http.MethodDelete:
+					// DeleteOptions are sent in the request body, not the query string
+					defer req.Body.Close()
+					data, err := io.ReadAll(req.Body)
+					require.NoError(t, err)
+
+					opts := metav1.DeleteOptions{}
+					require.NoError(t, json.Unmarshal(data, &opts))
+					assert.Equal(t, expectedDeleteDryRun, opts.DryRun)
+
+					return newResponse(http.StatusOK, &listOriginal.Items[1])
+				}
+
+				t.FailNow()
+				return nil, nil
+			}
+
+			client := NewRequestResponseLogClient(t, cb)
+			c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			first, err := c.Build(objBody(&listOriginal), false)
+			require.NoError(t, err)
+
+			second, err := c.Build(objBody(&listTarget), false)
+			require.NoError(t, err)
+
+			result, err := c.Update(
+				first,
+				second,
+				ClientUpdateOptionServerSideApply(true, false),
+				ClientUpdateOptionDryRun(dryRun))
+			require.NoError(t, err)
+
+			assert.Len(t, result.Deleted, 1, "expected 1 resource deleted")
+			actions := []string{}
+			for _, action := range client.Actions {
+				actions = append(actions, action.Request.URL.Path+":"+action.Request.Method)
+			}
+
+			assert.Equal(t, []string{
+				"/namespaces/default/pods/starfish:GET",
+				"/namespaces/default/pods/starfish:PATCH",
+				"/namespaces/default/pods/squid:GET",
+				"/namespaces/default/pods/squid:DELETE",
+			}, actions)
 		})
 	}
 }
