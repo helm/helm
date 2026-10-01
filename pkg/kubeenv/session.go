@@ -44,10 +44,10 @@ func (rt *SessionRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 }
 
 // NewSessionID generates a fresh 128-bit session identifier. Callers should
-// generate one ID per Kubernetes client they build: a Helm CLI invocation
-// builds one client, so all requests from a single command execution share a
-// session, while SDK clients building a client per operation get distinct
-// sessions instead of sharing a process-global one.
+// generate one ID per logical operation: the Helm CLI creates a single
+// [cli.EnvSettings] per command invocation, so every Kubernetes client built
+// while running one command shares a session, while separate settings (e.g.
+// SDK clients performing distinct operations) get distinct sessions.
 func NewSessionID() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err == nil {
