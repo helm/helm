@@ -18,6 +18,8 @@ package engine
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +33,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
@@ -67,6 +70,7 @@ func funcMap() template.FuncMap {
 		"mustToJson":    mustToJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
+		"htpasswd":      htpasswd,
 
 		// Duration helpers
 		"mustToDuration":       mustToDuration,
@@ -97,6 +101,34 @@ func funcMap() template.FuncMap {
 	maps.Copy(f, extra)
 
 	return f
+}
+
+// htpasswd generates an Apache htpasswd entry for username and password.
+// algorithm is optional and defaults to bcrypt. Supported values are
+// "bcrypt", "sha", and "sha1".
+func htpasswd(username, password string, algorithm ...string) string {
+	if strings.Contains(username, ":") {
+		return "invalid username: " + username
+	}
+
+	algo := "bcrypt"
+	if len(algorithm) > 0 && algorithm[0] != "" {
+		algo = algorithm[0]
+	}
+
+	switch algo {
+	case "bcrypt":
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return "failed to encrypt string with bcrypt: " + err.Error()
+		}
+		return username + ":" + string(hash)
+	case "sha", "sha1":
+		sum := sha1.Sum([]byte(password))
+		return username + ":{SHA}" + base64.StdEncoding.EncodeToString(sum[:])
+	default:
+		return "invalid algorithm: " + algo
+	}
 }
 
 // toYAML takes an interface, marshals it to yaml, and returns a string. It will

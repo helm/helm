@@ -17,6 +17,8 @@ limitations under the License.
 package engine
 
 import (
+	"crypto/sha1"
+	"encoding/base64"
 	"math"
 	"strings"
 	"testing"
@@ -192,6 +194,59 @@ keyInElement1 = "valueInElement1"`,
 		} else {
 			assert.Error(t, err)
 		}
+	}
+}
+
+func TestHtpasswd(t *testing.T) {
+	const username = "testuser"
+	const password = "testpassword"
+
+	shaSum := sha1.Sum([]byte(password))
+	shaExpected := username + ":{SHA}" + base64.StdEncoding.EncodeToString(shaSum[:])
+
+	tests := []struct {
+		name   string
+		tpl    string
+		expect string
+		bcrypt bool
+	}{{
+		name:   "two-arg defaults to bcrypt",
+		tpl:    `{{ htpasswd "testuser" "testpassword" }}`,
+		bcrypt: true,
+	}, {
+		name:   "three-arg bcrypt",
+		tpl:    `{{ htpasswd "testuser" "testpassword" "bcrypt" }}`,
+		bcrypt: true,
+	}, {
+		name:   "three-arg sha",
+		tpl:    `{{ htpasswd "testuser" "testpassword" "sha" }}`,
+		expect: shaExpected,
+	}, {
+		name:   "three-arg sha1",
+		tpl:    `{{ htpasswd "testuser" "testpassword" "sha1" }}`,
+		expect: shaExpected,
+	}, {
+		name:   "invalid algorithm",
+		tpl:    `{{ htpasswd "testuser" "testpassword" "md5" }}`,
+		expect: "invalid algorithm: md5",
+	}, {
+		name:   "username containing colon",
+		tpl:    `{{ htpasswd "user:name" "testpassword" }}`,
+		expect: "invalid username: user:name",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			require.NoError(t, template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, nil), tt.tpl)
+			got := b.String()
+			if tt.bcrypt {
+				assert.True(t, strings.HasPrefix(got, username+":$"))
+				assert.NotContains(t, got, "{SHA}")
+				return
+			}
+			assert.Equal(t, tt.expect, got, tt.tpl)
+		})
 	}
 }
 
