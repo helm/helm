@@ -909,6 +909,36 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 	return "", u, err
 }
 
+// GetManifestAnnotations fetches the OCI manifest annotations for the given reference.
+// It returns nil, nil when no annotations are present. The caller should treat errors as
+// non-fatal and proceed without annotations.
+func (c *Client) GetManifestAnnotations(ref string) (map[string]string, error) {
+	parsedRef, err := newReference(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	remoteRepository, err := remote.NewRepository(parsedRef.String())
+	if err != nil {
+		return nil, err
+	}
+	remoteRepository.PlainHTTP = c.plainHTTP
+	remoteRepository.Client = c.authorizer
+
+	ctx := context.Background()
+	_, rc, err := remoteRepository.FetchReference(ctx, parsedRef.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+
+	var manifest ocispec.Manifest
+	if err := json.NewDecoder(rc).Decode(&manifest); err != nil {
+		return nil, err
+	}
+	return manifest.Annotations, nil
+}
+
 // tagManifest prepares and tags a manifest in memory storage
 func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
