@@ -180,6 +180,52 @@ func TestGetRepoNames(t *testing.T) {
 	}
 }
 
+func TestResolveAliasedChartFromMixedRepositories(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/local-subchart-0.1.0.tgz"),
+	)
+	defer srv.Stop()
+	require.NoError(t, srv.LinkIndices())
+
+	dir := t.TempDir()
+	repositoryConfig := filepath.Join(dir, "repositories.yaml")
+	require.NoError(t, os.WriteFile(repositoryConfig, []byte("apiVersion: v1\nrepositories: []\n"), 0o644))
+
+	deps := []*chart.Dependency{
+		{
+			Name:       "local-subchart",
+			Alias:      "cluster-new",
+			Version:    "0.1.0",
+			Repository: "oci://registry.example.com/charts",
+		},
+		{
+			Name:       "local-subchart",
+			Alias:      "cluster-old",
+			Version:    "0.1.0",
+			Repository: srv.URL(),
+		},
+	}
+	m := &Manager{
+		Out:              new(bytes.Buffer),
+		ChartPath:        dir,
+		Getters:          getter.Getters(),
+		RepositoryConfig: repositoryConfig,
+		RepositoryCache:  dir,
+	}
+
+	repoNames, err := m.resolveRepoNames(deps)
+	require.NoError(t, err)
+	repoNames, err = m.ensureMissingRepos(repoNames, deps)
+	require.NoError(t, err)
+
+	lock, err := m.resolve(deps, repoNames)
+	require.NoError(t, err)
+	require.Len(t, lock.Dependencies, 2)
+	assert.Equal(t, deps[0].Repository, lock.Dependencies[0].Repository)
+	assert.Equal(t, deps[1].Repository, lock.Dependencies[1].Repository)
+}
+
 func TestDownloadAll(t *testing.T) {
 	chartPath := t.TempDir()
 	m := &Manager{
