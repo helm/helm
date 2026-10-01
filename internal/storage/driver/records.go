@@ -123,5 +123,7 @@ func newRecord(key string, rls *rspb.Release) *record {
 	lbs.set("status", rls.Info.Status.String())
 	lbs.set("version", strconv.Itoa(rls.Version))
 
-	return &record{key: key, lbs: lbs, rls: rls}
+	// Store a copy so later changes to the caller's release do not reach the
+	// record, matching the isolation the persistent drivers get from encoding.
+	return &record{key: key, lbs: lbs, rls: copyRelease(rls)}
 }
