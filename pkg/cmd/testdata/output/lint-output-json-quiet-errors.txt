@@ -1,0 +1,2 @@
+[{"chart":"testdata/testcharts/chart-with-bad-subcharts","messages":[{"severity":"WARNING","path":"templates/","message":"directory does not exist"},{"severity":"ERROR","message":"unable to load chart\n\terror unpacking subchart bad-subchart in chart-with-bad-subcharts: validation: chart.metadata.name is required"}]}]
+Error: 2 chart(s) linted, 1 chart(s) failed
