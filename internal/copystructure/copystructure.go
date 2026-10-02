@@ -80,7 +80,7 @@ func copyValue(original reflect.Value) (any, error) {
 			return nil, err
 		}
 		ptr := reflect.New(original.Type().Elem())
-		ptr.Elem().Set(reflect.ValueOf(copied))
+		setValue(ptr.Elem(), copied)
 		return ptr.Interface(), nil
 
 	case reflect.Slice:
@@ -106,13 +106,20 @@ func copyValue(original reflect.Value) (any, error) {
 		return copied.Interface(), nil
 
 	case reflect.Struct:
-		copied := reflect.New(original.Type()).Elem()
+		t := original.Type()
+		for field := range t.Fields() {
+			// Unexported fields can't be read or set through reflection.
+			if !field.IsExported() {
+				return nil, fmt.Errorf("unsupported type %v: struct with unexported fields", t)
+			}
+		}
+		copied := reflect.New(t).Elem()
 		for i := 0; i < original.NumField(); i++ {
 			elem, err := copyValue(original.Field(i))
 			if err != nil {
 				return nil, err
 			}
-			copied.Field(i).Set(reflect.ValueOf(elem))
+			setValue(copied.Field(i), elem)
 		}
 		return copied.Interface(), nil
 
@@ -125,4 +132,14 @@ func copyValue(original reflect.Value) (any, error) {
 	default:
 		return original.Interface(), fmt.Errorf("unsupported type %v", original)
 	}
+}
+
+// setValue sets dst to v. A nil v (the copy of a nil interface) is stored as
+// the zero value of dst's type, since reflect.ValueOf(nil) can't be passed to Set.
+func setValue(dst reflect.Value, v any) {
+	if v == nil {
+		dst.Set(reflect.Zero(dst.Type()))
+		return
+	}
+	dst.Set(reflect.ValueOf(v))
 }
