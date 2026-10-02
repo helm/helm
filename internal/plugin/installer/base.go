@@ -32,7 +32,7 @@ func newBase(source string) base {
 	settings := cli.New()
 	return base{
 		Source:           source,
-		PluginsDirectory: settings.PluginsDirectory,
+		PluginsDirectory: settings.PluginInstallDirectory(),
 	}
 }
 
