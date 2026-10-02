@@ -79,6 +79,92 @@ func TestManuallyProcessArgs(t *testing.T) {
 	}
 }
 
+// TestManuallyProcessArgsBooleanFlags covers #13686: boolean root flags must not
+// consume the following plugin argument unless that token is an explicit bool value.
+func TestManuallyProcessArgsBooleanFlags(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         []string
+		expectKnown   []string
+		expectUnknown []string
+	}{
+		{
+			name:          "bare kube insecure flag leaves following plugin flag",
+			input:         []string{"--kube-insecure-skip-tls-verify", "--version", "1.0.3"},
+			expectKnown:   []string{"--kube-insecure-skip-tls-verify"},
+			expectUnknown: []string{"--version", "1.0.3"},
+		},
+		{
+			name:          "separated true value is normalized",
+			input:         []string{"--kube-insecure-skip-tls-verify", "true", "--version", "1.0.3"},
+			expectKnown:   []string{"--kube-insecure-skip-tls-verify=true"},
+			expectUnknown: []string{"--version", "1.0.3"},
+		},
+		{
+			name:          "separated false value is normalized",
+			input:         []string{"--kube-insecure-skip-tls-verify", "false", "--foo", "bar"},
+			expectKnown:   []string{"--kube-insecure-skip-tls-verify=false"},
+			expectUnknown: []string{"--foo", "bar"},
+		},
+		{
+			name:          "inline boolean value",
+			input:         []string{"--kube-insecure-skip-tls-verify=true", "--version", "1.0.3"},
+			expectKnown:   []string{"--kube-insecure-skip-tls-verify=true"},
+			expectUnknown: []string{"--version", "1.0.3"},
+		},
+		{
+			name:          "bare debug leaves following plugin flag",
+			input:         []string{"--debug", "--plugin-flag", "value"},
+			expectKnown:   []string{"--debug"},
+			expectUnknown: []string{"--plugin-flag", "value"},
+		},
+		{
+			name:          "debug with separated bool value",
+			input:         []string{"--debug", "1", "command"},
+			expectKnown:   []string{"--debug=1"},
+			expectUnknown: []string{"command"},
+		},
+		{
+			name:          "debug with inline value",
+			input:         []string{"--debug=false", "command"},
+			expectKnown:   []string{"--debug=false"},
+			expectUnknown: []string{"command"},
+		},
+		{
+			name: "mixed bool and kv flags with plugin args",
+			input: []string{
+				"--debug",
+				"--kube-insecure-skip-tls-verify",
+				"--namespace", "default",
+				"--burst-limit", "100",
+				"--plugin-arg", "keep-me",
+				"subcommand",
+			},
+			expectKnown: []string{
+				"--debug",
+				"--kube-insecure-skip-tls-verify",
+				"--namespace", "default",
+				"--burst-limit", "100",
+			},
+			expectUnknown: []string{"--plugin-arg", "keep-me", "subcommand"},
+		},
+		{
+			name:          "boolean flag at end of args",
+			input:         []string{"command", "--kube-insecure-skip-tls-verify"},
+			expectKnown:   []string{"--kube-insecure-skip-tls-verify"},
+			expectUnknown: []string{"command"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			known, unknown := manuallyProcessArgs(tt.input)
+			assert.Equal(t, tt.expectKnown, known)
+			assert.Equal(t, tt.expectUnknown, unknown)
+		})
+	}
+}
+
 func TestLoadCLIPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repositories.yaml"

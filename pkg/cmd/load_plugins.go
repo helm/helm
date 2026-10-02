@@ -166,13 +166,51 @@ func processParent(cmd *cobra.Command, args []string) ([]string, error) {
 
 // manuallyProcessArgs processes an arg array, removing special args.
 //
-// Returns two sets of args: known and unknown (in that order)
+// Returns two sets of args: known and unknown (in that order).
+// Known args are flags consumed by the root helm command. Unknown args are
+// forwarded to the plugin. Help (-h/--help) is intentionally left for the plugin.
+//
+// Boolean root flags (--debug, --kube-insecure-skip-tls-verify) must not
+// unconditionally consume the next token: a bare `--flag` followed by a plugin
+// flag used to steal that plugin argument (see #13686). An explicit boolean
+// value after the flag (`--flag true`) is still accepted and normalized to
+// `--flag=value` for ParseFlags.
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--kube-context", "--namespace", "-n", "--kubeconfig", "--kube-apiserver", "--kube-token", "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config", "--repository-cache", "--repository-config", "--kube-insecure-skip-tls-verify", "--kube-tls-server-name"}
-	knownArg := func(a string) bool {
-		for _, pre := range kvargs {
+
+	boolFlags := []string{
+		"--debug",
+		"--kube-insecure-skip-tls-verify",
+	}
+	kvFlags := []string{
+		"--burst-limit",
+		"--color",
+		"--colour",
+		"--content-cache",
+		"--kube-apiserver",
+		"--kube-as-group",
+		"--kube-as-user",
+		"--kube-ca-file",
+		"--kube-context",
+		"--kube-tls-server-name",
+		"--kube-token",
+		"--kubeconfig",
+		"--namespace", "-n",
+		"--qps",
+		"--registry-config",
+		"--repository-cache",
+		"--repository-config",
+	}
+
+	isBoolFlag := func(a string) bool {
+		return slices.Contains(boolFlags, a)
+	}
+	isKVFlag := func(a string) bool {
+		return slices.Contains(kvFlags, a)
+	}
+	isKnownWithEquals := func(a string) bool {
+		for _, pre := range append(append([]string{}, boolFlags...), kvFlags...) {
 			if strings.HasPrefix(a, pre+"=") {
 				return true
 			}
@@ -180,28 +218,28 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		return false
 	}
 
-	isKnown := func(v string) string {
-		if slices.Contains(kvargs, v) {
-			return v
-		}
-		return ""
-	}
-
 	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
-		case "--debug":
+		a := args[i]
+		switch {
+		case isKnownWithEquals(a):
 			known = append(known, a)
-		case isKnown(a):
+		case isBoolFlag(a):
+			// Optional value: only consume the next token when it parses as a bool.
+			if i+1 < len(args) {
+				if _, err := strconv.ParseBool(args[i+1]); err == nil {
+					known = append(known, a+"="+args[i+1])
+					i++
+					continue
+				}
+			}
+			known = append(known, a)
+		case isKVFlag(a):
 			known = append(known, a)
 			i++
 			if i < len(args) {
 				known = append(known, args[i])
 			}
 		default:
-			if knownArg(a) {
-				known = append(known, a)
-				continue
-			}
 			unknown = append(unknown, a)
 		}
 	}
