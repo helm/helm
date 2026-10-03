@@ -136,6 +136,7 @@ func parseString(str string) (*Rules, error) {
 }
 
 func TestIgnoreRootPatternConcurrent(t *testing.T) {
+	// Run with -race to detect concurrent writes even when matching results agree.
 	rules, err := parseString("/root.txt")
 	require.NoError(t, err)
 	var workers sync.WaitGroup
