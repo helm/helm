@@ -17,12 +17,15 @@ limitations under the License.
 package repo
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v4/internal/fileutil"
 )
 
 // File represents the repositories.yaml file
@@ -121,5 +124,5 @@ func (r *File) WriteFile(path string, perm os.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, perm)
+	return fileutil.AtomicWriteFile(path, bytes.NewReader(data), perm)
 }
