@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
@@ -421,4 +422,45 @@ func readSumFile(sumfile string) (string, error) {
 	sig := string(data)
 	parts := strings.SplitN(sig, " ", 2)
 	return parts[0], nil
+}
+
+// TestLoadKeyRingArmoredMultiBlockAlignment guards against the armor.Decode
+// over-read described in #32567: because armor.Decode buffers ahead and may
+// read past the end of a block, decoding concatenated armored blocks from a
+// single shared reader silently dropped the block that follows, depending on
+// the preceding block's length. Unlike the fixed fixture in
+// TestLoadKeyRingArmoredMultiBlock, this sweeps a range of first-block lengths
+// so it exercises the alignment rather than passing on it.
+func TestLoadKeyRingArmoredMultiBlockAlignment(t *testing.T) {
+	base, err := os.ReadFile(testArmoredPubfile)
+	require.NoError(t, err)
+	if !bytes.HasSuffix(base, []byte("\n")) {
+		base = append(base, '\n')
+	}
+
+	for namePadding := 0; namePadding <= 24; namePadding++ {
+		keyring := append(append([]byte{}, armoredTestPublicKey(t, namePadding)...), base...)
+
+		ring, err := loadArmoredKeyRing(keyring)
+		require.NoErrorf(t, err, "namePadding=%d", namePadding)
+		require.Lenf(t, ring, 2, "namePadding=%d: a concatenated key block was dropped", namePadding)
+	}
+}
+
+// armoredTestPublicKey generates a throwaway Ed25519 key whose UID name is padded
+// with namePadding extra characters, and returns its ASCII-armored public key
+// block, newline terminated like `gpg --export --armor`. Varying namePadding
+// varies the length of the encoded block, which is what the alignment sweep needs.
+func armoredTestPublicKey(t *testing.T, namePadding int) []byte {
+	t.Helper()
+	entity, err := openpgp.NewEntity(strings.Repeat("a", namePadding)+" Example", "", "test@example.com",
+		&packet.Config{Algorithm: packet.PubKeyAlgoEdDSA})
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	w, err := armor.Encode(&buf, openpgp.PublicKeyType, nil)
+	require.NoError(t, err)
+	require.NoError(t, entity.Serialize(w))
+	require.NoError(t, w.Close())
+	return append(buf.Bytes(), '\n')
 }
