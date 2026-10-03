@@ -32,5 +32,7 @@ jobs:
         run: go mod tidy -diff
       - name: Run unit tests
         run: make test-coverage
+      - name: Test ignore rules with the race detector
+        run: go test -race ./pkg/ignore
       - name: Test build
         run: make build
