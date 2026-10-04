@@ -22,8 +22,11 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -82,7 +85,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 	var sb strings.Builder
 	if chrt.Schema() != nil {
 		slog.Debug("chart name", "chart-name", chrt.Name())
-		err := ValidateAgainstSingleSchema(values, chrt.Schema())
+		err := ValidateAgainstSingleSchemaWithFiles(values, chrt.Schema(), chartSchemaFiles(chrt.Files()))
 		if err != nil {
 			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
@@ -121,8 +124,19 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 	return nil
 }
 
+// SchemaFileReader returns the content of a file in a chart, named relative to the chart root.
+// It returns an error wrapping fs.ErrNotExist when the chart has no such file.
+type SchemaFileReader func(name string) ([]byte, error)
+
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
-func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reterr error) {
+func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) error {
+	return ValidateAgainstSingleSchemaWithFiles(values, schemaJSON, nil)
+}
+
+// ValidateAgainstSingleSchemaWithFiles is like ValidateAgainstSingleSchema, and also resolves
+// relative $ref targets in the schema from the chart's own files. A target the chart does not
+// have is loaded as it is by ValidateAgainstSingleSchema. files may be nil.
+func ValidateAgainstSingleSchemaWithFiles(values common.Values, schemaJSON []byte, files SchemaFileReader) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
@@ -139,7 +153,7 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 
 	// Configure compiler with loaders for different URL schemes
 	loader := jsonschema.SchemeURLLoader{
-		"file":  jsonschema.FileLoader{},
+		"file":  chartFileLoader{files: files},
 		"http":  newHTTPURLLoader(),
 		"https": newHTTPURLLoader(),
 		"urn":   urnLoader{},
@@ -163,6 +177,48 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	}
 
 	return nil
+}
+
+// chartFileLoader loads file: references from the chart's files and falls back to the file system.
+// The schema is added as file:///values.schema.json, so a reference such as schema/library.json
+// arrives here as file:///schema/library.json, which is the path inside the chart.
+type chartFileLoader struct {
+	files SchemaFileReader
+}
+
+func (l chartFileLoader) Load(urlStr string) (any, error) {
+	if l.files != nil {
+		if u, err := url.Parse(urlStr); err == nil {
+			data, err := l.files(strings.TrimPrefix(u.Path, "/"))
+			if err == nil {
+				return jsonschema.UnmarshalJSON(bytes.NewReader(data))
+			}
+			if !errors.Is(err, fs.ErrNotExist) {
+				return nil, err
+			}
+		}
+	}
+	return jsonschema.FileLoader{}.Load(urlStr)
+}
+
+// chartSchemaFiles reads from the files loaded with a chart, so it also works for packaged charts.
+func chartSchemaFiles(files []*common.File) SchemaFileReader {
+	return func(name string) ([]byte, error) {
+		for _, f := range files {
+			if f.Name == name {
+				return f.Data, nil
+			}
+		}
+		return nil, fs.ErrNotExist
+	}
+}
+
+// DirSchemaFiles reads from a chart directory on disk. Names cannot leave the directory.
+func DirSchemaFiles(dir string) SchemaFileReader {
+	root := os.DirFS(dir)
+	return func(name string) ([]byte, error) {
+		return fs.ReadFile(root, name)
+	}
 }
 
 // URNResolverFunc allows SDK to plug a URN resolver. It must return a
