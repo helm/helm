@@ -414,7 +414,11 @@ func (s *scriptedStatusWatcher) Watch(ctx context.Context, _ object.ObjMetadataS
 // delivered before any real status event. An Unknown-only (or empty, once
 // Unknown is filtered) status set must not complete a delete wait for
 // resources that still exist, while a resource that is genuinely absent must
-// still complete promptly (#32214).
+// still complete promptly (#32214). The Sync event also never arrives while an
+// informer keeps retrying a failed initial list, so resources that are gone
+// must complete without it, and one that still exists must not. A kind with no
+// REST mapping, such as one whose CRD was deleted with it, counts as gone. A
+// timer recheck retries failed lookups and covers waits with no events at all.
 func TestStatusWaitForDeleteInformerSync(t *testing.T) {
 	t.Parallel()
 	timeout := time.Second
@@ -428,13 +432,31 @@ func TestStatusWaitForDeleteInformerSync(t *testing.T) {
 			},
 		}
 	}
+	notFound := func(id object.ObjMetadata) event.Event {
+		return event.Event{
+			Type: event.ResourceUpdateEvent,
+			Resource: &event.ResourceStatus{
+				Identifier: id,
+				Status:     status.NotFoundStatus,
+			},
+		}
+	}
 	tests := []struct {
 		name         string
 		createObject bool
-		failGets     bool
-		events       func(id object.ObjMetadata) []event.Event
-		expectErrs   []string
-		expectPrompt bool
+		// unsynced is a second resource whose informer never reports, as
+		// when it keeps retrying a failed initial list.
+		unsynced         string
+		createUnsynced   bool
+		unmappedUnsynced bool
+		failGets         bool
+		failFirstGet     bool
+		recheck          time.Duration
+		events           func(id object.ObjMetadata) []event.Event
+		expectErrs       []string
+		expectPrompt     bool
+		// expectGets, when set, is the exact number of live lookups.
+		expectGets int
 	}{
 		{
 			name:         "existing resource with all statuses Unknown at sync does not complete",
@@ -467,27 +489,119 @@ func TestStatusWaitForDeleteInformerSync(t *testing.T) {
 			},
 			expectErrs: []string{"context deadline exceeded"},
 		},
+		{
+			name: "resource reported NotFound completes promptly without the Sync event",
+			events: func(id object.ObjMetadata) []event.Event {
+				return []event.Event{notFound(id)}
+			},
+			expectPrompt: true,
+		},
+		{
+			name:     "absent resource behind an unsynced informer completes promptly",
+			unsynced: jobNoStatusManifest,
+			events: func(id object.ObjMetadata) []event.Event {
+				return []event.Event{notFound(id)}
+			},
+			expectPrompt: true,
+		},
+		{
+			name:           "existing resource behind an unsynced informer does not complete",
+			unsynced:       jobNoStatusManifest,
+			createUnsynced: true,
+			events: func(id object.ObjMetadata) []event.Event {
+				return []event.Event{notFound(id)}
+			},
+			expectErrs: []string{"context deadline exceeded"},
+		},
+		{
+			name:             "resource whose kind has no REST mapping completes promptly",
+			unsynced:         jobNoStatusManifest,
+			unmappedUnsynced: true,
+			events: func(_ object.ObjMetadata) []event.Event {
+				return []event.Event{{Type: event.SyncEvent}}
+			},
+			expectPrompt: true,
+		},
+		{
+			name:           "lookups stop at the first resource that still exists",
+			createObject:   true,
+			unsynced:       jobNoStatusManifest,
+			createUnsynced: true,
+			events: func(_ object.ObjMetadata) []event.Event {
+				return []event.Event{{Type: event.SyncEvent}}
+			},
+			expectErrs: []string{"context deadline exceeded"},
+			expectGets: 1,
+		},
+		{
+			name: "absent resource with no watcher event completes on a recheck",
+			events: func(_ object.ObjMetadata) []event.Event {
+				return nil
+			},
+			recheck:      50 * time.Millisecond,
+			expectPrompt: true,
+		},
+		{
+			name:         "existing resource with no watcher event does not complete on a recheck",
+			createObject: true,
+			events: func(_ object.ObjMetadata) []event.Event {
+				return nil
+			},
+			recheck:    50 * time.Millisecond,
+			expectErrs: []string{"context deadline exceeded"},
+		},
+		{
+			name:         "failed lookup is retried on a recheck",
+			failFirstGet: true,
+			events: func(_ object.ObjMetadata) []event.Event {
+				return []event.Event{{Type: event.SyncEvent}}
+			},
+			recheck:      50 * time.Millisecond,
+			expectPrompt: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			c := newTestClient(t)
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
-			fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("Pod"))
+			kinds := []schema.GroupVersionKind{v1.SchemeGroupVersion.WithKind("Pod")}
+			if !tt.unmappedUnsynced {
+				kinds = append(kinds, batchv1.SchemeGroupVersion.WithKind("Job"))
+			}
+			fakeMapper := testutil.NewFakeRESTMapper(kinds...)
 			statusWaiter := statusWaiter{
-				restMapper: fakeMapper,
-				client:     fakeClient,
+				restMapper:            fakeMapper,
+				client:                fakeClient,
+				deleteRecheckInterval: tt.recheck,
 			}
 			statusWaiter.SetLogger(slog.Default().Handler())
-			objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+			manifests := []string{podCurrentManifest}
+			if tt.unsynced != "" {
+				manifests = append(manifests, tt.unsynced)
+			}
+			objs := getRuntimeObjFromManifests(t, manifests)
 			u := objs[0].(*unstructured.Unstructured)
 			if tt.createObject {
 				gvr := getGVR(t, fakeMapper, u)
 				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
 			}
+			if tt.createUnsynced {
+				other := objs[1].(*unstructured.Unstructured)
+				require.NoError(t, fakeClient.Tracker().Create(getGVR(t, fakeMapper, other), other, other.GetNamespace()))
+			}
 			if tt.failGets {
 				fakeClient.PrependReactor("get", "pods", func(_ clienttesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("transient apiserver error")
+				})
+			}
+			if tt.failFirstGet {
+				var gets atomic.Int32
+				fakeClient.PrependReactor("get", "pods", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+					if gets.Add(1) == 1 {
+						return true, nil, errors.New("transient apiserver error")
+					}
+					return false, nil, nil
 				})
 			}
 			id, err := object.RuntimeToObjMeta(u)
@@ -507,13 +621,22 @@ func TestStatusWaitForDeleteInformerSync(t *testing.T) {
 					require.ErrorContains(t, err, expectedErrStr)
 				}
 				// The wait must run until the deadline instead of completing
-				// on the Unknown-only status set observed at sync.
-				assert.GreaterOrEqual(t, elapsed, timeout/2, "delete wait completed before any real status event")
+				// while a resource is not confirmed gone.
+				assert.GreaterOrEqual(t, elapsed, timeout/2, "delete wait completed while a resource was not confirmed gone")
 			} else {
 				require.NoError(t, err)
 			}
 			if tt.expectPrompt {
-				assert.Less(t, elapsed, timeout/2, "delete wait for an absent resource should complete well before the timeout")
+				assert.Less(t, elapsed, timeout/2, "delete wait for absent resources should complete well before the timeout")
+			}
+			if tt.expectGets > 0 {
+				gets := 0
+				for _, action := range fakeClient.Actions() {
+					if action.GetVerb() == "get" {
+						gets++
+					}
+				}
+				assert.Equal(t, tt.expectGets, gets, "lookups should stop at the first resource that still exists")
 			}
 		})
 	}
