@@ -49,6 +49,37 @@ func upgradeAction(t *testing.T) *Upgrade {
 	return upAction
 }
 
+func TestUpgradeFieldValidationDirectiveOptionPassed(t *testing.T) {
+	tests := []struct {
+		name      string
+		directive kube.FieldValidationDirective
+		wantOpts  int
+	}{
+		{name: "empty directive", wantOpts: 3},
+		{name: "warn directive", directive: kube.FieldValidationDirectiveWarn, wantOpts: 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			upAction := upgradeAction(t)
+			upAction.ForceReplace = false
+			upAction.FieldValidationDirective = tt.directive
+
+			rel := releaseStub()
+			rel.Name = "field-validation-upgrade"
+			rel.Info.Status = common.StatusDeployed
+			require.NoError(t, upAction.cfg.Releases.Create(rel))
+
+			_, err := upAction.Run(rel.Name, buildChart(), map[string]any{})
+			require.NoError(t, err)
+
+			failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+			assert.Len(t, failer.RecordedUpdateOptions, tt.wantOpts,
+				"unexpected update option count for directive %q", tt.directive)
+		})
+	}
+}
+
 func TestUpgradeRelease_Success(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
