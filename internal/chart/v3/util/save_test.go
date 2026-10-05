@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -106,6 +107,41 @@ func TestSave(t *testing.T) {
 	}
 	_, err := Save(c, tmp)
 	require.Error(t, err, "Expected error saving chart with invalid name")
+}
+
+func TestSavedGzipExtraFieldIsValid(t *testing.T) {
+	tmp := t.TempDir()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV3,
+			Name:       "ahab",
+			Version:    "1.2.3",
+		},
+	}
+
+	where, err := Save(c, tmp)
+	require.NoError(t, err, "Failed to save")
+
+	f, err := os.Open(where)
+	require.NoError(t, err, "Failed to open saved file")
+	defer f.Close()
+
+	r, err := gzip.NewReader(f)
+	require.NoError(t, err, "Failed to create gzip reader")
+	defer r.Close()
+
+	// RFC 1952 §2.3.1.1:
+	// Each subfield consists of SI1, SI2 (1 byte each),
+	// a 2-byte little-endian LEN, and LEN bytes of data.
+	// https://www.rfc-editor.org/rfc/rfc1952.html#page-8
+	extra := r.Extra
+
+	require.NotEmpty(t, extra)
+	require.GreaterOrEqual(t, len(extra), 4)
+
+	dataLen := int(binary.LittleEndian.Uint16(extra[2:4]))
+	// Assume a single subfield.
+	require.Lenf(t, extra, 4+dataLen, "gzip extra field has malformed subfield: LEN=%d but %d data byte(s) follow the subfield header", dataLen, len(extra)-4)
 }
 
 // Creates a copy with a different schema; does not modify anything.
