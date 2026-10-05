@@ -113,7 +113,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cfg.Logger(), cmd, false)
 			if err != nil {
 				return err
 			}
@@ -126,7 +126,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				versions, err := histClient.Run(args[0])
-				if errors.Is(err, driver.ErrReleaseNotFound) || isReleaseUninstalled(versions) {
+				if errors.Is(err, driver.ErrReleaseNotFound) || isReleaseUninstalled(cfg.Logger(), versions) {
 					// Only print this to stdout for table output
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
@@ -159,11 +159,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.ForceConflicts = client.ForceConflicts
 					instClient.ServerSideApply = client.ServerSideApply != "false"
 
-					if isReleaseUninstalled(versions) {
+					if isReleaseUninstalled(cfg.Logger(), versions) {
 						instClient.Replace = true
 					}
 
-					rel, err := runInstall(args, instClient, valueOpts, out)
+					rel, err := runInstall(cfg.Logger(), args, instClient, valueOpts, out)
 					if err != nil {
 						return err
 					}
@@ -180,7 +180,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if client.Version == "" && client.Devel {
-				slog.Debug("setting version to >0.0.0-0")
+				cfg.Logger().Debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
 			}
 
@@ -239,7 +239,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if ac.Deprecated() {
-				slog.Warn("this chart is deprecated")
+				cfg.Logger().Warn("this chart is deprecated")
 			}
 
 			// Create context and prepare the handle of SIGTERM
@@ -312,7 +312,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
-	AddWaitFlag(cmd, &client.WaitStrategy)
+	addWaitFlag(cmd, &client.WaitStrategy, cfg.Logger())
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 
@@ -329,10 +329,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func isReleaseUninstalled(versionsi []ri.Releaser) bool {
+func isReleaseUninstalled(logger *slog.Logger, versionsi []ri.Releaser) bool {
 	versions, err := releaseListToV1List(versionsi)
 	if err != nil {
-		slog.Error("cannot convert release list to v1 release list", "error", err)
+		logger.Error("cannot convert release list to v1 release list", "error", err)
 		return false
 	}
 	return len(versions) > 0 && versions[len(versions)-1].Info.Status == common.StatusUninstalled
