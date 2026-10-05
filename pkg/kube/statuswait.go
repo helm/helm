@@ -73,6 +73,37 @@ func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	}, nil
 }
 
+// computeOrCurrent wraps status.Compute for the generic status reader. kstatus
+// fails to compute a status for some custom resources (for example an Argo
+// Rollout, which stores status.observedGeneration as a string). The generic
+// reader would turn that failure into Unknown with an error attached, which
+// keeps the wait running until the timeout. Helm 3 considered kinds it could not
+// evaluate as ready, so report them as current. Errors raised by other readers,
+// such as a failed list of ReplicaSets, are untouched and still block the wait.
+func computeOrCurrent(u *unstructured.Unstructured) (*status.Result, error) {
+	res, err := status.Compute(u)
+	if err != nil {
+		return &status.Result{
+			Status:  status.CurrentStatus,
+			Message: "Resource status cannot be computed, treating it as current",
+		}, nil
+	}
+	return res, nil
+}
+
+// newStatusReader mirrors statusreaders.NewStatusReader, with the generic reader
+// computing status through computeOrCurrent. The delegating order is the same,
+// so custom readers come first and the generic reader last.
+func newStatusReader(mapper meta.RESTMapper, readers ...engine.StatusReader) engine.StatusReader {
+	generic := statusreaders.NewGenericStatusReader(mapper, computeOrCurrent)
+	replicaSet := statusreaders.NewReplicaSetStatusReader(mapper, generic)
+	deployment := statusreaders.NewDeploymentResourceReader(mapper, replicaSet)
+	statefulSet := statusreaders.NewStatefulSetResourceReader(mapper, generic)
+	return &statusreaders.DelegatingStatusReader{
+		StatusReaders: append(readers, deployment, statefulSet, replicaSet, generic),
+	}
+}
+
 func getStatusWatcher(dynamicClient dynamic.Interface, mapper meta.RESTMapper) *watcher.DefaultStatusWatcher {
 	sw := watcher.NewDefaultStatusWatcher(dynamicClient, mapper)
 	sw.ResyncPeriod = 3 * time.Minute
@@ -111,7 +142,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
-	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
+	sw.StatusReader = newStatusReader(w.restMapper, w.readers...)
 	return w.wait(ctx, resourceList, sw)
 }
 
@@ -127,7 +158,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
 	readers = append(readers, newCustomJobStatusReader)
-	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
+	customSR := newStatusReader(w.restMapper, readers...)
 	sw.StatusReader = customSR
 	return w.wait(ctx, resourceList, sw)
 }
@@ -221,7 +252,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	errs := []error{}
 	for _, id := range resources {
 		rs := statusCollector.ResourceStatuses[id]
-		if resourceStatusSatisfied(rs, status.CurrentStatus) {
+		if rs.Status == status.CurrentStatus {
 			continue
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
@@ -367,16 +398,10 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
 				continue
 			}
-			// A resource whose status could not be computed (Unknown with an attached
-			// error) is treated as having reached the desired state. Helm 3 considered
-			// all kinds it could not evaluate (e.g. CRDs such as Argo Rollout whose
-			// status fields deviate from Kubernetes conventions) as ready, so don't
-			// block the wait on them.
-			if resourceStatusSatisfied(rs, desired) {
-				continue
-			}
 			rss = append(rss, rs)
-			nonDesiredResources = append(nonDesiredResources, rs)
+			if rs.Status != desired {
+				nonDesiredResources = append(nonDesiredResources, rs)
+			}
 		}
 
 		if aggregator.AggregateStatus(rss, desired) == desired {
@@ -394,18 +419,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			logger.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 		}
 	}
-}
-
-// resourceStatusSatisfied reports whether the given resource status satisfies the
-// desired status. A resource whose status could not be computed (Unknown with an
-// attached error, e.g. a CRD such as an Argo Rollout whose status fields do not
-// follow Kubernetes conventions) is treated as satisfied for the Current status,
-// matching Helm 3's behavior of considering such kinds ready.
-func resourceStatusSatisfied(rs *event.ResourceStatus, desired status.Status) bool {
-	if rs.Status == desired {
-		return true
-	}
-	return desired == status.CurrentStatus && rs.Status == status.UnknownStatus && rs.Error != nil
 }
 
 type hookOnlyWaiter struct {
