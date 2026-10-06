@@ -72,11 +72,15 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 		return nil, fmt.Errorf("failed to invoke post-renderer plugin %q: %w", r.plugin.Metadata().Name, err)
 	}
 
-	outputMessage := output.Message.(schema.OutputMessagePostRendererV1)
+	outputMessage, ok := output.Message.(schema.OutputMessagePostRendererV1)
+	if !ok {
+		return nil, fmt.Errorf("invalid output message type from plugin %q", r.plugin.Metadata().Name)
+	}
 
-	// If the binary returned almost nothing, it's likely that it didn't
-	// successfully render anything
-	if len(bytes.TrimSpace(outputMessage.Manifests.Bytes())) == 0 {
+	// If the binary returned almost nothing (including no Manifests buffer at
+	// all, which a malformed or misbehaving plugin can produce), it's likely
+	// that it didn't successfully render anything.
+	if outputMessage.Manifests == nil || len(bytes.TrimSpace(outputMessage.Manifests.Bytes())) == 0 {
 		return nil, fmt.Errorf("post-renderer %q produced empty output", r.plugin.Metadata().Name)
 	}
 
