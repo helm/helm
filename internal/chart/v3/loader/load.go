@@ -19,6 +19,7 @@ package loader
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -206,7 +207,12 @@ func LoadValues(data io.Reader) (map[string]any, error) {
 			}
 			return nil, fmt.Errorf("error reading yaml document: %w", err)
 		}
-		if err := yaml.Unmarshal(raw, &currentMap); err != nil {
+		// Decode numbers as json.Number so integers stay integers through
+		// toYaml/toToml. v2 charts keep float64 for compatibility; see #30884.
+		if err := yaml.Unmarshal(raw, &currentMap, func(d *json.Decoder) *json.Decoder {
+			d.UseNumber()
+			return d
+		}); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal yaml document: %w", err)
 		}
 		values = MergeMaps(values, currentMap)
