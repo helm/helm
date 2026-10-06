@@ -329,6 +329,13 @@ func TestInstallRelease_NoName(t *testing.T) {
 	assert.ErrorContains(t, err, "no name provided")
 }
 
+func TestInstallRelease_UnsupportedValueType(t *testing.T) {
+	instAction := installAction(t)
+	vals := map[string]any{"deployedAt": time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}
+	_, err := instAction.Run(buildChart(), vals)
+	assert.ErrorContains(t, err, "struct with unexported fields")
+}
+
 func TestInstallRelease_WithNotes(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
