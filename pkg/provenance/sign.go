@@ -394,12 +394,31 @@ func loadKeyRing(ringpath string) (openpgp.EntityList, error) {
 // way GnuPG imports them.
 func loadArmoredKeyRing(data []byte) (openpgp.EntityList, error) {
 	var ring openpgp.EntityList
-	r := bytes.NewReader(data)
+
+	// armor.Decode wraps its input in a 100-byte bufio.Reader and may read past
+	// the end of a block ("the given Reader is not usable after calling this
+	// function: an arbitrary amount of data may have been read past the end of
+	// the block"). Decoding several concatenated blocks from a single shared
+	// reader can therefore consume - and silently drop - the block that follows,
+	// so hand each block its own reader.
+	rest := data
 	for {
-		block, err := armor.Decode(r)
-		if errors.Is(err, io.EOF) {
+		begin := bytes.Index(rest, []byte("-----BEGIN "))
+		if begin < 0 {
 			break
 		}
+		end := bytes.Index(rest[begin:], []byte("-----END "))
+		if end < 0 {
+			return nil, errors.New("armored keyring is missing an end line")
+		}
+		end += begin
+		if nl := bytes.IndexByte(rest[end:], '\n'); nl >= 0 {
+			end += nl + 1
+		} else {
+			end = len(rest)
+		}
+
+		block, err := armor.Decode(bytes.NewReader(rest[begin:end]))
 		if err != nil {
 			return nil, err
 		}
@@ -411,7 +430,10 @@ func loadArmoredKeyRing(data []byte) (openpgp.EntityList, error) {
 			return nil, err
 		}
 		ring = append(ring, entities...)
+
+		rest = rest[end:]
 	}
+
 	if len(ring) == 0 {
 		return nil, errors.New("no keys found")
 	}
