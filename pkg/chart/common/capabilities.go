@@ -23,10 +23,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
-	"k8s.io/client-go/kubernetes/scheme"
 
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sversion "k8s.io/apimachinery/pkg/util/version"
 
 	helmversion "helm.sh/helm/v4/internal/version"
@@ -37,10 +34,9 @@ const (
 	kubeVersionMinorTesting = 20
 )
 
-var (
-	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
-	DefaultVersionSet = allKnownVersions()
+//go:generate go run helm.sh/helm/v4/internal/cmd/gendefaultversions -output default_versions.go
 
+var (
 	DefaultCapabilities = func() *Capabilities {
 		caps, err := makeDefaultCapabilities()
 		if err != nil {
@@ -126,21 +122,6 @@ type VersionSet []string
 //	vs.Has("apps/v1")
 func (v VersionSet) Has(apiVersion string) bool {
 	return slices.Contains(v, apiVersion)
-}
-
-func allKnownVersions() VersionSet {
-	// We should register the built in extension APIs as well so CRDs are
-	// supported in the default version set. This has caused problems with `helm
-	// template` in the past, so let's be safe
-	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
-	apiextensionsv1.AddToScheme(scheme.Scheme)
-
-	groups := scheme.Scheme.PrioritizedVersionsAllGroups()
-	vs := make(VersionSet, 0, len(groups))
-	for _, gv := range groups {
-		vs = append(vs, gv.String())
-	}
-	return vs
 }
 
 func makeDefaultCapabilities() (*Capabilities, error) {
