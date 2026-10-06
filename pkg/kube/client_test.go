@@ -45,6 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	jsonserializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -214,6 +215,7 @@ func TestCreate(t *testing.T) {
 		ServerSideApply       bool
 		ExpectedActions       []string
 		ExpectedErrorContains string
+		RetryBackoff          wait.Backoff
 	}
 
 	testCases := map[string]testCase{
@@ -299,6 +301,68 @@ func TestCreate(t *testing.T) {
 				"/namespaces/default/pods/seal:PATCH",
 			},
 		},
+		"Create success: webhook connection refused retry then succeeds (server-side apply)": {
+			Pods:            newPodList("webhook-success"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, tc testCase, previous []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				if len(previous) < 2 {
+					return newResponseJSON(http.StatusInternalServerError, webhookConnectionRefusedError)
+				}
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+			ExpectedActions: []string{
+				"/namespaces/default/pods/webhook-success:PATCH",
+				"/namespaces/default/pods/webhook-success:PATCH",
+				"/namespaces/default/pods/webhook-success:PATCH",
+			},
+		},
+		"Create fail: webhook connection refused exhausted retries (server-side apply)": {
+			Pods:            newPodList("webhook-exhausted"),
+			ServerSideApply: true,
+			RetryBackoff:    wait.Backoff{Steps: 5, Duration: time.Millisecond},
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return newResponseJSON(http.StatusInternalServerError, webhookConnectionRefusedError)
+			},
+			ExpectedErrorContains: "failed calling webhook",
+			ExpectedActions: func() []string {
+				actions := make([]string, retry.DefaultRetry.Steps)
+				for i := range actions {
+					actions[i] = "/namespaces/default/pods/webhook-exhausted:PATCH"
+				}
+				return actions
+			}(),
+		},
+		"Create fail: webhook admission denied no retry (server-side apply)": {
+			Pods:            newPodList("webhook-denied"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return newResponseJSON(http.StatusForbidden, webhookDeniedError)
+			},
+			ExpectedErrorContains: "admission webhook \"validate.test.io\" denied the request",
+			ExpectedActions: []string{
+				"/namespaces/default/pods/webhook-denied:PATCH",
+			},
+		},
+		"Create fail: generic 500 internal error no retry (server-side apply)": {
+			Pods:            newPodList("internal-error"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return newResponseJSON(http.StatusInternalServerError, genericInternalError)
+			},
+			ExpectedErrorContains: "database disk is full",
+			ExpectedActions: []string{
+				"/namespaces/default/pods/internal-error:PATCH",
+			},
+		},
 	}
 
 	c := newTestClient(t)
@@ -317,9 +381,14 @@ func TestCreate(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, err)
 
-			result, err := c.Create(
-				list,
-				ClientCreateOptionServerSideApply(tc.ServerSideApply, false))
+			createOpts := []ClientCreateOption{
+				ClientCreateOptionServerSideApply(tc.ServerSideApply, false),
+			}
+			if tc.RetryBackoff.Steps > 0 {
+				createOpts = append(createOpts, ClientCreateOptionRetryBackoff(tc.RetryBackoff))
+			}
+
+			result, err := c.Create(list, createOpts...)
 			if tc.ExpectedErrorContains != "" {
 				require.ErrorContains(t, err, tc.ExpectedErrorContains)
 			} else {
@@ -1115,6 +1184,15 @@ spec:
 
 var resourceQuotaConflict = []byte(`
 {"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Operation cannot be fulfilled on resourcequotas \"quota\": the object has been modified; please apply your changes to the latest version and try again","reason":"Conflict","details":{"name":"quota","kind":"resourcequotas"},"code":409}`)
+
+var webhookConnectionRefusedError = []byte(`
+{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Internal error occurred: failed calling webhook \"validate.test.io\": Post \"https://test-service.default.svc:443/validate?timeout=10s\": dial tcp 10.96.0.1:443: connect: connection refused","code":500}`)
+
+var webhookDeniedError = []byte(`
+{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"admission webhook \"validate.test.io\" denied the request: validation failed","reason":"Forbidden","code":403}`)
+
+var genericInternalError = []byte(`
+{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Internal error occurred: database disk is full","code":500}`)
 
 type createPatchTestCase struct {
 	name string
@@ -2270,4 +2348,330 @@ func createManifest(t *testing.T, manifest string,
 	mapping, err := fakeMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	require.NoError(t, err)
 	require.NoError(t, fakeClient.Tracker().Create(mapping.Resource, obj, obj.GetNamespace()))
+}
+
+func TestIsServerSideRetryable(t *testing.T) {
+	gr := schema.GroupResource{Group: "", Resource: "pods"}
+
+	tests := []struct {
+		name      string
+		err       error
+		retryable bool
+	}{
+		{
+			name:      "nil error",
+			err:       nil,
+			retryable: false,
+		},
+		{
+			name:      "resource quota conflict",
+			err:       apierrors.NewConflict(schema.GroupResource{Group: "", Resource: "resourcequotas"}, "quota", errors.New("Operation cannot be fulfilled on resourcequotas \"quota\": the object has been modified; please apply your changes to the latest version and try again")),
+			retryable: true,
+		},
+		{
+			name:      "webhook connection refused internal error",
+			err:       apierrors.NewInternalError(errors.New("failed calling webhook \"example.webhook.io\": Post \"https://example-svc:443/validate?timeout=10s\": dial tcp 10.96.0.1:443: connect: connection refused")),
+			retryable: true,
+		},
+		{
+			name:      "direct connection refused error string",
+			err:       errors.New("dial tcp 10.96.0.1:443: connect: connection refused"),
+			retryable: true,
+		},
+		{
+			name:      "webhook no endpoints available",
+			err:       apierrors.NewInternalError(errors.New("failed calling webhook \"example.webhook.io\": no endpoints available for service \"example-svc\"")),
+			retryable: true,
+		},
+		{
+			name:      "webhook certificate not yet injected",
+			err:       apierrors.NewInternalError(errors.New("failed calling webhook \"example.webhook.io\": x509: certificate signed by unknown authority")),
+			retryable: true,
+		},
+		{
+			name:      "webhook timeout context deadline exceeded",
+			err:       apierrors.NewInternalError(errors.New("failed calling webhook \"example.webhook.io\": context deadline exceeded")),
+			retryable: true,
+		},
+		{
+			name:      "webhook temporarily unavailable",
+			err:       errors.New("webhook \"example.webhook.io\" is temporarily unavailable"),
+			retryable: true,
+		},
+		{
+			name:      "webhook not ready",
+			err:       errors.New("webhook \"example.webhook.io\" not ready"),
+			retryable: true,
+		},
+		{
+			name:      "server 502 bad gateway",
+			err:       apierrors.NewGenericServerResponse(http.StatusBadGateway, "GET", gr, "dolphin", "bad gateway", 0, false),
+			retryable: true,
+		},
+		{
+			name:      "server 503 service unavailable",
+			err:       apierrors.NewServiceUnavailable("service unavailable"),
+			retryable: true,
+		},
+		{
+			name:      "server 504 gateway timeout",
+			err:       apierrors.NewTimeoutError("gateway timeout", 10),
+			retryable: true,
+		},
+		{
+			name:      "server 429 too many requests",
+			err:       apierrors.NewTooManyRequests("too many requests", 10),
+			retryable: true,
+		},
+		{
+			name:      "admission webhook explicit rejection forbidden",
+			err:       apierrors.NewForbidden(gr, "dolphin", errors.New("admission webhook \"validate.test.io\" denied the request: validation failed")),
+			retryable: false,
+		},
+		{
+			name:      "admission webhook explicit rejection internal error",
+			err:       apierrors.NewInternalError(errors.New("admission webhook \"validate.test.io\" denied the request: invalid field value")),
+			retryable: false,
+		},
+		{
+			name:      "http 403 forbidden",
+			err:       apierrors.NewForbidden(gr, "dolphin", errors.New("User system:anonymous cannot patch resource")),
+			retryable: false,
+		},
+		{
+			name:      "http 400 bad request",
+			err:       apierrors.NewBadRequest("invalid payload"),
+			retryable: false,
+		},
+		{
+			name:      "http 422 invalid",
+			err:       apierrors.NewInvalid(schema.GroupKind{Group: "", Kind: "Pod"}, "dolphin", nil),
+			retryable: false,
+		},
+		{
+			name:      "generic http 409 conflict non-quota",
+			err:       apierrors.NewConflict(gr, "dolphin", errors.New("the server reported a conflict")),
+			retryable: false,
+		},
+		{
+			name:      "generic http 500 internal error non-webhook",
+			err:       apierrors.NewInternalError(errors.New("database disk full")),
+			retryable: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isServerSideRetryable(tt.err)
+			assert.Equal(t, tt.retryable, got)
+		})
+	}
+}
+
+func TestClientRetryBackoffOptions(t *testing.T) {
+	customBackoff := wait.Backoff{
+		Steps:    3,
+		Duration: 5 * time.Millisecond,
+		Factor:   1.5,
+		Jitter:   0.1,
+	}
+
+	var createOpts clientCreateOptions
+	optCreate := ClientCreateOptionRetryBackoff(customBackoff)
+	require.NoError(t, optCreate(&createOpts))
+	assert.Equal(t, customBackoff, createOpts.retryBackoff)
+
+	var updateOpts clientUpdateOptions
+	optUpdate := ClientUpdateOptionRetryBackoff(customBackoff)
+	require.NoError(t, optUpdate(&updateOpts))
+	assert.Equal(t, customBackoff, updateOpts.retryBackoff)
+
+	// Verify rejection of negative steps
+	negativeSteps := wait.Backoff{Steps: -1, Duration: time.Second}
+	err := ClientCreateOptionRetryBackoff(negativeSteps)(&createOpts)
+	require.ErrorContains(t, err, "retry backoff steps must be non-negative")
+	err = ClientUpdateOptionRetryBackoff(negativeSteps)(&updateOpts)
+	require.ErrorContains(t, err, "retry backoff steps must be non-negative")
+
+	// Verify rejection of negative duration
+	negativeDuration := wait.Backoff{Steps: 2, Duration: -time.Second}
+	err = ClientCreateOptionRetryBackoff(negativeDuration)(&createOpts)
+	require.ErrorContains(t, err, "retry backoff duration must be non-negative")
+	err = ClientUpdateOptionRetryBackoff(negativeDuration)(&updateOpts)
+	require.ErrorContains(t, err, "retry backoff duration must be non-negative")
+}
+
+func TestUpdateServerSideApplyRetry(t *testing.T) {
+	tests := []struct {
+		name                  string
+		patchResponses        []func() (*http.Response, error)
+		retryBackoff          wait.Backoff
+		expectedPatchRequests int
+		expectedErrorContains string
+	}{
+		{
+			name: "update transient webhook failure retries and succeeds",
+			patchResponses: []func() (*http.Response, error){
+				func() (*http.Response, error) {
+					return newResponseJSON(http.StatusInternalServerError, webhookConnectionRefusedError)
+				},
+				func() (*http.Response, error) {
+					return newResponse(http.StatusOK, &newPodList("starfish").Items[0])
+				},
+			},
+			retryBackoff:          wait.Backoff{Steps: 3, Duration: time.Millisecond},
+			expectedPatchRequests: 2,
+		},
+		{
+			name: "update transient webhook failure exhaustion",
+			patchResponses: []func() (*http.Response, error){
+				func() (*http.Response, error) {
+					return newResponseJSON(http.StatusInternalServerError, webhookConnectionRefusedError)
+				},
+				func() (*http.Response, error) {
+					return newResponseJSON(http.StatusInternalServerError, webhookConnectionRefusedError)
+				},
+				func() (*http.Response, error) {
+					return newResponseJSON(http.StatusInternalServerError, webhookConnectionRefusedError)
+				},
+			},
+			retryBackoff:          wait.Backoff{Steps: 3, Duration: time.Millisecond},
+			expectedPatchRequests: 3,
+			expectedErrorContains: "failed calling webhook",
+		},
+		{
+			name: "update admission webhook denied no retry",
+			patchResponses: []func() (*http.Response, error){
+				func() (*http.Response, error) {
+					return newResponseJSON(http.StatusForbidden, webhookDeniedError)
+				},
+			},
+			retryBackoff:          wait.Backoff{Steps: 3, Duration: time.Millisecond},
+			expectedPatchRequests: 1,
+			expectedErrorContains: "admission webhook \"validate.test.io\" denied the request",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			listOriginal := newPodList("starfish")
+			listTarget := newPodList("starfish")
+			listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+			patchIndex := 0
+			cb := func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				p, m := req.URL.Path, req.Method
+				switch {
+				case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &listOriginal.Items[0])
+				case p == "/namespaces/default/pods/starfish" && m == http.MethodPatch:
+					if patchIndex < len(tt.patchResponses) {
+						resp, err := tt.patchResponses[patchIndex]()
+						patchIndex++
+						return resp, err
+					}
+					return newResponse(http.StatusOK, &listTarget.Items[0])
+				}
+				t.Fatalf("unexpected request: %s %s", m, p)
+				return nil, nil
+			}
+
+			client := NewRequestResponseLogClient(t, cb)
+			c := newTestClient(t)
+			c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			first, err := c.Build(objBody(&listOriginal), false)
+			require.NoError(t, err)
+
+			second, err := c.Build(objBody(&listTarget), false)
+			require.NoError(t, err)
+
+			opts := []ClientUpdateOption{
+				ClientUpdateOptionServerSideApply(true, false),
+				ClientUpdateOptionUpgradeClientSideFieldManager(false),
+			}
+			if tt.retryBackoff.Steps > 0 {
+				opts = append(opts, ClientUpdateOptionRetryBackoff(tt.retryBackoff))
+			}
+
+			result, err := c.Update(first, second, opts...)
+			if tt.expectedErrorContains != "" {
+				require.ErrorContains(t, err, tt.expectedErrorContains)
+			} else {
+				require.NoError(t, err)
+				assert.Len(t, result.Updated, 1)
+			}
+
+			patchRequests := 0
+			for _, action := range client.Actions {
+				if action.Request.Method == http.MethodPatch && action.Request.URL.Path == "/namespaces/default/pods/starfish" {
+					patchRequests++
+				}
+			}
+			assert.Equal(t, tt.expectedPatchRequests, patchRequests)
+		})
+	}
+}
+
+func TestServerSideApplyRetryHonorsRetryAfterSeconds(t *testing.T) {
+	origRetrySleep := retrySleep
+	defer func() { retrySleep = origRetrySleep }()
+
+	var sleptDurations []time.Duration
+	retrySleep = func(d time.Duration) {
+		sleptDurations = append(sleptDurations, d)
+	}
+
+	listOriginal := newPodList("starfish")
+	listTarget := newPodList("starfish")
+	listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+	patchIndex := 0
+	cb := func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+		p, m := req.URL.Path, req.Method
+		switch {
+		case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
+			return newResponse(http.StatusOK, &listOriginal.Items[0])
+		case p == "/namespaces/default/pods/starfish" && m == http.MethodPatch:
+			if patchIndex == 0 {
+				patchIndex++
+				statusErr := apierrors.NewTooManyRequests("server throttled", 7)
+				status := statusErr.Status()
+				return newResponse(http.StatusTooManyRequests, &status)
+			}
+			return newResponse(http.StatusOK, &listTarget.Items[0])
+		}
+		t.Fatalf("unexpected request: %s %s", m, p)
+		return nil, nil
+	}
+
+	client := NewRequestResponseLogClient(t, cb)
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client:               fake.CreateHTTPClient(client.Do),
+	}
+
+	first, err := c.Build(objBody(&listOriginal), false)
+	require.NoError(t, err)
+
+	second, err := c.Build(objBody(&listTarget), false)
+	require.NoError(t, err)
+
+	result, err := c.Update(
+		first,
+		second,
+		ClientUpdateOptionServerSideApply(true, false),
+		ClientUpdateOptionUpgradeClientSideFieldManager(false),
+		ClientUpdateOptionRetryBackoff(wait.Backoff{Steps: 3, Duration: 10 * time.Millisecond}),
+	)
+	require.NoError(t, err)
+	assert.Len(t, result.Updated, 1)
+
+	// Verify RetryAfterSeconds was inspected and honored (7 seconds > 10ms backoff)
+	require.Len(t, sleptDurations, 1)
+	assert.Equal(t, 7*time.Second, sleptDurations[0])
 }
