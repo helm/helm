@@ -1182,6 +1182,28 @@ func TestInstallCRDs_WaiterError(t *testing.T) {
 	require.Error(t, instAction.installCRDs(crdsToInstall), "wait error")
 }
 
+// TestInstallCRDs_HookOnlyStrategyStillWaitsForEstablishment guards against
+// https://github.com/helm/helm/issues/32671: HookOnlyStrategy's waiter does not
+// wait on general resources, so installCRDs() must request a
+// StatusWatcherStrategy waiter for CRD establishment instead.
+func TestInstallCRDs_HookOnlyStrategyStillWaitsForEstablishment(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, BuildDummy: true}
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+	instAction.WaitStrategy = kube.HookOnlyStrategy
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	require.NoError(t, instAction.installCRDs(crdsToInstall))
+	assert.Equal(t, []kube.WaitStrategy{kube.StatusWatcherStrategy}, failingKubeClient.RecordedWaitStrategies)
+}
+
 func TestCheckDependencies(t *testing.T) {
 	dependency := chart.Dependency{Name: "hello"}
 	mockChart := buildChart(withDependency())
