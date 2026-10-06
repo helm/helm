@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/aggregator"
@@ -33,7 +34,9 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -52,6 +55,8 @@ type statusWaiter struct {
 	waitForDeleteCtx     context.Context
 	readers              []engine.StatusReader
 	statusComputeWorkers int
+	// deletePollInterval overrides defaultDeletePollInterval, for tests.
+	deletePollInterval time.Duration
 	logging.LogHolder
 }
 
@@ -61,6 +66,15 @@ type statusWaiter struct {
 // "context deadline exceeded" errors. SDK callers can rely on this default
 // when they don't set a timeout.
 var DefaultStatusWatcherTimeout = 30 * time.Second
+
+// deleteVerificationTimeout bounds the live GETs used to confirm deletions that
+// the status watcher did not observe before WaitForDelete gave up.
+const deleteVerificationTimeout = 10 * time.Second
+
+// defaultDeletePollInterval is how often WaitForDelete checks with a live GET
+// whether resources the watcher has not seen deleted are gone, so that a
+// missed deletion event does not hold the wait until its timeout.
+const defaultDeletePollInterval = 5 * time.Second
 
 func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	return &status.Result{
@@ -155,6 +169,8 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.Logger()))
+	confirmed := &goneSet{}
+	go w.pollDeletions(cancelCtx, cancel, statusCollector, confirmed)
 	<-done
 
 	if statusCollector.Error != nil {
@@ -162,21 +178,134 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	}
 
 	errs := []error{}
+	// A cancelled caller context signals an external interruption, so only
+	// fall back to live GETs when the watcher stopped on its own or timed out.
+	verifyWithGet := !errors.Is(ctx.Err(), context.Canceled)
+	// ctx has usually expired by now, so keep its values but not its deadline,
+	// and bound all fallback GETs together by a single grace period.
+	getCtx, cancelGet := context.WithTimeout(context.WithoutCancel(ctx), deleteVerificationTimeout)
+	defer cancelGet()
+	confirmedGone := 0
 	for _, id := range resources {
 		rs := statusCollector.ResourceStatuses[id]
-		if rs.Status == status.NotFoundStatus || rs.Status == status.UnknownStatus {
+		if rs.Status == status.NotFoundStatus {
 			continue
+		}
+		if confirmed.has(id) {
+			confirmedGone++
+			continue
+		}
+		// A resource the watcher never saw is Unknown, which counts as deleted
+		// unless the wait timed out; then it is verified like the rest, so one
+		// already gone does not stop the others from being confirmed.
+		if rs.Status == status.UnknownStatus && (!verifyWithGet || !errors.Is(ctx.Err(), context.DeadlineExceeded)) {
+			continue
+		}
+		// The watcher may have missed the deletion event (e.g. due to a
+		// connection drop or informer lag). Verify with a live GET before
+		// reporting the resource as still existing.
+		if verifyWithGet {
+			gone, err := w.isResourceGone(getCtx, id)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("resource %s/%s/%s may still exist. status: %s, message: %s: unable to verify deletion: %w",
+					rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message, err))
+				continue
+			}
+			if gone {
+				w.Logger().Debug("watcher reported resource as existing but live GET confirms deletion",
+					"kind", id.GroupKind.Kind, "namespace", id.Namespace, "name", id.Name)
+				confirmedGone++
+				continue
+			}
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s still exists. status: %s, message: %s",
 			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
 	}
 	if err := ctx.Err(); err != nil {
-		errs = append(errs, err)
+		// The watcher timing out is not a failure when every resource it did not
+		// see deleted was confirmed gone by a live GET.
+		missedDeletesOnly := errors.Is(err, context.DeadlineExceeded) && confirmedGone > 0 && len(errs) == 0
+		if !missedDeletesOnly {
+			errs = append(errs, err)
+		}
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+// pollDeletions checks, every poll interval, the resources the watcher has not
+// seen deleted with a live GET, and stops the wait once all of them are gone.
+// GET errors are left for the final check in waitForDelete to report.
+func (w *statusWaiter) pollDeletions(ctx context.Context, cancel context.CancelFunc, sc *collector.ResourceStatusCollector, confirmed *goneSet) {
+	interval := w.deletePollInterval
+	if interval <= 0 {
+		interval = defaultDeletePollInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		remaining := 0
+		for _, rs := range sc.LatestObservation().ResourceStatuses {
+			if rs == nil || rs.Status == status.NotFoundStatus || confirmed.has(rs.Identifier) {
+				continue
+			}
+			if gone, err := w.isResourceGone(ctx, rs.Identifier); err == nil && gone {
+				w.Logger().Debug("live GET confirms deletion the watcher has not seen",
+					"kind", rs.Identifier.GroupKind.Kind, "namespace", rs.Identifier.Namespace, "name", rs.Identifier.Name)
+				confirmed.add(rs.Identifier)
+				continue
+			}
+			remaining++
+		}
+		if remaining == 0 {
+			cancel()
+			return
+		}
+	}
+}
+
+// goneSet holds the resources a live GET has confirmed deleted.
+type goneSet struct {
+	mu  sync.Mutex
+	ids map[object.ObjMetadata]struct{}
+}
+
+func (g *goneSet) add(id object.ObjMetadata) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.ids == nil {
+		g.ids = map[object.ObjMetadata]struct{}{}
+	}
+	g.ids[id] = struct{}{}
+}
+
+func (g *goneSet) has(id object.ObjMetadata) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	_, ok := g.ids[id]
+	return ok
+}
+
+// isResourceGone reports whether a live GET returns NotFound for the resource.
+// Any other GET error is returned so that callers do not mistake an inability to
+// verify deletion for the resource still existing.
+func (w *statusWaiter) isResourceGone(ctx context.Context, id object.ObjMetadata) (bool, error) {
+	mapping, err := w.restMapper.RESTMapping(id.GroupKind)
+	if err != nil {
+		return false, err
+	}
+	_, err = w.client.Resource(mapping.Resource).Namespace(id.Namespace).Get(ctx, id.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return true, nil
+	}
+	return false, err
 }
 
 func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
