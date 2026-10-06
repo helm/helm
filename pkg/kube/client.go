@@ -267,10 +267,11 @@ func (c *Client) IsReachable() error {
 }
 
 type clientCreateOptions struct {
-	serverSideApply          bool
-	forceConflicts           bool
-	dryRun                   bool
-	fieldValidationDirective FieldValidationDirective
+	serverSideApply               bool
+	forceConflicts                bool
+	dryRun                        bool
+	fieldValidationDirective      FieldValidationDirective
+	upgradeClientSideFieldManager bool
 }
 
 type ClientCreateOption func(*clientCreateOptions) error
@@ -315,13 +316,25 @@ func ClientCreateOptionFieldValidationDirective(fieldValidationDirective FieldVa
 	}
 }
 
-func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun bool, fieldValidationDirective FieldValidationDirective) CreateApplyFunc {
+// ClientCreateOptionUpgradeClientSideFieldManager upgrades client-side field
+// management to server-side apply before creating with SSA. This is required
+// when a resource already exists from a previous client-side write by Helm.
+func ClientCreateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager bool) ClientCreateOption {
+	return func(o *clientCreateOptions) error {
+		o.upgradeClientSideFieldManager = upgradeClientSideFieldManager
+
+		return nil
+	}
+}
+
+func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun bool, fieldValidationDirective FieldValidationDirective, upgradeCSAFieldManager bool) CreateApplyFunc {
 	if serverSideApply {
 		c.Logger().Debug(
 			"using server-side apply for resource creation",
 			slog.Bool("forceConflicts", forceConflicts),
 			slog.Bool("dryRun", dryRun),
-			slog.String("fieldValidationDirective", string(fieldValidationDirective)))
+			slog.String("fieldValidationDirective", string(fieldValidationDirective)),
+			slog.Bool("upgradeClientSideFieldManager", upgradeCSAFieldManager))
 
 		return func(target *resource.Info) error {
 			logger := c.Logger().With(
@@ -333,6 +346,17 @@ func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun boo
 				retry.DefaultRetry,
 				isServerSideRetryable,
 				func() error {
+					if upgradeCSAFieldManager {
+						patched, err := upgradeClientSideFieldManager(target, dryRun, fieldValidationDirective)
+						if err != nil && !apierrors.IsNotFound(err) {
+							logger.Debug("Error patching resource to replace CSA field management", slog.Any("error", err))
+							return err
+						}
+						if patched {
+							logger.Debug("Upgraded object client-side field management with server-side apply field management")
+						}
+					}
+
 					err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
 					if err != nil {
 						logger.Debug("Error creating resource via patch", slog.Any("error", err))
@@ -370,7 +394,8 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		createOptions.serverSideApply,
 		createOptions.forceConflicts,
 		createOptions.dryRun,
-		createOptions.fieldValidationDirective)
+		createOptions.fieldValidationDirective,
+		createOptions.upgradeClientSideFieldManager)
 	if err := perform(resources, createApplyFunc); err != nil {
 		return nil, err
 	}
@@ -835,7 +860,8 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		updateOptions.serverSideApply,
 		updateOptions.forceConflicts,
 		updateOptions.dryRun,
-		updateOptions.fieldValidationDirective)
+		updateOptions.fieldValidationDirective,
+		false)
 
 	makeUpdateApplyFunc := func() UpdateApplyFunc {
 		if updateOptions.forceReplace {
