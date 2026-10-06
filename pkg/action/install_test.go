@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,6 +44,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
+	"sigs.k8s.io/yaml"
 
 	ci "helm.sh/helm/v4/pkg/chart"
 
@@ -1252,4 +1254,79 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+// namespaceRecordingKubeClient records the resources passed to Create and
+// answers with AlreadyExists for the namespace, the way the API server answers
+// a client-side create for a namespace that is already there.
+type namespaceRecordingKubeClient struct {
+	kubefake.PrintingKubeClient
+	createdNamespaces   []string
+	namespaceCreateOpts kube.ClientCreateOptions
+}
+
+// Build returns a resource for the namespace manifest so that the namespace
+// reaches Create; everything else keeps the printing client behaviour.
+func (c *namespaceRecordingKubeClient) Build(r io.Reader, validate bool) (kube.ResourceList, error) {
+	manifest, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.Contains(string(manifest), "kind: Namespace") {
+		return c.PrintingKubeClient.Build(bytes.NewReader(manifest), validate)
+	}
+
+	var ns v1.Namespace
+	if err := yaml.Unmarshal(manifest, &ns); err != nil {
+		return nil, err
+	}
+	return kube.ResourceList{{
+		Name: ns.Name,
+		Mapping: &meta.RESTMapping{
+			GroupVersionKind: schema.GroupVersionKind{Version: "v1", Kind: "Namespace"},
+		},
+		Object: &ns,
+	}}, nil
+}
+
+func (c *namespaceRecordingKubeClient) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+	for _, r := range resources {
+		if r.Mapping != nil && r.Mapping.GroupVersionKind.Kind == "Namespace" {
+			resolved, err := kube.ResolveClientCreateOptions(options...)
+			if err != nil {
+				return nil, err
+			}
+			c.createdNamespaces = append(c.createdNamespaces, r.Name)
+			c.namespaceCreateOpts = resolved
+			return nil, apierrors.NewAlreadyExists(schema.GroupResource{Resource: "namespaces"}, r.Name)
+		}
+	}
+	return c.PrintingKubeClient.Create(resources, options...)
+}
+
+// TestInstallReleaseWithCreateNamespaceExisting checks that installing into a
+// namespace that already exists succeeds and that Helm only ever asks for the
+// namespace to be created, so an existing namespace keeps the labels and
+// annotations set by whoever created it.
+func TestInstallReleaseWithCreateNamespaceExisting(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	config := actionConfigFixture(t)
+	recorder := &namespaceRecordingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}}
+	config.KubeClient = recorder
+
+	instAction := installActionWithConfig(config)
+	instAction.CreateNamespace = true
+
+	res, err := instAction.Run(buildChart(), map[string]any{})
+	req.NoError(err, "install into an existing namespace should succeed")
+
+	rel, err := releaserToV1Release(res)
+	req.NoError(err)
+	is.Equal("spaced", rel.Namespace)
+	is.Equal([]string{"spaced"}, recorder.createdNamespaces)
+	// A server-side apply would make Helm a field manager of the namespace and
+	// drop the labels and annotations it does not set itself.
+	is.False(recorder.namespaceCreateOpts.ServerSideApply, "the namespace must be created client-side")
 }

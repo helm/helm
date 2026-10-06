@@ -275,6 +275,49 @@ type clientCreateOptions struct {
 
 type ClientCreateOption func(*clientCreateOptions) error
 
+// ClientCreateOptions reports the settings a list of ClientCreateOption
+// resolves to. It lets callers that wrap or fake Interface.Create see how the
+// resources they were handed are meant to be created.
+type ClientCreateOptions struct {
+	ServerSideApply          bool
+	ForceConflicts           bool
+	DryRun                   bool
+	FieldValidationDirective FieldValidationDirective
+}
+
+// ResolveClientCreateOptions applies options on top of the defaults used by
+// Client.Create and returns the result.
+func ResolveClientCreateOptions(options ...ClientCreateOption) (ClientCreateOptions, error) {
+	resolved, err := resolveClientCreateOptions(options...)
+	if err != nil {
+		return ClientCreateOptions{}, err
+	}
+
+	return ClientCreateOptions{
+		ServerSideApply:          resolved.serverSideApply,
+		ForceConflicts:           resolved.forceConflicts,
+		DryRun:                   resolved.dryRun,
+		FieldValidationDirective: resolved.fieldValidationDirective,
+	}, nil
+}
+
+func resolveClientCreateOptions(options ...ClientCreateOption) (clientCreateOptions, error) {
+	createOptions := clientCreateOptions{
+		serverSideApply:          true, // Default to server-side apply
+		fieldValidationDirective: FieldValidationDirectiveStrict,
+	}
+
+	errs := make([]error, 0, len(options))
+	for _, o := range options {
+		errs = append(errs, o(&createOptions))
+	}
+	if err := errors.Join(errs...); err != nil {
+		return clientCreateOptions{}, err
+	}
+
+	return createOptions, nil
+}
+
 // ClientCreateOptionServerSideApply enables performing object apply server-side
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 //
@@ -353,16 +396,8 @@ func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun boo
 func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (*Result, error) {
 	c.Logger().Debug("creating resource(s)", "resources", len(resources))
 
-	createOptions := clientCreateOptions{
-		serverSideApply:          true, // Default to server-side apply
-		fieldValidationDirective: FieldValidationDirectiveStrict,
-	}
-
-	errs := make([]error, 0, len(options))
-	for _, o := range options {
-		errs = append(errs, o(&createOptions))
-	}
-	if err := errors.Join(errs...); err != nil {
+	createOptions, err := resolveClientCreateOptions(options...)
+	if err != nil {
 		return nil, fmt.Errorf("invalid client create option(s): %w", err)
 	}
 
