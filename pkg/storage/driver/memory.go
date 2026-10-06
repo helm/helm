@@ -61,6 +61,11 @@ func (mem *Memory) SetNamespace(ns string) {
 	mem.namespace = ns
 }
 
+// Namespace returns the namespace set by SetNamespace.
+func (mem *Memory) Namespace() string {
+	return mem.namespace
+}
+
 // Name returns the name of the driver.
 func (mem *Memory) Name() string {
 	return MemoryDriverName
