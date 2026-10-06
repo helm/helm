@@ -34,6 +34,11 @@ This command fetches the generated manifest for a given release.
 A manifest is a YAML-encoded representation of the Kubernetes resources that
 were generated from this release's chart(s). If a chart is dependent on other
 charts, those resources will also be included in the manifest.
+
+The manifest is printed exactly as stored, including Helm-internal sequencing
+annotations such as helm.sh/depends-on/resource-groups. They are part of the
+release record and drive sequenced uninstall/rollback. Use 'helm template' for
+apply-ready output.
 `
 
 func newGetManifestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
