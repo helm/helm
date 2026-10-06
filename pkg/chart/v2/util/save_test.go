@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 
@@ -364,6 +365,46 @@ func TestRepeatableSave(t *testing.T) {
 			// implementation of the Go release Helm is built with.
 			assert.Equal(t, firstSum, secondSum, "Save() is not repeatable")
 		})
+	}
+}
+
+func TestRepeatableSaveWithSubcharts(t *testing.T) {
+	modTime := time.Now()
+	files := []*archive.BufferedFile{
+		{
+			Name:    "Chart.yaml",
+			ModTime: modTime,
+			Data:    []byte("apiVersion: v1\nname: frobnitz\nversion: \"1.2.3\"\n"),
+		},
+	}
+	for _, name := range []string{"delta", "bravo", "echo", "alpine", "charlie"} {
+		files = append(files, &archive.BufferedFile{
+			Name:    "charts/" + name + "/Chart.yaml",
+			ModTime: modTime,
+			Data:    []byte("apiVersion: v1\nname: " + name + "\nversion: \"0.1.0\"\n"),
+		})
+	}
+
+	epoch := time.Unix(0, 0).UTC()
+	save := func() string {
+		t.Helper()
+		c, err := loader.LoadFiles(files)
+		require.NoError(t, err, "Failed to load files")
+		require.Len(t, c.Dependencies(), 5, "Expected all subcharts to load")
+
+		// Pin timestamps, as SOURCE_DATE_EPOCH does, so entry order is the only thing left moving.
+		c.StampModTimes(epoch)
+
+		where, err := Save(c, t.TempDir())
+		require.NoError(t, err, "Failed to save")
+		sum, err := sha256Sum(where)
+		require.NoError(t, err, "Failed to check shasum")
+		return sum
+	}
+
+	want := save()
+	for i := range 5 {
+		require.Equal(t, want, save(), "Save() is not repeatable across loads (iteration %d)", i)
 	}
 }
 
