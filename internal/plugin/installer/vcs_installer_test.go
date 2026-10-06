@@ -16,8 +16,10 @@ limitations under the License.
 package installer
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -142,4 +144,46 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	require.NoError(t, os.Remove(filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")))
 	// Testing update for error
 	require.EqualErrorf(t, Update(vcsInstaller), "plugin repo was modified", "expected error for plugin modified")
+}
+
+// A clone made with core.fsmonitor enabled leaves a daemon and a socket in .git,
+// and the socket cannot be copied into the plugins directory.
+func TestVCSInstallerWithFSMonitorDaemon(t *testing.T) {
+	ensure.HelmHome(t)
+	require.NoError(t, os.MkdirAll(helmpath.DataPath("plugins"), 0o755))
+
+	git := func(dir string, args ...string) {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), "git", append([]string{"-C", dir}, args...)...)
+		cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+	}
+
+	repoDir := t.TempDir()
+	git(repoDir, "init", "-q")
+	git(repoDir, "config", "user.email", "test@example.com")
+	git(repoDir, "config", "user.name", "test")
+	require.NoError(t, os.WriteFile(filepath.Join(repoDir, "plugin.yaml"), []byte("name: fsmon\nversion: 0.1.0\n"), 0o644))
+	git(repoDir, "add", ".")
+	git(repoDir, "commit", "-q", "-m", "plugin")
+	git(repoDir, "config", "core.fsmonitor", "true")
+	t.Cleanup(func() {
+		_ = exec.CommandContext(context.Background(), "git", "-C", repoDir, "fsmonitor--daemon", "stop").Run()
+	})
+	// Any command that reads the work tree starts the daemon.
+	git(repoDir, "status", "-s")
+
+	socket := filepath.Join(repoDir, ".git", "fsmonitor--daemon.ipc")
+	if _, err := os.Lstat(socket); err != nil {
+		t.Skip("this git does not start an fsmonitor daemon here")
+	}
+
+	i := &VCSInstaller{Repo: &testRepo{local: repoDir}, base: newBase("https://example.com/fsmon")}
+
+	require.NoError(t, Install(i))
+	require.FileExists(t, filepath.Join(i.Path(), "plugin.yaml"))
+	require.DirExists(t, filepath.Join(i.Path(), ".git"), "helm plugin update needs the repository")
+	require.NoFileExists(t, filepath.Join(i.Path(), ".git", "fsmonitor--daemon.ipc"))
 }
