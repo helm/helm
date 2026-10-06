@@ -34,18 +34,37 @@ type SimpleHead struct {
 	} `json:"metadata,omitempty"`
 }
 
-var sep = regexp.MustCompile(`(?m)^---[ \t]*`)
+// sep matches YAML document separators. A separator is `---` at the start of
+// a line (or start of the stream), followed by horizontal whitespace or by a
+// newline/end of stream. The whitespace branch allows same-line comments or
+// content while leaving their suffix in the following manifest. The multiline
+// anchor leaves the preceding document's trailing whitespace and newlines
+// intact.
+//
+// This is intentionally stricter than the Chart v1/v2 regex in
+// pkg/release/v1/util/manifest.go. The v1/v2 version tolerates
+// `---<non-whitespace>` (e.g. `---apiVersion: v1`) by treating it as a
+// separator glued to content, a silent correction for Go template whitespace
+// trimming (`{{-`) eating the newline after `---`. Chart v3 does not carry
+// that workaround forward; see the function comment below.
+var sep = regexp.MustCompile(`(?m)^---(?:[ \t]+|\r?$)`)
 
 // SplitManifests takes a manifest string and returns a map containing individual manifests.
 //
-// **Note for Chart API v3**: This function (due to the regex above) has allowed _WRONG_
-// Go templates to be defined inside charts across the years. The generated text from Go
-// templates may contain `---apiVersion: v1`, and this function magically splits this back
-// to `---\napiVersion: v1`. This has caused issues recently after Helm 4 introduced
-// kio.ParseAll to inject annotations when post-renderers are used. In Chart API v3,
-// we should kill this regex with fire (or change it) and expose charts doing the wrong
-// thing Go template-wise. Helm should say a big _NO_ to charts doing the wrong thing,
-// with or without post-renderers.
+// Chart API v3 note: unlike Chart v1/v2, this implementation does NOT silently
+// repair YAML document separators glued to content by Go template whitespace
+// trimming. A template such as
+//
+//	---
+//	{{- include "mychart.service" . }}
+//
+// renders `---apiVersion: v1\n...` because `{{-` strips the newline after
+// `---`. In Chart v1/v2, SplitManifests detects this and splits the input as
+// if the newline were still there; in Chart v3, the glued `---` is left as
+// part of the document body rather than being silently repaired. Downstream
+// validation can then reject the malformed manifest. Chart authors should
+// drop the dash (`{{ include ... }}`) or omit the explicit `---` separator;
+// Helm inserts one between templates on its own. See helm/helm#32036.
 func SplitManifests(bigFile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. The file name is just a place holder, but should be
