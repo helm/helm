@@ -47,8 +47,10 @@ import (
 	ci "helm.sh/helm/v4/pkg/chart"
 
 	"helm.sh/helm/v4/internal/test"
+	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
@@ -1252,4 +1254,20 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+func TestLocateChart_RepoURLRejectsChartNotMatchingIndexDigest(t *testing.T) {
+	ensure.HelmHome(t)
+	srv := tamperedRepoServer(t)
+	settings := cli.New()
+
+	c := &ChartPathOptions{RepoURL: srv.URL(), Version: "0.1.0"}
+	_, err := c.LocateChart("signtest", settings)
+	require.ErrorContains(t, err, "does not match the digest recorded for it in the repository index")
+
+	entries, err := os.ReadDir(settings.ContentCache)
+	if !errors.Is(err, fs.ErrNotExist) {
+		require.NoError(t, err)
+		assert.Empty(t, entries, "rejected chart must not be written to the content cache")
+	}
 }
