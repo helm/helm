@@ -1,0 +1,1 @@
+[{"chart":"testdata/testcharts/alpine","messages":[{"severity":"INFO","path":"Chart.yaml","message":"icon is recommended"}]}]
