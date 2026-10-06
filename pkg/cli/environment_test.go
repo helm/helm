@@ -253,6 +253,45 @@ users:
 	assert.Equal(t, expectedUserAgent, restConfig.UserAgent)
 }
 
+func TestRESTClientGetterReusesDiscoveryClient(t *testing.T) {
+	cleanup := resetEnv()
+	t.Cleanup(cleanup)
+
+	kubeconfigPath := filepath.Join(t.TempDir(), "config")
+	kubeconfig := `apiVersion: v1
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+  name: test
+contexts:
+- context:
+    cluster: test
+    user: test-user
+  name: test
+current-context: test
+kind: Config
+preferences: {}
+users:
+- name: test-user
+  user:
+    token: test-token
+`
+	require.NoError(t, os.WriteFile(kubeconfigPath, []byte(kubeconfig), 0o600), "failed to create test kubeconfig")
+	t.Setenv("KUBECONFIG", kubeconfigPath)
+	t.Setenv("KUBECACHEDIR", t.TempDir())
+
+	getter := New().RESTClientGetter()
+
+	dc1, err := getter.ToDiscoveryClient()
+	require.NoError(t, err)
+	dc2, err := getter.ToDiscoveryClient()
+	require.NoError(t, err)
+	assert.Same(t, dc1, dc2, "discovery client must be built once per settings instance")
+
+	_, err = getter.ToRESTMapper()
+	require.NoError(t, err)
+}
+
 func resetEnv() func() {
 	origEnv := os.Environ()
 
