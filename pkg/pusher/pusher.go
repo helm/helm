@@ -34,6 +34,7 @@ type options struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
+	subject               string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -66,6 +67,14 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 func WithPlainHTTP(plainHTTP bool) Option {
 	return func(opts *options) {
 		opts.plainHTTP = plainHTTP
+	}
+}
+
+// WithSubject sets the subject digest for OCI Referrers API.
+// When set, the pushed chart will be associated with the specified image digest.
+func WithSubject(subject string) Option {
+	return func(opts *options) {
+		opts.subject = subject
 	}
 }
 
