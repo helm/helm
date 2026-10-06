@@ -18,6 +18,7 @@ package repo
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -168,6 +169,7 @@ func TestWriteFile(t *testing.T) {
 
 	file, err := os.CreateTemp(t.TempDir(), "helm-repo")
 	require.NoErrorf(t, err, "failed to create test-file")
+	require.NoError(t, file.Close())
 	defer os.Remove(file.Name())
 	require.NoErrorf(t, sampleRepository.WriteFile(file.Name(), 0o600), "failed to write file")
 
@@ -207,3 +209,32 @@ func TestRemoveRepositoryInvalidEntries(t *testing.T) {
 	assert.Truef(t, sampleRepository.Remove(removeRepository), "expected repository %s not found", removeRepository)
 	assert.Falsef(t, sampleRepository.Has(removeRepository), "repository %s not deleted", removeRepository)
 }
+
+func TestWriteFile_Atomic(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "repositories.yaml")
+
+	initialRepo := NewFile()
+	initialRepo.Add(&Entry{
+		Name: "initial",
+		URL:  "https://example.com/initial",
+	})
+	require.NoError(t, initialRepo.WriteFile(filePath, 0o644))
+
+	initialData, err := os.ReadFile(filePath)
+	require.NoError(t, err)
+	require.NotEmpty(t, initialData)
+
+	updatedRepo := NewFile()
+	updatedRepo.Add(&Entry{
+		Name: "updated",
+		URL:  "https://example.com/updated",
+	})
+	require.NoError(t, updatedRepo.WriteFile(filePath, 0o644))
+
+	loaded, err := LoadFile(filePath)
+	require.NoError(t, err)
+	assert.False(t, loaded.Has("initial"))
+	assert.True(t, loaded.Has("updated"))
+}
+
