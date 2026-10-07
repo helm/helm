@@ -14,32 +14,54 @@ limitations under the License.
 package installer
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 func TestPath(t *testing.T) {
+	customPluginsDir := "/foo/bar"
+
 	tests := []struct {
+		name           string
 		source         string
 		helmPluginsDir string
 		expectPath     string
 	}{
 		{
+			name:           "empty source default helm plugins dir",
 			source:         "",
-			helmPluginsDir: "/helm/data/plugins",
+			helmPluginsDir: "",
 			expectPath:     "",
 		}, {
-			source:         "https://github.com/jkroepke/helm-secrets",
-			helmPluginsDir: "/helm/data/plugins",
-			expectPath:     "/helm/data/plugins/helm-secrets",
+			name:           "default helm plugins dir",
+			source:         "https://github.com/adamreese/helm-env",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "helm-env"),
+		}, {
+			name:           "empty source custom helm plugins dir",
+			source:         "",
+			helmPluginsDir: customPluginsDir,
+			expectPath:     "",
+		}, {
+			name:           "custom helm plugins dir",
+			source:         "https://github.com/adamreese/helm-env",
+			helmPluginsDir: customPluginsDir,
+			expectPath:     filepath.Join(customPluginsDir, "helm-env"),
 		},
 	}
 
 	for _, tt := range tests {
-		t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
-		baseIns := newBase(tt.source)
-		baseInsPath := baseIns.Path()
-		assert.Equal(t, tt.expectPath, baseInsPath, "expected name %s, got %s", tt.expectPath, baseInsPath)
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.helmPluginsDir != "" {
+				t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+			}
+			installer := newBase(tt.source)
+			path := installer.Path()
+			assert.Equal(t, tt.expectPath, path)
+		})
 	}
 }
