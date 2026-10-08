@@ -18,6 +18,8 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"slices"
@@ -56,6 +58,9 @@ type GenericPullOptions struct {
 	SkipMediaTypes []string
 	// Custom PreCopy function for filtering
 	PreCopy func(context.Context, ocispec.Descriptor) error
+	// Platform, when set, resolves an image index root to the first child
+	// manifest matching this platform. Non-index roots are used unchanged.
+	Platform *ocispec.Platform
 }
 
 // GenericPullResult contains the result of a generic pull operation
@@ -112,7 +117,7 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 	}
 
 	var mu sync.Mutex
-	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
+	copyOpts := oras.CopyOptions{
 		CopyGraphOptions: oras.CopyGraphOptions{
 			PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
 				// Apply a custom PreCopy function if provided
@@ -142,7 +147,13 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 				return nil
 			},
 		},
-	})
+	}
+	if options.Platform != nil {
+		copyOpts.MapRoot = func(ctx context.Context, src content.ReadOnlyStorage, root ocispec.Descriptor) (ocispec.Descriptor, error) {
+			return selectPlatformManifest(ctx, src, root, options.Platform)
+		}
+	}
+	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", copyOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -158,4 +169,55 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 // GetDescriptorData retrieves the data for a specific descriptor
 func (c *GenericClient) GetDescriptorData(store *memory.Store, desc ocispec.Descriptor) ([]byte, error) {
 	return content.FetchAll(context.Background(), store, desc)
+}
+
+// selectPlatformManifest maps an image index to its first child manifest matching
+// the given platform. Any other root descriptor is returned unchanged.
+//
+// oras.CopyOptions.WithTargetPlatform is not used because, for a plain manifest
+// root, it reads the image config to verify the platform. Helm artifacts carry
+// non-image configs, so that would reject single-platform artifacts.
+//
+// An empty platform.Variant matches any variant, so the first child with a
+// matching OS and architecture wins (e.g. arm/v6 vs arm/v7).
+func selectPlatformManifest(ctx context.Context, src content.ReadOnlyStorage, root ocispec.Descriptor, platform *ocispec.Platform) (ocispec.Descriptor, error) {
+	if root.MediaType != ocispec.MediaTypeImageIndex {
+		return root, nil
+	}
+	data, err := content.FetchAll(ctx, src, root)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	var index ocispec.Index
+	if err := json.Unmarshal(data, &index); err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("unable to parse image index: %w", err)
+	}
+	for _, m := range index.Manifests {
+		p := m.Platform
+		if p == nil || p.OS != platform.OS || p.Architecture != platform.Architecture {
+			continue
+		}
+		if platform.Variant != "" && p.Variant != platform.Variant {
+			continue
+		}
+		if platform.OSVersion != "" && p.OSVersion != platform.OSVersion {
+			continue
+		}
+		if slices.ContainsFunc(platform.OSFeatures, func(feature string) bool {
+			return !slices.Contains(p.OSFeatures, feature)
+		}) {
+			continue
+		}
+		return m, nil
+	}
+	return ocispec.Descriptor{}, fmt.Errorf("no manifest found for platform %s in image index %s", formatPlatform(platform), root.Digest)
+}
+
+// formatPlatform renders a platform as os/arch[/variant].
+func formatPlatform(p *ocispec.Platform) string {
+	s := p.OS + "/" + p.Architecture
+	if p.Variant != "" {
+		s += "/" + p.Variant
+	}
+	return s
 }
