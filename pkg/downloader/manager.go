@@ -63,7 +63,7 @@ type Manager struct {
 	Out io.Writer
 	// ChartPath is the path to the unpacked base chart upon which this operates.
 	ChartPath string
-	// Verification indicates whether the chart should be verified.
+	// Verify indicates what verification strategy to use.
 	Verify VerificationStrategy
 	// Debug is the global "--debug" flag
 	Debug bool
@@ -71,7 +71,7 @@ type Manager struct {
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
-	// Getter collection for the operation
+	// Getters is the collection of getters used for the operation.
 	Getters          []getter.Provider
 	RegistryClient   *registry.Client
 	RepositoryConfig string
