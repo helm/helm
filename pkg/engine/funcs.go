@@ -18,6 +18,8 @@ package engine
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +33,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
@@ -52,6 +55,10 @@ func funcMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
 	delete(f, "expandenv")
+
+	// Override the sprig "htpasswd" function so it accepts an optional
+	// third argument to select the hash algorithm.
+	f["htpasswd"] = htpasswd
 
 	// Add some extra functionality
 	extra := template.FuncMap{
@@ -97,6 +104,38 @@ func funcMap() template.FuncMap {
 	maps.Copy(f, extra)
 
 	return f
+}
+
+// htpasswd takes a username and password and returns an htpasswd entry. It
+// extends the sprig-provided function (see https://github.com/helm/helm/issues/31924)
+// by accepting an optional third argument to select the hash algorithm.
+//
+// Supported algorithms are "bcrypt" (the default, with the same cost as
+// sprig) and "sha" ({SHA} base64-encoded SHA-1). Unlike a panic, invalid
+// input is reported by returning a descriptive error string.
+func htpasswd(username, password string, algorithm ...string) string {
+	if strings.Contains(username, ":") {
+		return fmt.Sprintf("invalid username: %s", username)
+	}
+
+	alg := "bcrypt"
+	if len(algorithm) > 0 {
+		alg = algorithm[0]
+	}
+
+	switch alg {
+	case "bcrypt":
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Sprintf("failed to encrypt string with bcrypt: %s", err)
+		}
+		return fmt.Sprintf("%s:%s", username, hash)
+	case "sha":
+		h := sha1.Sum([]byte(password))
+		return fmt.Sprintf("%s:{SHA}%s", username, base64.StdEncoding.EncodeToString(h[:]))
+	default:
+		return fmt.Sprintf("invalid hash algorithm: %s", alg)
+	}
 }
 
 // toYAML takes an interface, marshals it to yaml, and returns a string. It will
