@@ -34,19 +34,28 @@ func TestSelectPlatformManifest(t *testing.T) {
 	ctx := context.Background()
 	store := memory.New()
 
-	child := func(os, arch, variant string) ocispec.Descriptor {
+	childWith := func(platform ocispec.Platform) ocispec.Descriptor {
+		data, err := json.Marshal(platform)
+		require.NoError(t, err)
 		return ocispec.Descriptor{
 			MediaType: ocispec.MediaTypeImageManifest,
-			Digest:    digest.FromString(os + "/" + arch + "/" + variant),
+			Digest:    digest.FromBytes(data),
 			Size:      1,
-			Platform:  &ocispec.Platform{OS: os, Architecture: arch, Variant: variant},
+			Platform:  &platform,
 		}
 	}
+	child := func(os, arch, variant string) ocispec.Descriptor {
+		return childWith(ocispec.Platform{OS: os, Architecture: arch, Variant: variant})
+	}
+	windows2019 := childWith(ocispec.Platform{OS: "windows", Architecture: "arm64", OSVersion: "10.0.17763.1"})
+	windows2022 := childWith(ocispec.Platform{OS: "windows", Architecture: "arm64", OSVersion: "10.0.20348.1", OSFeatures: []string{"win32k"}})
 	index := ocispec.Index{Manifests: []ocispec.Descriptor{
 		child("linux", "amd64", ""),
 		child("linux", "arm", "v6"),
 		child("linux", "arm", "v7"),
 		child("windows", "amd64", ""),
+		windows2019,
+		windows2022,
 	}}
 	data, err := json.Marshal(index)
 	require.NoError(t, err)
@@ -91,6 +100,30 @@ func TestSelectPlatformManifest(t *testing.T) {
 			root:      ociIndex,
 			platform:  ocispec.Platform{OS: "linux", Architecture: "arm", Variant: "v8"},
 			expectErr: "no manifest found for platform linux/arm/v8",
+		},
+		{
+			name:     "selects matching OS version",
+			root:     ociIndex,
+			platform: ocispec.Platform{OS: "windows", Architecture: "arm64", OSVersion: "10.0.20348.1"},
+			expected: windows2022,
+		},
+		{
+			name:      "no matching OS version",
+			root:      ociIndex,
+			platform:  ocispec.Platform{OS: "windows", Architecture: "arm64", OSVersion: "10.0.26100.1"},
+			expectErr: "no manifest found for platform windows/arm64",
+		},
+		{
+			name:     "selects entry with required OS features",
+			root:     ociIndex,
+			platform: ocispec.Platform{OS: "windows", Architecture: "arm64", OSFeatures: []string{"win32k"}},
+			expected: windows2022,
+		},
+		{
+			name:      "missing required OS feature",
+			root:      ociIndex,
+			platform:  ocispec.Platform{OS: "windows", Architecture: "arm64", OSFeatures: []string{"win32k", "other"}},
+			expectErr: "no manifest found for platform windows/arm64",
 		},
 		{
 			name:     "non-index root passes through unchanged",

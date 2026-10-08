@@ -200,6 +200,14 @@ func selectPlatformManifest(ctx context.Context, src content.ReadOnlyStorage, ro
 		if platform.Variant != "" && p.Variant != platform.Variant {
 			continue
 		}
+		if platform.OSVersion != "" && p.OSVersion != platform.OSVersion {
+			continue
+		}
+		if slices.ContainsFunc(platform.OSFeatures, func(feature string) bool {
+			return !slices.Contains(p.OSFeatures, feature)
+		}) {
+			continue
+		}
 		return m, nil
 	}
 	return ocispec.Descriptor{}, fmt.Errorf("no manifest found for platform %s in image index %s", formatPlatform(platform), root.Digest)
