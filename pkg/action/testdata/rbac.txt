@@ -9,7 +9,6 @@ rules:
   resources: ["pods", "pods/exec", "pods/log"]
   verbs: ["*"]
 
-
 ---
 # Source: hello/templates/rbac
 apiVersion: rbac.authorization.k8s.io/v1
@@ -25,4 +24,3 @@ subjects:
 - kind: ServiceAccount
   name: schedule-agents
   namespace: spaced
-

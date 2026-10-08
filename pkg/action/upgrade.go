@@ -299,7 +299,7 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 		return nil, nil, false, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(ctx, chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret, u.PostRenderStrategy)
+	hooks, manifest, notesTxt, err := u.cfg.renderResources(ctx, chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret, u.PostRenderStrategy)
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -328,7 +328,7 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
 		Version:     revision,
-		Manifest:    manifestDoc.String(),
+		Manifest:    string(manifest),
 		Hooks:       hooks,
 		Labels:      mergeCustomLabels(lastRelease.Labels, u.Labels),
 		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
@@ -337,7 +337,7 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 	if notesTxt != "" {
 		upgradedRelease.Info.Notes = notesTxt
 	}
-	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
+	err = validateManifest(u.cfg.KubeClient, manifest, !u.DisableOpenAPIValidation)
 	return currentRelease, upgradedRelease, serverSideApply, err
 }
 

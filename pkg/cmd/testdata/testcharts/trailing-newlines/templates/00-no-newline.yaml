@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: regular-no-newline
+data:
+  cfg: |+
+    line1
+    line2

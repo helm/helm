@@ -19,7 +19,6 @@ spec:
     name: nginx
   selector:
     app.kubernetes.io/name: subchart
-
 ---
 # Source: subchart/charts/subcharta/templates/service.yaml
 apiVersion: v1
@@ -37,5 +36,3 @@ spec:
     name: apache
   selector:
     app.kubernetes.io/name: subcharta
-
-

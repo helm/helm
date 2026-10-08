@@ -11,7 +11,6 @@ spec:
     - Egress
     - Ingress
 
-
 ---
 # Source: object-order/templates/01-a.yml
 # 2
@@ -24,7 +23,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 
 ---
 # Source: object-order/templates/01-a.yml
@@ -39,7 +37,6 @@ spec:
     - Egress
     - Ingress
 
-
 ---
 # Source: object-order/templates/02-b.yml
 # 5
@@ -52,7 +49,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 
 ---
 # Source: object-order/templates/02-b.yml
@@ -67,7 +63,6 @@ spec:
     - Egress
     - Ingress
 
-
 ---
 # Source: object-order/templates/02-b.yml
 # 8
@@ -80,7 +75,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 
 ---
 # Source: object-order/templates/02-b.yml
@@ -95,7 +89,6 @@ spec:
     - Egress
     - Ingress
 
-
 ---
 # Source: object-order/templates/02-b.yml
 # 10
@@ -108,7 +101,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 
 ---
 # Source: object-order/templates/02-b.yml
@@ -123,7 +115,6 @@ spec:
     - Egress
     - Ingress
 
-
 ---
 # Source: object-order/templates/02-b.yml
 # 12
@@ -136,7 +127,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 
 ---
 # Source: object-order/templates/02-b.yml
@@ -151,7 +141,6 @@ spec:
     - Egress
     - Ingress
 
-
 ---
 # Source: object-order/templates/02-b.yml
 # 14
@@ -164,7 +153,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 
 ---
 # Source: object-order/templates/02-b.yml
@@ -179,7 +167,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 ---
 # Source: object-order/templates/01-a.yml
 # 4 (Deployment should come after all NetworkPolicy manifests, since 'helm template' outputs in install order)
@@ -214,5 +201,4 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 

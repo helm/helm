@@ -20,12 +20,17 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v4/internal/test"
 )
 
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
 	deletevalchart := "testdata/testcharts/issue-9027"
+	newlinesChart := "testdata/testcharts/trailing-newlines"
 
 	tests := []cmdTestCase{
 		{
@@ -172,8 +177,64 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
+		{
+			name:   "trailing newlines",
+			cmd:    fmt.Sprintf("template '%s'", newlinesChart),
+			golden: "output/template-newlines.txt",
+		},
+		{
+			name:   "trailing newlines without hooks",
+			cmd:    fmt.Sprintf("template '%s' --no-hooks", newlinesChart),
+			golden: "output/template-newlines-no-hooks.txt",
+		},
+		{
+			name:   "trailing newlines with reversed show-only order",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/hooks.yaml --show-only templates/00-no-newline-hook.yaml --show-only templates/regular.yaml --show-only templates/00-no-newline.yaml", newlinesChart),
+			golden: "output/template-newlines-reversed.txt",
+		},
+		{
+			name:   "trailing newlines with show-only regular manifests",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/regular.yaml", newlinesChart),
+			golden: "output/template-newlines-regular.txt",
+		},
+		{
+			name:   "trailing newlines with show-only hooks",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/hooks.yaml", newlinesChart),
+			golden: "output/template-newlines-hooks.txt",
+		},
+		{
+			name:   "missing final newline with show-only",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/00-no-newline.yaml", newlinesChart),
+			golden: "output/template-newlines-no-newline.txt",
+		},
+		{
+			name:   "missing final newline with show-only hook",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/00-no-newline-hook.yaml", newlinesChart),
+			golden: "output/template-newlines-no-newline-hook.txt",
+		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestTemplateCmdOutputDir(t *testing.T) {
+	t.Cleanup(resetEnv())
+	outputDir := t.TempDir()
+	_, _, err := executeActionCommand(fmt.Sprintf("template testdata/testcharts/trailing-newlines --output-dir %q", outputDir))
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		file   string
+		golden string
+	}{
+		{"regular.yaml", "output/template-newlines-regular.txt"},
+		{"hooks.yaml", "output/template-newlines-hooks.txt"},
+		{"00-no-newline.yaml", "output/template-newlines-no-newline.txt"},
+		{"00-no-newline-hook.yaml", "output/template-newlines-no-newline-hook.txt"},
+	} {
+		t.Run(tc.file, func(t *testing.T) {
+			test.AssertGoldenFile(t, filepath.Join(outputDir, "trailing-newlines", "templates", tc.file), tc.golden)
+		})
+	}
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {

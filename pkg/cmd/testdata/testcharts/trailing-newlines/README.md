@@ -1,0 +1,1 @@
+The `00-no-newline*.yaml` templates intentionally have no final newline. The other templates contain two documents ending in one and two newlines, respectively. Keep chomping (`|+`) makes these newlines part of the ConfigMap value.
