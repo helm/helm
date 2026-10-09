@@ -17,9 +17,13 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -238,6 +242,59 @@ func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
     }`)
 	vals := map[string]any{"any": "value"}
 	require.NoErrorf(t, ValidateAgainstSingleSchema(vals, schema), "expected no error when URN unresolved is ignored, got")
+}
+
+// TestValidateAgainstSingleSchema_ExternalRefDenied ensures that external schema
+// references in an (untrusted) chart schema are refused rather than resolved,
+// closing the SSRF / arbitrary-local-file-read vector. See denyURLLoader.
+func TestValidateAgainstSingleSchema_ExternalRefDenied(t *testing.T) {
+	// An http:// $ref must fail closed and must not trigger an outbound request.
+	t.Run("http ref is not fetched (SSRF)", func(t *testing.T) {
+		var hits atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			hits.Add(1)
+			w.Write([]byte(`{"type": "object"}`))
+		}))
+		defer server.Close()
+
+		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, server.URL+"/evil.json"))
+		err := ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema)
+		require.Error(t, err, "expected validation to fail closed on an external http $ref")
+		assert.Zero(t, hits.Load(), "external $ref was fetched")
+	})
+
+	// A file:// $ref must fail closed and must not read local file contents.
+	t.Run("file ref is not read", func(t *testing.T) {
+		secret := filepath.Join(t.TempDir(), "secret.txt")
+		require.NoError(t, os.WriteFile(secret, []byte("TOP-SECRET"), 0o600))
+
+		refPath := filepath.ToSlash(secret)
+		if !strings.HasPrefix(refPath, "/") {
+			refPath = "/" + refPath // Windows: C:/... -> /C:/...
+		}
+		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, "file://"+refPath))
+		err := ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema)
+		require.Error(t, err, "expected validation to fail closed on an external file $ref")
+		assert.NotContains(t, err.Error(), "TOP-SECRET", "local file content leaked through schema validation")
+	})
+}
+
+// TestValidateAgainstSingleSchema_ExternalRefOptIn ensures charts that already
+// depend on external schema references keep working when the user opts back in
+// with HELM_ALLOW_EXTERNAL_SCHEMA_REFS.
+func TestValidateAgainstSingleSchema_ExternalRefOptIn(t *testing.T) {
+	var hits atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.Write([]byte(`{"type": "object"}`))
+	}))
+	defer server.Close()
+
+	t.Setenv(ExternalSchemaRefsEnvVar, "true")
+
+	schema := []byte(fmt.Sprintf(`{"$ref": %q}`, server.URL+"/schema.json"))
+	require.NoError(t, ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema))
+	assert.Positive(t, hits.Load(), "external $ref was not resolved despite the opt-in")
 }
 
 // Non-regression tests for https://github.com/helm/helm/issues/31202
