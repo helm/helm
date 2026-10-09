@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -137,19 +139,8 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	}
 	slog.Debug("unmarshalled JSON schema", "schema", schemaJSON)
 
-	// Refuse external schema references (http(s):// and file://) instead of
-	// fetching them; see denyURLLoader. The urn scheme stays resolvable via the
-	// pluggable URNResolver for back-compatibility.
-	deny := denyURLLoader{}
-	loader := jsonschema.SchemeURLLoader{
-		"file":  deny,
-		"http":  deny,
-		"https": deny,
-		"urn":   urnLoader{},
-	}
-
 	compiler := jsonschema.NewCompiler()
-	compiler.UseLoader(loader)
+	compiler.UseLoader(schemeURLLoader())
 	err = compiler.AddResource("file:///values.schema.json", schema)
 	if err != nil {
 		return err
@@ -168,8 +159,18 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	return nil
 }
 
-// denyURLLoader is a [jsonschema.URLLoader] that refuses to resolve any
-// external schema reference.
+// ExternalSchemaRefsEnvVar is the name of the environment variable that
+// re-enables resolution of external schema references. See schemeURLLoader.
+const ExternalSchemaRefsEnvVar = "HELM_ALLOW_EXTERNAL_SCHEMA_REFS"
+
+// allowExternalSchemaRefs reports whether the user has opted back in to
+// resolving external schema references.
+func allowExternalSchemaRefs() bool {
+	allow, err := strconv.ParseBool(os.Getenv(ExternalSchemaRefsEnvVar))
+	return err == nil && allow
+}
+
+// schemeURLLoader returns the loaders used when compiling a chart schema.
 //
 // A chart's values.schema.json is untrusted input (loaded verbatim from a chart
 // archive that may originate from a remote repository or OCI registry). If the
@@ -180,14 +181,41 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 // "file://" references read arbitrary local files into the schema graph - the
 // JSON Schema analogue of an XXE attack.
 //
+// External resolution therefore fails closed by default. Charts that genuinely
+// depend on it can restore the previous behaviour by setting
+// HELM_ALLOW_EXTERNAL_SCHEMA_REFS=true, which keeps the safe default for
+// untrusted charts without removing the capability for those already relying
+// on it.
+//
 // Standard meta-schemas (the json-schema.org drafts named by "$schema") are
-// served by the compiler from an embedded copy and never reach a loader, so
-// failing closed here keeps schema validation a purely local, in-archive
-// operation without breaking legitimate charts.
+// served by the compiler from an embedded copy and never reach a loader, so the
+// default does not affect charts that only reference those.
+func schemeURLLoader() jsonschema.SchemeURLLoader {
+	// The urn scheme stays resolvable via the pluggable URNResolver either way;
+	// it does not perform any network or filesystem access of its own.
+	loader := jsonschema.SchemeURLLoader{"urn": urnLoader{}}
+
+	if allowExternalSchemaRefs() {
+		loader["file"] = jsonschema.FileLoader{}
+		loader["http"] = newHTTPURLLoader()
+		loader["https"] = newHTTPURLLoader()
+		return loader
+	}
+
+	deny := denyURLLoader{}
+	loader["file"] = deny
+	loader["http"] = deny
+	loader["https"] = deny
+	return loader
+}
+
+// denyURLLoader is a [jsonschema.URLLoader] that refuses to resolve an external
+// schema reference, pointing at the opt-in for users who need the old
+// behaviour.
 type denyURLLoader struct{}
 
 func (denyURLLoader) Load(url string) (any, error) {
-	return nil, fmt.Errorf("loading external schema reference %q is not allowed", url)
+	return nil, fmt.Errorf("loading external schema reference %q is not allowed; set %s=true to allow it", url, ExternalSchemaRefsEnvVar)
 }
 
 // URNResolverFunc allows SDK to plug a URN resolver. It must return a

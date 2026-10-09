@@ -250,9 +250,9 @@ func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
 func TestValidateAgainstSingleSchema_ExternalRefDenied(t *testing.T) {
 	// An http:// $ref must fail closed and must not trigger an outbound request.
 	t.Run("http ref is not fetched (SSRF)", func(t *testing.T) {
-		var hits int32
+		var hits atomic.Int32
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			atomic.AddInt32(&hits, 1)
+			hits.Add(1)
 			w.Write([]byte(`{"type": "object"}`))
 		}))
 		defer server.Close()
@@ -260,7 +260,7 @@ func TestValidateAgainstSingleSchema_ExternalRefDenied(t *testing.T) {
 		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, server.URL+"/evil.json"))
 		err := ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema)
 		require.Error(t, err, "expected validation to fail closed on an external http $ref")
-		assert.Zero(t, atomic.LoadInt32(&hits), "external $ref was fetched")
+		assert.Zero(t, hits.Load(), "external $ref was fetched")
 	})
 
 	// A file:// $ref must fail closed and must not read local file contents.
@@ -277,6 +277,24 @@ func TestValidateAgainstSingleSchema_ExternalRefDenied(t *testing.T) {
 		require.Error(t, err, "expected validation to fail closed on an external file $ref")
 		assert.NotContains(t, err.Error(), "TOP-SECRET", "local file content leaked through schema validation")
 	})
+}
+
+// TestValidateAgainstSingleSchema_ExternalRefOptIn ensures charts that already
+// depend on external schema references keep working when the user opts back in
+// with HELM_ALLOW_EXTERNAL_SCHEMA_REFS.
+func TestValidateAgainstSingleSchema_ExternalRefOptIn(t *testing.T) {
+	var hits atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.Write([]byte(`{"type": "object"}`))
+	}))
+	defer server.Close()
+
+	t.Setenv(ExternalSchemaRefsEnvVar, "true")
+
+	schema := []byte(fmt.Sprintf(`{"$ref": %q}`, server.URL+"/schema.json"))
+	require.NoError(t, ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema))
+	assert.Positive(t, hits.Load(), "external $ref was not resolved despite the opt-in")
 }
 
 // Non-regression tests for https://github.com/helm/helm/issues/31202
