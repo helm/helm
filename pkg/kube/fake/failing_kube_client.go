@@ -52,7 +52,9 @@ type FailingKubeClient struct {
 	RecordedWaitOptions []kube.WaitOption
 	// RecordedWaitStrategies stores the WaitStrategy passed to each GetWaiter call for testing
 	RecordedWaitStrategies []kube.WaitStrategy
-	mu                     sync.Mutex
+	// RecordedWaitTimeouts stores the timeout passed to each Waiter.Wait call for testing
+	RecordedWaitTimeouts []time.Duration
+	mu                   sync.Mutex
 }
 
 var _ kube.Interface = &FailingKubeClient{}
@@ -65,6 +67,7 @@ type FailingKubeWaiter struct {
 	waitForDeleteError   error
 	watchUntilReadyError error
 	waitDuration         time.Duration
+	client               *FailingKubeClient
 }
 
 // Create returns the configured error if set or prints
@@ -85,6 +88,9 @@ func (f *FailingKubeClient) Get(resources kube.ResourceList, related bool) (map[
 
 // Waits the amount of time defined on f.WaitDuration, then returns the configured error if set or prints.
 func (f *FailingKubeWaiter) Wait(resources kube.ResourceList, d time.Duration) error {
+	if f.client != nil {
+		f.client.recordWaitTimeoutLocked(d)
+	}
 	time.Sleep(f.waitDuration)
 	if f.waitError != nil {
 		return f.waitError
@@ -169,6 +175,12 @@ func (f *FailingKubeClient) recordGetWaiterCallLocked(ws kube.WaitStrategy, opts
 	f.RecordedWaitOptions = append(f.RecordedWaitOptions, opts...)
 }
 
+func (f *FailingKubeClient) recordWaitTimeoutLocked(d time.Duration) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.RecordedWaitTimeouts = append(f.RecordedWaitTimeouts, d)
+}
+
 func (f *FailingKubeClient) GetWaiterWithOptions(ws kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
 	f.recordGetWaiterCallLocked(ws, opts...)
 	waiter, _ := f.PrintingKubeClient.GetWaiterWithOptions(ws, opts...)
@@ -179,6 +191,7 @@ func (f *FailingKubeClient) GetWaiterWithOptions(ws kube.WaitStrategy, opts ...k
 		waitForDeleteError:   f.WaitForDeleteError,
 		watchUntilReadyError: f.WatchUntilReadyError,
 		waitDuration:         f.WaitDuration,
+		client:               f,
 	}, nil
 }
 

@@ -1204,6 +1204,59 @@ func TestInstallCRDs_HookOnlyStrategyStillWaitsForEstablishment(t *testing.T) {
 	assert.Equal(t, []kube.WaitStrategy{kube.StatusWatcherStrategy}, failingKubeClient.RecordedWaitStrategies)
 }
 
+// TestInstallCRDs_WaitTimeout guards against
+// https://github.com/helm/helm/issues/12563: the wait for CRD establishment
+// must honor a release timeout longer than minimumCRDTimeout, while never
+// waiting for less than minimumCRDTimeout.
+func TestInstallCRDs_WaitTimeout(t *testing.T) {
+	tests := []struct {
+		name     string
+		timeout  time.Duration
+		expected time.Duration
+	}{
+		{
+			name:     "unset timeout waits for the minimum",
+			timeout:  0,
+			expected: minimumCRDTimeout,
+		},
+		{
+			name:     "shorter timeout waits for the minimum",
+			timeout:  5 * time.Second,
+			expected: minimumCRDTimeout,
+		},
+		{
+			name:     "timeout equal to the minimum",
+			timeout:  minimumCRDTimeout,
+			expected: minimumCRDTimeout,
+		},
+		{
+			name:     "longer timeout is honored",
+			timeout:  10 * time.Minute,
+			expected: 10 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := actionConfigFixture(t)
+			failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, BuildDummy: true}
+			config.KubeClient = &failingKubeClient
+			instAction := NewInstall(config)
+			instAction.Timeout = tt.timeout
+
+			mockFile := common.File{
+				Name: "crds/foo.yaml",
+				Data: []byte("hello"),
+			}
+			mockChart := buildChart(withFile(mockFile))
+			crdsToInstall := mockChart.CRDObjects()
+
+			require.NoError(t, instAction.installCRDs(crdsToInstall))
+			assert.Equal(t, []time.Duration{tt.expected}, failingKubeClient.RecordedWaitTimeouts)
+		})
+	}
+}
+
 func TestCheckDependencies(t *testing.T) {
 	dependency := chart.Dependency{Name: "hello"}
 	mockChart := buildChart(withDependency())
