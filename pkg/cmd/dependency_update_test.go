@@ -17,7 +17,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -176,10 +175,14 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 		require.Equal(t, file.Name(), dependencies[index], "Chart dependency %s not matching %s", dependencies[index], file.Name())
 	}
 
-	// Make sure tmpcharts-x is deleted
-	tmpPath := filepath.Join(dir(chartname), fmt.Sprintf("tmpcharts-%d", os.Getpid()))
-	_, err = os.Stat(tmpPath)
-	require.ErrorIs(t, err, fs.ErrNotExist, "tmpcharts dir still exists")
+	// Make sure no tmpcharts-* dir is left behind. The suffix is now a random
+	// MkdirTemp-generated string (not just the PID), since downloadAll can be
+	// called concurrently by multiple goroutines within the same process.
+	entries, err := os.ReadDir(dir(chartname))
+	require.NoError(t, err)
+	for _, entry := range entries {
+		assert.NotContains(t, entry.Name(), fmt.Sprintf("tmpcharts-%d", os.Getpid()), "tmpcharts dir still exists: %s", entry.Name())
+	}
 }
 
 func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
