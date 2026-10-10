@@ -117,9 +117,9 @@ func (r *ReleaseTesting) Run(name string) (ri.Releaser, ExecuteShutdownFunc, err
 	return reli, shutdown, r.cfg.Releases.Update(reli)
 }
 
-// GetPodLogs will write the logs for all test pods in the given release into
-// the given writer. These can be immediately output to the user or captured for
-// other uses
+// GetPodLogs will write the logs for all test pods, including the pods created
+// by test jobs, in the given release into the given writer. These can be
+// immediately output to the user or captured for other uses
 func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	client, err := r.cfg.KubernetesClientSet()
 	if err != nil {
@@ -138,11 +138,15 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 					continue
 				}
 
-				if h.Kind != "Pod" {
-					continue
-				}
-				if err := r.getContainerLogs(out, client, h.Name); err != nil {
-					return err
+				switch h.Kind {
+				case "Pod":
+					if err := r.getContainerLogs(out, client, h.Name); err != nil {
+						return err
+					}
+				case "Job":
+					if err := r.getJobLogs(out, client, h.Name); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -159,6 +163,61 @@ func (r *ReleaseTesting) getContainerLogs(out io.Writer, client kubernetes.Inter
 		return fmt.Errorf("unable to get pod %s: %w", podName, err)
 	}
 
+	return r.writeContainerLogs(out, client, pod)
+}
+
+// getJobLogs fetches logs from all containers in every pod created by the
+// named job and writes them to out, oldest pod first. A job can create more
+// than one pod, for example when a failed attempt is retried, so the logs of
+// every attempt are included. It continues on per-pod errors and returns all
+// of them joined at the end.
+func (r *ReleaseTesting) getJobLogs(out io.Writer, client kubernetes.Interface, jobName string) error {
+	job, err := client.BatchV1().Jobs(r.Namespace).Get(context.Background(), jobName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("unable to get job %s: %w", jobName, err)
+	}
+
+	// The API server always sets a selector matching the job's pods. Guard
+	// against a missing or empty one anyway, as it would match every pod in
+	// the namespace.
+	if job.Spec.Selector == nil {
+		return fmt.Errorf("unable to get pods for job %s: job has no selector", jobName)
+	}
+	selector, err := metav1.LabelSelectorAsSelector(job.Spec.Selector)
+	if err != nil {
+		return fmt.Errorf("unable to get pods for job %s: %w", jobName, err)
+	}
+	if selector.Empty() {
+		return fmt.Errorf("unable to get pods for job %s: job has an empty selector", jobName)
+	}
+
+	pods, err := client.CoreV1().Pods(r.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return fmt.Errorf("unable to list pods for job %s: %w", jobName, err)
+	}
+
+	sort.SliceStable(pods.Items, func(i, j int) bool {
+		a, b := &pods.Items[i], &pods.Items[j]
+		if !a.CreationTimestamp.Equal(&b.CreationTimestamp) {
+			return a.CreationTimestamp.Before(&b.CreationTimestamp)
+		}
+		return a.Name < b.Name
+	})
+
+	var errs []error
+	for i := range pods.Items {
+		if err := r.writeContainerLogs(out, client, &pods.Items[i]); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// writeContainerLogs writes the logs from all containers (init and regular) in
+// the given pod to out. It continues on per-container errors and returns all of
+// them joined at the end.
+func (r *ReleaseTesting) writeContainerLogs(out io.Writer, client kubernetes.Interface, pod *v1.Pod) error {
+	podName := pod.Name
 	allContainers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
 
 	var errs []error
