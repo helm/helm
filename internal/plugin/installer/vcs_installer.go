@@ -38,16 +38,18 @@ type VCSInstaller struct {
 	base
 }
 
+// existingVCSRepo reads the remote source of an installed plugin and returns
+// a VCSInstaller operating on Helm's cached copy of that repository. The
+// installed plugin directory is never used as the VCS working tree: a
+// plugin's install/update hooks may legitimately modify files there (for
+// example to place the plugin's binary), which would otherwise leave the
+// checkout permanently dirty and block every future update.
 func existingVCSRepo(location string) (Installer, error) {
 	repo, err := vcs.NewRepo("", location)
 	if err != nil {
 		return nil, err
 	}
-	i := &VCSInstaller{
-		Repo: repo,
-		base: newBase(repo.Remote()),
-	}
-	return i, nil
+	return NewVCSInstaller(repo.Remote(), "")
 }
 
 // NewVCSInstaller creates a new VCSInstaller.
@@ -95,19 +97,26 @@ func (i *VCSInstaller) Install() error {
 	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
 }
 
-// Update updates a remote repository
+// Update fetches the latest version of the plugin repository into Helm's
+// plugin cache and refreshes the installed copy from that clean checkout.
+// The plugin's hooks only ever run against the installed copy, so changes
+// they make are not mistaken for user modifications of the repository.
 func (i *VCSInstaller) Update() error {
 	slog.Debug("updating", "source", i.Repo.Remote())
-	if i.Repo.IsDirty() {
+	if i.Repo.CheckLocal() && i.Repo.IsDirty() {
 		return errors.New("plugin repo was modified")
 	}
-	if err := i.Repo.Update(); err != nil {
+	if err := i.sync(i.Repo); err != nil {
 		return err
 	}
 	if !isPlugin(i.Repo.LocalPath()) {
 		return ErrMissingMetadata
 	}
-	return nil
+	if err := os.RemoveAll(i.Path()); err != nil {
+		return err
+	}
+	slog.Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
+	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
 }
 
 func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
