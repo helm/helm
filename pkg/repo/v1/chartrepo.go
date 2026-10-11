@@ -174,6 +174,15 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) FindChartInRepoURLOpt
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
 func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
+	chartURL, _, err := FindChartInRepoURLWithDigest(repoURL, chartName, getters, options...)
+	return chartURL, err
+}
+
+// FindChartInRepoURLWithDigest is FindChartInRepoURL that also returns the
+// digest the repository index records for the chart archive, so the caller can
+// check the archive it downloads from the returned URL against it. The digest
+// is empty when the index entry does not carry one.
+func FindChartInRepoURLWithDigest(repoURL, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, string, error) {
 	opts := findChartInRepoURLOptions{}
 	for _, option := range options {
 		option(&opts)
@@ -197,11 +206,11 @@ func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, opt
 	}
 	r, err := NewChartRepository(&c, getters)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	idx, err := r.DownloadIndexFile()
 	if err != nil {
-		return "", fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", repoURL, err)
+		return "", "", fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", repoURL, err)
 	}
 	defer func() {
 		os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name)))
@@ -211,7 +220,7 @@ func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, opt
 	// Read the index file for the repository to get chart information and return chart URL
 	repoIndex, err := LoadIndexFile(idx)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	errMsg := fmt.Sprintf("chart %q", chartName)
@@ -220,24 +229,24 @@ func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, opt
 	}
 	cv, err := repoIndex.Get(chartName, opts.ChartVersion)
 	if err != nil {
-		return "", ChartNotFoundError{
+		return "", "", ChartNotFoundError{
 			Chart:   errMsg,
 			RepoURL: repoURL,
 		}
 	}
 
 	if len(cv.URLs) == 0 {
-		return "", fmt.Errorf("%s has no downloadable URLs", errMsg)
+		return "", "", fmt.Errorf("%s has no downloadable URLs", errMsg)
 	}
 
 	chartURL := cv.URLs[0]
 
 	absoluteChartURL, err := ResolveReferenceURL(repoURL, chartURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to make chart URL absolute: %w", err)
+		return "", "", fmt.Errorf("failed to make chart URL absolute: %w", err)
 	}
 
-	return absoluteChartURL, nil
+	return absoluteChartURL, cv.Digest, nil
 }
 
 // ResolveReferenceURL resolves refURL relative to baseURL.
