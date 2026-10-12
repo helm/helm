@@ -65,6 +65,8 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartSources(chartFile))
 	linter.RunLinterRule(support.InfoSev, chartFileName, validateChartIconPresence(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartIconURL(chartFile))
+	linter.RunLinterRule(support.InfoSev, chartFileName, validateChartImagesPresence(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartImages(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartType(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartDependencies(chartFile))
 	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartVersionStrictSemVerV2(chartFile))
@@ -205,6 +207,18 @@ func validateChartIconURL(cf *chart.Metadata) error {
 		return fmt.Errorf("invalid icon URL '%s'", cf.Icon)
 	}
 	return nil
+}
+
+func validateChartImagesPresence(cf *chart.Metadata) error {
+	if _, ok := cf.Annotations[chart.ImagesAnnotation]; !ok {
+		return fmt.Errorf("annotation %q is recommended", chart.ImagesAnnotation)
+	}
+	return nil
+}
+
+func validateChartImages(cf *chart.Metadata) error {
+	_, err := cf.Images()
+	return err
 }
 
 func validateChartDependencies(cf *chart.Metadata) error {
