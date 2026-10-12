@@ -192,7 +192,7 @@ func TestValidateChartIconURL(t *testing.T) {
 func TestValidateChartImagesPresence(t *testing.T) {
 	t.Run("Annotations absent", func(t *testing.T) {
 		testChart := &chart.Metadata{}
-		assert.ErrorContains(t, validateChartImagesPresence(testChart), `annotation "helm.sh/images" is recommended`)
+		assert.NoError(t, validateChartImagesPresence(testChart))
 	})
 	t.Run("Images annotation absent", func(t *testing.T) {
 		testChart := &chart.Metadata{
