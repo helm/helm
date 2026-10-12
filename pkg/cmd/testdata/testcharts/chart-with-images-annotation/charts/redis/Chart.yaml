@@ -1,0 +1,5 @@
+apiVersion: v2
+name: redis
+description: Subchart without its own helm.sh/images annotation; parent declares its image
+version: 0.1.0
+appVersion: "6.0.8"
