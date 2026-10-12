@@ -210,6 +210,11 @@ func validateChartIconURL(cf *chart.Metadata) error {
 }
 
 func validateChartImagesPresence(cf *chart.Metadata) error {
+	// Only nudge charts that already use annotations, so charts that never
+	// opted into annotation-based metadata get no new lint output.
+	if cf.Annotations == nil {
+		return nil
+	}
 	if _, ok := cf.Annotations[chart.ImagesAnnotation]; !ok {
 		return fmt.Errorf("annotation %q is recommended", chart.ImagesAnnotation)
 	}
