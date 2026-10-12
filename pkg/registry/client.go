@@ -594,6 +594,32 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	return c.processChartPull(genericResult, operation)
 }
 
+// ManifestAnnotations returns the annotations of the OCI manifest referenced by ref.
+// Only the manifest itself is fetched; none of its layers are downloaded.
+func (c *Client) ManifestAnnotations(ref string) (map[string]string, error) {
+	genericClient := c.Generic()
+	result, err := genericClient.PullGeneric(ref, GenericPullOptions{
+		AllowedMediaTypes: []string{
+			ocispec.MediaTypeImageIndex,
+			ocispec.MediaTypeImageManifest,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := genericClient.GetDescriptorData(result.MemoryStore, result.Manifest)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve manifest with digest %s: %w", result.Manifest.Digest, err)
+	}
+
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("unable to parse manifest with digest %s: %w", result.Manifest.Digest, err)
+	}
+	return manifest.Annotations, nil
+}
+
 // PullOptWithChart returns a function that sets the withChart setting on pull
 func PullOptWithChart(withChart bool) PullOption {
 	return func(operation *pullOperation) {
