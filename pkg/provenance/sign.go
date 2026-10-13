@@ -392,14 +392,51 @@ func loadKeyRing(ringpath string) (openpgp.EntityList, error) {
 // ignores everything after the first block, this handles keyrings assembled
 // by concatenating exports (cat key1.asc key2.asc > keyring.asc), the same
 // way GnuPG imports them.
+//
+// Each block gets its own bytes.Reader because armor.Decode internally uses
+// a bufio reader with a 100-byte buffer and may read ahead past the block
+// boundary, discarding bytes from the next block (e.g. its -----BEGIN
+// header). Using a shared reader across successive Decode calls would
+// silently drop subsequent blocks roughly once in nine concatenated exports.
 func loadArmoredKeyRing(data []byte) (openpgp.EntityList, error) {
 	var ring openpgp.EntityList
-	r := bytes.NewReader(data)
+	rest := data
 	for {
-		block, err := armor.Decode(r)
-		if errors.Is(err, io.EOF) {
+		// Locate the start of a PGP armored block.
+		begin := bytes.Index(rest, []byte("-----BEGIN "))
+		if begin < 0 {
 			break
 		}
+		// Extract the block type from the BEGIN line, e.g.
+		// "-----BEGIN PGP PUBLIC KEY BLOCK-----" -> "PGP PUBLIC KEY BLOCK".
+		beginTail := rest[begin+len("-----BEGIN "):]
+		typeEnd := bytes.Index(beginTail, []byte("-----"))
+		if typeEnd < 0 {
+			return nil, errors.New("armored block is malformed")
+		}
+		blockType := bytes.TrimRight(beginTail[:typeEnd], " ")
+
+		// Find the matching -----END <blockType>----- marker. We search from
+		// rest[begin+1:] so we don't accidentally match "BEGIN ...----" text
+		// inside the BEGIN line itself.
+		endMarker := append([]byte("-----END "), blockType...)
+		endMarker = append(endMarker, []byte("-----")...)
+		end := bytes.Index(rest[begin+1:], endMarker)
+		if end < 0 {
+			return nil, errors.New("armored block is missing its end line")
+		}
+		end += begin + 1
+
+		// Advance past the END marker line (including any trailing newline).
+		end += len(endMarker)
+		if end < len(rest) && rest[end] == '\n' {
+			end++
+		}
+
+		// Decode just this block with its own reader so armor.Decode's
+		// internal lookahead cannot consume bytes that belong to the next
+		// block.
+		block, err := armor.Decode(bytes.NewReader(rest[begin:end]))
 		if err != nil {
 			return nil, err
 		}
@@ -411,6 +448,7 @@ func loadArmoredKeyRing(data []byte) (openpgp.EntityList, error) {
 			return nil, err
 		}
 		ring = append(ring, entities...)
+		rest = rest[end:]
 	}
 	if len(ring) == 0 {
 		return nil, errors.New("no keys found")
