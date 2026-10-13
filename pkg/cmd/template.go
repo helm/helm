@@ -127,7 +127,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							continue
 						}
 						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, strings.TrimRight(m.Manifest, "\r\n"))
+							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, trimOneTrailingNewline(m.Manifest))
 						} else {
 							newDir := client.OutputDir
 							if client.UseReleaseName {
@@ -195,7 +195,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						}
 					}
 					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", strings.TrimRight(m, "\r\n"))
+						fmt.Fprintf(out, "---\n%s\n", trimOneTrailingNewline(m))
 					}
 				} else {
 					fmt.Fprintf(out, "%s", manifests.String())
@@ -253,7 +253,7 @@ func writeToFile(outputDir, name, data string, appendData bool) error {
 
 	defer f.Close()
 
-	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, strings.TrimRight(data, "\r\n"))
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, trimOneTrailingNewline(data))
 	if err != nil {
 		return err
 	}
@@ -277,4 +277,18 @@ func ensureDirectoryForFile(file string) error {
 	}
 
 	return os.MkdirAll(baseDir, 0o755)
+}
+
+// trimOneTrailingNewline strips at most one trailing \r\n or \n. Unlike
+// strings.TrimRight(s, "\r\n"), it preserves intentional multiple trailing
+// newlines from YAML block scalars (|+, >+). The caller's format string
+// appends exactly one \n, so the mapping is: 0 → 1, 1 → 1, N → N.
+func trimOneTrailingNewline(s string) string {
+	if strings.HasSuffix(s, "\r\n") {
+		return s[:len(s)-2]
+	}
+	if strings.HasSuffix(s, "\n") {
+		return s[:len(s)-1]
+	}
+	return s
 }
