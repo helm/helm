@@ -18,6 +18,8 @@ package engine
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +33,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
@@ -92,6 +95,12 @@ func funcMap() template.FuncMap {
 		"lookup": func(string, string, string, string) (map[string]any, error) {
 			return map[string]any{}, nil
 		},
+
+		// Override sprig's htpasswd to support optional algorithm parameter.
+		// sprig v3.3.0 only accepts 2 args; this override accepts an optional 3rd arg
+		// for hash algorithm ("bcrypt" default or "sha").
+		// See: https://github.com/helm/helm/issues/31924
+		"htpasswd": htpasswd,
 	}
 
 	maps.Copy(f, extra)
@@ -473,4 +482,43 @@ func durationTruncateTo(v, m any) time.Duration {
 		return d
 	}
 	return d.Truncate(mul)
+}
+
+// htpasswd generates an htpasswd-formatted password hash.
+//
+// This overrides sprig's htpasswd function (which in sprig v3.3.0 only accepts
+// 2 arguments) to support an optional third argument for specifying the hash algorithm.
+//
+// Usage in templates:
+//
+//	htpasswd "user" "password"            // defaults to bcrypt (backward compatible)
+//	htpasswd "user" "password" "bcrypt"   // explicit bcrypt
+//	htpasswd "user" "password" "sha"      // SHA-1 hex digest with {SHA} prefix
+//
+// Returns: "username:hashed_password" or an error string on failure.
+//
+// See: https://github.com/helm/helm/issues/31924
+func htpasswd(username, password string, algorithm ...string) string {
+	if strings.Contains(username, ":") {
+		return fmt.Sprintf("invalid username: %s", username)
+	}
+
+	algo := "bcrypt"
+	if len(algorithm) > 0 {
+		algo = strings.ToLower(strings.TrimSpace(algorithm[0]))
+	}
+
+	switch algo {
+	case "sha", "sha1":
+		sum := sha1.Sum([]byte(password))
+		return fmt.Sprintf("%s:{SHA}%s", username, base64.StdEncoding.EncodeToString(sum[:]))
+	case "bcrypt":
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Sprintf("failed to encrypt string with bcrypt: %s", err)
+		}
+		return fmt.Sprintf("%s:%s", username, string(hash))
+	default:
+		return fmt.Sprintf("unsupported hash algorithm: %s (supported: bcrypt, sha)", algo)
+	}
 }
