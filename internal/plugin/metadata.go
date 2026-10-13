@@ -56,6 +56,20 @@ type Metadata struct {
 
 	// RuntimeConfig contains the runtime-specific configuration
 	RuntimeConfig RuntimeConfig
+
+	// legacyCLIConfig is set for legacy plugins that declare downloaders and a command.
+	// Their type is getter/v1, but Helm 3 also ran them as CLI commands.
+	legacyCLIConfig *schema.ConfigCLIV1
+}
+
+// CLIConfig returns the CLI config of a plugin and whether the plugin runs as a helm subcommand:
+// a cli/v1 plugin, or a legacy plugin that declares downloaders and a command.
+func (m Metadata) CLIConfig() (*schema.ConfigCLIV1, bool) {
+	if m.Type == "cli/v1" {
+		cliConfig, _ := m.Config.(*schema.ConfigCLIV1)
+		return cliConfig, true
+	}
+	return m.legacyCLIConfig, m.legacyCLIConfig != nil
 }
 
 func (m Metadata) Validate() error {
@@ -118,7 +132,7 @@ func fromMetadataLegacy(m MetadataLegacy) *Metadata {
 		pluginType = "getter/v1"
 	}
 
-	return &Metadata{
+	metadata := &Metadata{
 		APIVersion:    "legacy",
 		Name:          m.Name,
 		Version:       m.Version,
@@ -127,6 +141,12 @@ func fromMetadataLegacy(m MetadataLegacy) *Metadata {
 		Config:        buildLegacyConfig(m, pluginType),
 		RuntimeConfig: buildLegacyRuntimeConfig(m),
 	}
+
+	if pluginType == "getter/v1" && (m.Command != "" || len(m.PlatformCommand) > 0) {
+		metadata.legacyCLIConfig = buildLegacyConfig(m, "cli/v1").(*schema.ConfigCLIV1)
+	}
+
+	return metadata
 }
 
 func buildLegacyConfig(m MetadataLegacy, pluginType string) Config {
