@@ -1826,15 +1826,12 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	expectedBuf := `---
 # Source: yellow/templates/foodpie
 foodpie: world
-
 ---
 # Source: yellow/templates/with-partials
 yellow: Earth
-
 ---
 # Source: yellow/templates/yellow
 yellow: world
-
 `
 	expectedHook := `kind: ConfigMap
 metadata:
@@ -1946,17 +1943,14 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 # Source: hello/templates/goodbye
 goodbye: world
 color: blue
-
 ---
 # Source: hello/templates/hello
 hello: world
 color: blue
-
 ---
 # Source: hello/templates/with-partials
 hello: Earth
 color: blue
-
 `
 	assert.Contains(t, output, "color: blue")
 	assert.Equal(t, 3, strings.Count(output, "color: blue"))
@@ -1978,6 +1972,69 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
 	assert.Empty(t, notes)
+}
+
+// TestRenderResources_NoBlankLineBeforeSeparator is a regression test for #32565.
+//
+// v4.2.0 changed SplitManifests from TrimSpace to TrimLeftFunc to preserve
+// trailing newlines for downstream YAML parsers (#31952). That fix regressed
+// the stdout output path because renderResources writes each document with
+// "---\n# Source: ...\n%s\n" — if %s already ends with \n, the Fprintf adds
+// another, producing a spurious blank line before every separator except the
+// last. This test ensures that two-document charts with trailing-newline
+// templates render cleanly.
+func TestRenderResources_NoBlankLineBeforeSeparator(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	// Two templates, each ending with a trailing newline (as nearly all
+	// real chart templates do, since text files end with \n).
+	templates := []*common.File{
+		{
+			Name:    "templates/cm1.yaml",
+			ModTime: time.Now(),
+			Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+data:
+  key: value1
+`),
+		},
+		{
+			Name:    "templates/cm2.yaml",
+			ModTime: time.Now(),
+			Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+data:
+  key: value2
+`),
+		},
+	}
+
+	ch := buildChart(func(opts *chartOptions) {
+		opts.Templates = append(opts.Templates, templates...)
+	})
+	values := map[string]any{}
+
+	_, buf, _, err := cfg.renderResources(
+		t.Context(), ch, values, "test-release", "", false, false, false,
+		nil, false, false, false, PostRenderStrategyCombined,
+	)
+	require.NoError(t, err)
+
+	output := buf.String()
+
+	// There must be no blank line immediately before any "---" separator.
+	// A blank line is two consecutive newlines (\n\n). The separator starts
+	// with \n---, so the forbidden pattern is \n\n---.
+	require.NotContains(t, output, "\n\n---",
+		"rendered output must not contain a blank line before a YAML document separator\n%s", output,
+	)
+
+	// Sanity check: the output should still contain document separators.
+	assert.GreaterOrEqual(t, strings.Count(output, "---"), 2)
 }
 
 func TestRenderResources_PostRenderer_DuplicateResourceInHookAndTemplate(t *testing.T) {

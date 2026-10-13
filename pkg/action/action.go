@@ -270,6 +270,20 @@ func splitAndDeannotate(postrendered, fallbackPrefix string) (map[string]string,
 	return reconstructed, nil
 }
 
+// trimTrailingNewlines strips trailing \r and \n from content so that when it is
+// written with the fmt.Fprintf pattern "---\n# Source: %s\n%s\n", the document
+// separator lands on its own line without an extra blank line before it.
+//
+// v4.1.x used strings.TrimSpace in SplitManifests which removed trailing
+// newlines. v4.2.x changed to TrimLeftFunc to preserve trailing newlines for
+// downstream YAML parsers (issue #31952), but that regressed the stdout output
+// path by adding a spurious blank line before every "---" separator. This
+// helper restores the v4.1.x output behavior while keeping SplitManifests'
+// trailing-newline preservation for post-renderer code paths.
+func trimTrailingNewlines(s string) string {
+	return strings.TrimRight(s, "\r\n")
+}
+
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
@@ -355,7 +369,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 					if strings.TrimSpace(content) == "" {
 						continue
 					}
-					fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+					fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, trimTrailingNewlines(content))
 				}
 				return hs, b, "", err
 			}
@@ -473,7 +487,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, trimTrailingNewlines(content))
 		}
 		return hs, b, "", err
 	}
@@ -484,7 +498,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data))
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, trimTrailingNewlines(string(crd.File.Data)))
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data), fileWritten[crd.Filename])
 				if err != nil {
@@ -500,7 +514,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
 				fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
 			} else {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, trimTrailingNewlines(m.Content))
 			}
 		} else {
 			newDir := outputDir

@@ -127,7 +127,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							continue
 						}
 						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, strings.TrimRight(m.Manifest, "\r\n"))
 						} else {
 							newDir := client.OutputDir
 							if client.UseReleaseName {
@@ -195,7 +195,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						}
 					}
 					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
+						fmt.Fprintf(out, "---\n%s\n", strings.TrimRight(m, "\r\n"))
 					}
 				} else {
 					fmt.Fprintf(out, "%s", manifests.String())
@@ -253,7 +253,7 @@ func writeToFile(outputDir, name, data string, appendData bool) error {
 
 	defer f.Close()
 
-	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, strings.TrimRight(data, "\r\n"))
 	if err != nil {
 		return err
 	}

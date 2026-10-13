@@ -743,7 +743,7 @@ func writeToFile(outputDir, name, data string, appendData bool) error {
 
 	defer f.Close()
 
-	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, trimTrailingNewlines(data))
 	if err != nil {
 		return err
 	}

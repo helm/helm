@@ -10,8 +10,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/01-a.yml
 # 2
@@ -24,8 +22,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/01-a.yml
 # 3
@@ -38,8 +34,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 5
@@ -52,8 +46,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 7
@@ -66,8 +58,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 8
@@ -80,8 +70,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 9
@@ -94,8 +82,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 10
@@ -108,8 +94,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 11
@@ -122,8 +106,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 12
@@ -136,8 +118,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 13
@@ -150,8 +130,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 14
@@ -164,8 +142,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
 ---
 # Source: object-order/templates/02-b.yml
 # 15 (11th object within 02-b.yml, in order to test `SplitManifests` which assigns `manifest-10`
@@ -179,7 +155,6 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
 ---
 # Source: object-order/templates/01-a.yml
 # 4 (Deployment should come after all NetworkPolicy manifests, since 'helm template' outputs in install order)
@@ -214,5 +189,3 @@ spec:
   policyTypes:
     - Egress
     - Ingress
-
-
