@@ -45,10 +45,14 @@ type authRequest struct {
 func captureAuthRequest(requests chan<- authRequest) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_ = r.ParseForm()
-		requests <- authRequest{
+		// Record only the first request; a retry must not block the handler.
+		select {
+		case requests <- authRequest{
 			path:    r.URL.Path,
 			service: r.Form.Get("service"),
 			scope:   r.Form.Get("scope"),
+		}:
+		default:
 		}
 		w.WriteHeader(http.StatusOK)
 	}
@@ -95,7 +99,7 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 		suite.Equal("testservice", req.service)
 		suite.Contains(req.scope, "repository:testrepo/local-subchart:pull,push")
 	case <-time.After(5 * time.Second):
-		suite.T().Fatal("timeout waiting for auth request")
+		suite.T().Fatalf("timeout waiting for auth request; operation error: %v", err)
 	}
 }
 
@@ -126,7 +130,7 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 		suite.Equal("testservice", req.service)
 		suite.Contains(req.scope, "repository:testrepo/local-subchart:pull")
 	case <-time.After(5 * time.Second):
-		suite.T().Fatal("timeout waiting for auth request")
+		suite.T().Fatalf("timeout waiting for auth request; operation error: %v", err)
 	}
 }
 

@@ -30,6 +30,8 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	remoteconfig "github.com/oras-project/oras-go/v3/registry/remote/config"
 	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 	"github.com/oras-project/oras-go/v3/registry/remote/policy"
 	"github.com/stretchr/testify/require"
@@ -333,4 +335,144 @@ func TestRegistryAuthorizer_UsedInLegacyPath(t *testing.T) {
 	_, err = c.Tags(host + "/testchart")
 	require.NoError(t, err)
 	require.True(t, mock.called, "registryAuthorizer.Do should have been called in legacy path")
+}
+
+func TestLogin_RegistryAuthorizerInLegacyPath(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptHTTPClient(&http.Client{}),
+		ClientOptRegistryAuthorizer(&mockRemoteClient{inner: http.DefaultTransport}),
+	)
+	require.NoError(t, err)
+
+	// remote.Login only accepts an *auth.Client, so Login must not hand it
+	// the custom registry authorizer.
+	require.NoError(t, c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")))
+}
+
+func writeRegistriesConf(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "registries.conf")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	return path
+}
+
+func TestLogin_BlockedRegistry(t *testing.T) {
+	t.Parallel()
+
+	host := "blocked.example.test"
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		withRegistriesConfigPath(writeRegistriesConf(t, fmt.Sprintf("[[registry]]\nprefix = %q\nblocked = true\n", host))),
+	)
+	require.NoError(t, err)
+
+	err = c.Login(host, LoginOptBasicAuth("u", "p"))
+	require.ErrorIs(t, err, remoteconfig.ErrRegistryBlocked)
+}
+
+func TestNewRegistry_TokenFlow(t *testing.T) {
+	t.Parallel()
+
+	host := "tokenflow.example.test"
+	tests := []struct {
+		name        string
+		tokenFlow   string
+		wantFetcher bool
+		wantErr     bool
+	}{
+		{name: "default", tokenFlow: "", wantFetcher: false},
+		{name: "distribution", tokenFlow: "distribution", wantFetcher: true},
+		{name: "invalid", tokenFlow: "bogus", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			conf := fmt.Sprintf("[[registry]]\nprefix = %q\n", host)
+			if tt.tokenFlow != "" {
+				conf += fmt.Sprintf("token-flow = %q\n", tt.tokenFlow)
+			}
+			c, err := NewClient(
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+				withRegistriesConfigPath(writeRegistriesConf(t, conf)),
+			)
+			require.NoError(t, err)
+
+			reg, err := c.newRegistry(host)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			authClient, ok := reg.Client.(*auth.Client)
+			require.True(t, ok)
+			require.Equal(t, tt.wantFetcher, authClient.TokenFetcher != nil)
+		})
+	}
+}
+
+func TestNewRepository_SignatureVerificationEvaluator(t *testing.T) {
+	t.Parallel()
+
+	newSigClient := func(t *testing.T, options ...ClientOption) *Client {
+		t.Helper()
+		options = append([]ClientOption{
+			ClientOptWriter(io.Discard),
+			ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+			ClientOptSignatureVerification(true),
+		}, options...)
+		c, err := NewClient(options...)
+		require.NoError(t, err)
+
+		// Replace the host's config stack with a policy and a registries.d
+		// lookaside so a signature verifier is built for every scope.
+		c.configs = &remoteconfig.Configs{
+			PolicyConfig: policy.NewInsecureAcceptAnythingPolicy(),
+			RegistriesDConfig: &remoteconfig.RegistriesDConfig{
+				DefaultDocker: &remoteconfig.RegistriesDDockerConfig{Lookaside: "file://" + t.TempDir()},
+			},
+		}
+		return c
+	}
+
+	t.Run("config-derived evaluator is replaced", func(t *testing.T) {
+		t.Parallel()
+		c := newSigClient(t)
+		configEval, err := c.configs.PolicyEvaluator()
+		require.NoError(t, err)
+		c.policyEvaluator = configEval
+		c.builder.PolicyEvaluator = configEval
+
+		repo, err := c.newRepository("example.test/charts/mychart:1.0.0")
+		require.NoError(t, err)
+		require.NotNil(t, repo.Registry.Policy)
+		require.NotSame(t, configEval, repo.Registry.Policy, "signature-scoped evaluator should be installed")
+	})
+
+	t.Run("caller-supplied evaluator is kept", func(t *testing.T) {
+		t.Parallel()
+		custom, err := policy.NewEvaluator(policy.NewRejectAllPolicy())
+		require.NoError(t, err)
+		c := newSigClient(t, ClientOptPolicyEvaluator(custom))
+
+		repo, err := c.newRepository("example.test/charts/mychart:1.0.0")
+		require.NoError(t, err)
+		require.Same(t, custom, repo.Registry.Policy)
+	})
 }
