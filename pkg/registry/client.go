@@ -36,7 +36,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/memory"
-	orasregistry "github.com/oras-project/oras-go/v3/registry"
 	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	remoteconfig "github.com/oras-project/oras-go/v3/registry/remote/config"
@@ -84,6 +83,7 @@ type (
 		configs               *remoteconfig.Configs
 		builder               *remote.ClientBuilder
 		policyEvaluator       *policy.Evaluator
+		customPolicyEvaluator bool // true when ClientOptPolicyEvaluator was used
 		signatureVerification bool
 		// registriesConfigPath overrides the registries.conf path; empty means
 		// the container ecosystem default search locations are used. Test-only.
@@ -92,7 +92,7 @@ type (
 		certFile             string
 		keyFile              string
 		caFile               string
-		customHTTPClient     bool // true when ClientOptHTTPClient or ClientOptAuthorizer was used
+		customHTTPClient     bool // true when ClientOptHTTPClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -233,7 +233,7 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		// Legacy path: use c.authorizer directly (preserves custom TLS transport).
 		// NewRepository rejects a reference carrying a tag or digest, so pass
 		// only the repository portion.
-		parsed, err := orasregistry.ParseReference(ref)
+		parsed, err := properties.NewReference(ref)
 		if err != nil {
 			return nil, err
 		}
@@ -269,7 +269,9 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c.signatureVerification && c.configs.RegistriesDConfig != nil && c.policyEvaluator != nil {
+	// Replace the config-derived evaluator with one scoped to this repository's
+	// registries.d signature storage. A caller-supplied evaluator is kept as is.
+	if c.signatureVerification && !c.customPolicyEvaluator && c.configs.RegistriesDConfig != nil && c.configs.PolicyConfig != nil {
 		scope := props.Reference.Registry
 		if props.Reference.Repository != "" {
 			scope += "/" + props.Reference.Repository
@@ -277,9 +279,10 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		verifier := signature.NewSignedByVerifierFromConfig(c.configs.RegistriesDConfig, scope)
 		if verifier != nil {
 			scopedEval, err := c.configs.PolicyEvaluator(policy.WithSignedByVerifier(verifier))
-			if err == nil && scopedEval != nil && repo.Registry.Policy == nil {
-				repo.Registry.Policy = scopedEval
+			if err != nil {
+				return nil, fmt.Errorf("failed to build signature policy evaluator for %q: %w", scope, err)
 			}
+			repo.Registry.Policy = scopedEval
 		}
 	}
 	return repo, nil
@@ -288,26 +291,40 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 // newRegistry creates a configured remote.Registry for the given host (used by Login).
 func (c *Client) newRegistry(host string) (*remote.Registry, error) {
 	if c.customHTTPClient {
-		// Legacy path: use c.authorizer directly.
+		// Legacy path: use c.authorizer directly. registryAuthorizer is not
+		// used here because remote.Login only accepts an *auth.Client.
 		reg, err := remote.NewRegistry(host)
 		if err != nil {
 			return nil, err
 		}
 		reg.PlainHTTP = c.plainHTTP
-		if c.registryAuthorizer != nil {
-			reg.Client = c.registryAuthorizer
-		} else {
-			reg.Client = c.authorizer
-		}
+		reg.Client = c.authorizer
 		return reg, nil
 	}
 	// Config-driven path: construct properties for a host-only reference
 	// (no repository path) and apply CLI overrides + certs.d.
+	// Configs.RegistryProperties cannot be used because it requires a
+	// repository, so the host's registries.conf entry is applied here.
 	props := properties.NewRegistryFromReference(properties.Reference{Registry: host})
-	// Apply insecure setting from registries.conf if the host is found there.
-	if c.configs.RegistriesConfig != nil {
-		if reg := c.configs.RegistriesConfig.FindRegistry(host); reg != nil && reg.Insecure {
-			props.Transport.Insecure = true
+	if rc := c.configs.RegistriesConfig; rc != nil {
+		if rc.IsBlocked(host) {
+			return nil, fmt.Errorf("%w: %s", remoteconfig.ErrRegistryBlocked, host)
+		}
+		if reg := rc.FindRegistry(host); reg != nil {
+			if reg.Insecure {
+				props.Transport.Insecure = true
+			}
+			switch reg.TokenFlow {
+			case "":
+				// leave as TokenFlowDefault
+			case "oauth2":
+				props.Attributes.TokenFlow = properties.TokenFlowOAuth2
+			case "distribution":
+				props.Attributes.TokenFlow = properties.TokenFlowDistribution
+			default:
+				return nil, fmt.Errorf("invalid token-flow %q for registry %q: must be %q or %q",
+					reg.TokenFlow, reg.Prefix, "oauth2", "distribution")
+			}
 		}
 	}
 	// Apply per-host TLS certificates from certs.d.
@@ -404,6 +421,7 @@ func ClientOptPlainHTTP() ClientOption {
 func ClientOptPolicyEvaluator(e *policy.Evaluator) ClientOption {
 	return func(c *Client) {
 		c.policyEvaluator = e
+		c.customPolicyEvaluator = true
 	}
 }
 
@@ -638,12 +656,16 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 
 // LoginOptTLSClientConfigFromConfig returns a function that sets the TLS settings on login
 // receiving the configuration in memory rather than from files.
+//
+// The config-driven path builds its TLS configuration from files, so this option
+// switches the client to the legacy path, which uses the authorizer's transport.
 func LoginOptTLSClientConfigFromConfig(conf *tls.Config) LoginOption {
 	return func(o *loginOperation) {
 		_, err := ensureTLSConfig(o.client.authorizer, conf)
 		if err != nil {
 			panic(err)
 		}
+		o.client.customHTTPClient = true
 	}
 }
 
