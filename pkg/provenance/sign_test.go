@@ -246,9 +246,9 @@ func TestLoadArmoredKeyRingMultiBlockRegressive(t *testing.T) {
 	// Build several concatenated layouts. The old shared-reader code would
 	// drop blocks whenever armor.Decode's read-ahead straddles the boundary.
 	separators := [][]byte{
-		nil,             // directly adjacent: END...BEGIN
-		{'\n'},          // single newline between blocks
-		{'\n', '\n'},    // blank line between blocks (the usual "cat a.asc b.asc")
+		nil,              // directly adjacent: END...BEGIN
+		{'\n'},           // single newline between blocks
+		{'\n', '\n'},     // blank line between blocks (the usual "cat a.asc b.asc")
 		{' ', '\n', ' '}, // whitespace padding around the break
 	}
 

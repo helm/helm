@@ -410,11 +410,11 @@ func loadArmoredKeyRing(data []byte) (openpgp.EntityList, error) {
 		// Extract the block type from the BEGIN line, e.g.
 		// "-----BEGIN PGP PUBLIC KEY BLOCK-----" -> "PGP PUBLIC KEY BLOCK".
 		beginTail := rest[begin+len("-----BEGIN "):]
-		typeEnd := bytes.Index(beginTail, []byte("-----"))
-		if typeEnd < 0 {
+		blockTypePart, _, found := bytes.Cut(beginTail, []byte("-----"))
+		if !found {
 			return nil, errors.New("armored block is malformed")
 		}
-		blockType := bytes.TrimRight(beginTail[:typeEnd], " ")
+		blockType := bytes.TrimRight(blockTypePart, " ")
 
 		// Find the matching -----END <blockType>----- marker. We search from
 		// rest[begin+1:] so we don't accidentally match "BEGIN ...----" text
