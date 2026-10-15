@@ -19,7 +19,10 @@ package engine
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -28,6 +31,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 )
 
 func TestFuncs(t *testing.T) {
@@ -134,13 +139,17 @@ keyInElement1 = "valueInElement1"`,
 		expect: `map[]`,
 		vars:   `["one", "two"]`,
 	}, {
-		tpl:    `{{ "hello world" | gzip }}`,
+		tpl:    `{{ "hello world" | compress "gzip" }}`,
 		expect: `H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=`,
 		vars:   nil,
 	}, {
-		tpl:    `{{ "H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=" | gunzip }}`,
+		tpl:    `{{ "H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=" | decompress "gzip" }}`,
 		expect: `hello world`,
 		vars:   nil,
+	}, {
+		tpl:    `{{ . | compress "gzip" | decompress "gzip" }}`,
+		expect: `hello world`,
+		vars:   `hello world`,
 	}}
 
 	for _, tt := range tests {
@@ -505,10 +514,15 @@ func TestMerge(t *testing.T) {
 	assert.Equal(t, expected, dict["dst"])
 }
 
-// TestGunzipDecompressionBomb verifies that the gunzip template function
+// TestDecompressionBomb verifies that the decompress template function
 // correctly mitigates decompression bomb (zip bomb) attacks by strictly
-// enforcing a 1MB limit on the decompressed output.
-func TestGunzipDecompressionBomb(t *testing.T) {
+// enforcing archive.MaxDecompressedChartSize on the decompressed output.
+func TestDecompressionBomb(t *testing.T) {
+	// Lower the limit so the test does not need to allocate 100MiB.
+	defaultMax := archive.MaxDecompressedChartSize
+	archive.MaxDecompressedChartSize = 1048576
+	t.Cleanup(func() { archive.MaxDecompressedChartSize = defaultMax })
+
 	var buf bytes.Buffer
 	w := gzip.NewWriter(&buf)
 
@@ -522,31 +536,91 @@ func TestGunzipDecompressionBomb(t *testing.T) {
 		t.Fatalf("failed to close gzip: %v", err)
 	}
 
-	// Base64 encode the compressed bomb as expected by gunzipFunc
+	// Base64 encode the compressed bomb as expected by decompress
 	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
 
-	// Attempting to gunzip should result in an error since it exceeds 1MB limit
-	_, err := gunzipFunc(encoded)
+	// Attempting to decompress should result in an error since it exceeds 1MB limit
+	_, err := decompress("gzip", encoded)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "gunzip: decompressed content exceeds size limit of 1048576 bytes")
+	assert.Contains(t, err.Error(), "decompress: decompressed content exceeds size limit of 1048576 bytes")
 }
 
-func TestGzipGunzipUTF8Validation(t *testing.T) {
-	// gzipFunc rejects invalid UTF-8 string
-	invalidUTF8 := string([]byte{0xff, 0xfe, 0xfd})
-	_, err := gzipFunc(invalidUTF8)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "gzip: content is not valid UTF-8 text")
+// TestCompressLargeContent verifies that content larger than the 1MB
+// Secret/ConfigMap limit can be compressed to fit and decompressed back.
+func TestCompressLargeContent(t *testing.T) {
+	var sb strings.Builder
+	for i := 0; sb.Len() < 3*1024*1024; i++ {
+		fmt.Fprintf(&sb, "- name: item-%d\n  image: registry.example.com/app:%d\n", i, i%97)
+	}
+	content := sb.String()
 
-	// gunzipFunc rejects decompressed content that is not valid UTF-8
+	compressed, err := compress("gzip", content)
+	require.NoError(t, err)
+	assert.Less(t, len(compressed), compressionSizeLimit)
+
+	decompressed, err := decompress("gzip", compressed)
+	require.NoError(t, err)
+	assert.Equal(t, content, decompressed)
+}
+
+func TestCompressOutputTooLarge(t *testing.T) {
+	// Random bytes are incompressible; hex encoding keeps them valid UTF-8.
+	raw := make([]byte, 1024*1024)
+	_, err := rand.Read(raw)
+	require.NoError(t, err)
+
+	_, err = compress("gzip", hex.EncodeToString(raw))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds limit of 1048576 bytes")
+}
+
+func TestCompressionErrors(t *testing.T) {
+	invalidUTF8 := []byte{0xff, 0xfe, 0xfd}
+
+	// Gzip invalid UTF-8 directly, since compress refuses to produce it.
 	var buf bytes.Buffer
 	w := gzip.NewWriter(&buf)
-	_, err = w.Write([]byte{0xff, 0xfe, 0xfd})
+	_, err := w.Write(invalidUTF8)
 	require.NoError(t, err)
 	require.NoError(t, w.Close())
+	gzippedInvalidUTF8 := base64.StdEncoding.EncodeToString(buf.Bytes())
 
-	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
-	_, err = gunzipFunc(encoded)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "gunzip: content is not valid UTF-8 text")
+	tests := []struct {
+		name      string
+		fn        func(algorithm, str string) (string, error)
+		algorithm string
+		input     string
+		expect    string
+	}{{
+		name:      "compress rejects unsupported algorithm",
+		fn:        compress,
+		algorithm: "zstd",
+		input:     "hello world",
+		expect:    `compress: unsupported algorithm "zstd"`,
+	}, {
+		name:      "decompress rejects unsupported algorithm",
+		fn:        decompress,
+		algorithm: "zstd",
+		input:     "H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=",
+		expect:    `decompress: unsupported algorithm "zstd"`,
+	}, {
+		name:      "compress rejects invalid UTF-8",
+		fn:        compress,
+		algorithm: "gzip",
+		input:     string(invalidUTF8),
+		expect:    "compress: content is not valid UTF-8 text",
+	}, {
+		name:      "decompress rejects invalid UTF-8",
+		fn:        decompress,
+		algorithm: "gzip",
+		input:     gzippedInvalidUTF8,
+		expect:    "decompress: content is not valid UTF-8 text",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.fn(tt.algorithm, tt.input)
+			assert.EqualError(t, err, tt.expect)
+		})
+	}
 }
