@@ -76,7 +76,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			}
 			continue
 		}
-		if strings.HasPrefix(d.Repository, "file://") {
+		if IsLocalDependency(d.Repository) {
 			chartpath, err := GetLocalPath(d.Repository, r.chartpath)
 			if err != nil {
 				return nil, err
@@ -258,4 +258,10 @@ func GetLocalPath(repo, chartpath string) (string, error) {
 	}
 
 	return depPath, nil
+}
+
+// IsLocalDependency checks if the repository path is a local file dependency.
+// Local dependencies use the "file://" protocol prefix.
+func IsLocalDependency(repositoryPath string) bool {
+	return strings.HasPrefix(repositoryPath, "file://")
 }
