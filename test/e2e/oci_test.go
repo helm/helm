@@ -51,71 +51,73 @@ func TestOCIRegistryPushPull(t *testing.T) {
 	contentCache := t.TempDir()
 
 	tests := []struct {
-		name           string
-		chart          string
-		chartName      string
-		chartVersion   string
-		pullArgs       []string
-		expectPullFile string
-		expectPullDir  bool
+		name         string
+		chart        string
+		chartName    string
+		chartVersion string
+		pullArgs     []string
+		untar        bool
 	}{
 		{
-			name:           "basic chart",
-			chart:          "test-0.1.0.tgz",
-			chartName:      "test",
-			chartVersion:   "0.1.0",
-			expectPullFile: "test-0.1.0.tgz",
+			name:         "basic chart",
+			chart:        "test-0.1.0.tgz",
+			chartName:    "test",
+			chartVersion: "0.1.0",
 		},
 		{
-			name:           "chart pulled with untar",
-			chart:          "compressedchart-0.1.0.tgz",
-			chartName:      "compressedchart",
-			chartVersion:   "0.1.0",
-			pullArgs:       []string{"--untar"},
-			expectPullFile: "compressedchart",
-			expectPullDir:  true,
+			name:         "chart pulled with untar",
+			chart:        "compressedchart-0.1.0.tgz",
+			chartName:    "compressedchart",
+			chartVersion: "0.1.0",
+			pullArgs:     []string{"--untar"},
+			untar:        true,
 		},
 		{
-			name:           "chart name with hyphens",
-			chart:          "compressedchart-with-hyphens-0.1.0.tgz",
-			chartName:      "compressedchart-with-hyphens",
-			chartVersion:   "0.1.0",
-			expectPullFile: "compressedchart-with-hyphens-0.1.0.tgz",
+			name:         "chart name with hyphens",
+			chart:        "compressedchart-with-hyphens-0.1.0.tgz",
+			chartName:    "compressedchart-with-hyphens",
+			chartVersion: "0.1.0",
 		},
 		{
-			name:           "chart with unicode description",
-			chart:          "unicode-chart-0.1.0.tgz",
-			chartName:      "unicode-chart",
-			chartVersion:   "0.1.0",
-			expectPullFile: "unicode-chart-0.1.0.tgz",
+			name:         "chart with unicode description",
+			chart:        "unicode-chart-0.1.0.tgz",
+			chartName:    "unicode-chart",
+			chartVersion: "0.1.0",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pullDir := t.TempDir()
+			f := h.fixture(t, tt.chart, tt.chartName, tt.chartVersion)
 
-			h.mustHelm(t, "push", chart(t, tt.chart), "oci://"+repo)
+			h.mustHelm(t, "push", f.path, "oci://"+repo)
 
 			pullArgs := append([]string{
-				"pull", h.ref(repo, tt.chartName, tt.chartVersion),
+				"pull", h.ref(repo, f.name, f.version),
 				"--destination", pullDir,
 				"--content-cache", contentCache,
 			}, tt.pullArgs...)
 			h.mustHelm(t, pullArgs...)
 
-			pulled := filepath.Join(pullDir, tt.expectPullFile)
+			// helm saves a pulled archive under its own file name, and
+			// --untar expands it into a directory named after the chart.
+			expectPullFile := filepath.Base(f.path)
+			if tt.untar {
+				expectPullFile = f.name
+			}
+			pulled := filepath.Join(pullDir, expectPullFile)
 			fi, err := os.Stat(pulled)
 			if err != nil {
 				t.Fatalf("expected pulled chart at %s: %v", pulled, err)
 			}
-			if fi.IsDir() != tt.expectPullDir {
-				t.Errorf("expected directory=%t, got directory=%t", tt.expectPullDir, fi.IsDir())
+			if fi.IsDir() != tt.untar {
+				t.Errorf("expected directory=%t, got directory=%t", tt.untar, fi.IsDir())
 			}
 
 			// Verify the round-trip actually returned the chart we pushed,
 			// not merely some artifact under the same tag.
-			assertChartMatches(t, chart(t, tt.chart), pullDir, tt.expectPullDir)
+			assertChartMatches(t, f.path, pullDir, tt.untar)
 		})
 	}
 }
@@ -144,7 +146,8 @@ func TestOCIRegistryInvalidCredentials(t *testing.T) {
 	// locally for want of any credential at all.
 	writeRegistryCredential(t, h.registryConfig(t), h.registryHost(), h.username, "invalid-"+h.runID)
 
-	out, err = h.helm(t, "push", chart(t, "test-0.1.0.tgz"), "oci://"+h.repo())
+	f := h.fixture(t, "test-0.1.0.tgz", "test", "0.1.0")
+	out, err = h.helm(t, "push", f.path, "oci://"+h.repo())
 	if err == nil {
 		t.Fatal("expected push to fail with an invalid credential, but it succeeded")
 	}
@@ -245,7 +248,8 @@ func TestOCIRegistryInstallToKubernetes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h.mustHelm(t, "push", chart(t, tt.chart), "oci://"+repo)
+			f := h.fixture(t, tt.chart, tt.chartName, tt.chartVersion)
+			h.mustHelm(t, "push", f.path, "oci://"+repo)
 
 			// Scope the release name to this run. A caller-supplied namespace
 			// may already hold releases, and a fixed name could collide with
@@ -258,8 +262,8 @@ func TestOCIRegistryInstallToKubernetes(t *testing.T) {
 				}
 			})
 
-			h.mustHelm(t, "install", releaseName, h.ref(repo, tt.chartName, ""),
-				"--version", tt.chartVersion,
+			h.mustHelm(t, "install", releaseName, h.ref(repo, f.name, ""),
+				"--version", f.version,
 				"--namespace", namespace,
 				"--create-namespace",
 				"--wait",

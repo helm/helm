@@ -38,6 +38,7 @@ auth-enabled registry to cover that path.
 | `HELM_E2E_PASSWORD`    | yes      | Password or token for the registry. Passed to helm on stdin and never logged.                    |
 | `HELM_E2E_REPO`        | no       | Repository path under the registry. Defaults to `helm-e2e`.                                      |
 | `HELM_E2E_ISOLATE`     | no       | Append a per-run suffix to the repository path. Off by default; see below.                       |
+| `HELM_E2E_SINGLE_REPO` | no       | Push every fixture into this one repository instead. See below.                                  |
 | `HELM_E2E_BIN`         | no       | Path to a prebuilt helm binary. Defaults to building one from the working tree.                  |
 | `HELM_E2E_PLAIN_HTTP`  | no       | Set to use plain HTTP, for registries without TLS.                                               |
 | `HELM_E2E_KUBERNETES`  | no       | Set to run the install test against the current kubecontext. Off by default because it mutates.  |
@@ -70,21 +71,44 @@ Note that stable paths stay safe only while every test pushes identical content
 under a given tag; a test that pushes mutated content under a fixed tag would
 need isolation.
 
-## Running against several registries
+## Single-repository mode
+
+Some registries cannot hold the layout above. Docker Hub does not nest
+repository paths, so `<namespace>/helm-e2e/test` is not a valid repository, and
+an access token scoped to one repository cannot write to the others anyway.
+
+Set `HELM_E2E_SINGLE_REPO` to the name of a repository that already exists
+directly under `HELM_E2E_REGISTRY`. Because helm always pushes a chart to a
+repository named after the chart, each fixture is repackaged under that name,
+and its original name is folded into a prerelease version to keep the fixtures
+apart:
+
+```
+<HELM_E2E_REGISTRY>/<HELM_E2E_SINGLE_REPO>:0.1.0-test
+<HELM_E2E_REGISTRY>/<HELM_E2E_SINGLE_REPO>:0.1.0-compressedchart
+<HELM_E2E_REGISTRY>/<HELM_E2E_SINGLE_REPO>:0.1.0-compressedchart-with-hyphens
+<HELM_E2E_REGISTRY>/<HELM_E2E_SINGLE_REPO>:0.1.0-unicode-chart
+```
+
+`HELM_E2E_REPO` is ignored in this mode, and `HELM_E2E_ISOLATE` appends the run
+ID to each version rather than to the repository path. Coverage that depends
+on the chart's own name, such as hyphens in the name, does not apply here.
+
+```console
+$ export HELM_E2E_REGISTRY=registry-1.docker.io/your-namespace
+$ export HELM_E2E_SINGLE_REPO=helm-e2e
+```
+
+## Running against hosted registries
 
 The suite has no registry-specific behavior — everything comes from the
 environment — so covering a new registry is a matter of pointing the same tests
-at it. This is how `.github/workflows/e2e-registries.yml` exercises GHCR, Quay,
-and ECR on a schedule, one matrix leg each, to catch changes that break a
-particular registry implementation rather than OCI in general.
+at it. `.github/workflows/e2e-registries.yml` runs it against Docker Hub on a
+schedule, in single-repository mode, to catch changes that break a particular
+registry implementation rather than OCI in general.
 
-Two registry differences are worth knowing about:
-
-- A default `registry:2` serves anonymous access, so the invalid-credential
-  test skips itself there, as described above.
-- ECR does not create repositories on push and issues a short-lived token
-  rather than accepting a static password. The workflow creates the four
-  repositories listed above and mints a token before running the tests.
+A default `registry:2` serves anonymous access, so the invalid-credential test
+skips itself there, as described above.
 
 The Kubernetes test deletes the namespace it creates. If you supply
 `HELM_E2E_NAMESPACE`, that namespace is left in place and only the releases are

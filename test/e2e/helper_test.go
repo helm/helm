@@ -34,6 +34,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 // Environment variables used to configure the end-to-end tests.
@@ -60,6 +63,11 @@ const (
 	// be created ahead of time on registries that do not create repositories
 	// on push.
 	envIsolate = "HELM_E2E_ISOLATE"
+	// envSingleRepo pushes every fixture into this one repository, directly
+	// under envRegistry, telling them apart by version rather than by chart
+	// name. It is for registries that do not nest repository paths (Docker
+	// Hub) and for credentials scoped to a single repository.
+	envSingleRepo = "HELM_E2E_SINGLE_REPO"
 	// envKubernetes opts in to the tests that install charts into a real
 	// Kubernetes cluster using the ambient kubeconfig.
 	envKubernetes = "HELM_E2E_KUBERNETES"
@@ -81,8 +89,11 @@ type harness struct {
 	plainHTTP bool
 	// repoBase is the repository path charts are pushed under.
 	repoBase string
-	// isolate appends runID to repoBase.
+	// isolate appends runID to repoBase, or to each fixture's version in
+	// single-repository mode.
 	isolate bool
+	// singleRepo, when set, is the one repository every fixture is pushed to.
+	singleRepo string
 	// configPath is the registry credential file used for this run.
 	configPath string
 	// runID isolates the repositories written by a single test run so that
@@ -97,14 +108,15 @@ func newHarness(t *testing.T) *harness {
 	t.Helper()
 
 	h := &harness{
-		registry:  requireEnv(t, envRegistry),
-		username:  requireEnv(t, envUsername),
-		password:  requireEnv(t, envPassword),
-		plainHTTP: os.Getenv(envPlainHTTP) != "",
-		repoBase:  envOr(envRepo, "helm-e2e"),
-		isolate:   os.Getenv(envIsolate) != "",
-		helmBin:   helmBinary(t),
-		runID:     runID(t),
+		registry:   requireEnv(t, envRegistry),
+		username:   requireEnv(t, envUsername),
+		password:   requireEnv(t, envPassword),
+		plainHTTP:  os.Getenv(envPlainHTTP) != "",
+		repoBase:   envOr(envRepo, "helm-e2e"),
+		isolate:    os.Getenv(envIsolate) != "",
+		singleRepo: os.Getenv(envSingleRepo),
+		helmBin:    helmBinary(t),
+		runID:      runID(t),
 	}
 	return h
 }
@@ -171,7 +183,14 @@ func (h *harness) registryHost() string {
 // repositories stays bounded, and registries that require repositories to
 // exist before a push (ECR) can have them created ahead of time. Set
 // HELM_E2E_ISOLATE to give a run its own repositories instead.
+//
+// In single-repository mode this is the registry namespace itself: every
+// fixture is renamed to the repository, so helm appending the chart name lands
+// each push in that one repository.
 func (h *harness) repo() string {
+	if h.singleRepo != "" {
+		return h.registry
+	}
 	if h.isolate {
 		return fmt.Sprintf("%s/%s-%s", h.registry, h.repoBase, h.runID)
 	}
@@ -265,6 +284,47 @@ func (h *harness) mustLogin(t *testing.T) {
 			t.Logf("registry logout failed (ignored): %v\n%s", err, out)
 		}
 	})
+}
+
+// fixture is a chart archive ready to push, along with the name and version
+// helm will push it under.
+type fixture struct {
+	path    string
+	name    string
+	version string
+}
+
+// fixture returns the named chart archive from this package's testdata, whose
+// Chart.yaml declares chartName and version.
+//
+// In single-repository mode the chart is repackaged under the repository's
+// name, with the original chart name folded into a prerelease version (for
+// example 0.1.0-unicode-chart), so that every fixture can share one repository
+// without overwriting another. Chart-name-specific coverage, such as hyphens
+// in the name, does not apply in this mode.
+func (h *harness) fixture(t *testing.T, file, chartName, version string) fixture {
+	t.Helper()
+	path := chart(t, file)
+	if h.singleRepo == "" {
+		return fixture{path: path, name: chartName, version: version}
+	}
+
+	c, err := loader.Load(path)
+	if err != nil {
+		t.Fatalf("loading chart %s: %v", path, err)
+	}
+	c.Metadata.Name = h.singleRepo
+	c.Metadata.Version = fmt.Sprintf("%s-%s", version, chartName)
+	if h.isolate {
+		// Prefixed so a hex run ID that happens to be all digits is never a
+		// numeric prerelease identifier, which semver forbids leading zeros in.
+		c.Metadata.Version += ".run" + h.runID
+	}
+	out, err := chartutil.Save(c, t.TempDir())
+	if err != nil {
+		t.Fatalf("repackaging chart %s as %s: %v", path, h.singleRepo, err)
+	}
+	return fixture{path: out, name: c.Metadata.Name, version: c.Metadata.Version}
 }
 
 // chart returns the path to a chart archive in this package's testdata.
