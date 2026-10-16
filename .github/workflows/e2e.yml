@@ -1,15 +1,14 @@
 name: e2e
 
+# Limited to main: the e2e package imports helm.sh/helm/v4, so it does not
+# build on the v3 branches.
 on:
   push:
     branches:
       - "main"
-      - "dev-v3"
-      - "release-**"
   pull_request:
     branches:
       - "main"
-      - "dev-v3"
   workflow_dispatch:
 
 permissions:
