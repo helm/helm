@@ -17,6 +17,7 @@ limitations under the License.
 package cli
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,8 +26,10 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v4/internal/version"
+	"helm.sh/helm/v4/pkg/kubeenv"
 )
 
 func TestSetNamespace(t *testing.T) {
@@ -223,6 +226,69 @@ func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
 	cleanup := resetEnv()
 	t.Cleanup(cleanup)
 
+	t.Setenv("KUBECONFIG", writeTestKubeconfig(t))
+
+	settings := New()
+	restConfig, err := settings.RESTClientGetter().ToRESTConfig()
+	require.NoError(t, err)
+
+	expectedUserAgent := version.GetUserAgent()
+	assert.Equal(t, expectedUserAgent, restConfig.UserAgent)
+}
+
+func TestSessionIDStableAcrossClientBuilds(t *testing.T) {
+	cleanup := resetEnv()
+	t.Cleanup(cleanup)
+
+	t.Setenv("KUBECONFIG", writeTestKubeconfig(t))
+
+	settings := New()
+
+	// A single command (e.g. helm upgrade) builds several Kubernetes clients;
+	// every one of them must carry the same session ID.
+	var ids []string
+	for i := 0; i < 5; i++ {
+		restConfig, err := settings.RESTClientGetter().ToRESTConfig()
+		require.NoError(t, err)
+		ids = append(ids, sessionIDFromRESTConfig(t, restConfig))
+	}
+	require.NotEmpty(t, ids[0], "session ID must be set on the request")
+	for _, id := range ids[1:] {
+		assert.Equal(t, ids[0], id, "all clients built from one settings must share a session")
+	}
+
+	// A separate settings instance (another command invocation, or an SDK
+	// client performing a distinct operation) gets a distinct session.
+	other := New()
+	otherConfig, err := other.RESTClientGetter().ToRESTConfig()
+	require.NoError(t, err)
+	assert.NotEqual(t, ids[0], sessionIDFromRESTConfig(t, otherConfig),
+		"separate settings must not share a session")
+}
+
+// sessionIDFromRESTConfig applies the config's transport wrappers to a
+// capturing RoundTripper and returns the helm-session header that would be
+// sent on a real request.
+func sessionIDFromRESTConfig(t *testing.T, restConfig *rest.Config) string {
+	t.Helper()
+	var got http.Header
+	capture := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		got = req.Header
+		return &http.Response{StatusCode: http.StatusOK}, nil
+	})
+	req, err := http.NewRequest(http.MethodGet, "https://127.0.0.1:6443/version", nil)
+	require.NoError(t, err)
+	_, err = restConfig.WrapTransport(capture).RoundTrip(req)
+	require.NoError(t, err)
+	return got.Get(kubeenv.SessionHeader)
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+func writeTestKubeconfig(t *testing.T) string {
+	t.Helper()
 	kubeconfigPath := filepath.Join(t.TempDir(), "config")
 	kubeconfig := `apiVersion: v1
 clusters:
@@ -243,14 +309,7 @@ users:
     token: test-token
 `
 	require.NoError(t, os.WriteFile(kubeconfigPath, []byte(kubeconfig), 0o600), "failed to create test kubeconfig")
-	t.Setenv("KUBECONFIG", kubeconfigPath)
-
-	settings := New()
-	restConfig, err := settings.RESTClientGetter().ToRESTConfig()
-	require.NoError(t, err)
-
-	expectedUserAgent := version.GetUserAgent()
-	assert.Equal(t, expectedUserAgent, restConfig.UserAgent)
+	return kubeconfigPath
 }
 
 func resetEnv() func() {
