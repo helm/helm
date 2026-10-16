@@ -204,10 +204,12 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			return fmt.Errorf("failed to install CRD %s: resources are empty", obj.Name)
 		}
 
-		// Send them to Kube
+		// Send them to Kube. Upgrade any leftover client-side field manager so
+		// a later server-side apply does not conflict with a previous Helm CSA write.
 		if _, err := i.cfg.KubeClient.Create(
 			res,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts)); err != nil {
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
+			kube.ClientCreateOptionUpgradeClientSideFieldManager(i.ServerSideApply)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := obj.Name
