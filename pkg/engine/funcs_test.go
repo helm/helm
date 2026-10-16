@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestFuncs(t *testing.T) {
@@ -192,6 +193,83 @@ keyInElement1 = "valueInElement1"`,
 		} else {
 			assert.Error(t, err)
 		}
+	}
+}
+
+func TestHtpasswd(t *testing.T) {
+	tests := []struct {
+		name        string
+		tpl         string
+		expect      string
+		expectError string
+		validate    func(t *testing.T, rendered string)
+	}{
+		{
+			name: "defaults to bcrypt",
+			tpl:  `{{ htpasswd "testuser" "testpassword" }}`,
+			validate: func(t *testing.T, rendered string) {
+				t.Helper()
+				parts := strings.SplitN(rendered, ":", 2)
+				require.Len(t, parts, 2)
+				assert.Equal(t, "testuser", parts[0])
+				assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(parts[1]), []byte("testpassword")))
+			},
+		},
+		{
+			name: "explicit bcrypt",
+			tpl:  `{{ htpasswd "testuser" "testpassword" "bcrypt" }}`,
+			validate: func(t *testing.T, rendered string) {
+				t.Helper()
+				parts := strings.SplitN(rendered, ":", 2)
+				require.Len(t, parts, 2)
+				assert.Equal(t, "testuser", parts[0])
+				assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(parts[1]), []byte("testpassword")))
+			},
+		},
+		{
+			// Regression for https://github.com/helm/helm/issues/31924
+			name:   "supports sha algorithm",
+			tpl:    `{{ htpasswd "testuser" "testpassword" "sha" }}`,
+			expect: `testuser:{SHA}i7YRj4/Wk1rQh2o740pxfTJwj/0=`,
+		},
+		{
+			name:   "supports sha1 alias",
+			tpl:    `{{ htpasswd "testuser" "testpassword" "sha1" }}`,
+			expect: `testuser:{SHA}i7YRj4/Wk1rQh2o740pxfTJwj/0=`,
+		},
+		{
+			name:   "preserves invalid username behavior",
+			tpl:    `{{ htpasswd "bad:user" "testpassword" }}`,
+			expect: `invalid username: bad:user`,
+		},
+		{
+			name:        "rejects unsupported algorithm",
+			tpl:         `{{ htpasswd "testuser" "testpassword" "md5" }}`,
+			expectError: `unsupported htpasswd hash algorithm "md5"`,
+		},
+		{
+			name:        "rejects too many args",
+			tpl:         `{{ htpasswd "testuser" "testpassword" "sha" "extra" }}`,
+			expectError: `wrong number of args for htpasswd: want 2 or 3 got 4`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, nil)
+			if tt.expectError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectError)
+				return
+			}
+			require.NoError(t, err)
+			if tt.validate != nil {
+				tt.validate(t, b.String())
+				return
+			}
+			assert.Equal(t, tt.expect, b.String())
+		})
 	}
 }
 
