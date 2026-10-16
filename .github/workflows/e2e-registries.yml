@@ -33,6 +33,13 @@ on:
 permissions:
   contents: read
 
+# Runs share fixed tags in one Docker Hub repository, and repackaged fixtures
+# differ byte for byte between runs, so an overlapping run could overwrite a
+# tag between another run's push and pull. Queue runs rather than overlap.
+concurrency:
+  group: e2e-registries
+  cancel-in-progress: false
+
 env:
   KIND_VERSION: v0.33.0
 
