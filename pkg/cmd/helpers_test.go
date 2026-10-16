@@ -82,6 +82,12 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 }
 
 func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string) (*cobra.Command, string, error) {
+	return executeActionCommandWithLoggerC(store, in, NewLogger, cmd)
+}
+
+// executeActionCommandWithLoggerC runs cmd against store with the root command
+// logging through the logger returned by newLogger.
+func executeActionCommandWithLoggerC(store *storage.Storage, in *os.File, newLogger func(bool) *slog.Logger, cmd string) (*cobra.Command, string, error) {
 	args, err := shellwords.Parse(cmd)
 	if err != nil {
 		return nil, "", err
@@ -95,7 +101,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Capabilities: common.DefaultCapabilities,
 	}
 
-	root, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
+	root, err := newRootCmdWithConfig(actionConfig, buf, args, newLogger)
 	if err != nil {
 		return nil, "", err
 	}
@@ -272,7 +278,6 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 	for name, tc := range testCases {
 		logBuf := new(bytes.Buffer)
 		logger := slog.New(slog.NewJSONHandler(logBuf, nil))
-		slog.SetDefault(logger)
 
 		cmd := &cobra.Command{
 			Use: "helm",
@@ -281,7 +286,7 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 		cmd.Flags().Parse([]string{"helm", tc.DryRunFlagArg})
 
 		t.Run(name, func(t *testing.T) {
-			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, tc.IsTemplate)
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(logger, cmd, tc.IsTemplate)
 			if tc.ExpectedError {
 				require.Error(t, err)
 			} else {
