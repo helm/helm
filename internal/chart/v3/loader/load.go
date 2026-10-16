@@ -72,7 +72,6 @@ func Load(name string) (*chart.Chart, error) {
 func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*archive.BufferedFile)
-	var subChartsKeys []string
 
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
@@ -124,9 +123,6 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname, _, _ := strings.Cut(fname, "/")
-			if slices.Index(subChartsKeys, cname) == -1 {
-				subChartsKeys = append(subChartsKeys, cname)
-			}
 			subcharts[cname] = append(subcharts[cname], &archive.BufferedFile{Name: fname, ModTime: f.ModTime, Data: f.Data})
 		default:
 			c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
@@ -141,7 +137,9 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 		return c, err
 	}
 
-	for n, files := range subcharts {
+    // Iterate in sorted key order, not random Go map iteration order, for reproducible tarballs when saving
+	for _, n := range slices.Sorted(maps.Keys(subcharts)) {
+		files := subcharts[n]
 		var sc *chart.Chart
 		var err error
 		switch {
