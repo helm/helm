@@ -24,7 +24,7 @@ $ export HELM_E2E_REGISTRY=localhost:5000/charts
 $ export HELM_E2E_PLAIN_HTTP=true
 ```
 
-A default `registry:2` deployment serves anonymous access and accepts any
+A default `registry` (distribution) deployment serves anonymous access and accepts any
 credential. Against such a registry there is no authentication to exercise, so
 the invalid-credential test detects this and skips itself. Run against an
 auth-enabled registry to cover that path.
@@ -107,7 +107,7 @@ at it. `.github/workflows/e2e-registries.yml` runs it against Docker Hub on a
 schedule, in single-repository mode, to catch changes that break a particular
 registry implementation rather than OCI in general.
 
-A default `registry:2` serves anonymous access, so the invalid-credential test
+A default `registry` serves anonymous access, so the invalid-credential test
 skips itself there, as described above.
 
 The Kubernetes test deletes the namespace it creates. If you supply

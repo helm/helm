@@ -15,9 +15,9 @@ permissions:
   contents: read
 
 env:
-  KIND_VERSION: v0.31.0
-  REGISTRY_IMAGE: registry:2.8.3
-  HTPASSWD_IMAGE: httpd:2.4-alpine
+  KIND_VERSION: v0.33.0
+  REGISTRY_IMAGE: registry:3.1.2
+  HTPASSWD_IMAGE: httpd:2.4.69-alpine
 
 jobs:
   # Runs the OCI end-to-end suite against a local, authenticated registry and a
@@ -27,11 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # pin@v6.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
       - name: Add variables to environment file
         run: cat ".github/env" >> "$GITHUB_ENV"
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # pin@6.1.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # pin@7.0.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
