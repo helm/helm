@@ -1,0 +1,11 @@
+name: downloader
+version: 0.1.0
+usage: "echo downloader"
+description: "This is a legacy plugin with downloaders"
+ignoreFlags: true
+platformCommand:
+  - command: "echo"
+    args: ["downloader"]
+downloaders:
+  - command: "echo"
+    protocols: ["downloader"]

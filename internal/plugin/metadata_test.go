@@ -110,6 +110,15 @@ func TestMetadataValidateVersion(t *testing.T) {
 	}
 }
 
+func TestFromMetadataLegacyDownloadersOnly(t *testing.T) {
+	m := fromMetadataLegacy(MetadataLegacy{
+		Name:        "downloader-only",
+		Downloaders: []Downloaders{{Command: "echo Download", Protocols: []string{"myprotocol"}}},
+	})
+	assert.Equal(t, "getter/v1", m.Type)
+	assert.Nil(t, m.legacyCLIConfig)
+}
+
 func TestMetadataValidateMultipleErrors(t *testing.T) {
 	// Create metadata with multiple validation issues
 	metadata := Metadata{
