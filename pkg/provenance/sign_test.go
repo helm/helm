@@ -19,12 +19,14 @@ import (
 	"bytes"
 	"crypto"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
@@ -209,6 +211,79 @@ func TestLoadArmoredKeyRingRejectsNonKeyBlocks(t *testing.T) {
 
 	_, err = loadArmoredKeyRing(buf.Bytes())
 	assert.ErrorContains(t, err, "expected a public or private key block")
+}
+
+// TestLoadArmoredKeyRingMultiBlockRegressive is a regression test for issue
+// #32567: armor.Decode reads ahead into a 100-byte bufio reader and discards
+// bytes past the block end. When successive armor.Decode calls share a
+// reader, the next block's -----BEGIN header can be silently consumed.
+// This test concatenates many individually-encoded key blocks tightly so
+// that the old shared-reader implementation would have a near-certain
+// chance of dropping at least one block.
+func TestLoadArmoredKeyRingMultiBlockRegressive(t *testing.T) {
+	// Assemble a pool of entities from the existing test keyrings.
+	pubRing, err := openpgp.ReadKeyRing(bytes.NewReader(mustReadFile(t, testPubfile)))
+	require.NoError(t, err)
+	mixedRing, err := openpgp.ReadKeyRing(bytes.NewReader(mustReadFile(t, testMixedKeyring)))
+	require.NoError(t, err)
+
+	all := append(openpgp.EntityList{}, pubRing...)
+	all = append(all, mixedRing...)
+	require.GreaterOrEqual(t, len(all), 3, "need at least 3 distinct entities")
+
+	// Encode each entity into its own armored block.
+	blocks := make([][]byte, 0, len(all))
+	for i, e := range all {
+		var buf bytes.Buffer
+		w, err := armor.Encode(&buf, openpgp.PublicKeyType, nil)
+		require.NoError(t, err)
+		require.NoError(t, e.Serialize(w))
+		require.NoError(t, w.Close())
+		blocks = append(blocks, buf.Bytes())
+		t.Logf("block %d: %d bytes, ends with %q", i, len(buf.Bytes()), string(buf.Bytes()[len(buf.Bytes())-20:]))
+	}
+
+	// Build several concatenated layouts. The old shared-reader code would
+	// drop blocks whenever armor.Decode's read-ahead straddles the boundary.
+	separators := [][]byte{
+		nil,              // directly adjacent: END...BEGIN
+		{'\n'},           // single newline between blocks
+		{'\n', '\n'},     // blank line between blocks (the usual "cat a.asc b.asc")
+		{' ', '\n', ' '}, // whitespace padding around the break
+	}
+
+	for _, sep := range separators {
+		t.Run(fmt.Sprintf("sep=%q", string(sep)), func(t *testing.T) {
+			var combined bytes.Buffer
+			for i, blk := range blocks {
+				if i > 0 {
+					combined.Write(sep)
+				}
+				combined.Write(blk)
+			}
+
+			ring, err := loadArmoredKeyRing(combined.Bytes())
+			require.NoError(t, err, "unexpected error loading %d blocks", len(blocks))
+			assert.Len(t, ring, len(all),
+				"expected all %d entities, got %d — a block was silently dropped",
+				len(all), len(ring))
+		})
+	}
+
+	// Also test with a single block that is missing its END line.
+	t.Run("missing end line", func(t *testing.T) {
+		const endMarker = "-----END PGP PUBLIC KEY BLOCK-----"
+		data := bytes.TrimSuffix(blocks[0], []byte(endMarker))
+		_, err := loadArmoredKeyRing(data)
+		assert.ErrorContains(t, err, "missing its end line")
+	})
+}
+
+func mustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	return data
 }
 
 func TestDigest(t *testing.T) {

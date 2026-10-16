@@ -26,9 +26,9 @@ import (
 	v1release "helm.sh/helm/v4/pkg/release/v1"
 )
 
-var NewAccessor func(rel Releaser) (Accessor, error) = newDefaultAccessor //nolint:revive
+var NewAccessor func(rel Releaser) (Accessor, error) = newDefaultAccessor
 
-var NewHookAccessor func(rel Hook) (HookAccessor, error) = newDefaultHookAccessor //nolint:revive
+var NewHookAccessor func(rel Hook) (HookAccessor, error) = newDefaultHookAccessor
 
 func newDefaultAccessor(rel Releaser) (Accessor, error) {
 	switch v := rel.(type) {
