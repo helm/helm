@@ -17,7 +17,6 @@ limitations under the License.
 package loader
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -28,7 +27,7 @@ import (
 	"slices"
 	"strings"
 
-	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
+	goYaml "go.yaml.in/yaml/v3"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
@@ -183,29 +182,22 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 // The reader is expected to contain one or more YAML documents, the values of which are merged.
 // And the values can be either a chart's default values or user-supplied values.
 func LoadValues(data io.Reader) (map[string]any, error) {
-	// Read fully first. YAMLReader/LineReader can drop a final unterminated
-	// line when its length is an exact multiple of bufio.Reader's default
-	// buffer (4096). Appending a trailing newline avoids that case.
-	// See https://github.com/helm/helm/issues/32506
-	b, err := io.ReadAll(data)
-	if err != nil {
-		return nil, err
-	}
-	if len(b) > 0 && b[len(b)-1] != '\n' {
-		b = append(b, '\n')
-	}
-
 	values := map[string]any{}
-	reader := utilyaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
+	decoder := goYaml.NewDecoder(data)
 	for {
-		currentMap := map[string]any{}
-		raw, err := reader.Read()
-		if err != nil {
+		var document goYaml.Node
+		if err := decoder.Decode(&document); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, fmt.Errorf("error reading yaml document: %w", err)
 		}
+		// Keep the existing YAML-to-JSON conversion for scalar and map-key compatibility.
+		raw, err := goYaml.Marshal(&document)
+		if err != nil {
+			return nil, fmt.Errorf("cannot marshal yaml document: %w", err)
+		}
+		currentMap := map[string]any{}
 		if err := yaml.Unmarshal(raw, &currentMap); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal yaml document: %w", err)
 		}
