@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
@@ -152,4 +153,47 @@ func TestWarnIfHostHasPath(t *testing.T) {
 			assert.Equal(t, tt.wantWarn, warnIfHostHasPath(tt.host))
 		})
 	}
+}
+
+func TestNewClient_DefaultHTTPClientTimeout(t *testing.T) {
+	t.Parallel()
+
+	c, err := NewClient(ClientOptWriter(io.Discard))
+	require.NoError(t, err)
+	require.NotNil(t, c.httpClient)
+	assert.Equal(t, 30*time.Second, c.httpClient.Timeout)
+}
+
+func TestNewClient_AppliesDefaultTimeoutToCustomClientWithZeroTimeout(t *testing.T) {
+	t.Parallel()
+
+	custom := &http.Client{
+		Transport: http.DefaultTransport,
+		// Timeout left at zero (no timeout)
+	}
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptHTTPClient(custom),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, c.httpClient)
+	assert.Equal(t, 30*time.Second, c.httpClient.Timeout)
+	// Caller-owned client must not be mutated.
+	assert.Equal(t, time.Duration(0), custom.Timeout)
+}
+
+func TestNewClient_PreservesExplicitHTTPClientTimeout(t *testing.T) {
+	t.Parallel()
+
+	custom := &http.Client{
+		Timeout:   5 * time.Second,
+		Transport: http.DefaultTransport,
+	}
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptHTTPClient(custom),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, c.httpClient)
+	assert.Equal(t, 5*time.Second, c.httpClient.Timeout)
 }
