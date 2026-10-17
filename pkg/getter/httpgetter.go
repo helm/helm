@@ -17,6 +17,7 @@ package getter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 
 	"helm.sh/helm/v4/internal/tlsutil"
@@ -57,6 +59,10 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 
 	if opts.acceptHeader != "" {
 		req.Header.Set("Accept", opts.acceptHeader)
+	}
+	acceptCompressedIndex := strings.HasSuffix(req.URL.Path, "/index.yaml")
+	if acceptCompressedIndex {
+		req.Header.Set("Accept-Encoding", "gzip")
 	}
 
 	req.Header.Set("User-Agent", version.GetUserAgent())
@@ -101,7 +107,16 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 	}
 
 	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, resp.Body)
+	body := io.Reader(resp.Body)
+	if acceptCompressedIndex && resp.Header.Get("Content-Encoding") == "gzip" {
+		gz, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer gz.Close()
+		body = gz
+	}
+	_, err = io.Copy(buf, body)
 	return buf, err
 }
 
