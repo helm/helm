@@ -1,0 +1,8 @@
+apiVersion: v2
+name: chart-with-images-annotation-missing-fields
+description: Chart whose HIP-0015 helm.sh/images annotation has an entry without an image
+version: 0.1.0
+appVersion: "6.0.0"
+annotations:
+  helm.sh/images: |
+    - name: podinfo
