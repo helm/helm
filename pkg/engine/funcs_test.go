@@ -17,6 +17,8 @@ limitations under the License.
 package engine
 
 import (
+	"bytes"
+	"log/slog"
 	"math"
 	"strings"
 	"testing"
@@ -193,6 +195,30 @@ keyInElement1 = "valueInElement1"`,
 			assert.Error(t, err)
 		}
 	}
+}
+
+// TestPlaceholderLookupEmitsDebugLog verifies that the offline `lookup`
+// placeholder (used by `helm template` when there is no cluster connection)
+// emits a debug log identifying the requested resource, so users running
+// `helm template --debug` can see that `lookup` was silently short-circuited.
+func TestPlaceholderLookupEmitsDebugLog(t *testing.T) {
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	prev := slog.Default()
+	slog.SetDefault(slog.New(handler))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	tpl := `{{ lookup "v1" "ConfigMap" "some-ns" "some-name" }}`
+	var out strings.Builder
+	require.NoError(t, template.Must(template.New("test").Funcs(funcMap()).Parse(tpl)).Execute(&out, nil))
+	assert.Equal(t, "map[]", out.String())
+
+	logged := buf.String()
+	assert.Contains(t, logged, "lookup: no Kubernetes client available")
+	assert.Contains(t, logged, `apiVersion=v1`)
+	assert.Contains(t, logged, `kind=ConfigMap`)
+	assert.Contains(t, logged, `namespace=some-ns`)
+	assert.Contains(t, logged, `name=some-name`)
 }
 
 func TestDurationHelpers(t *testing.T) {
