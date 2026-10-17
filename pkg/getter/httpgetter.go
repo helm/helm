@@ -17,6 +17,7 @@ package getter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 
 	"helm.sh/helm/v4/internal/tlsutil"
@@ -55,8 +57,13 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 
+	isRepositoryIndexRequest := isRepositoryIndexRequestURL(href)
+
 	if opts.acceptHeader != "" {
 		req.Header.Set("Accept", opts.acceptHeader)
+	}
+	if isRepositoryIndexRequest {
+		req.Header.Set("Accept-Encoding", "gzip")
 	}
 
 	req.Header.Set("User-Agent", version.GetUserAgent())
@@ -100,9 +107,40 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
+	reader := io.Reader(resp.Body)
+	if isRepositoryIndexRequest && isGzipEncoded(resp.Header) {
+		gzipReader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer gzipReader.Close()
+		reader = gzipReader
+	}
+
 	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, resp.Body)
+	_, err = io.Copy(buf, reader)
 	return buf, err
+}
+
+func isRepositoryIndexRequestURL(href string) bool {
+	u, err := url.Parse(href)
+	if err != nil {
+		return false
+	}
+
+	return u.Path == "index.yaml" || strings.HasSuffix(u.Path, "/index.yaml")
+}
+
+func isGzipEncoded(header http.Header) bool {
+	for _, value := range header.Values("Content-Encoding") {
+		for _, encoding := range strings.Split(value, ",") {
+			if strings.EqualFold(strings.TrimSpace(encoding), "gzip") {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // NewHTTPGetter constructs a valid http/https client as a Getter
