@@ -147,6 +147,40 @@ func TestEnvSettings(t *testing.T) {
 	}
 }
 
+func TestPluginInstallDirectory(t *testing.T) {
+	first := filepath.Join("home", "user", "plugins")
+	second := filepath.Join("shared", "plugins")
+
+	tests := []struct {
+		name     string
+		env      string
+		expected string
+	}{
+		{
+			name:     "single directory",
+			env:      first,
+			expected: first,
+		},
+		{
+			name:     "list of directories uses the first one",
+			env:      strings.Join([]string{first, second}, string(os.PathListSeparator)),
+			expected: first,
+		},
+		{
+			name:     "empty value falls back to the raw setting",
+			env:      "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			settings := &EnvSettings{PluginsDirectory: tt.env}
+			assert.Equal(t, tt.expected, settings.PluginInstallDirectory())
+		})
+	}
+}
+
 func TestEnvOrBool(t *testing.T) {
 	const envName = "TEST_ENV_OR_BOOL"
 	tests := []struct {
