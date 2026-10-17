@@ -101,7 +101,11 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	// controller as soon as it completes, so it can disappear while Helm is
 	// still waiting for it. Only those hooks may report NotFound instead of
 	// completing; every other hook that goes away is still an error.
-	return w.waitFor(ctx, resourceList, sw, ttlJobs(resourceList))
+	deletedIsDone, err := ttlJobs(resourceList)
+	if err != nil {
+		return err
+	}
+	return w.waitFor(ctx, resourceList, sw, deletedIsDone)
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
@@ -192,7 +196,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 // ttlJobs returns the identities of the Jobs in resourceList that set
 // .spec.ttlSecondsAfterFinished, which the TTL controller deletes once they
 // finish.
-func ttlJobs(resourceList ResourceList) map[object.ObjMetadata]struct{} {
+func ttlJobs(resourceList ResourceList) (map[object.ObjMetadata]struct{}, error) {
 	var ttl map[object.ObjMetadata]struct{}
 	for _, r := range resourceList {
 		job, ok := AsVersioned(r).(*batchv1.Job)
@@ -201,14 +205,14 @@ func ttlJobs(resourceList ResourceList) map[object.ObjMetadata]struct{} {
 		}
 		obj, err := object.RuntimeToObjMeta(r.Object)
 		if err != nil {
-			continue
+			return nil, err
 		}
 		if ttl == nil {
 			ttl = map[object.ObjMetadata]struct{}{}
 		}
 		ttl[obj] = struct{}{}
 	}
-	return ttl
+	return ttl, nil
 }
 
 // waitFor waits until every resource reaches the current status. Resources in
