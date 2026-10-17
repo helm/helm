@@ -17,17 +17,24 @@ limitations under the License.
 package registry
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/stretchr/testify/assert"
+	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	remoteconfig "github.com/oras-project/oras-go/v3/registry/remote/config"
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
+	"github.com/oras-project/oras-go/v3/registry/remote/policy"
 	"github.com/stretchr/testify/require"
-	"oras.land/oras-go/v2/content/memory"
 )
 
 // Inspired by oras test
@@ -57,8 +64,8 @@ func TestTagManifestTransformsReferences(t *testing.T) {
 	require.Error(t, err, "Should NOT find the reference with the original +")
 }
 
-// Verifies that Login always restores ForceAttemptOAuth2 to false on success.
-func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
+// Verifies that the authorizer is set on a new client and Login succeeds against a reachable registry.
+func TestLogin_AuthorizerSetAndSucceeds(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -80,17 +87,18 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 	)
 	require.NoError(t, err, "NewClient error")
 
-	require.NotNil(t, c.authorizer)
-	require.False(t, c.authorizer.ForceAttemptOAuth2, "expected ForceAttemptOAuth2 default to be false")
+	if c.authorizer == nil {
+		t.Fatal("expected authorizer to be set")
+	}
 
 	// Call Login with plain HTTP against our test server
-	require.NoError(t, c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")), "Login error")
-
-	assert.False(t, c.authorizer.ForceAttemptOAuth2, "ForceAttemptOAuth2 should be false after successful Login")
+	if err := c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")); err != nil {
+		t.Fatalf("Login error: %v", err)
+	}
 }
 
-// Verifies that Login restores ForceAttemptOAuth2 to false even when ping fails.
-func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
+// Verifies that Login returns an error when the registry is unreachable.
+func TestLogin_FailsWhenUnreachable(t *testing.T) {
 	t.Parallel()
 
 	// Start and immediately close, so connections will fail
@@ -105,51 +113,366 @@ func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
 	)
 	require.NoError(t, err, "NewClient error")
 
-	// Invoke Login, expect an error but ForceAttemptOAuth2 must end false
-	_ = c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
-
-	assert.False(t, c.authorizer.ForceAttemptOAuth2, "ForceAttemptOAuth2 should be false after failed Login")
+	// Invoke Login, expect an error since the server is closed
+	if err := c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")); err == nil {
+		t.Error("expected Login to fail when server is unreachable")
+	}
 }
 
-// TestWarnIfHostHasPath verifies that warnIfHostHasPath correctly detects path components.
-func TestWarnIfHostHasPath(t *testing.T) {
+func TestLogin_NamespacedAuth(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		host     string
-		wantWarn bool
-	}{
-		{
-			name:     "domain only",
-			host:     "ghcr.io",
-			wantWarn: false,
-		},
-		{
-			name:     "domain with port",
-			host:     "localhost:8000",
-			wantWarn: false,
-		},
-		{
-			name:     "domain with repository path",
-			host:     "ghcr.io/terryhowe",
-			wantWarn: true,
-		},
-		{
-			name:     "domain with nested path",
-			host:     "ghcr.io/terryhowe/myrepo",
-			wantWarn: true,
-		},
-		{
-			name:     "localhost with port and path",
-			host:     "localhost:8000/myrepo",
-			wantWarn: true,
-		},
-	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
 
+	registryHost := strings.TrimPrefix(srv.URL, "http://")
+	namespacedHost := registryHost + "/myrepo"
+
+	// Pre-create a config.json with a sentinel auths entry so that
+	// IsAuthConfigured() returns true and the credentials package does not
+	// detect a native platform store (e.g., osxkeychain on macOS). This
+	// ensures the credential is written into the plaintext config file
+	// where we can inspect the storage key directly.
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	err := os.WriteFile(credFile, []byte(`{"auths":{"_sentinel_":{}}}`), 0o600)
+	require.NoError(t, err)
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+	)
+	require.NoError(t, err)
+
+	err = c.Login(namespacedHost, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	// Credential lookup by namespaced key succeeds.
+	cred, err := c.credentialsStore.Get(ctx, namespacedHost)
+	require.NoError(t, err)
+	require.Equal(t, "u", cred.Username)
+
+	// Verify that the credential is stored on disk under the namespaced key,
+	// and NOT under the hostname-only key. We inspect the JSON file directly
+	// because the FileStore's Get() falls back to a hostname-based lookup,
+	// which would mask whether the storage key itself is hostname-only or
+	// namespaced.
+	data, err := os.ReadFile(credFile)
+	require.NoError(t, err)
+	var parsed struct {
+		Auths map[string]any `json:"auths"`
+	}
+	require.NoError(t, json.Unmarshal(data, &parsed))
+	require.Contains(t, parsed.Auths, namespacedHost, "credential should be stored under namespaced key")
+	require.NotContains(t, parsed.Auths, registryHost, "credential should not be stored under hostname-only key")
+}
+
+func TestNamespacedStore_HierarchicalLookup(t *testing.T) {
+	t.Parallel()
+
+	inner := &memCredStore{creds: map[string]credentials.Credential{}}
+	ctx := context.Background()
+
+	// Store a credential under "localhost:5000/org".
+	_ = inner.Put(ctx, "localhost:5000/org", credentials.Credential{Username: "orguser"})
+
+	// Lookup for a deeper path should find it.
+	ns := &namespacedStore{inner: inner, repository: "org/repo"}
+	cred, err := ns.Get(ctx, "localhost:5000")
+	require.NoError(t, err)
+	require.Equal(t, "orguser", cred.Username)
+
+	// Lookup for an unrelated path should NOT find it.
+	ns2 := &namespacedStore{inner: inner, repository: "other/repo"}
+	cred, err = ns2.Get(ctx, "localhost:5000")
+	require.NoError(t, err)
+	require.Empty(t, cred.Username)
+}
+
+// memCredStore is a simple in-memory credentials.Store for testing.
+type memCredStore struct {
+	creds map[string]credentials.Credential
+}
+
+func (m *memCredStore) Get(_ context.Context, serverAddress string) (credentials.Credential, error) {
+	return m.creds[serverAddress], nil
+}
+
+func (m *memCredStore) Put(_ context.Context, serverAddress string, cred credentials.Credential) error {
+	m.creds[serverAddress] = cred
+	return nil
+}
+
+func (m *memCredStore) Delete(_ context.Context, serverAddress string) error {
+	delete(m.creds, serverAddress)
+	return nil
+}
+
+func TestNewClient_WithDenyAllPolicy(t *testing.T) {
+	t.Parallel()
+
+	denyPolicy := policy.NewRejectAllPolicy()
+	evaluator, err := policy.NewEvaluator(denyPolicy)
+	require.NoError(t, err)
+
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		ClientOptPolicyEvaluator(evaluator),
+	)
+	require.NoError(t, err)
+	require.Same(t, evaluator, c.policyEvaluator)
+}
+
+func TestNewClient_WithRegistriesConfigPath(t *testing.T) {
+	t.Parallel()
+
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		withRegistriesConfigPath("/nonexistent/registries.conf"),
+	)
+	require.NoError(t, err) // nonexistent paths are silently skipped
+	require.NotNil(t, c)
+}
+
+func TestLogin_LocationRewrite(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	canonicalHost := strings.TrimPrefix(srv.URL, "http://")
+	aliasHost := "registry.example.test"
+
+	// Write a registries.conf that maps the alias to the canonical host.
+	registriesConf := filepath.Join(t.TempDir(), "registries.conf")
+	err := os.WriteFile(registriesConf, fmt.Appendf(nil,
+		"[[registry]]\nprefix = %q\nlocation = %q\n", aliasHost, canonicalHost,
+	), 0o600)
+	require.NoError(t, err)
+
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		withRegistriesConfigPath(registriesConf),
+	)
+	require.NoError(t, err)
+
+	// Login via alias; the connection goes to the canonical host (plain HTTP).
+	require.NoError(t, c.Login(aliasHost, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")))
+
+	// Credential must be stored under the canonical host, not the alias.
+	cred, err := c.credentialsStore.Get(context.Background(), canonicalHost)
+	require.NoError(t, err)
+	require.Equal(t, "u", cred.Username, "credential should be stored under canonical host")
+
+	aliasCred, err := c.credentialsStore.Get(context.Background(), aliasHost)
+	require.NoError(t, err)
+	require.Empty(t, aliasCred.Username, "credential must not be stored under alias")
+}
+
+// mockRemoteClient records whether Do was called, for use in registryAuthorizer tests.
+type mockRemoteClient struct {
+	called bool
+	inner  http.RoundTripper
+}
+
+func (m *mockRemoteClient) Do(req *http.Request) (*http.Response, error) {
+	m.called = true
+	return m.inner.RoundTrip(req)
+}
+
+func TestRegistryAuthorizer_UsedInLegacyPath(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		// Return empty tag list for any tags request.
+		if strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"name":"testchart","tags":[]}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+	mock := &mockRemoteClient{inner: http.DefaultTransport}
+
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		ClientOptHTTPClient(&http.Client{}), // triggers customHTTPClient=true (legacy path)
+		ClientOptRegistryAuthorizer(mock),
+		ClientOptPlainHTTP(),
+	)
+	require.NoError(t, err)
+
+	// Tags calls newRepository → legacy path → should use registryAuthorizer.
+	_, err = c.Tags(host + "/testchart")
+	require.NoError(t, err)
+	require.True(t, mock.called, "registryAuthorizer.Do should have been called in legacy path")
+}
+
+func TestLogin_RegistryAuthorizerInLegacyPath(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptHTTPClient(&http.Client{}),
+		ClientOptRegistryAuthorizer(&mockRemoteClient{inner: http.DefaultTransport}),
+	)
+	require.NoError(t, err)
+
+	// remote.Login only accepts an *auth.Client, so Login must not hand it
+	// the custom registry authorizer.
+	require.NoError(t, c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")))
+}
+
+func writeRegistriesConf(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "registries.conf")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	return path
+}
+
+func TestLogin_BlockedRegistry(t *testing.T) {
+	t.Parallel()
+
+	host := "blocked.example.test"
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		withRegistriesConfigPath(writeRegistriesConf(t, fmt.Sprintf("[[registry]]\nprefix = %q\nblocked = true\n", host))),
+	)
+	require.NoError(t, err)
+
+	err = c.Login(host, LoginOptBasicAuth("u", "p"))
+	require.ErrorIs(t, err, remoteconfig.ErrRegistryBlocked)
+}
+
+func TestNewRegistry_TokenFlow(t *testing.T) {
+	t.Parallel()
+
+	host := "tokenflow.example.test"
+	tests := []struct {
+		name        string
+		tokenFlow   string
+		wantFetcher bool
+		wantErr     bool
+	}{
+		{name: "default", tokenFlow: "", wantFetcher: false},
+		{name: "distribution", tokenFlow: "distribution", wantFetcher: true},
+		{name: "invalid", tokenFlow: "bogus", wantErr: true},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.wantWarn, warnIfHostHasPath(tt.host))
+			t.Parallel()
+
+			conf := fmt.Sprintf("[[registry]]\nprefix = %q\n", host)
+			if tt.tokenFlow != "" {
+				conf += fmt.Sprintf("token-flow = %q\n", tt.tokenFlow)
+			}
+			c, err := NewClient(
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+				withRegistriesConfigPath(writeRegistriesConf(t, conf)),
+			)
+			require.NoError(t, err)
+
+			reg, err := c.newRegistry(host)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			authClient, ok := reg.Client.(*auth.Client)
+			require.True(t, ok)
+			require.Equal(t, tt.wantFetcher, authClient.TokenFetcher != nil)
 		})
 	}
+}
+
+func TestNewRepository_SignatureVerificationEvaluator(t *testing.T) {
+	t.Parallel()
+
+	newSigClient := func(t *testing.T, options ...ClientOption) *Client {
+		t.Helper()
+		options = append([]ClientOption{
+			ClientOptWriter(io.Discard),
+			ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+			ClientOptSignatureVerification(true),
+		}, options...)
+		c, err := NewClient(options...)
+		require.NoError(t, err)
+
+		// Replace the host's config stack with a policy and a registries.d
+		// lookaside so a signature verifier is built for every scope.
+		c.configs = &remoteconfig.Configs{
+			PolicyConfig: policy.NewInsecureAcceptAnythingPolicy(),
+			RegistriesDConfig: &remoteconfig.RegistriesDConfig{
+				DefaultDocker: &remoteconfig.RegistriesDDockerConfig{Lookaside: "file://" + t.TempDir()},
+			},
+		}
+		return c
+	}
+
+	t.Run("config-derived evaluator is replaced", func(t *testing.T) {
+		t.Parallel()
+		c := newSigClient(t)
+		configEval, err := c.configs.PolicyEvaluator()
+		require.NoError(t, err)
+		c.policyEvaluator = configEval
+		c.builder.PolicyEvaluator = configEval
+
+		repo, err := c.newRepository("example.test/charts/mychart:1.0.0")
+		require.NoError(t, err)
+		require.NotNil(t, repo.Registry.Policy)
+		require.NotSame(t, configEval, repo.Registry.Policy, "signature-scoped evaluator should be installed")
+	})
+
+	t.Run("caller-supplied evaluator is kept", func(t *testing.T) {
+		t.Parallel()
+		custom, err := policy.NewEvaluator(policy.NewRejectAllPolicy())
+		require.NoError(t, err)
+		c := newSigClient(t, ClientOptPolicyEvaluator(custom))
+
+		repo, err := c.newRepository("example.test/charts/mychart:1.0.0")
+		require.NoError(t, err)
+		require.Same(t, custom, repo.Registry.Policy)
+	})
 }
