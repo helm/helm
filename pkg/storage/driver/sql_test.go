@@ -14,6 +14,7 @@ limitations under the License.
 package driver
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
@@ -560,4 +561,159 @@ func TestSqlCheckAppliedMigrations(t *testing.T) {
 		mock.ExpectCommit()
 		assert.Equal(t, c.expectedResult, sqlDriver.checkAlreadyApplied(c.migrationsToApply), "Test case: %v, Expected: %v, Have: %v, Explanation: %v", i, c.expectedResult, !c.expectedResult, c.errorExplanation)
 	}
+}
+
+// TestSqlCreateCommitError verifies that a commit-time failure is surfaced to
+// the caller. A deferred, error-discarding Commit would report success even
+// though nothing was persisted.
+func TestSqlCreateCommitError(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	body, _ := encodeRelease(rel)
+
+	query := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(query)).
+		WithArgs(
+			key,
+			sqlReleaseDefaultType,
+			body,
+			rel.Name,
+			rel.Namespace,
+			int(rel.Version),
+			rel.Info.Status.String(),
+			sqlReleaseDefaultOwner,
+			recentUnixTimestamp(),
+		).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	labelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(labelsQuery)).
+			WithArgs(key, rel.Namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	mock.ExpectCommit().WillReturnError(errors.New("transaction commit failed"))
+
+	err := sqlDriver.Create(key, rel)
+	require.Error(t, err, "expected Create to surface the commit error, got nil")
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+// TestSqlDeleteCommitError verifies that a commit-time failure during Delete is
+// surfaced to the caller instead of being silently discarded.
+func TestSqlDeleteCommitError(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+	body, _ := encodeRelease(rel)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	selectQuery := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery(regexp.QuoteMeta(selectQuery)).
+		WithArgs(key, namespace).
+		WillReturnRows(
+			mock.NewRows([]string{sqlReleaseTableBodyColumn}).AddRow(body),
+		).RowsWillBeClosed()
+
+	deleteQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mockGetReleaseCustomLabels(mock, key, namespace, rel.Labels)
+
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectCommit().WillReturnError(errors.New("transaction commit failed"))
+
+	_, err := sqlDriver.Delete(key)
+	require.Error(t, err, "expected Delete to surface the commit error, got nil")
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+// TestSqlDeleteNotFoundReleasesTransaction verifies that the not-found path
+// rolls back the transaction rather than leaking its pooled connection.
+func TestSqlDeleteNotFoundReleasesTransaction(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	selectQuery := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery(regexp.QuoteMeta(selectQuery)).
+		WithArgs(key, namespace).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
+
+	_, err := sqlDriver.Delete(key)
+	require.ErrorIs(t, err, ErrReleaseNotFound)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
 }
