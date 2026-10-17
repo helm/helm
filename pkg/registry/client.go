@@ -1015,7 +1015,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 
 	ctx = withScopeHint(ctx, repository, auth.ActionPull, auth.ActionPush)
 
-	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
+	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.forRepository(repository), oras.DefaultExtendedCopyOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -1130,8 +1130,7 @@ func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
 	}
 
 	ctx := context.Background()
-	parsedString := parsedReference.String()
-	return remoteRepository.Resolve(ctx, parsedString)
+	return remoteRepository.Resolve(ctx, parsedReference.forRepository(remoteRepository))
 }
 
 // ValidateReference for path and version
