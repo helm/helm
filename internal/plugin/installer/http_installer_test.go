@@ -36,6 +36,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
@@ -464,6 +465,7 @@ func TestExtractPluginInSubdirectory(t *testing.T) {
 		CacheDir:   tempDir,
 		PluginName: "subdir-plugin",
 		base:       newBase(source),
+		settings:   cli.New(),
 		extractor:  &TarGzExtractor{},
 	}
 
@@ -487,4 +489,39 @@ func TestExtractPluginInSubdirectory(t *testing.T) {
 
 	expectedRoot := filepath.Join(tempDir, "my-plugin")
 	assert.Equal(t, expectedRoot, pluginRoot, "Expected plugin root to be %s but got %s", expectedRoot, pluginRoot)
+}
+
+func TestHTTPInstaller_Path(t *testing.T) {
+	customPluginsDir := "/foo/bar"
+
+	tests := []struct {
+		name           string
+		source         string
+		helmPluginsDir string
+		expectPath     string
+	}{
+		{
+			name:           "default helm plugins dir",
+			source:         "https://example.com/fake-plugin-0.0.1.tar.gz",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "fake-plugin"),
+		}, {
+			name:           "custom helm plugins dir",
+			source:         "https://example.com/fake-plugin-0.0.1.tar.gz",
+			helmPluginsDir: customPluginsDir,
+			expectPath:     filepath.Join(customPluginsDir, "fake-plugin"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.helmPluginsDir != "" {
+				t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+			}
+			installer, err := NewHTTPInstaller(tt.source)
+			require.NoError(t, err)
+			path := installer.Path()
+			assert.Equal(t, tt.expectPath, path)
+		})
+	}
 }
