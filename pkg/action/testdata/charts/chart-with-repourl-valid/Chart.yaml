@@ -1,0 +1,5 @@
+apiVersion: v2
+name: chart-with-repourl-valid
+version: 0.1.0
+description: Test chart containing a valid repoURL in metadata
+repoURL: https://example.com/charts

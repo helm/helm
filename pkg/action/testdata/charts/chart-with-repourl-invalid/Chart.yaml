@@ -1,0 +1,5 @@
+apiVersion: v2
+name: chart-with-repourl-invalid
+version: 0.1.0
+description: Test chart containing an invalid repoURL in metadata
+repoURL: "ht!tp://not-a-valid-url"
