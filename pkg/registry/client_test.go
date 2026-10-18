@@ -476,3 +476,67 @@ func TestNewRepository_SignatureVerificationEvaluator(t *testing.T) {
 		require.Same(t, custom, repo.Registry.Policy)
 	})
 }
+
+func TestLogin_PathScopedLocationRewrite(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	canonicalHost := strings.TrimPrefix(srv.URL, "http://")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		withRegistriesConfigPath(writeRegistriesConf(t, fmt.Sprintf(
+			"[[registry]]\nprefix = %q\nlocation = %q\n", "alias.example.test/team", canonicalHost+"/org",
+		))),
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, c.Login("alias.example.test/team", LoginOptPlainText(true), LoginOptBasicAuth("u", "p")))
+
+	// Credential must be stored under the rewritten namespace.
+	cred, err := c.credentialsStore.Get(context.Background(), canonicalHost+"/org")
+	require.NoError(t, err)
+	require.Equal(t, "u", cred.Username)
+}
+
+func TestLogin_PathScopedBlockedRegistry(t *testing.T) {
+	t.Parallel()
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		withRegistriesConfigPath(writeRegistriesConf(t, "[[registry]]\nprefix = \"blocked.example.test/team\"\nblocked = true\n")),
+	)
+	require.NoError(t, err)
+
+	err = c.Login("blocked.example.test/team", LoginOptBasicAuth("u", "p"))
+	require.ErrorIs(t, err, remoteconfig.ErrRegistryBlocked)
+}
+
+func TestServerAddressStore_DockerHub(t *testing.T) {
+	t.Parallel()
+
+	inner, err := credentials.NewStore(filepath.Join(t.TempDir(), "config.json"), credentials.StoreOptions{AllowPlaintextPut: true})
+	require.NoError(t, err)
+	ctx := context.Background()
+	require.NoError(t, inner.Put(ctx, "https://index.docker.io/v1/", credentials.Credential{Username: "u", Password: "p"}))
+
+	store := &serverAddressStore{inner: inner}
+	cred, err := store.Get(ctx, "registry-1.docker.io")
+	require.NoError(t, err)
+	require.Equal(t, "u", cred.Username)
+
+	// The namespaced wrapper falls back to the normalized host key.
+	ns := &namespacedStore{inner: store, repository: "library/nginx"}
+	cred, err = ns.Get(ctx, "registry-1.docker.io")
+	require.NoError(t, err)
+	require.Equal(t, "u", cred.Username)
+}

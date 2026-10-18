@@ -167,7 +167,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		logger = slog.Default()
 	}
 	builder := remote.NewClientBuilder()
-	builder.CredentialStore = credStore
+	builder.CredentialStore = &serverAddressStore{inner: credStore}
 	builder.UserAgent = version.GetUserAgent()
 	builder.Logger = logger
 	builder.PolicyEvaluator = client.policyEvaluator
@@ -287,8 +287,12 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 	return repo, nil
 }
 
-// newRegistry creates a configured remote.Registry for the given host (used by Login).
-func (c *Client) newRegistry(host string) (*remote.Registry, error) {
+// newRegistry creates a configured remote.Registry for the given reference (used by Login).
+//
+// ref is a registry host optionally followed by a repository path; the path is
+// only used to match path-scoped registries.conf rules.
+func (c *Client) newRegistry(ref string) (*remote.Registry, error) {
+	host, _, _ := strings.Cut(ref, "/")
 	if c.customHTTPClient {
 		// Legacy path: use c.authorizer directly. registryAuthorizer is not
 		// used here because remote.Login only accepts an *auth.Client.
@@ -306,10 +310,10 @@ func (c *Client) newRegistry(host string) (*remote.Registry, error) {
 	// repository, so the host's registries.conf entry is applied here.
 	props := properties.NewRegistryFromReference(properties.Reference{Registry: host})
 	if rc := c.configs.RegistriesConfig; rc != nil {
-		if rc.IsBlocked(host) {
-			return nil, fmt.Errorf("%w: %s", remoteconfig.ErrRegistryBlocked, host)
+		if rc.IsBlocked(ref) {
+			return nil, fmt.Errorf("%w: %s", remoteconfig.ErrRegistryBlocked, ref)
 		}
-		if reg := rc.FindRegistry(host); reg != nil {
+		if reg := rc.FindRegistry(ref); reg != nil {
 			if reg.Insecure {
 				props.Transport.Insecure = true
 			}
@@ -463,6 +467,31 @@ func (noopStore) Get(_ context.Context, _ string) (credentials.Credential, error
 func (noopStore) Put(_ context.Context, _ string, _ credentials.Credential) error { return nil }
 func (noopStore) Delete(_ context.Context, _ string) error                        { return nil }
 
+// serverAddressStore wraps a credentials.Store and maps the request host to
+// the server address used as the credential key, mirroring
+// remote.NewCredentialFunc. The ClientBuilder looks credentials up by the host
+// it dials, so Docker Hub requests arrive as "registry-1.docker.io" while
+// Docker and Helm store them under "https://index.docker.io/v1/".
+type serverAddressStore struct {
+	inner credentials.Store
+}
+
+func (s *serverAddressStore) Get(ctx context.Context, serverAddress string) (credentials.Credential, error) {
+	serverAddress = remote.ServerAddressFromHostname(serverAddress)
+	if serverAddress == "" {
+		return credentials.EmptyCredential, nil
+	}
+	return s.inner.Get(ctx, serverAddress)
+}
+
+func (s *serverAddressStore) Put(ctx context.Context, serverAddress string, cred credentials.Credential) error {
+	return s.inner.Put(ctx, serverAddress, cred)
+}
+
+func (s *serverAddressStore) Delete(ctx context.Context, serverAddress string) error {
+	return s.inner.Delete(ctx, serverAddress)
+}
+
 // namespacedStore wraps a credentials.Store and performs hierarchical
 // credential lookup: it tries "hostname/full/repo", then "hostname/partial",
 // then falls back to "hostname" for each auth challenge.
@@ -500,22 +529,22 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return op.err
 	}
 
-	// Separate the registry hostname from any namespace path.
-	// e.g., "localhost:8000/myrepo" → registryHost="localhost:8000", namespacePath="myrepo"
-	registryHost, namespacePath, hasNamespace := strings.Cut(host, "/")
-
-	// Determine canonical host from registries.conf Location rewrite.
-	// We use the original (alias) host for newRegistry so its transport
-	// settings (Insecure, certs.d) are preserved, then redirect the
-	// authentication endpoint and credential key to the canonical host.
-	canonicalHost := registryHost
+	// Apply the registries.conf Location rewrite to the full input, since a
+	// rule may be scoped to a repository path (e.g. "alias.example/team").
+	target := host
 	if c.configs != nil && c.configs.RegistriesConfig != nil {
-		if regCfg := c.configs.RegistriesConfig.FindRegistry(registryHost); regCfg != nil && regCfg.Location != "" {
-			canonicalHost = regCfg.Location
-		}
+		target = c.configs.RegistriesConfig.RewriteReference(host)
 	}
 
-	reg, err := c.newRegistry(registryHost)
+	// Separate the canonical registry hostname from any namespace path.
+	// e.g., "localhost:8000/myrepo" → canonicalHost="localhost:8000", namespacePath="myrepo"
+	canonicalHost, namespacePath, hasNamespace := strings.Cut(target, "/")
+
+	// We use the original (alias) reference for newRegistry so its transport
+	// settings (Insecure, certs.d, token-flow, blocked) are preserved, then
+	// redirect the authentication endpoint and credential key to the
+	// canonical host.
+	reg, err := c.newRegistry(host)
 	if err != nil {
 		return err
 	}
