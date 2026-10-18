@@ -712,18 +712,10 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 		opt(operation)
 	}
 
-	// Extract registry hostname for Location rewrite lookup.
-	registryHost, namespacePath, hasNamespace := strings.Cut(host, "/")
-	canonicalHost := registryHost
+	// Apply the registries.conf Location rewrite to the full input, matching
+	// Login, since a rule may be scoped to a repository path.
 	if c.configs != nil && c.configs.RegistriesConfig != nil {
-		if regCfg := c.configs.RegistriesConfig.FindRegistry(registryHost); regCfg != nil && regCfg.Location != "" {
-			canonicalHost = regCfg.Location
-		}
-	}
-	if hasNamespace {
-		host = canonicalHost + "/" + namespacePath
-	} else {
-		host = canonicalHost
+		host = c.configs.RegistriesConfig.RewriteReference(host)
 	}
 
 	if err := remote.Logout(context.Background(), c.credentialsStore, host); err != nil {
