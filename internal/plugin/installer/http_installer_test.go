@@ -239,24 +239,24 @@ func TestExtract(t *testing.T) {
 		readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
 }
 
-func TestCleanJoin(t *testing.T) {
+func TestCleanPath(t *testing.T) {
 	for i, fixture := range []struct {
 		path        string
 		expect      string
 		expectError bool
 	}{
-		{"foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"foo/bar.txt", "foo/bar.txt", false},
 		{"/foo/bar.txt", "", true},
-		{"./foo/bar.txt", "/tmp/foo/bar.txt", false},
-		{"./././././foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"./foo/bar.txt", "foo/bar.txt", false},
+		{"./././././foo/bar.txt", "foo/bar.txt", false},
 		{"../../../../foo/bar.txt", "", true},
 		{"foo/../../../../bar.txt", "", true},
-		{"c:/foo/bar.txt", "/tmp/c:/foo/bar.txt", true},
-		{"foo\\bar.txt", "/tmp/foo/bar.txt", false},
+		{"c:/foo/bar.txt", "", true},
+		{"foo\\bar.txt", "foo/bar.txt", false},
 		{"c:\\foo\\bar.txt", "", true},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			out, err := cleanJoin("/tmp", fixture.path)
+			out, err := cleanPath(fixture.path)
 			if fixture.expectError {
 				require.Error(t, err, "Test %d: Path was not cleaned", i)
 			} else {
