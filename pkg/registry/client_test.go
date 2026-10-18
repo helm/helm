@@ -505,6 +505,12 @@ func TestLogin_PathScopedLocationRewrite(t *testing.T) {
 	cred, err := c.credentialsStore.Get(context.Background(), canonicalHost+"/org")
 	require.NoError(t, err)
 	require.Equal(t, "u", cred.Username)
+
+	// Logout with the same alias path must remove the rewritten credential.
+	require.NoError(t, c.Logout("alias.example.test/team"))
+	cred, err = c.credentialsStore.Get(context.Background(), canonicalHost+"/org")
+	require.NoError(t, err)
+	require.Equal(t, credentials.EmptyCredential, cred)
 }
 
 func TestLogin_PathScopedBlockedRegistry(t *testing.T) {
