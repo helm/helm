@@ -23,14 +23,38 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/suite"
 )
 
 type RegistryScopeTestSuite struct {
 	TestRegistry
+
+	// authServer serves the token realm for the whole suite on the listener
+	// reserved by setup(). It is closed in TearDownSuite, which releases the
+	// reserved port only once every test in the suite has finished.
+	authServer *httptest.Server
+	authMu     sync.Mutex
+	authURLs   []string
+}
+
+// handleAuth records the requested URL and replies without a token payload,
+// so the push/pull flow fails, which is what the tests assert on. It never
+// blocks, so the auth server always responds and the push/pull flow cannot
+// deadlock waiting on us.
+func (suite *RegistryScopeTestSuite) handleAuth(w http.ResponseWriter, r *http.Request) {
+	suite.authMu.Lock()
+	suite.authURLs = append(suite.authURLs, r.URL.String())
+	suite.authMu.Unlock()
+	w.WriteHeader(http.StatusOK)
+}
+
+func (suite *RegistryScopeTestSuite) recordedAuthURLs() []string {
+	suite.authMu.Lock()
+	defer suite.authMu.Unlock()
+	return append([]string(nil), suite.authURLs...)
 }
 
 func (suite *RegistryScopeTestSuite) SetupSuite() {
@@ -39,33 +63,41 @@ func (suite *RegistryScopeTestSuite) SetupSuite() {
 	// http as well: oras refuses to send credentials to an http token realm
 	// when the registry itself was reached over https.
 	setup(&suite.TestRegistry, false, false, "token")
+
+	// Start the realm server once for the whole suite, directly on the
+	// listener that setup() reserved. Re-binding the same address per test
+	// (the previous behaviour) left a window between setup()'s probe close
+	// and the test's Listen call in which any other process could steal the
+	// port, so the token realm could silently belong to a stranger.
+	suite.authServer = httptest.NewUnstartedServer(http.HandlerFunc(suite.handleAuth))
+	suite.authServer.Listener = suite.authListener
+	suite.authServer.Start()
 }
 
 func (suite *RegistryScopeTestSuite) TearDownSuite() {
+	if suite.authServer != nil {
+		suite.authServer.Close()
+		suite.authServer = nil
+	}
 	teardown(&suite.TestRegistry)
 	os.RemoveAll(suite.WorkspaceDir)
 }
 
-func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
-	requestURL := make(chan string, 1)
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Capture only the first auth request; never block the handler if the
-		// client happens to retry, so the auth server always responds and the
-		// push/pull flow can't deadlock waiting on us.
-		select {
-		case requestURL <- r.URL.String():
-		default:
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-	lnCfg := net.ListenConfig{}
-	listener, err := lnCfg.Listen(suite.T().Context(), "tcp", suite.AuthServerHost)
-	suite.Require().NoError(err, "no error creating server listener")
+func (suite *RegistryScopeTestSuite) Test_0_Auth_Port_Stays_Reserved() {
+	// Regression guard for the free-port re-bind race: setup() used to close
+	// the auth probe listener when it returned, leaving the port free until
+	// each test re-bound it. If any other process won that window, the token
+	// realm silently belonged to the stranger. The suite must hold the
+	// listener until teardown, so binding the same address must fail.
+	ln, err := net.Listen("tcp", suite.AuthServerHost)
+	if err == nil {
+		_ = ln.Close()
+		suite.T().Fatal("auth server port must stay reserved by the suite until teardown")
+	}
+}
 
-	ts := httptest.NewUnstartedServer(handler)
-	ts.Listener = listener
-	ts.Start()
-	defer ts.Close()
+func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
+	before := len(suite.recordedAuthURLs())
 
 	// basic push, good ref
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
@@ -78,40 +110,21 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 	suite.Require().Error(err, "error pushing good ref because auth server doesn't give proper token")
 
 	// check the url that authentication server received
-	select {
-	case urlStr := <-requestURL:
-		u, err := url.Parse(urlStr)
-		suite.Require().NoError(err, "no error parsing requested URL")
-
-		suite.Equal("/auth", u.Path)
-		suite.Equal("testservice", u.Query().Get("service"))
-		scope := u.Query().Get("scope")
-		suite.Contains(scope, "repository:testrepo/local-subchart:pull,push")
-	case <-time.After(5 * time.Second):
-		suite.T().Fatal("timeout waiting for auth request")
+	urls := suite.recordedAuthURLs()
+	if len(urls) <= before {
+		suite.T().Fatal("auth server did not receive any request during push")
 	}
+	u, err := url.Parse(urls[before])
+	suite.Require().NoError(err, "no error parsing requested URL")
+
+	suite.Equal("/auth", u.Path)
+	suite.Equal("testservice", u.Query().Get("service"))
+	scope := u.Query().Get("scope")
+	suite.Contains(scope, "repository:testrepo/local-subchart:pull,push")
 }
 
 func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
-	requestURL := make(chan string, 1)
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Capture only the first auth request; never block the handler if the
-		// client happens to retry, so the auth server always responds and the
-		// push/pull flow can't deadlock waiting on us.
-		select {
-		case requestURL <- r.URL.String():
-		default:
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-	lnCfg := net.ListenConfig{}
-	listener, err := lnCfg.Listen(suite.T().Context(), "tcp", suite.AuthServerHost)
-	suite.Require().NoError(err, "no error creating server listener")
-
-	ts := httptest.NewUnstartedServer(handler)
-	ts.Listener = listener
-	ts.Start()
-	defer ts.Close()
+	before := len(suite.recordedAuthURLs())
 
 	// Load test chart (to build ref pushed in previous test)
 	// Simple pull, chart only
@@ -124,18 +137,17 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 	suite.Require().Error(err, "error pulling a simple chart because auth server doesn't give proper token")
 
 	// check the url that authentication server received
-	select {
-	case urlStr := <-requestURL:
-		u, err := url.Parse(urlStr)
-		suite.Require().NoError(err, "no error parsing requested URL")
-
-		suite.Equal("/auth", u.Path)
-		suite.Equal("testservice", u.Query().Get("service"))
-		scope := u.Query().Get("scope")
-		suite.Contains(scope, "repository:testrepo/local-subchart:pull")
-	case <-time.After(5 * time.Second):
-		suite.T().Fatal("timeout waiting for auth request")
+	urls := suite.recordedAuthURLs()
+	if len(urls) <= before {
+		suite.T().Fatal("auth server did not receive any request during pull")
 	}
+	u, err := url.Parse(urls[before])
+	suite.Require().NoError(err, "no error parsing requested URL")
+
+	suite.Equal("/auth", u.Path)
+	suite.Equal("testservice", u.Query().Get("service"))
+	scope := u.Query().Get("scope")
+	suite.Contains(scope, "repository:testrepo/local-subchart:pull")
 }
 
 func TestRegistryScopeTestSuite(t *testing.T) {
