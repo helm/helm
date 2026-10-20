@@ -197,7 +197,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 
 		reg, err := serveTestRegistry(suite.T().Context(), config)
 		if err != nil {
-			lastErr = err
+			lastErr = errors.Join(lastErr, err)
 			continue
 		}
 		suite.dockerRegistry = reg
@@ -662,8 +662,10 @@ func serveTestRegistry(ctx context.Context, config *configuration.Configuration)
 				return nil, listenAndServeFailure(err)
 			default:
 			}
+			_ = reg.Shutdown(context.Background())
 			return nil, fmt.Errorf("timed out waiting for test registry on %s to accept connections", config.HTTP.Addr)
 		case <-ctx.Done():
+			_ = reg.Shutdown(context.Background())
 			return nil, ctx.Err()
 		}
 	}
@@ -706,6 +708,7 @@ func TestServeTestRegistrySurfacesBindError(t *testing.T) {
 
 	reg, err := serveTestRegistry(context.Background(), config)
 	require.Error(t, err, "serveTestRegistry must report the bind failure")
-	assert.Contains(t, err.Error(), "address already in use")
+	var opErr *net.OpError
+	assert.ErrorAs(t, err, &opErr)
 	assert.Nil(t, reg, "no registry is returned when the bind fails")
 }

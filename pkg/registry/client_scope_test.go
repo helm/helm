@@ -111,9 +111,7 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
 	// check the url that authentication server received
 	urls := suite.recordedAuthURLs()
-	if len(urls) <= before {
-		suite.T().Fatal("auth server did not receive any request during push")
-	}
+	suite.Require().Greater(len(urls), before, "auth server did not receive any request during push")
 	u, err := url.Parse(urls[before])
 	suite.Require().NoError(err, "no error parsing requested URL")
 
@@ -138,9 +136,7 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 
 	// check the url that authentication server received
 	urls := suite.recordedAuthURLs()
-	if len(urls) <= before {
-		suite.T().Fatal("auth server did not receive any request during pull")
-	}
+	suite.Require().Greater(len(urls), before, "auth server did not receive any request during pull")
 	u, err := url.Parse(urls[before])
 	suite.Require().NoError(err, "no error parsing requested URL")
 
