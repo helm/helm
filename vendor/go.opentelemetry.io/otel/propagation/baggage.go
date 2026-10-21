@@ -7,9 +7,16 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/internal/errorhandler"
 )
 
-const baggageHeader = "baggage"
+const (
+	baggageHeader = "baggage"
+
+	// W3C Baggage specification limits.
+	// https://www.w3.org/TR/baggage/#limits
+	maxMembers = 64
+)
 
 // Baggage is a propagator that supports the W3C Baggage format.
 //
@@ -20,7 +27,7 @@ type Baggage struct{}
 var _ TextMapPropagator = Baggage{}
 
 // Inject sets baggage key-values from ctx into the carrier.
-func (b Baggage) Inject(ctx context.Context, carrier TextMapCarrier) {
+func (Baggage) Inject(ctx context.Context, carrier TextMapCarrier) {
 	bStr := baggage.FromContext(ctx).String()
 	if bStr != "" {
 		carrier.Set(baggageHeader, bStr)
@@ -28,7 +35,21 @@ func (b Baggage) Inject(ctx context.Context, carrier TextMapCarrier) {
 }
 
 // Extract returns a copy of parent with the baggage from the carrier added.
-func (b Baggage) Extract(parent context.Context, carrier TextMapCarrier) context.Context {
+// If carrier implements [ValuesGetter] (e.g. [HeaderCarrier]), Values is invoked
+// for multiple values extraction. Otherwise, Get is called.
+func (Baggage) Extract(parent context.Context, carrier TextMapCarrier) context.Context {
+	if multiCarrier, ok := carrier.(ValuesGetter); ok {
+		return extractMultiBaggage(parent, multiCarrier)
+	}
+	return extractSingleBaggage(parent, carrier)
+}
+
+// Fields returns the keys who's values are set with Inject.
+func (Baggage) Fields() []string {
+	return []string{baggageHeader}
+}
+
+func extractSingleBaggage(parent context.Context, carrier TextMapCarrier) context.Context {
 	bStr := carrier.Get(baggageHeader)
 	if bStr == "" {
 		return parent
@@ -36,12 +57,41 @@ func (b Baggage) Extract(parent context.Context, carrier TextMapCarrier) context
 
 	bag, err := baggage.Parse(bStr)
 	if err != nil {
+		errorhandler.GetErrorHandler().Handle(err)
+	}
+	if bag.Len() == 0 {
 		return parent
 	}
 	return baggage.ContextWithBaggage(parent, bag)
 }
 
-// Fields returns the keys who's values are set with Inject.
-func (b Baggage) Fields() []string {
-	return []string{baggageHeader}
+func extractMultiBaggage(parent context.Context, carrier ValuesGetter) context.Context {
+	bVals := carrier.Values(baggageHeader)
+	if len(bVals) == 0 {
+		return parent
+	}
+
+	var members []baggage.Member
+	for _, bStr := range bVals {
+		currBag, err := baggage.Parse(bStr)
+		if err != nil {
+			errorhandler.GetErrorHandler().Handle(err)
+		}
+		if currBag.Len() == 0 {
+			continue
+		}
+		members = append(members, currBag.Members()...)
+		if len(members) >= maxMembers {
+			break
+		}
+	}
+
+	b, err := baggage.New(members...)
+	if err != nil {
+		errorhandler.GetErrorHandler().Handle(err)
+	}
+	if b.Len() == 0 {
+		return parent
+	}
+	return baggage.ContextWithBaggage(parent, b)
 }
