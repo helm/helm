@@ -103,9 +103,21 @@ $ export HELM_E2E_SINGLE_REPO=helm-e2e
 
 The suite has no registry-specific behavior — everything comes from the
 environment — so covering a new registry is a matter of pointing the same tests
-at it. `.github/workflows/e2e-registries.yml` runs it against Docker Hub on a
-schedule, in single-repository mode, to catch changes that break a particular
-registry implementation rather than OCI in general.
+at it. `.github/workflows/e2e-registries.yml` runs it on a schedule against
+Docker Hub, in single-repository mode, and against GitLab, in the default
+layout, to catch changes that break a particular registry implementation rather
+than OCI in general.
+
+To run it against GitLab yourself, create a project, then a deploy token on it
+with the `read_registry` and `write_registry` scopes, and point the suite at the
+project's registry:
+
+```console
+$ export HELM_E2E_REGISTRY=registry.gitlab.com/<namespace>/<project>
+$ export HELM_E2E_USERNAME=gitlab+deploy-token-<id>
+$ export HELM_E2E_PASSWORD=<deploy token>
+$ make test-e2e
+```
 
 A default `registry` serves anonymous access, so the invalid-credential test
 skips itself there, as described above.
