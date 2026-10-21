@@ -88,7 +88,7 @@ func TestLoadCLIPlugins(t *testing.T) {
 		out bytes.Buffer
 		cmd cobra.Command
 	)
-	loadCLIPlugins(&cmd, &out)
+	loadCLIPlugins(&cmd, NewLogger(false), &out)
 
 	fullEnvOutput := strings.Join([]string{
 		"HELM_PLUGIN_NAME=fullenv",
@@ -155,7 +155,7 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 		out bytes.Buffer
 		cmd cobra.Command
 	)
-	loadCLIPlugins(&cmd, &out)
+	loadCLIPlugins(&cmd, NewLogger(false), &out)
 
 	envs := strings.Join([]string{
 		"fullenv",
@@ -220,7 +220,7 @@ func TestLoadCLIPluginsForCompletion(t *testing.T) {
 	cmd := &cobra.Command{
 		Use: "completion",
 	}
-	loadCLIPlugins(cmd, &out)
+	loadCLIPlugins(cmd, NewLogger(false), &out)
 
 	tests := []staticCompletionDetails{
 		{"args", []string{}, []string{}, []staticCompletionDetails{}},
@@ -313,7 +313,7 @@ func TestLoadCLIPlugins_HelmNoPlugins(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
-	loadCLIPlugins(cmd, out)
+	loadCLIPlugins(cmd, NewLogger(false), out)
 	plugins := cmd.Commands()
 
 	require.Empty(t, plugins, "Expected 0 plugins, got %d", len(plugins))
