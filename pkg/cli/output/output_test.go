@@ -57,7 +57,7 @@ func TestFormatsWithDesc(t *testing.T) {
 func TestFormatString(t *testing.T) {
 	for f, s := range map[Format]string{Table: "table", JSON: "json", YAML: "yaml"} {
 		if f.String() != s {
-			t.Errorf("Format(%q).String() = %q", f, s)
+			t.Errorf("Format(%q).String() = %q, want %q", f, f.String(), s)
 		}
 	}
 }
@@ -93,9 +93,9 @@ func TestParseFormat(t *testing.T) {
 
 type recordingWriter struct{ called string }
 
-func (r *recordingWriter) WriteTable(out io.Writer) error { r.called = "table"; return nil }
-func (r *recordingWriter) WriteJSON(out io.Writer) error   { r.called = "json"; return nil }
-func (r *recordingWriter) WriteYAML(out io.Writer) error   { r.called = "yaml"; return nil }
+func (r *recordingWriter) WriteTable(_ io.Writer) error { r.called = "table"; return nil }
+func (r *recordingWriter) WriteJSON(_ io.Writer) error  { r.called = "json"; return nil }
+func (r *recordingWriter) WriteYAML(_ io.Writer) error  { r.called = "yaml"; return nil }
 
 func TestFormatWrite(t *testing.T) {
 	tests := []struct {
@@ -128,7 +128,7 @@ func TestFormatWrite(t *testing.T) {
 
 type failingWriter struct{}
 
-func (failingWriter) Write(p []byte) (int, error) { return 0, errors.New("write failed") }
+func (failingWriter) Write(_ []byte) (int, error) { return 0, errors.New("write failed") }
 
 func TestEncodeJSON(t *testing.T) {
 	var buf bytes.Buffer
@@ -160,6 +160,10 @@ func TestEncodeYAML(t *testing.T) {
 	if err := EncodeYAML(failingWriter{}, map[string]string{"a": "b"}); err == nil {
 		t.Error("EncodeYAML() to failing writer: expected error")
 	}
+
+	if err := EncodeYAML(io.Discard, make(chan int)); err == nil {
+		t.Error("EncodeYAML() of unencodable value: expected error")
+	}
 }
 
 func TestEncodeTable(t *testing.T) {
@@ -177,7 +181,7 @@ func TestEncodeTable(t *testing.T) {
 			t.Errorf("EncodeTable() output missing %q: %q", want, out)
 		}
 	}
-	if out[len(out)-1] != '\n' {
+	if !bytes.HasSuffix(buf.Bytes(), []byte("\n")) {
 		t.Errorf("EncodeTable() output should end with a newline, got %q", out)
 	}
 
