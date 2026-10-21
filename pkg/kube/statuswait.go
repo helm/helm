@@ -52,6 +52,12 @@ type statusWaiter struct {
 	waitForDeleteCtx     context.Context
 	readers              []engine.StatusReader
 	statusComputeWorkers int
+	// customReadiness enables per-resource evaluation of the
+	// helm.sh/readiness-success|failure annotations in Wait and WaitWithJobs.
+	// WatchUntilReady deliberately ignores it: hook readiness is defined by
+	// hook semantics, and the partial-annotation warning only runs for
+	// sequenced release resources.
+	customReadiness bool
 	logging.LogHolder
 }
 
@@ -75,6 +81,17 @@ func getStatusWatcher(dynamicClient dynamic.Interface, mapper meta.RESTMapper) *
 	return sw
 }
 
+// wrapCustomReadiness layers custom readiness evaluation on top of the reader
+// chain a wait method would otherwise use. It must wrap the complete chain so
+// that resources without the annotations are delegated to exactly the readers
+// they would get with custom readiness disabled.
+func (w *statusWaiter) wrapCustomReadiness(fallback engine.StatusReader) engine.StatusReader {
+	if !w.customReadiness {
+		return fallback
+	}
+	return newCustomReadinessStatusReader(w.Logger(), fallback)
+}
+
 func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
@@ -89,6 +106,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks.
 	// If custom readers are defined they can be used as Helm hooks support any resource.
 	// We put them in front since the DelegatingStatusReader uses the first reader that matches.
+	// Custom readiness annotations (w.customReadiness) are deliberately not applied to hooks.
 	genericSR := statusreaders.NewGenericStatusReader(w.restMapper, alwaysReady)
 
 	sr := &statusreaders.DelegatingStatusReader{
@@ -107,7 +125,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
-	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
+	sw.StatusReader = w.wrapCustomReadiness(statusreaders.NewStatusReader(w.restMapper, w.readers...))
 	return w.wait(ctx, resourceList, sw)
 }
 
@@ -123,8 +141,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
 	readers = append(readers, newCustomJobStatusReader)
-	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
-	sw.StatusReader = customSR
+	sw.StatusReader = w.wrapCustomReadiness(statusreaders.NewStatusReader(w.restMapper, readers...))
 	return w.wait(ctx, resourceList, sw)
 }
 

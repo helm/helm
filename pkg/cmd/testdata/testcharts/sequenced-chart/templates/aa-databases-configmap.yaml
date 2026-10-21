@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  annotations:
+    helm.sh/resource-group: databases
+data:
+  host: localhost
