@@ -538,7 +538,8 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted, resources ku
 			kube.ClientUpdateOptionForceReplace(i.ForceReplace),
 			kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
 			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
-			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true),
+			kube.ClientUpdateOptionOwnership(rel.Name))
 	}
 	if err != nil {
 		return rel, err
