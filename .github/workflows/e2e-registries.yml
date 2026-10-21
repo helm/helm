@@ -19,10 +19,21 @@ name: e2e-registries
 #               vars.E2E_DOCKER_REPOSITORY   e.g. helm-e2e
 #               vars.E2E_DOCKER_NAMESPACE    optional, defaults to E2E_DOCKER_USERNAME
 #
+#   GitLab      vars.E2E_GITLAB_USERNAME     deploy token username, e.g. gitlab+deploy-token-123
+#               secrets.E2E_GITLAB_PASSWORD  deploy token with read_registry and write_registry
+#               vars.E2E_GITLAB_NAMESPACE    group or user that owns the project, e.g. helm
+#               vars.E2E_GITLAB_REPOSITORY   project whose container registry is used, e.g. helm-e2e
+#
 # Docker Hub does not nest repository paths, and a scoped access token may only
 # be able to write to one repository, so the suite runs in single-repository
 # mode: every fixture is pushed to <namespace>/<repository> under its own
 # version. See test/e2e/README.md.
+#
+# GitLab nests repository paths under the project, and a deploy token covers
+# every repository in its project, so the suite runs in its default layout
+# under registry.gitlab.com/<namespace>/<repository>. Its token endpoint only
+# implements the distribution GET flow, not OAuth2 POST, which makes it the
+# registry that catches a regression in Helm's token flow fallback.
 
 on:
   schedule:
@@ -106,4 +117,62 @@ jobs:
         if: steps.config.outputs.configured == 'true'
         env:
           HELM_E2E_KUBERNETES: "true"
+        run: make test-e2e
+
+  gitlab:
+    runs-on: ubuntu-latest
+    steps:
+      # Configuration is read as environment variables rather than interpolated
+      # into the script, so neither a credential nor a variable becomes shell
+      # source.
+      - name: Resolve registry configuration
+        id: config
+        env:
+          GITLAB_USERNAME: ${{ vars.E2E_GITLAB_USERNAME }}
+          GITLAB_PASSWORD: ${{ secrets.E2E_GITLAB_PASSWORD }}
+          GITLAB_NAMESPACE: ${{ vars.E2E_GITLAB_NAMESPACE }}
+          GITLAB_REPOSITORY: ${{ vars.E2E_GITLAB_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GITLAB_USERNAME}${GITLAB_PASSWORD}${GITLAB_NAMESPACE}${GITLAB_REPOSITORY}" ]; then
+            echo "no GitLab configuration set, skipping"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          missing=""
+          [ -n "${GITLAB_USERNAME}" ] || missing="${missing} vars.E2E_GITLAB_USERNAME"
+          [ -n "${GITLAB_PASSWORD}" ] || missing="${missing} secrets.E2E_GITLAB_PASSWORD"
+          [ -n "${GITLAB_NAMESPACE}" ] || missing="${missing} vars.E2E_GITLAB_NAMESPACE"
+          [ -n "${GITLAB_REPOSITORY}" ] || missing="${missing} vars.E2E_GITLAB_REPOSITORY"
+          if [ -n "${missing}" ]; then
+            echo "::error::GitLab is partially configured; missing:${missing}"
+            exit 1
+          fi
+
+          {
+            echo "HELM_E2E_REGISTRY=registry.gitlab.com/${GITLAB_NAMESPACE}/${GITLAB_REPOSITORY}"
+            echo "HELM_E2E_USERNAME=${GITLAB_USERNAME}"
+            echo "HELM_E2E_PASSWORD=${GITLAB_PASSWORD}"
+          } >> "$GITHUB_ENV"
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout source code
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
+      - name: Add variables to environment file
+        if: steps.config.outputs.configured == 'true'
+        run: cat ".github/env" >> "$GITHUB_ENV"
+      - name: Setup Go
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # pin@7.0.0
+        with:
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
+
+      # The Kubernetes install test exercises the same pull path as the
+      # registry tests and already runs in the dockerhub job, so this job
+      # skips the kind cluster and covers only the registry.
+      - name: Run end-to-end tests
+        if: steps.config.outputs.configured == 'true'
         run: make test-e2e
