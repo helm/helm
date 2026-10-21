@@ -19,7 +19,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"os"
 	"slices"
 	"strconv"
 
@@ -74,11 +73,6 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:              require.NoArgs,
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if client.AllNamespaces {
-				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER")); err != nil {
-					return err
-				}
-			}
 			client.SetStateMask()
 
 			resultsi, err := client.Run()
