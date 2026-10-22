@@ -523,3 +523,119 @@ func TestLogin_PathScopedBlockedRegistry(t *testing.T) {
 	err = c.Login("blocked.example.test/team", LoginOptBasicAuth("u", "p"))
 	require.ErrorIs(t, err, remoteconfig.ErrRegistryBlocked)
 }
+
+func TestNewClient_DisableCache(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		enableCache bool
+		wantCache   bool
+	}{
+		{name: "enabled", enableCache: true, wantCache: true},
+		{name: "disabled", enableCache: false, wantCache: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c, err := NewClient(
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+				ClientOptEnableCache(tt.enableCache),
+			)
+			require.NoError(t, err)
+
+			authClient, err := c.builder.Build(properties.NewRegistryFromReference(properties.Reference{
+				Registry:   "cache.example.test",
+				Repository: "charts/mychart",
+			}))
+			require.NoError(t, err)
+			require.Equal(t, tt.wantCache, authClient.Cache != nil)
+		})
+	}
+}
+
+func TestNewClient_InvalidConfigDeferred(t *testing.T) {
+	t.Parallel()
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		withRegistriesConfigPath(writeRegistriesConf(t, "[[registry]\nnot valid toml")),
+	)
+	require.NoError(t, err, "an unparsable config file must not fail NewClient")
+
+	_, err = c.Tags("example.test/charts/mychart")
+	require.ErrorContains(t, err, "failed to load registry configurations")
+
+	err = c.Login("example.test", LoginOptBasicAuth("u", "p"))
+	require.ErrorContains(t, err, "failed to load registry configurations")
+
+	err = c.Logout("example.test")
+	require.ErrorContains(t, err, "failed to load registry configurations")
+}
+
+func TestNewClient_PolicyEnforcement(t *testing.T) {
+	t.Parallel()
+
+	policyPath := filepath.Join(t.TempDir(), "policy.json")
+	require.NoError(t, os.WriteFile(policyPath, []byte(`{"default":[{"type":"reject"}]}`), 0o600))
+
+	tests := []struct {
+		name          string
+		options       []ClientOption
+		wantEvaluator bool
+	}{
+		{name: "not enforced by default", wantEvaluator: false},
+		{name: "enforced when enabled", options: []ClientOption{ClientOptPolicyEnforcement(true)}, wantEvaluator: true},
+		{name: "enforced with signature verification", options: []ClientOption{ClientOptSignatureVerification(true)}, wantEvaluator: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			options := append([]ClientOption{
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+				withPolicyConfigPath(policyPath),
+			}, tt.options...)
+			c, err := NewClient(options...)
+			require.NoError(t, err)
+
+			require.Equal(t, tt.wantEvaluator, c.policyEvaluator != nil)
+			require.Equal(t, tt.wantEvaluator, c.builder.PolicyEvaluator != nil)
+		})
+	}
+}
+
+func TestClientOptTLSClientConfig(t *testing.T) {
+	t.Parallel()
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptTLSClientConfig("client.crt", "client.key", "ca.crt"),
+		ClientOptInsecureSkipVerifyTLS(true),
+	)
+	require.NoError(t, err)
+	require.False(t, c.customHTTPClient, "TLS options must keep the config-driven path")
+
+	props := properties.NewRegistryFromReference(properties.Reference{Registry: "tls.example.test"})
+	c.applyOverrides(props)
+	require.Equal(t, "client.crt", props.Transport.Cert)
+	require.Equal(t, "client.key", props.Transport.Key)
+	require.Contains(t, props.Transport.CACerts, "ca.crt")
+	require.True(t, props.Transport.Insecure)
+}
+
+func TestClientOptTLSClientConfig_CertWithoutKey(t *testing.T) {
+	t.Parallel()
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptTLSClientConfig("client.crt", "", ""),
+	)
+	require.NoError(t, err)
+	require.Empty(t, c.certFile)
+	require.Empty(t, c.keyFile)
+}
