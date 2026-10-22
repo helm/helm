@@ -106,7 +106,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			continue
 		}
 
-		repoName := repoNames[d.Name]
+		repoName := repoNames[dependencyKey(d)]
 		// if the repository was not defined, but the dependency defines a repository url, bypass the cache
 		if repoName == "" && d.Repository != "" {
 			locked[i] = &chart.Dependency{
@@ -204,6 +204,13 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		Digest:       digest,
 		Dependencies: locked,
 	}, nil
+}
+
+func dependencyKey(dep *chart.Dependency) string {
+	if dep.Alias != "" {
+		return dep.Alias
+	}
+	return dep.Name
 }
 
 // HashReq generates a hash of the dependencies.
