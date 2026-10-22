@@ -249,6 +249,74 @@ func TestList_StateMaskWithStaleRevisions(t *testing.T) {
 	is.Equal("failed", ac0.Name())
 }
 
+func TestList_StateMaskWithSupersededRevisions(t *testing.T) {
+	tests := []struct {
+		name      string
+		stateMask ListStates
+		expected  map[int]common.Status
+	}{
+		{
+			name:      "superseded only",
+			stateMask: ListSuperseded,
+			expected: map[int]common.Status{
+				1: common.StatusSuperseded,
+			},
+		},
+		{
+			name:      "superseded and deployed",
+			stateMask: ListSuperseded | ListDeployed,
+			expected: map[int]common.Status{
+				1: common.StatusSuperseded,
+				2: common.StatusDeployed,
+			},
+		},
+		{
+			name:      "all states",
+			stateMask: ListAll,
+			expected: map[int]common.Status{
+				1: common.StatusSuperseded,
+				2: common.StatusDeployed,
+			},
+		},
+		{
+			name:      "deployed only",
+			stateMask: ListDeployed,
+			expected: map[int]common.Status{
+				2: common.StatusDeployed,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lister := newListFixture(t)
+			lister.StateMask = tt.stateMask
+
+			oldRelease := namedReleaseStub("release", common.StatusSuperseded)
+			oldRelease.Namespace = "default"
+			oldRelease.Version = 1
+			currentRelease := namedReleaseStub("release", common.StatusDeployed)
+			currentRelease.Namespace = "default"
+			currentRelease.Version = 2
+
+			for _, rel := range []*release.Release{oldRelease, currentRelease} {
+				require.NoError(t, lister.cfg.Releases.Create(rel))
+			}
+
+			results, err := lister.Run()
+			require.NoError(t, err)
+
+			actual := make(map[int]common.Status, len(results))
+			for _, result := range results {
+				accessor, err := ri.NewAccessor(result)
+				require.NoError(t, err)
+				actual[accessor.Version()] = common.Status(accessor.Status())
+			}
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func makeMeSomeReleasesWithStaleFailure(t *testing.T, store *storage.Storage) {
 	t.Helper()
 	one := namedReleaseStub("clean", common.StatusDeployed)
