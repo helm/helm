@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -81,4 +82,63 @@ func TestSubprocessPluginRuntime(t *testing.T) {
 	assert.Equal(t, 56, ieerr.ExitCode)
 
 	assert.Nil(t, output)
+}
+
+func TestSubprocessPluginRuntimeGetterCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the getter command is a shell script, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+
+	testCases := map[string]struct {
+		command string
+	}{
+		"relative to plugin dir": {
+			command: "get.sh",
+		},
+		"HELM_PLUGIN_DIR env var": {
+			command: "${HELM_PLUGIN_DIR}/get.sh",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			pluginDir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "get.sh"), []byte("#!/bin/sh\nprintf 'getter output'\n"), 0o755))
+
+			rc := RuntimeConfigSubprocess{
+				ProtocolCommands: []SubprocessProtocolCommand{
+					{
+						Protocols:       []string{"myprotocol"},
+						PlatformCommand: []PlatformCommand{{Command: tc.command}},
+					},
+				},
+			}
+			p := &SubprocessPluginRuntime{
+				metadata: Metadata{
+					Name:          "getter",
+					Version:       "0.1.2",
+					Type:          "getter/v1",
+					APIVersion:    "v1",
+					Runtime:       "subprocess",
+					Config:        &schema.ConfigGetterV1{Protocols: []string{"myprotocol"}},
+					RuntimeConfig: &rc,
+				},
+				pluginDir:     pluginDir,
+				RuntimeConfig: rc,
+			}
+
+			output, err := p.Invoke(t.Context(), &Input{
+				Message: schema.InputMessageGetterV1{
+					Href:     "myprotocol://example.com/chart-0.1.0.tgz",
+					Protocol: "myprotocol",
+				},
+			})
+			require.NoError(t, err)
+
+			msg, ok := output.Message.(schema.OutputMessageGetterV1)
+			require.True(t, ok)
+			assert.Equal(t, "getter output", string(msg.Data))
+		})
+	}
 }
