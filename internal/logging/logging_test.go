@@ -43,12 +43,73 @@ func TestLogHolder_Logger(t *testing.T) {
 		assert.Contains(t, buf.String(), "test message")
 	})
 
-	t.Run("should return discard - defaultlogger when no handler is set", func(t *testing.T) {
+	t.Run("should return the slog default logger when no handler is set", func(t *testing.T) {
 		holder := &LogHolder{}
 		logger := holder.Logger()
 
-		assert.Equal(t, slog.Handler(slog.DiscardHandler), logger.Handler())
+		assert.Equal(t, slog.Default(), logger)
 	})
+}
+
+// TestLogHolder_DefaultHandler covers where a LogHolder sends records for each
+// way of (not) configuring it, against a capture handler installed with
+// slog.SetDefault.
+func TestLogHolder_DefaultHandler(t *testing.T) {
+	tests := []struct {
+		name        string
+		setup       func(holder *LogHolder, ownHandler slog.Handler)
+		wantDefault bool // record lands in the slog default buffer
+		wantOwn     bool // record lands in the handler set on the holder
+	}{
+		{
+			name:        "fresh holder logs through the slog default",
+			setup:       func(_ *LogHolder, _ slog.Handler) {},
+			wantDefault: true,
+		},
+		{
+			name: "handler set on the holder wins over the slog default",
+			setup: func(holder *LogHolder, ownHandler slog.Handler) {
+				holder.SetLogger(ownHandler)
+			},
+			wantOwn: true,
+		},
+		{
+			name: "nil handler falls back to the slog default",
+			setup: func(holder *LogHolder, ownHandler slog.Handler) {
+				holder.SetLogger(ownHandler)
+				holder.SetLogger(nil)
+			},
+			wantDefault: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defaultBuf := &bytes.Buffer{}
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(defaultBuf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+			t.Cleanup(func() { slog.SetDefault(previous) })
+
+			ownBuf := &bytes.Buffer{}
+			ownHandler := slog.NewTextHandler(ownBuf, &slog.HandlerOptions{Level: slog.LevelDebug})
+
+			holder := &LogHolder{}
+			tt.setup(holder, ownHandler)
+
+			holder.Logger().Info("test message")
+
+			if tt.wantDefault {
+				assert.Contains(t, defaultBuf.String(), "test message")
+			} else {
+				assert.Empty(t, defaultBuf.String())
+			}
+			if tt.wantOwn {
+				assert.Contains(t, ownBuf.String(), "test message")
+			} else {
+				assert.Empty(t, ownBuf.String())
+			}
+		})
+	}
 }
 
 func TestLogHolder_SetLogger(t *testing.T) {
@@ -66,15 +127,17 @@ func TestLogHolder_SetLogger(t *testing.T) {
 		assert.Equal(t, handler, logger.Handler())
 	})
 
-	t.Run("sets discard logger with nil handler", func(t *testing.T) {
+	t.Run("clears the logger with nil handler", func(t *testing.T) {
 		holder := &LogHolder{}
+		buf := &bytes.Buffer{}
+		holder.SetLogger(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 		holder.SetLogger(nil)
 		logger := holder.Logger()
 
 		assert.NotNil(t, logger)
 
-		assert.Equal(t, slog.Handler(slog.DiscardHandler), logger.Handler())
+		assert.Equal(t, slog.Default(), logger)
 	})
 
 	t.Run("can replace existing logger", func(t *testing.T) {
