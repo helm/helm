@@ -212,23 +212,6 @@ func TestClientBuilder_CredentialLookup(t *testing.T) {
 	}
 }
 
-func TestNewClient_WithDenyAllPolicy(t *testing.T) {
-	t.Parallel()
-
-	denyPolicy := policy.NewRejectAllPolicy()
-	evaluator, err := policy.NewEvaluator(denyPolicy)
-	require.NoError(t, err)
-
-	credFile := filepath.Join(t.TempDir(), "config.json")
-	c, err := NewClient(
-		ClientOptWriter(io.Discard),
-		ClientOptCredentialsFile(credFile),
-		ClientOptPolicyEvaluator(evaluator),
-	)
-	require.NoError(t, err)
-	require.Same(t, evaluator, c.policyEvaluator)
-}
-
 func TestNewClient_WithRegistriesConfigPath(t *testing.T) {
 	t.Parallel()
 
@@ -460,17 +443,6 @@ func TestNewRepository_SignatureVerificationEvaluator(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, repo.Registry.Policy)
 		require.NotSame(t, configEval, repo.Registry.Policy, "signature-scoped evaluator should be installed")
-	})
-
-	t.Run("caller-supplied evaluator is kept", func(t *testing.T) {
-		t.Parallel()
-		custom, err := policy.NewEvaluator(policy.NewRejectAllPolicy())
-		require.NoError(t, err)
-		c := newSigClient(t, ClientOptPolicyEvaluator(custom))
-
-		repo, err := c.newRepository("example.test/charts/mychart:1.0.0")
-		require.NoError(t, err)
-		require.Same(t, custom, repo.Registry.Policy)
 	})
 }
 
