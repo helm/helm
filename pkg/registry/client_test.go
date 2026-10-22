@@ -34,6 +34,7 @@ import (
 	remoteconfig "github.com/oras-project/oras-go/v3/registry/remote/config"
 	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 	"github.com/oras-project/oras-go/v3/registry/remote/policy"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 	"github.com/stretchr/testify/require"
 )
 
@@ -174,45 +175,41 @@ func TestLogin_NamespacedAuth(t *testing.T) {
 	require.NotContains(t, parsed.Auths, registryHost, "credential should not be stored under hostname-only key")
 }
 
-func TestNamespacedStore_HierarchicalLookup(t *testing.T) {
+func TestClientBuilder_CredentialLookup(t *testing.T) {
 	t.Parallel()
 
-	inner := &memCredStore{creds: map[string]credentials.Credential{}}
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+	)
+	require.NoError(t, err)
+
 	ctx := context.Background()
+	const host = "creds.example.test"
+	require.NoError(t, c.credentialsStore.Put(ctx, host+"/org", credentials.Credential{Username: "orguser", Password: "p"}))
+	require.NoError(t, c.credentialsStore.Put(ctx, "https://index.docker.io/v1/", credentials.Credential{Username: "hubuser", Password: "p"}))
 
-	// Store a credential under "localhost:5000/org".
-	_ = inner.Put(ctx, "localhost:5000/org", credentials.Credential{Username: "orguser"})
-
-	// Lookup for a deeper path should find it.
-	ns := &namespacedStore{inner: inner, repository: "org/repo"}
-	cred, err := ns.Get(ctx, "localhost:5000")
-	require.NoError(t, err)
-	require.Equal(t, "orguser", cred.Username)
-
-	// Lookup for an unrelated path should NOT find it.
-	ns2 := &namespacedStore{inner: inner, repository: "other/repo"}
-	cred, err = ns2.Get(ctx, "localhost:5000")
-	require.NoError(t, err)
-	require.Empty(t, cred.Username)
-}
-
-// memCredStore is a simple in-memory credentials.Store for testing.
-type memCredStore struct {
-	creds map[string]credentials.Credential
-}
-
-func (m *memCredStore) Get(_ context.Context, serverAddress string) (credentials.Credential, error) {
-	return m.creds[serverAddress], nil
-}
-
-func (m *memCredStore) Put(_ context.Context, serverAddress string, cred credentials.Credential) error {
-	m.creds[serverAddress] = cred
-	return nil
-}
-
-func (m *memCredStore) Delete(_ context.Context, serverAddress string) error {
-	delete(m.creds, serverAddress)
-	return nil
+	tests := []struct {
+		name     string
+		resource properties.Resource
+		want     string
+	}{
+		{"namespaced credential applies to a deeper path", properties.Resource{Registry: host, Path: "org/repo"}, "orguser"},
+		{"docker hub maps to its server address", properties.Resource{Registry: "docker.io", Path: "library/nginx"}, "hubuser"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			authClient, err := c.builder.Build(properties.NewRegistryFromReference(properties.Reference{
+				Registry:   tt.resource.Registry,
+				Repository: tt.resource.Path,
+			}))
+			require.NoError(t, err)
+			cred, err := authClient.CredentialFunc(ctx, tt.resource)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, cred.Username)
+		})
+	}
 }
 
 func TestNewClient_WithDenyAllPolicy(t *testing.T) {
@@ -525,24 +522,4 @@ func TestLogin_PathScopedBlockedRegistry(t *testing.T) {
 
 	err = c.Login("blocked.example.test/team", LoginOptBasicAuth("u", "p"))
 	require.ErrorIs(t, err, remoteconfig.ErrRegistryBlocked)
-}
-
-func TestServerAddressStore_DockerHub(t *testing.T) {
-	t.Parallel()
-
-	inner, err := credentials.NewStore(filepath.Join(t.TempDir(), "config.json"), credentials.StoreOptions{AllowPlaintextPut: true})
-	require.NoError(t, err)
-	ctx := context.Background()
-	require.NoError(t, inner.Put(ctx, "https://index.docker.io/v1/", credentials.Credential{Username: "u", Password: "p"}))
-
-	store := &serverAddressStore{inner: inner}
-	cred, err := store.Get(ctx, "registry-1.docker.io")
-	require.NoError(t, err)
-	require.Equal(t, "u", cred.Username)
-
-	// The namespaced wrapper falls back to the normalized host key.
-	ns := &namespacedStore{inner: store, repository: "library/nginx"}
-	cred, err = ns.Get(ctx, "registry-1.docker.io")
-	require.NoError(t, err)
-	require.Equal(t, "u", cred.Username)
 }

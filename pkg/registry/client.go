@@ -167,7 +167,10 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		logger = slog.Default()
 	}
 	builder := remote.NewClientBuilder()
-	builder.CredentialStore = &serverAddressStore{inner: credStore}
+	// The builder resolves credentials through remote.NewCredentialFunc, which
+	// maps Docker Hub to its server address and walks the request's namespaces
+	// from most to least specific, so namespaced logins apply.
+	builder.CredentialStore = credStore
 	builder.UserAgent = version.GetUserAgent()
 	builder.Logger = logger
 	builder.PolicyEvaluator = client.policyEvaluator
@@ -185,7 +188,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		authorizer.SetUserAgent(version.GetUserAgent())
 
 		if client.username != "" && client.password != "" {
-			authorizer.CredentialFunc = func(_ context.Context, _ string) (credentials.Credential, error) {
+			authorizer.CredentialFunc = func(_ context.Context, _ properties.Resource) (credentials.Credential, error) {
 				return credentials.Credential{Username: client.username, Password: client.password}, nil
 			}
 		} else {
@@ -226,7 +229,7 @@ func (c *Client) applyOverrides(props *properties.Registry) {
 // When a custom HTTP client or authorizer was provided, the legacy path is used
 // (direct assignment of c.authorizer). Otherwise, the full config-driven path is
 // used: registry properties are resolved from registries.conf and certs.d, CLI
-// overrides are applied, and the repository is built via NewRepositoryWithProperties.
+// overrides are applied, and the repository is built via ClientBuilder.NewRepository.
 func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 	if c.customHTTPClient {
 		// Legacy path: use c.authorizer directly (preserves custom TLS transport).
@@ -255,16 +258,7 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		return nil, err
 	}
 	c.applyOverrides(props)
-	builder := c.builder
-	if props.Reference.Repository != "" && builder.CredentialStore != nil {
-		builderCopy := *builder
-		builderCopy.CredentialStore = &namespacedStore{
-			inner:      builder.CredentialStore,
-			repository: props.Reference.Repository,
-		}
-		builder = &builderCopy
-	}
-	repo, err := remote.NewRepositoryWithProperties(props, builder)
+	repo, err := c.builder.NewRepository(props)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +331,7 @@ func (c *Client) newRegistry(ref string) (*remote.Registry, error) {
 		}
 	}
 	c.applyOverrides(props)
-	return remote.NewRegistryWithProperties(props, c.builder)
+	return c.builder.NewRegistry(props)
 }
 
 // Generic returns a GenericClient for low-level OCI operations
@@ -378,9 +372,16 @@ func ClientOptWriter(out io.Writer) ClientOption {
 // can be used to override the default authorization mechanism.
 //
 // Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
-func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
+//
+// The authorizer is taken by pointer because auth.Client holds internal
+// synchronization state and must not be copied; the client keeps its own
+// clone, so later changes to authorizer do not affect it.
+func ClientOptAuthorizer(authorizer *auth.Client) ClientOption {
 	return func(client *Client) {
-		client.authorizer = &authorizer
+		if authorizer == nil {
+			return
+		}
+		client.authorizer = authorizer.Clone()
 		client.customHTTPClient = true
 	}
 }
@@ -456,68 +457,12 @@ type (
 	}
 )
 
-// noopStore is a credentials.Store that performs no persistence. It is used
+// noopStore is a credentials.Putter that performs no persistence. It is used
 // during namespaced login to verify credentials with a registry ping without
 // causing remote.Login to store credentials under the hostname-only key.
 type noopStore struct{}
 
-func (noopStore) Get(_ context.Context, _ string) (credentials.Credential, error) {
-	return credentials.EmptyCredential, nil
-}
 func (noopStore) Put(_ context.Context, _ string, _ credentials.Credential) error { return nil }
-func (noopStore) Delete(_ context.Context, _ string) error                        { return nil }
-
-// serverAddressStore wraps a credentials.Store and maps the request host to
-// the server address used as the credential key, mirroring
-// remote.NewCredentialFunc. The ClientBuilder looks credentials up by the host
-// it dials, so Docker Hub requests arrive as "registry-1.docker.io" while
-// Docker and Helm store them under "https://index.docker.io/v1/".
-type serverAddressStore struct {
-	inner credentials.Store
-}
-
-func (s *serverAddressStore) Get(ctx context.Context, serverAddress string) (credentials.Credential, error) {
-	serverAddress = remote.ServerAddressFromHostname(serverAddress)
-	if serverAddress == "" {
-		return credentials.EmptyCredential, nil
-	}
-	return s.inner.Get(ctx, serverAddress)
-}
-
-func (s *serverAddressStore) Put(ctx context.Context, serverAddress string, cred credentials.Credential) error {
-	return s.inner.Put(ctx, serverAddress, cred)
-}
-
-func (s *serverAddressStore) Delete(ctx context.Context, serverAddress string) error {
-	return s.inner.Delete(ctx, serverAddress)
-}
-
-// namespacedStore wraps a credentials.Store and performs hierarchical
-// credential lookup: it tries "hostname/full/repo", then "hostname/partial",
-// then falls back to "hostname" for each auth challenge.
-type namespacedStore struct {
-	inner      credentials.Store
-	repository string
-}
-
-func (ns *namespacedStore) Get(ctx context.Context, serverAddress string) (credentials.Credential, error) {
-	parts := strings.Split(ns.repository, "/")
-	for i := len(parts); i > 0; i-- {
-		key := serverAddress + "/" + strings.Join(parts[:i], "/")
-		if cred, err := ns.inner.Get(ctx, key); err == nil && cred != credentials.EmptyCredential {
-			return cred, nil
-		}
-	}
-	return ns.inner.Get(ctx, serverAddress)
-}
-
-func (ns *namespacedStore) Put(ctx context.Context, serverAddress string, cred credentials.Credential) error {
-	return ns.inner.Put(ctx, serverAddress, cred)
-}
-
-func (ns *namespacedStore) Delete(ctx context.Context, serverAddress string) error {
-	return ns.inner.Delete(ctx, serverAddress)
-}
 
 // Login authenticates the client with a remote OCI registry using the provided host and options.
 func (c *Client) Login(host string, options ...LoginOption) error {
@@ -717,8 +662,15 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 		host = c.configs.RegistriesConfig.RewriteReference(host)
 	}
 
-	if err := remote.Logout(context.Background(), c.credentialsStore, host); err != nil {
-		return err
+	ctx := context.Background()
+	if registryHost, _, hasNamespace := strings.Cut(host, "/"); !hasNamespace {
+		if err := remote.Logout(ctx, c.credentialsStore, properties.Resource{Registry: registryHost}); err != nil {
+			return err
+		}
+	} else if err := c.credentialsStore.Delete(ctx, host); err != nil {
+		// Namespaced credentials are stored under the full "host/namespace"
+		// key by Login, so remove that exact key.
+		return fmt.Errorf("failed to delete the credential for %s: %w", host, err)
 	}
 	_, _ = fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
 	return nil
