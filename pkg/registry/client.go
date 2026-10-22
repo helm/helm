@@ -83,7 +83,6 @@ type (
 		configs               *remoteconfig.Configs
 		builder               *remote.ClientBuilder
 		policyEvaluator       *policy.Evaluator
-		customPolicyEvaluator bool // true when ClientOptPolicyEvaluator was used
 		policyEnforcement     bool
 		signatureVerification bool
 		// configErr is the error from loading the config stack, returned by
@@ -99,7 +98,7 @@ type (
 		certFile         string
 		keyFile          string
 		caFile           string
-		customHTTPClient bool // true when ClientOptHTTPClient, ClientOptAuthClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
+		customHTTPClient bool // true when ClientOptHTTPClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -157,8 +156,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	client.configs = configs
 
 	// policy.json is written for container images, so it is only enforced on
-	// charts when the caller opts in. ClientOptPolicyEvaluator takes precedence.
-	if (client.policyEnforcement || client.signatureVerification) && configs.PolicyConfig != nil && client.policyEvaluator == nil {
+	// charts when the caller opts in.
+	if (client.policyEnforcement || client.signatureVerification) && configs.PolicyConfig != nil {
 		evaluator, err := configs.PolicyEvaluator()
 		if err != nil {
 			return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
@@ -283,8 +282,8 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		return nil, err
 	}
 	// Replace the config-derived evaluator with one scoped to this repository's
-	// registries.d signature storage. A caller-supplied evaluator is kept as is.
-	if c.signatureVerification && !c.customPolicyEvaluator && c.configs.RegistriesDConfig != nil && c.configs.PolicyConfig != nil {
+	// registries.d signature storage.
+	if c.signatureVerification && c.configs.RegistriesDConfig != nil && c.configs.PolicyConfig != nil {
 		scope := props.Reference.Registry
 		if props.Reference.Repository != "" {
 			scope += "/" + props.Reference.Repository
@@ -399,27 +398,18 @@ func ClientOptWriter(out io.Writer) ClientOption {
 // The oras-go v2 client is converted to an oras-go v3 client; see
 // authClientFromV2 for how each field carries over.
 //
-// Deprecated: use ClientOptAuthClient, which takes an oras-go v3 auth client.
+// There is no replacement that takes an oras-go auth client. Exposing the
+// oras-go type ties Helm's public API to an oras-go major version, so needs
+// that this option covered should be met by Helm options for the specific
+// feature (credentials, headers, TLS, HTTP client) rather than by exposing
+// the implementation.
+//
+// Deprecated: use ClientOptHTTPClient, ClientOptBasicAuth or
+// ClientOptCredentialsFile to configure authorization, or
+// ClientOptRegistryAuthorizer to replace the client used for registry requests.
 func ClientOptAuthorizer(authorizer authv2.Client) ClientOption {
-	return ClientOptAuthClient(authClientFromV2(authorizer))
-}
-
-// ClientOptAuthClient returns a function that sets the oras-go v3 auth client
-// on a client options set. This can be used to override the default
-// authorization mechanism.
-//
-// Depending on the use-case you may need to set both ClientOptAuthClient and ClientOptRegistryAuthorizer.
-//
-// The authorizer is taken by pointer because auth.Client holds internal
-// synchronization state and must not be copied; the client keeps its own
-// clone, so later changes to authorizer do not affect it. A nil authorizer
-// is ignored.
-func ClientOptAuthClient(authorizer *auth.Client) ClientOption {
 	return func(client *Client) {
-		if authorizer == nil {
-			return
-		}
-		client.authorizer = authorizer.Clone()
+		client.authorizer = authClientFromV2(authorizer)
 		client.customHTTPClient = true
 	}
 }
@@ -427,7 +417,7 @@ func ClientOptAuthClient(authorizer *auth.Client) ClientOption {
 // ClientOptRegistryAuthorizer returns a function that sets the registry authorizer setting on a client options set. This
 // can be used to override the default authorization mechanism.
 //
-// Depending on the use-case you may need to set both ClientOptAuthClient and ClientOptRegistryAuthorizer.
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
 func ClientOptRegistryAuthorizer(registryAuthorizer RemoteClient) ClientOption {
 	return func(client *Client) {
 		client.registryAuthorizer = registryAuthorizer
@@ -456,14 +446,6 @@ func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
 func ClientOptPlainHTTP() ClientOption {
 	return func(c *Client) {
 		c.plainHTTP = true
-	}
-}
-
-// ClientOptPolicyEvaluator returns a function that sets a custom policy evaluator on the client.
-func ClientOptPolicyEvaluator(e *policy.Evaluator) ClientOption {
-	return func(c *Client) {
-		c.policyEvaluator = e
-		c.customPolicyEvaluator = true
 	}
 }
 
