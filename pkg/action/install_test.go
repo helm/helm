@@ -177,6 +177,62 @@ func installAction(t *testing.T) *Install {
 	return instAction
 }
 
+func TestInstallFieldValidationDirectiveOptions(t *testing.T) {
+	tests := []struct {
+		name               string
+		directive          kube.FieldValidationDirective
+		toBeAdopted        kube.ResourceList
+		expectedCreateOpts int
+		expectedUpdateOpts int
+	}{
+		{
+			name:               "create with empty directive",
+			expectedCreateOpts: 1,
+		},
+		{
+			name:               "create with warn directive",
+			directive:          kube.FieldValidationDirectiveWarn,
+			expectedCreateOpts: 2,
+		},
+		{
+			name:               "update with empty directive",
+			toBeAdopted:        createDummyResourceList(true),
+			expectedUpdateOpts: 4,
+		},
+		{
+			name:               "update with warn directive",
+			directive:          kube.FieldValidationDirectiveWarn,
+			toBeAdopted:        createDummyResourceList(true),
+			expectedUpdateOpts: 5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := actionConfigFixture(t)
+			client := NewInstall(config)
+			client.DisableHooks = true
+			client.FieldValidationDirective = tt.directive
+
+			resources := createDummyResourceList(true)
+			rel := releaseStub()
+			rel.Hooks = nil
+
+			_, err := client.performInstall(rel, tt.toBeAdopted, resources)
+			require.NoError(t, err)
+
+			failer := config.KubeClient.(*kubefake.FailingKubeClient)
+			assert.Len(t, failer.RecordedCreateOptions, tt.expectedCreateOpts,
+				"unexpected create option count for directive %q", tt.directive)
+			assert.Len(t, failer.RecordedUpdateOptions, tt.expectedUpdateOpts,
+				"unexpected update option count for directive %q", tt.directive)
+
+			// Only one path should execute for each test case.
+			assert.NotEqual(t, tt.expectedCreateOpts > 0, tt.expectedUpdateOpts > 0)
+		})
+	}
+}
+
 func TestInstallRelease(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
