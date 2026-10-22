@@ -1,6 +1,6 @@
 module helm.sh/helm/v4
 
-go 1.26.0
+go 1.27.0
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24
@@ -17,7 +17,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/color v1.19.0
-	github.com/fluxcd/cli-utils v1.3.0
+	github.com/fluxcd/cli-utils v1.4.0
 	github.com/foxcpp/go-mockdns v1.3.0
 	github.com/gobwas/glob v1.0.0
 	github.com/gofrs/flock v0.13.1
@@ -182,7 +182,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20260821135717-be32def86098 // indirect
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
-	sigs.k8s.io/kustomize/api v0.21.1 // indirect
+	sigs.k8s.io/kustomize/api v0.21.2 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 )
