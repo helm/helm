@@ -34,4 +34,11 @@ const (
 
 	// LegacyChartLayerMediaType is the legacy reserved media type for Helm chart package content.
 	LegacyChartLayerMediaType = "application/tar+gzip"
+
+	// ChartArtifactType identifies a Helm chart manifest inside an OCI Image Index.
+	// The OCI image spec defines an index descriptor's artifactType as the value of
+	// the referenced manifest's config mediaType, so the two are the same string by
+	// design rather than by coincidence.
+	// https://github.com/opencontainers/image-spec/blob/main/descriptor.md#properties
+	ChartArtifactType = ConfigMediaType
 )
