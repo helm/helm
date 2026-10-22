@@ -58,6 +58,10 @@ func newReference(raw string) (result reference, err error) {
 			// Replace any plus (+) signs with known underscore (_) conversion
 			newTag := strings.ReplaceAll(tag, "+", "_")
 			raw = strings.ReplaceAll(raw, tag, newTag)
+		} else {
+			// The reference parser rejects a dangling tag delimiter, so drop
+			// the empty tag (e.g. "repo:") to keep accepting it.
+			raw = strings.TrimSuffix(raw, ":")
 		}
 	}
 
