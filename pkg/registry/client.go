@@ -84,15 +84,22 @@ type (
 		builder               *remote.ClientBuilder
 		policyEvaluator       *policy.Evaluator
 		customPolicyEvaluator bool // true when ClientOptPolicyEvaluator was used
+		policyEnforcement     bool
 		signatureVerification bool
+		// configErr is the error from loading the config stack, returned by
+		// registry operations so that NewClient itself does not fail.
+		configErr error
 		// registriesConfigPath overrides the registries.conf path; empty means
 		// the container ecosystem default search locations are used. Test-only.
 		registriesConfigPath string
-		insecure             bool
-		certFile             string
-		keyFile              string
-		caFile               string
-		customHTTPClient     bool // true when ClientOptHTTPClient, ClientOptAuthClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
+		// policyConfigPath overrides the containers-policy.json path; empty
+		// means the default search locations are used. Test-only.
+		policyConfigPath string
+		insecure         bool
+		certFile         string
+		keyFile          string
+		caFile           string
+		customHTTPClient bool // true when ClientOptHTTPClient, ClientOptAuthClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -132,19 +139,26 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	// Load the full container ecosystem config stack: Docker config.json,
 	// containers auth.json, registries.conf, policy.json, certs.d, registries.d.
 	// Missing files are silently skipped.
-	// Only registries.conf is overridable (empty means default search); all
-	// other config files always resolve to their default locations.
+	// Only registries.conf and policy.json are overridable, and only by tests
+	// (empty means default search); all other config files always resolve to
+	// their default locations.
 	loaderOpts := remoteconfig.LoadConfigsOptions{
 		RegistriesConfigPath: client.registriesConfigPath,
+		PolicyConfigPath:     client.policyConfigPath,
 	}
+	// A config file that exists but cannot be parsed must not break commands
+	// that never contact a registry, so the error is kept and returned by the
+	// first registry operation instead.
 	configs, err := remoteconfig.LoadConfigsWithOptions(loaderOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load registry configurations: %w", err)
+		client.configErr = fmt.Errorf("failed to load registry configurations: %w", err)
+		configs = &remoteconfig.Configs{}
 	}
 	client.configs = configs
 
-	// Only build from configs when not overridden by ClientOptPolicyEvaluator.
-	if configs.PolicyConfig != nil && client.policyEvaluator == nil {
+	// policy.json is written for container images, so it is only enforced on
+	// charts when the caller opts in. ClientOptPolicyEvaluator takes precedence.
+	if (client.policyEnforcement || client.signatureVerification) && configs.PolicyConfig != nil && client.policyEvaluator == nil {
 		evaluator, err := configs.PolicyEvaluator()
 		if err != nil {
 			return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
@@ -176,7 +190,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	builder.Logger = logger
 	builder.PolicyEvaluator = client.policyEvaluator
 	if !client.enableCache {
-		builder.CacheFactory = nil
+		// A nil factory makes the builder allocate a cache, so return a nil
+		// cache instead, which auth.Client treats as no caching.
+		builder.CacheFactory = func(string) auth.Cache { return nil }
 	}
 	client.builder = builder
 
@@ -232,6 +248,9 @@ func (c *Client) applyOverrides(props *properties.Registry) {
 // used: registry properties are resolved from registries.conf and certs.d, CLI
 // overrides are applied, and the repository is built via ClientBuilder.NewRepository.
 func (c *Client) newRepository(ref string) (*remote.Repository, error) {
+	if c.configErr != nil {
+		return nil, c.configErr
+	}
 	if c.customHTTPClient {
 		// Legacy path: use c.authorizer directly (preserves custom TLS transport).
 		// NewRepository rejects a reference carrying a tag or digest, so pass
@@ -287,6 +306,9 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 // ref is a registry host optionally followed by a repository path; the path is
 // only used to match path-scoped registries.conf rules.
 func (c *Client) newRegistry(ref string) (*remote.Registry, error) {
+	if c.configErr != nil {
+		return nil, c.configErr
+	}
 	host, _, _ := strings.Cut(ref, "/")
 	if c.customHTTPClient {
 		// Legacy path: use c.authorizer directly. registryAuthorizer is not
@@ -445,11 +467,46 @@ func ClientOptPolicyEvaluator(e *policy.Evaluator) ClientOption {
 	}
 }
 
+// ClientOptPolicyEnforcement returns a function that enables or disables
+// enforcement of the containers-policy.json trust policy on registry
+// operations. It is disabled by default because the policy is written for
+// container images, and its signedBy and sigstoreSigned requirements reject
+// charts unless signature verification is also enabled.
+func ClientOptPolicyEnforcement(enabled bool) ClientOption {
+	return func(c *Client) {
+		c.policyEnforcement = enabled
+	}
+}
+
 // ClientOptSignatureVerification returns a function that enables or disables
 // GPG/simple-signing signature verification via registries.d lookaside storage.
+// Enabling it also enforces the containers-policy.json trust policy.
 func ClientOptSignatureVerification(enabled bool) ClientOption {
 	return func(c *Client) {
 		c.signatureVerification = enabled
+	}
+}
+
+// ClientOptTLSClientConfig returns a function that sets the client certificate,
+// key and CA bundle files used for TLS. Unlike passing a TLS transport through
+// ClientOptHTTPClient, the files are applied on top of the registries.conf and
+// certs.d settings, so those keep working. A certificate is only used when both
+// certFile and keyFile are set.
+func ClientOptTLSClientConfig(certFile, keyFile, caFile string) ClientOption {
+	return func(c *Client) {
+		if certFile != "" && keyFile != "" {
+			c.certFile = certFile
+			c.keyFile = keyFile
+		}
+		c.caFile = caFile
+	}
+}
+
+// ClientOptInsecureSkipVerifyTLS returns a function that disables verification
+// of the registry's TLS certificate.
+func ClientOptInsecureSkipVerifyTLS(insecure bool) ClientOption {
+	return func(c *Client) {
+		c.insecure = insecure
 	}
 }
 
@@ -459,6 +516,14 @@ func ClientOptSignatureVerification(enabled bool) ClientOption {
 func withRegistriesConfigPath(path string) ClientOption {
 	return func(c *Client) {
 		c.registriesConfigPath = path
+	}
+}
+
+// withPolicyConfigPath overrides the containers-policy.json path. Like
+// withRegistriesConfigPath, it exists only for hermetic tests.
+func withPolicyConfigPath(path string) ClientOption {
+	return func(c *Client) {
+		c.policyConfigPath = path
 	}
 }
 
@@ -670,6 +735,9 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 	operation := &logoutOperation{}
 	for _, opt := range opts {
 		opt(operation)
+	}
+	if c.configErr != nil {
+		return c.configErr
 	}
 
 	// Apply the registries.conf Location rewrite to the full input, matching
