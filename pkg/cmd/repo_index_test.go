@@ -141,3 +141,23 @@ func TestRepoIndexFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo index", true)
 	checkFileCompletion(t, "repo index mydir", false)
 }
+
+func TestRepoIndexCmd_RedirectURL(t *testing.T) {
+	dir := t.TempDir()
+
+	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")
+	require.NoError(t, linkOrCopy("testdata/testcharts/compressedchart-0.1.0.tgz", comp))
+
+	buf := bytes.NewBuffer(nil)
+	c := newRepoIndexCmd(buf)
+
+	redirectURL := "https://new-org.github.io/charts"
+	require.NoError(t, c.Flags().Set("redirect-url", redirectURL))
+	require.NoError(t, c.RunE(c, []string{dir}))
+
+	destIndex := filepath.Join(dir, "index.yaml")
+	index, err := repo.LoadIndexFile(destIndex)
+	require.NoError(t, err)
+
+	assert.Equal(t, redirectURL, index.RedirectURL)
+}
