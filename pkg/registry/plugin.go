@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -60,6 +61,9 @@ func (c *Client) PullPlugin(ref, pluginName string, options ...PluginPullOption)
 	// Use generic client for the pull operation with artifact type filtering
 	genericClient := c.Generic()
 	genericResult, err := genericClient.PullGeneric(ref, GenericPullOptions{
+		// Resolve multi-platform image indexes to the manifest for this platform.
+		// Variant is left empty (runtime does not expose GOARM), so any variant matches.
+		Platform: &ocispec.Platform{OS: runtime.GOOS, Architecture: runtime.GOARCH},
 		// Allow manifests and all layer types - we'll validate artifact type after download
 		AllowedMediaTypes: []string{
 			ocispec.MediaTypeImageManifest,
