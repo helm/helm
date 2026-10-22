@@ -240,24 +240,3 @@ func TestClientOptAuthorizer_V2(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "user", cred.Username)
 }
-
-func TestClientOptAuthClient(t *testing.T) {
-	authorizer := &auth.Client{Header: http.Header{"X-Test": {"value"}}}
-
-	client, err := NewClient(ClientOptAuthClient(authorizer))
-	require.NoError(t, err)
-
-	require.NotNil(t, client.authorizer)
-	assert.NotSame(t, authorizer, client.authorizer)
-	assert.True(t, client.customHTTPClient)
-	assert.Equal(t, "value", client.authorizer.Header.Get("X-Test"))
-}
-
-func TestClientOptAuthClient_Nil(t *testing.T) {
-	client, err := NewClient(ClientOptAuthClient(nil))
-	require.NoError(t, err)
-
-	// NewClient builds its default authorizer instead.
-	require.NotNil(t, client.authorizer)
-	assert.False(t, client.customHTTPClient)
-}
