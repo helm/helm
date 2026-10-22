@@ -50,7 +50,7 @@ type Metadata struct {
 	Name string `json:"name,omitempty"`
 	// The URL to a relevant project page, git repo, or contact person
 	Home string `json:"home,omitempty"`
-	// Source is the URL to the source code of this chart
+	// Sources are the URLs to the source code of this chart
 	Sources []string `json:"sources,omitempty"`
 	// A version string of the chart. Required.
 	Version string `json:"version,omitempty"`
