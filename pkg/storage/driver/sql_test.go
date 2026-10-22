@@ -14,6 +14,7 @@ limitations under the License.
 package driver
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
@@ -100,6 +101,97 @@ func TestSQLGet(t *testing.T) {
 	require.NoError(t, err, "Failed to get release")
 
 	assert.Equalf(t, rel, got, "Expected release {%v}, got {%v}", rel, got)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+// A real database failure must not be reported as "release not found": callers
+// branch on ErrReleaseNotFound and would treat an outage as an absent release.
+func TestSQLGetDatabaseError(t *testing.T) {
+	vers := int(1)
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	query := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	dbErr := errors.New("connection refused")
+	mock.
+		ExpectQuery(query).
+		WithArgs(key, namespace).
+		WillReturnError(dbErr)
+
+	_, err := sqlDriver.Get(key)
+	require.Error(t, err, "expected an error when the database query fails")
+	require.NotErrorIs(t, err, ErrReleaseNotFound, "database failure must not be reported as ErrReleaseNotFound")
+	require.ErrorIs(t, err, dbErr, "expected the underlying database error to be wrapped")
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+// An empty result set is the only case that means "release not found".
+func TestSQLGetNotFound(t *testing.T) {
+	vers := int(1)
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	query := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	mock.
+		ExpectQuery(query).
+		WithArgs(key, namespace).
+		WillReturnError(sql.ErrNoRows)
+
+	_, err := sqlDriver.Get(key)
+	require.ErrorIs(t, err, ErrReleaseNotFound)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+// Same contract for Delete's existence check, which must also not leave the
+// transaction open when the lookup fails.
+func TestSQLDeleteDatabaseError(t *testing.T) {
+	vers := int(1)
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	selectQuery := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	dbErr := errors.New("connection refused")
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery(regexp.QuoteMeta(selectQuery)).
+		WithArgs(key, namespace).
+		WillReturnError(dbErr)
+	mock.ExpectRollback()
+
+	_, err := sqlDriver.Delete(key)
+	require.Error(t, err, "expected an error when the database query fails")
+	require.NotErrorIs(t, err, ErrReleaseNotFound, "database failure must not be reported as ErrReleaseNotFound")
+	require.ErrorIs(t, err, dbErr, "expected the underlying database error to be wrapped")
 	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
 }
 
@@ -269,6 +361,11 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 		sqlReleaseTableNamespaceColumn,
 	)
 
+	// The failed insert aborts the transaction, so it is rolled back before the
+	// existence check runs - the check has to happen outside the transaction or
+	// PostgreSQL rejects it and ErrReleaseExists can never be returned.
+	mock.ExpectRollback()
+
 	// Let's check that we do make sure the error is due to a release already existing
 	mock.
 		ExpectQuery(selectQuery).
@@ -280,9 +377,67 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 				key,
 			),
 		).RowsWillBeClosed()
+
+	err := sqlDriver.Create(key, rel)
+	require.Errorf(t, err, "expected Create to fail for an existing release with key %s", key)
+	require.ErrorIs(t, err, ErrReleaseExists)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+func TestSqlCreateInsertFailureNotAlreadyExists(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	body, _ := encodeRelease(rel)
+
+	insertQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+
+	// The insert fails for a reason unrelated to a duplicate key, e.g. the
+	// database is unreachable.
+	insertErr := errors.New("connection refused")
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(insertQuery)).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp()).
+		WillReturnError(insertErr)
+
+	selectQuery := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
 	mock.ExpectRollback()
 
-	require.Errorf(t, sqlDriver.Create(key, rel), "failed to create release with key %s", key)
+	// No row comes back, so the release does not already exist and the original
+	// insert error has to be surfaced instead of ErrReleaseExists.
+	mock.
+		ExpectQuery(selectQuery).
+		WithArgs(key, namespace).
+		WillReturnError(sql.ErrNoRows)
+
+	err := sqlDriver.Create(key, rel)
+	require.Errorf(t, err, "expected Create to fail when the insert fails with key %s", key)
+	require.NotErrorIs(t, err, ErrReleaseExists)
+	require.ErrorIs(t, err, insertErr)
 	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
 }
 
