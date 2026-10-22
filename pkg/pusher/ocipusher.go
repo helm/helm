@@ -26,6 +26,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/registry"
@@ -92,6 +95,17 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)
 	chartArchiveFileCreatedTime := stat.ModTime()
 	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartArchiveFileCreatedTime.Format(time.RFC3339)))
+
+	// Add subject for OCI Referrers API if specified. Validate the digest here;
+	// the registry client resolves it to a full descriptor against the target
+	// repository before attaching it to the manifest.
+	if pusher.opts.subject != "" {
+		subjectDigest, err := digest.Parse(pusher.opts.subject)
+		if err != nil {
+			return fmt.Errorf("invalid --subject %q (expected a digest, e.g. sha256:...): %w", pusher.opts.subject, err)
+		}
+		pushOpts = append(pushOpts, registry.PushOptSubject(&ocispec.Descriptor{Digest: subjectDigest}))
+	}
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
