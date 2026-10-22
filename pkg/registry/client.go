@@ -43,6 +43,7 @@ import (
 	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 	"github.com/oras-project/oras-go/v3/registry/remote/retry"
 	"github.com/oras-project/oras-go/v3/registry/remote/signature"
+	authv2 "oras.land/oras-go/v2/registry/remote/auth"
 
 	"helm.sh/helm/v4/internal/version"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -91,7 +92,7 @@ type (
 		certFile             string
 		keyFile              string
 		caFile               string
-		customHTTPClient     bool // true when ClientOptHTTPClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
+		customHTTPClient     bool // true when ClientOptHTTPClient, ClientOptAuthClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -373,10 +374,25 @@ func ClientOptWriter(out io.Writer) ClientOption {
 //
 // Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
 //
+// The oras-go v2 client is converted to an oras-go v3 client; see
+// authClientFromV2 for how each field carries over.
+//
+// Deprecated: use ClientOptAuthClient, which takes an oras-go v3 auth client.
+func ClientOptAuthorizer(authorizer authv2.Client) ClientOption {
+	return ClientOptAuthClient(authClientFromV2(authorizer))
+}
+
+// ClientOptAuthClient returns a function that sets the oras-go v3 auth client
+// on a client options set. This can be used to override the default
+// authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthClient and ClientOptRegistryAuthorizer.
+//
 // The authorizer is taken by pointer because auth.Client holds internal
 // synchronization state and must not be copied; the client keeps its own
-// clone, so later changes to authorizer do not affect it.
-func ClientOptAuthorizer(authorizer *auth.Client) ClientOption {
+// clone, so later changes to authorizer do not affect it. A nil authorizer
+// is ignored.
+func ClientOptAuthClient(authorizer *auth.Client) ClientOption {
 	return func(client *Client) {
 		if authorizer == nil {
 			return
@@ -389,7 +405,7 @@ func ClientOptAuthorizer(authorizer *auth.Client) ClientOption {
 // ClientOptRegistryAuthorizer returns a function that sets the registry authorizer setting on a client options set. This
 // can be used to override the default authorization mechanism.
 //
-// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+// Depending on the use-case you may need to set both ClientOptAuthClient and ClientOptRegistryAuthorizer.
 func ClientOptRegistryAuthorizer(registryAuthorizer RemoteClient) ClientOption {
 	return func(client *Client) {
 		client.registryAuthorizer = registryAuthorizer
