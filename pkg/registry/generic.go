@@ -87,7 +87,7 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 	}
 
 	var mu sync.Mutex
-	manifest, err := oras.Copy(ctx, repository, parsedRef.forRepository(repository), memoryStore, "", oras.CopyOptions{
+	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
 		CopyGraphOptions: oras.CopyGraphOptions{
 			PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
 				// Apply a custom PreCopy function if provided

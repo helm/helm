@@ -27,7 +27,6 @@ import (
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry"
-	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,8 +64,8 @@ func startInMemoryRegistry(t *testing.T) string {
 }
 
 // TestLocationRewrite_PushPull verifies that a registries.conf location
-// rewrite works for every repository operation: the reference handed to
-// oras-go must match the rewritten repository, not the alias host.
+// rewrite works for every repository operation. oras-go re-roots a reference
+// naming the pre-rewrite (alias) location at the rewritten repository.
 func TestLocationRewrite_PushPull(t *testing.T) {
 	canonicalHost := startInMemoryRegistry(t)
 	aliasHost := "charts.example.test"
@@ -110,27 +109,4 @@ func TestLocationRewrite_PushPull(t *testing.T) {
 	// The chart landed on the canonical host.
 	_, err = c.Resolve(fmt.Sprintf("%s/testrepo/%s:%s", canonicalHost, meta.Name, meta.Version))
 	require.NoError(t, err, "chart is stored on the canonical host")
-}
-
-func TestReferenceForRepository(t *testing.T) {
-	repo, err := remote.NewRepository("localhost:5000/charts/app")
-	require.NoError(t, err)
-	digest := "sha256:" + "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-
-	tests := []struct {
-		name string
-		raw  string
-		want string
-	}{
-		{"tag", "example.test/charts/app:1.2.3", "localhost:5000/charts/app:1.2.3"},
-		{"tag with plus", "example.test/charts/app:1.2.3+build", "localhost:5000/charts/app:1.2.3_build"},
-		{"digest", "example.test/charts/app@" + digest, "localhost:5000/charts/app@" + digest},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ref, err := newReference(tt.raw)
-			require.NoError(t, err)
-			require.Equal(t, tt.want, ref.forRepository(repo))
-		})
-	}
 }
