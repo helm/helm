@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -151,5 +152,60 @@ func TestWarnIfHostHasPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.wantWarn, warnIfHostHasPath(tt.host))
 		})
+	}
+}
+
+// TestSortSemverTags verifies that sortSemverTags returns the original tag
+// strings (preserving Helm's underscore convention for build metadata, #10166)
+// while ordering them by semantic version precedence (highest first).
+func TestSortSemverTags(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{
+			name: "underscore convention preserved",
+			in:   []string{"1.1.17_meta", "1.2.0", "1.1.16", "2.0.0", "1.1.17"},
+			want: []string{"2.0.0", "1.2.0", "1.1.17_meta", "1.1.17", "1.1.16"},
+		},
+		{
+			name: "plain semver tags unchanged",
+			in:   []string{"1.0.0", "2.1.0", "1.5.0", "3.0.0"},
+			want: []string{"3.0.0", "2.1.0", "1.5.0", "1.0.0"},
+		},
+		{
+			name: "pre-release ordering",
+			in:   []string{"1.0.0", "1.0.0-beta", "1.0.0-alpha", "1.0.1"},
+			want: []string{"1.0.1", "1.0.0", "1.0.0-beta", "1.0.0-alpha"},
+		},
+		{
+			name: "invalid tags dropped",
+			in:   []string{"1.0.0", "not-a-version", "2.0.0", "1.5.0"},
+			want: []string{"2.0.0", "1.5.0", "1.0.0"},
+		},
+		{
+			name: "mixed underscore and prerelease",
+			in:   []string{"1.2.0_rc1", "1.1.0", "1.2.0", "2.0.0_rc1"},
+			want: []string{"2.0.0_rc1", "1.2.0", "1.2.0_rc1", "1.1.0"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sortSemverTags(tt.in)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestSortSemverTagsValidReferences ensures every returned tag is a valid OCI
+// reference string (i.e. it was preserved verbatim, not normalized).
+func TestSortSemverTagsValidReferences(t *testing.T) {
+	in := []string{"1.1.17_meta", "1.2.0", "1.1.17"}
+	for _, tag := range sortSemverTags(in) {
+		if _, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+")); err != nil {
+			t.Errorf("returned tag %q is not a valid semantic version", tag)
+		}
 	}
 }
