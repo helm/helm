@@ -19,7 +19,6 @@ package registry
 import (
 	"strings"
 
-	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 )
 
@@ -80,18 +79,6 @@ func (r *reference) String() string {
 		return r.orasReference.String() + "@" + r.Digest
 	}
 	return r.orasReference.String()
-}
-
-// forRepository returns the reference re-rooted at the registry and
-// repository repo was built for. When registries.conf rewrites the host, repo
-// carries the rewritten location, so the reference still matches it.
-func (r *reference) forRepository(repo *remote.Repository) string {
-	loc := repo.Reference()
-	ref := properties.Reference{Registry: loc.Registry, Repository: loc.Repository, Tag: r.Tag}
-	if ref.Tag == "" {
-		ref.Digest = r.Digest
-	}
-	return ref.String()
 }
 
 // IsOCI determines whether a URL is to be treated as an OCI URL
