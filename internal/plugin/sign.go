@@ -130,8 +130,8 @@ func CreatePluginTarball(sourceDir, pluginName string, w io.Writer) error {
 			return err
 		}
 
-		// Include the base directory name in the tarball
-		header.Name = filepath.Join(baseDir, relPath)
+		// Tar member names must use / even when packaging on Windows.
+		header.Name = filepath.ToSlash(filepath.Join(baseDir, relPath))
 
 		// Write header
 		if err := tw.WriteHeader(header); err != nil {
