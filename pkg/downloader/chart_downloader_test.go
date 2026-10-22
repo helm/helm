@@ -328,6 +328,71 @@ func TestScanReposForURL(t *testing.T) {
 	require.ErrorIs(t, err, ErrNoOwnerRepo)
 }
 
+func TestScanReposForURLWithEmptyCache(t *testing.T) {
+	emptyCache := t.TempDir()
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyLater,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  emptyCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  emptyCache,
+		}),
+	}
+
+	u := "http://example.com/alpine-0.2.0.tgz"
+	rf, err := repo.LoadFile(repoConfig)
+	require.NoError(t, err)
+
+	_, err = c.scanReposForURL(u, rf)
+	require.ErrorIs(t, err, ErrNoOwnerRepo)
+}
+
+func TestScanReposForURLWithMissingCacheForUnrelatedRepo(t *testing.T) {
+	rf := &repo.File{
+		APIVersion: "v1",
+		Repositories: []*repo.Entry{
+			{Name: "missing-repo", URL: "http://missing.example.com"},
+			{Name: "testing", URL: "http://example.com"},
+		},
+	}
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyLater,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+	}
+
+	u := "http://example.com/alpine-0.2.0.tgz"
+	entry, err := c.scanReposForURL(u, rf)
+	require.NoError(t, err)
+	assert.Equal(t, "testing", entry.Name, "Unexpected repo %q for URL %q", entry.Name, u)
+}
+
+func TestResolveChartVersionWithEmptyCache(t *testing.T) {
+	emptyCache := t.TempDir()
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyLater,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  emptyCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  emptyCache,
+		}),
+	}
+
+	u := "http://example.com/alpine-0.2.0.tgz"
+	_, resolvedURL, err := c.ResolveChartVersion(u, "")
+	require.NoError(t, err)
+	assert.Equal(t, u, resolvedURL.String())
+}
+
 func TestDownloadToCache(t *testing.T) {
 	srv := repotest.NewTempServer(t,
 		repotest.WithChartSourceGlob("testdata/*.tgz*"),

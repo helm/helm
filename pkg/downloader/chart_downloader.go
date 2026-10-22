@@ -567,6 +567,10 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
 		i, err := repo.LoadIndexFile(idxFile)
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				// No cache for this repository; skip and keep looking rather than erroring
+				continue
+			}
 			return nil, fmt.Errorf("no cached repo found. (try 'helm repo update'): %w", err)
 		}
 
