@@ -885,7 +885,12 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 					}
 				}
 
-				if err := patchResourceServerSide(target, updateOptions.dryRun, updateOptions.forceConflicts, updateOptions.fieldValidationDirective); err != nil {
+				if err := retry.OnError(
+					retry.DefaultRetry,
+					isServerSideRetryable,
+					func() error {
+						return patchResourceServerSide(target, updateOptions.dryRun, updateOptions.forceConflicts, updateOptions.fieldValidationDirective)
+					}); err != nil {
 					logger.Debug("Error patching resource", slog.Any("error", err))
 					return err
 				}
