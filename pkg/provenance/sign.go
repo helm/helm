@@ -238,6 +238,11 @@ func (s *Signatory) ClearSign(archiveData []byte, filename string, metadataBytes
 
 // Verify checks a signature and verifies that it is legit for package data.
 // This is the core verification method that works with data in memory.
+//
+// filename is the local archive name. If that name is not in the signed Files
+// map, a Files entry whose SHA matches the archive is accepted. helm package
+// records Chart.yaml's name, which can differ from the repository path helm
+// pull uses to name the downloaded file.
 func (s *Signatory) Verify(archiveData, provData []byte, filename string) (*Verification, error) {
 	ver := &Verification{}
 
@@ -264,17 +269,34 @@ func (s *Signatory) Verify(archiveData, provData []byte, filename string) (*Veri
 	}
 
 	sum = "sha256:" + sum
-	if sha, ok := sums.Files[filename]; !ok {
-		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", filename)
-	} else if sha != sum {
-		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", filename, sha, sum)
+	signedName, err := matchSignedFile(sums.Files, filename, sum)
+	if err != nil {
+		return ver, err
 	}
 	ver.FileHash = sum
-	ver.FileName = filename
+	ver.FileName = signedName
 
 	// TODO: when image signing is added, verify that here.
 
 	return ver, nil
+}
+
+// matchSignedFile returns the Files key that covers archiveSum.
+// If filename is present it must match; otherwise any signed name with the
+// same hash is accepted (repository path vs Chart.yaml name).
+func matchSignedFile(files map[string]string, filename, archiveSum string) (string, error) {
+	if sha, ok := files[filename]; ok {
+		if sha != archiveSum {
+			return "", fmt.Errorf("sha256 sum does not match for %s: %q != %q", filename, sha, archiveSum)
+		}
+		return filename, nil
+	}
+	for signedName, sha := range files {
+		if sha == archiveSum {
+			return signedName, nil
+		}
+	}
+	return "", fmt.Errorf("provenance does not contain a SHA for a file named %q", filename)
 }
 
 // verifySignature verifies that the given block is validly signed, and returns the signer.
