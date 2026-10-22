@@ -22,7 +22,7 @@ import (
 	v2chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
-var NewDependencyAccessor func(dep Dependency) (DependencyAccessor, error) = NewDefaultDependencyAccessor //nolint:revive
+var NewDependencyAccessor func(dep Dependency) (DependencyAccessor, error) = NewDefaultDependencyAccessor
 
 func NewDefaultDependencyAccessor(dep Dependency) (DependencyAccessor, error) {
 	switch v := dep.(type) {
