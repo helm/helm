@@ -85,7 +85,7 @@ This will produce an error if the chart cannot be loaded.
 
 func newDependencyCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "dependency update|build|list",
+		Use:     "dependency update|build|list|check-updates",
 		Aliases: []string{"dep", "dependencies"},
 		Short:   "manage a chart's dependencies",
 		Long:    dependencyDesc,
@@ -95,6 +95,7 @@ func newDependencyCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd.AddCommand(newDependencyListCmd(out))
 	cmd.AddCommand(newDependencyUpdateCmd(cfg, out))
 	cmd.AddCommand(newDependencyBuildCmd(out))
+	cmd.AddCommand(newDependencyCheckUpdatesCmd(out))
 
 	return cmd
 }
