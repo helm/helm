@@ -112,6 +112,9 @@ func lintChart(path string, vals map[string]any, namespace string, kubeVersion *
 		if err != nil {
 			return linter, fmt.Errorf("unable to read temporary output directory %s: %w", tempDir, err)
 		}
+		if len(files) == 0 {
+			return linter, fmt.Errorf("temporary output directory %s is empty after extraction", tempDir)
+		}
 		if !files[0].IsDir() {
 			return linter, fmt.Errorf("unexpected file %s in temporary output directory %s", files[0].Name(), tempDir)
 		}
