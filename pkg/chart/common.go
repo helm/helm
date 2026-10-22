@@ -51,6 +51,10 @@ func (r *v2Accessor) Name() string {
 	return r.chrt.Metadata.Name
 }
 
+func (r *v2Accessor) Version() string {
+	return r.chrt.Metadata.Version
+}
+
 func (r *v2Accessor) IsRoot() bool {
 	return r.chrt.IsRoot()
 }
@@ -118,6 +122,10 @@ type v3Accessor struct {
 
 func (r *v3Accessor) Name() string {
 	return r.chrt.Metadata.Name
+}
+
+func (r *v3Accessor) Version() string {
+	return r.chrt.Metadata.Version
 }
 
 func (r *v3Accessor) IsRoot() bool {
