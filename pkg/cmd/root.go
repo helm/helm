@@ -423,8 +423,8 @@ func newDefaultRegistryClient(out io.Writer, plainHTTP bool, username, password 
 		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 		registry.ClientOptBasicAuth(username, password),
-		registry.ClientOptContainersConfig(gates.ContainersConfig.IsEnabled()),
 	}
+	opts = append(opts, containersConfigOptions()...)
 	if plainHTTP {
 		opts = append(opts, registry.ClientOptPlainHTTP())
 	}
@@ -451,7 +451,7 @@ func newRegistryClientWithTLS(
 
 	// Pass the TLS settings as options rather than a custom HTTP client, so
 	// registries.conf and certs.d still apply alongside them.
-	registryClient, err := registry.NewClient(
+	opts := []registry.ClientOption{
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptEnableCache(true),
 		registry.ClientOptWriter(out),
@@ -459,12 +459,26 @@ func newRegistryClientWithTLS(
 		registry.ClientOptTLSClientConfig(certFile, keyFile, caFile),
 		registry.ClientOptInsecureSkipVerifyTLS(insecureSkipTLSVerify),
 		registry.ClientOptBasicAuth(username, password),
-		registry.ClientOptContainersConfig(gates.ContainersConfig.IsEnabled()),
-	)
+	}
+	opts = append(opts, containersConfigOptions()...)
+	registryClient, err := registry.NewClient(opts...)
 	if err != nil {
 		return nil, err
 	}
 	return registryClient, nil
+}
+
+// containersConfigOptions loads the container ecosystem registry config when
+// the HELM_EXPERIMENTAL_CONTAINERS_CONFIG gate is set. Opting in to that config
+// also enforces its policy.json, with signature verification so signedBy
+// requirements can be met, as podman and buildah do for images.
+func containersConfigOptions() []registry.ClientOption {
+	enabled := gates.ContainersConfig.IsEnabled()
+	return []registry.ClientOption{
+		registry.ClientOptContainersConfig(enabled),
+		registry.ClientOptPolicyEnforcement(enabled),
+		registry.ClientOptSignatureVerification(enabled),
+	}
 }
 
 type CommandError struct {
