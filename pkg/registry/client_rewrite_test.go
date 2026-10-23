@@ -74,6 +74,7 @@ func TestLocationRewrite_PushPull(t *testing.T) {
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
 		ClientOptPlainHTTP(),
+		ClientOptContainersConfig(true),
 		withRegistriesConfigPath(writeRegistriesConf(t, fmt.Sprintf(
 			"[[registry]]\nprefix = %q\nlocation = %q\n", aliasHost, canonicalHost,
 		))),

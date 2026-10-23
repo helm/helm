@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"helm.sh/helm/v4/internal/gates"
 	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/action"
@@ -422,6 +423,7 @@ func newDefaultRegistryClient(out io.Writer, plainHTTP bool, username, password 
 		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 		registry.ClientOptBasicAuth(username, password),
+		registry.ClientOptContainersConfig(gates.ContainersConfig.IsEnabled()),
 	}
 	if plainHTTP {
 		opts = append(opts, registry.ClientOptPlainHTTP())
@@ -457,6 +459,7 @@ func newRegistryClientWithTLS(
 		registry.ClientOptTLSClientConfig(certFile, keyFile, caFile),
 		registry.ClientOptInsecureSkipVerifyTLS(insecureSkipTLSVerify),
 		registry.ClientOptBasicAuth(username, password),
+		registry.ClientOptContainersConfig(gates.ContainersConfig.IsEnabled()),
 	)
 	if err != nil {
 		return nil, err

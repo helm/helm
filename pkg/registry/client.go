@@ -81,6 +81,9 @@ type (
 		httpClient         *http.Client
 		plainHTTP          bool
 		// v3 config-driven fields
+		// containersConfig enables loading the container ecosystem config
+		// stack; Docker config.json credentials are used either way.
+		containersConfig      bool
 		configs               *remoteconfig.Configs
 		builder               *remote.ClientBuilder
 		policyEvaluator       *policy.Evaluator
@@ -136,45 +139,54 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	client.credentialsStore = helmStore
 
-	// Load the full container ecosystem config stack: Docker config.json,
-	// containers auth.json, registries.conf, policy.json, certs.d, registries.d.
-	// Missing files are silently skipped.
-	// Only registries.conf and policy.json are overridable, and only by tests
-	// (empty means default search); all other config files always resolve to
-	// their default locations.
-	loaderOpts := remoteconfig.LoadConfigsOptions{
-		RegistriesConfigPath: client.registriesConfigPath,
-		PolicyConfigPath:     client.policyConfigPath,
-	}
-	// A config file that exists but cannot be parsed must not break commands
-	// that never contact a registry, so the error is kept and returned by the
-	// first registry operation instead.
-	configs, err := remoteconfig.LoadConfigsWithOptions(loaderOpts)
-	if err != nil {
-		client.configErr = fmt.Errorf("failed to load registry configurations: %w", err)
-		configs = &remoteconfig.Configs{}
+	// Without the container ecosystem config stack, configs stays empty (no
+	// mirrors, rewrites, certs.d or policy) and Docker config.json is the only
+	// fallback for Helm's own credentials, as it was with oras-go v2.
+	configs := &remoteconfig.Configs{}
+	var credStore credentials.Store = helmStore
+	if !client.containersConfig {
+		if dockerStore, err := credentials.NewStoreFromDocker(storeOptions); err == nil {
+			credStore = credentials.NewStoreWithFallbacks(helmStore, dockerStore)
+		}
+	} else {
+		// Load the full container ecosystem config stack: Docker config.json,
+		// containers auth.json, registries.conf, policy.json, certs.d, registries.d.
+		// Missing files are silently skipped.
+		// Only registries.conf and policy.json are overridable, and only by tests
+		// (empty means default search); all other config files always resolve to
+		// their default locations.
+		loaderOpts := remoteconfig.LoadConfigsOptions{
+			RegistriesConfigPath: client.registriesConfigPath,
+			PolicyConfigPath:     client.policyConfigPath,
+		}
+		// A config file that exists but cannot be parsed must not break commands
+		// that never contact a registry, so the error is kept and returned by the
+		// first registry operation instead.
+		loaded, err := remoteconfig.LoadConfigsWithOptions(loaderOpts)
+		if err != nil {
+			client.configErr = fmt.Errorf("failed to load registry configurations: %w", err)
+		} else {
+			configs = loaded
+		}
+
+		// policy.json is written for container images, so it is only enforced on
+		// charts when the caller opts in.
+		if (client.policyEnforcement || client.signatureVerification) && configs.PolicyConfig != nil {
+			evaluator, err := configs.PolicyEvaluator()
+			if err != nil {
+				return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
+			}
+			client.policyEvaluator = evaluator
+		}
+
+		// Build the combined credential store for read operations:
+		//   1. Helm's own credentials file (highest priority, stores login results)
+		//   2. Docker config.json + containers auth.json from the full config stack
+		if configStore, err := configs.CredentialStore(storeOptions); err == nil {
+			credStore = credentials.NewStoreWithFallbacks(helmStore, configStore)
+		}
 	}
 	client.configs = configs
-
-	// policy.json is written for container images, so it is only enforced on
-	// charts when the caller opts in.
-	if (client.policyEnforcement || client.signatureVerification) && configs.PolicyConfig != nil {
-		evaluator, err := configs.PolicyEvaluator()
-		if err != nil {
-			return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
-		}
-		client.policyEvaluator = evaluator
-	}
-
-	// Build the combined credential store for read operations:
-	//   1. Helm's own credentials file (highest priority, stores login results)
-	//   2. Docker config.json + containers auth.json from the full config stack
-	var credStore credentials.Store
-	if configStore, err := configs.CredentialStore(storeOptions); err == nil {
-		credStore = credentials.NewStoreWithFallbacks(helmStore, configStore)
-	} else {
-		credStore = helmStore
-	}
 
 	// Build the ClientBuilder used by the config-driven repository creation path.
 	var logger *slog.Logger
@@ -447,6 +459,18 @@ func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
 func ClientOptPlainHTTP() ClientOption {
 	return func(c *Client) {
 		c.plainHTTP = true
+	}
+}
+
+// ClientOptContainersConfig returns a function that enables or disables
+// loading the container ecosystem configuration: containers auth.json,
+// registries.conf (mirrors and location rewrites), certs.d, policy.json and
+// registries.d. It is disabled by default, in which case credentials come from
+// the Helm credentials file and Docker config.json only. Policy enforcement and
+// signature verification have no effect unless it is enabled.
+func ClientOptContainersConfig(enabled bool) ClientOption {
+	return func(c *Client) {
+		c.containersConfig = enabled
 	}
 }
 
