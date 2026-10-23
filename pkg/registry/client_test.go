@@ -219,6 +219,7 @@ func TestNewClient_WithRegistriesConfigPath(t *testing.T) {
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(credFile),
+		ClientOptContainersConfig(true),
 		withRegistriesConfigPath("/nonexistent/registries.conf"),
 	)
 	require.NoError(t, err) // nonexistent paths are silently skipped
@@ -251,6 +252,7 @@ func TestLogin_LocationRewrite(t *testing.T) {
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(credFile),
+		ClientOptContainersConfig(true),
 		withRegistriesConfigPath(registriesConf),
 	)
 	require.NoError(t, err)
@@ -357,6 +359,7 @@ func TestLogin_BlockedRegistry(t *testing.T) {
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptContainersConfig(true),
 		withRegistriesConfigPath(writeRegistriesConf(t, fmt.Sprintf("[[registry]]\nprefix = %q\nblocked = true\n", host))),
 	)
 	require.NoError(t, err)
@@ -390,6 +393,7 @@ func TestNewRegistry_TokenFlow(t *testing.T) {
 			c, err := NewClient(
 				ClientOptWriter(io.Discard),
 				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+				ClientOptContainersConfig(true),
 				withRegistriesConfigPath(writeRegistriesConf(t, conf)),
 			)
 			require.NoError(t, err)
@@ -462,6 +466,7 @@ func TestLogin_PathScopedLocationRewrite(t *testing.T) {
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptContainersConfig(true),
 		withRegistriesConfigPath(writeRegistriesConf(t, fmt.Sprintf(
 			"[[registry]]\nprefix = %q\nlocation = %q\n", "alias.example.test/team", canonicalHost+"/org",
 		))),
@@ -488,6 +493,7 @@ func TestLogin_PathScopedBlockedRegistry(t *testing.T) {
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptContainersConfig(true),
 		withRegistriesConfigPath(writeRegistriesConf(t, "[[registry]]\nprefix = \"blocked.example.test/team\"\nblocked = true\n")),
 	)
 	require.NoError(t, err)
@@ -533,6 +539,7 @@ func TestNewClient_InvalidConfigDeferred(t *testing.T) {
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptContainersConfig(true),
 		withRegistriesConfigPath(writeRegistriesConf(t, "[[registry]\nnot valid toml")),
 	)
 	require.NoError(t, err, "an unparsable config file must not fail NewClient")
@@ -545,6 +552,27 @@ func TestNewClient_InvalidConfigDeferred(t *testing.T) {
 
 	err = c.Logout("example.test")
 	require.ErrorContains(t, err, "failed to load registry configurations")
+}
+
+func TestNewClient_ContainersConfigDisabled(t *testing.T) {
+	t.Parallel()
+
+	policyPath := filepath.Join(t.TempDir(), "policy.json")
+	require.NoError(t, os.WriteFile(policyPath, []byte(`{"default":[{"type":"reject"}]}`), 0o600))
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+		ClientOptPolicyEnforcement(true),
+		withRegistriesConfigPath(writeRegistriesConf(t, "[[registry]\nnot valid toml")),
+		withPolicyConfigPath(policyPath),
+	)
+	require.NoError(t, err)
+	require.NoError(t, c.configErr, "config files must not be read when disabled")
+	require.Nil(t, c.configs.RegistriesConfig)
+	require.Nil(t, c.configs.PolicyConfig)
+	require.Empty(t, c.configs.CertsDirPaths)
+	require.Nil(t, c.policyEvaluator, "policy must not be enforced when disabled")
 }
 
 func TestNewClient_PolicyEnforcement(t *testing.T) {
@@ -568,6 +596,7 @@ func TestNewClient_PolicyEnforcement(t *testing.T) {
 			options := append([]ClientOption{
 				ClientOptWriter(io.Discard),
 				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+				ClientOptContainersConfig(true),
 				withPolicyConfigPath(policyPath),
 			}, tt.options...)
 			c, err := NewClient(options...)
