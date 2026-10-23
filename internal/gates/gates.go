@@ -22,5 +22,6 @@ const ChartV3 gates.Gate = "HELM_EXPERIMENTAL_CHART_V3"
 
 // ContainersConfig is the feature gate for loading the container ecosystem
 // registry configuration (auth.json, registries.conf, certs.d, policy.json
-// and registries.d).
+// and registries.d). With it set, the CLI also enforces policy.json and
+// verifies signatures configured in registries.d.
 const ContainersConfig gates.Gate = "HELM_EXPERIMENTAL_CONTAINERS_CONFIG"
