@@ -8,32 +8,33 @@ name: e2e-registries
 # contributor. Secret-free coverage against a local registry runs per-PR in
 # e2e.yml.
 #
-# Required configuration. If none is set the job is skipped, so forks running
-# this on a schedule do not fail. If only some is set, that is a
-# misconfiguration and the job fails loudly rather than being silently skipped.
-# Only the token is a secret; the rest are repository variables, so they show
-# up unmasked in the logs.
+# Each registry in the matrix below is configured by the same five settings,
+# named after its id. If none is set the job is skipped, so forks running this
+# on a schedule do not fail. If only some is set, that is a misconfiguration
+# and the job fails loudly rather than being silently skipped. Only the token
+# is a secret; the rest are repository variables, so they show up unmasked in
+# the logs.
 #
-#   Docker Hub  vars.E2E_DOCKER_USERNAME
-#               secrets.E2E_DOCKER_PASSWORD  access token with write access to the repository
-#               vars.E2E_DOCKER_REPOSITORY   e.g. helm-e2e
-#               vars.E2E_DOCKER_NAMESPACE    optional, defaults to E2E_DOCKER_USERNAME
+#   vars.E2E_<ID>_REGISTRY      registry host, e.g. registry.gitlab.com
+#   vars.E2E_<ID>_USERNAME      user, robot account or deploy token name
+#   secrets.E2E_<ID>_PASSWORD   token with read and write access
+#   vars.E2E_<ID>_NAMESPACE     user, org or group that owns the repository
+#   vars.E2E_<ID>_REPOSITORY    repository (or project) charts are pushed to
 #
-#   GitLab      vars.E2E_GITLAB_USERNAME     deploy token username, e.g. gitlab+deploy-token-123
-#               secrets.E2E_GITLAB_PASSWORD  deploy token with read_registry and write_registry
-#               vars.E2E_GITLAB_NAMESPACE    group or user that owns the project, e.g. helm
-#               vars.E2E_GITLAB_REPOSITORY   project whose container registry is used, e.g. helm-e2e
+# Registries that do not nest repository paths, or whose token may only be
+# able to write to one repository, set single-repo, and the suite pushes every
+# fixture to <registry>/<namespace>/<repository> under its own version.
+# Otherwise it runs in its default layout under that path. See
+# test/e2e/README.md.
 #
-# Docker Hub does not nest repository paths, and a scoped access token may only
-# be able to write to one repository, so the suite runs in single-repository
-# mode: every fixture is pushed to <namespace>/<repository> under its own
-# version. See test/e2e/README.md.
+#   DOCKER  Docker Hub. Does not nest repository paths, and a scoped access
+#           token may only write to one repository: single-repo.
+#   GITLAB  GitLab. Nests paths under the project, and a deploy token covers
+#           every repository in it. Its token endpoint only implements the
+#           distribution GET flow, not OAuth2 POST, which makes it the registry
+#           that catches a regression in Helm's token flow fallback.
 #
-# GitLab nests repository paths under the project, and a deploy token covers
-# every repository in its project, so the suite runs in its default layout
-# under registry.gitlab.com/<namespace>/<repository>. Its token endpoint only
-# implements the distribution GET flow, not OAuth2 POST, which makes it the
-# registry that catches a regression in Helm's token flow fallback.
+# Adding a registry is a matrix entry plus its five settings.
 
 on:
   schedule:
@@ -44,19 +45,27 @@ on:
 permissions:
   contents: read
 
-# Runs share fixed tags in one Docker Hub repository, and repackaged fixtures
+# Runs share fixed tags in each registry's repository, and repackaged fixtures
 # differ byte for byte between runs, so an overlapping run could overwrite a
 # tag between another run's push and pull. Queue runs rather than overlap.
 concurrency:
   group: e2e-registries
   cancel-in-progress: false
 
-env:
-  KIND_VERSION: v0.33.0
-
 jobs:
-  dockerhub:
+  registry:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: DOCKER
+            name: Docker Hub
+            single-repo: true
+          - id: GITLAB
+            name: GitLab
+            single-repo: false
     steps:
       # Configuration is read as environment variables rather than interpolated
       # into the script, so neither a credential nor a variable becomes shell
@@ -64,96 +73,42 @@ jobs:
       - name: Resolve registry configuration
         id: config
         env:
-          DOCKER_USERNAME: ${{ vars.E2E_DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.E2E_DOCKER_PASSWORD }}
-          DOCKER_REPOSITORY: ${{ vars.E2E_DOCKER_REPOSITORY }}
-          DOCKER_NAMESPACE: ${{ vars.E2E_DOCKER_NAMESPACE }}
+          ID: ${{ matrix.id }}
+          NAME: ${{ matrix.name }}
+          SINGLE_REPO: ${{ matrix.single-repo }}
+          REGISTRY: ${{ vars[format('E2E_{0}_REGISTRY', matrix.id)] }}
+          USERNAME: ${{ vars[format('E2E_{0}_USERNAME', matrix.id)] }}
+          PASSWORD: ${{ secrets[format('E2E_{0}_PASSWORD', matrix.id)] }}
+          NAMESPACE: ${{ vars[format('E2E_{0}_NAMESPACE', matrix.id)] }}
+          REPOSITORY: ${{ vars[format('E2E_{0}_REPOSITORY', matrix.id)] }}
         run: |
           set -euo pipefail
-          if [ -z "${DOCKER_USERNAME}${DOCKER_PASSWORD}${DOCKER_REPOSITORY}" ]; then
-            echo "no Docker Hub configuration set, skipping"
+          if [ -z "${REGISTRY}${USERNAME}${PASSWORD}${NAMESPACE}${REPOSITORY}" ]; then
+            echo "no ${NAME} configuration set, skipping"
             echo "configured=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           missing=""
-          [ -n "${DOCKER_USERNAME}" ] || missing="${missing} vars.E2E_DOCKER_USERNAME"
-          [ -n "${DOCKER_PASSWORD}" ] || missing="${missing} secrets.E2E_DOCKER_PASSWORD"
-          [ -n "${DOCKER_REPOSITORY}" ] || missing="${missing} vars.E2E_DOCKER_REPOSITORY"
+          [ -n "${REGISTRY}" ] || missing="${missing} vars.E2E_${ID}_REGISTRY"
+          [ -n "${USERNAME}" ] || missing="${missing} vars.E2E_${ID}_USERNAME"
+          [ -n "${PASSWORD}" ] || missing="${missing} secrets.E2E_${ID}_PASSWORD"
+          [ -n "${NAMESPACE}" ] || missing="${missing} vars.E2E_${ID}_NAMESPACE"
+          [ -n "${REPOSITORY}" ] || missing="${missing} vars.E2E_${ID}_REPOSITORY"
           if [ -n "${missing}" ]; then
-            echo "::error::Docker Hub is partially configured; missing:${missing}"
+            echo "::error::${NAME} is partially configured; missing:${missing}"
             exit 1
           fi
 
           {
-            echo "HELM_E2E_REGISTRY=registry-1.docker.io/${DOCKER_NAMESPACE:-${DOCKER_USERNAME}}"
-            echo "HELM_E2E_USERNAME=${DOCKER_USERNAME}"
-            echo "HELM_E2E_PASSWORD=${DOCKER_PASSWORD}"
-            echo "HELM_E2E_SINGLE_REPO=${DOCKER_REPOSITORY}"
-          } >> "$GITHUB_ENV"
-          echo "configured=true" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout source code
-        if: steps.config.outputs.configured == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
-      - name: Add variables to environment file
-        if: steps.config.outputs.configured == 'true'
-        run: cat ".github/env" >> "$GITHUB_ENV"
-      - name: Setup Go
-        if: steps.config.outputs.configured == 'true'
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # pin@7.0.0
-        with:
-          go-version: '${{ env.GOLANG_VERSION }}'
-          check-latest: true
-
-      - name: Create a kind cluster
-        if: steps.config.outputs.configured == 'true'
-        run: |
-          set -euo pipefail
-          go install "sigs.k8s.io/kind@${KIND_VERSION}"
-          kind create cluster --name helm-e2e --wait 120s
-
-      - name: Run end-to-end tests
-        if: steps.config.outputs.configured == 'true'
-        env:
-          HELM_E2E_KUBERNETES: "true"
-        run: make test-e2e
-
-  gitlab:
-    runs-on: ubuntu-latest
-    steps:
-      # Configuration is read as environment variables rather than interpolated
-      # into the script, so neither a credential nor a variable becomes shell
-      # source.
-      - name: Resolve registry configuration
-        id: config
-        env:
-          GITLAB_USERNAME: ${{ vars.E2E_GITLAB_USERNAME }}
-          GITLAB_PASSWORD: ${{ secrets.E2E_GITLAB_PASSWORD }}
-          GITLAB_NAMESPACE: ${{ vars.E2E_GITLAB_NAMESPACE }}
-          GITLAB_REPOSITORY: ${{ vars.E2E_GITLAB_REPOSITORY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${GITLAB_USERNAME}${GITLAB_PASSWORD}${GITLAB_NAMESPACE}${GITLAB_REPOSITORY}" ]; then
-            echo "no GitLab configuration set, skipping"
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          missing=""
-          [ -n "${GITLAB_USERNAME}" ] || missing="${missing} vars.E2E_GITLAB_USERNAME"
-          [ -n "${GITLAB_PASSWORD}" ] || missing="${missing} secrets.E2E_GITLAB_PASSWORD"
-          [ -n "${GITLAB_NAMESPACE}" ] || missing="${missing} vars.E2E_GITLAB_NAMESPACE"
-          [ -n "${GITLAB_REPOSITORY}" ] || missing="${missing} vars.E2E_GITLAB_REPOSITORY"
-          if [ -n "${missing}" ]; then
-            echo "::error::GitLab is partially configured; missing:${missing}"
-            exit 1
-          fi
-
-          {
-            echo "HELM_E2E_REGISTRY=registry.gitlab.com/${GITLAB_NAMESPACE}/${GITLAB_REPOSITORY}"
-            echo "HELM_E2E_USERNAME=${GITLAB_USERNAME}"
-            echo "HELM_E2E_PASSWORD=${GITLAB_PASSWORD}"
+            echo "HELM_E2E_USERNAME=${USERNAME}"
+            echo "HELM_E2E_PASSWORD=${PASSWORD}"
+            if [ "${SINGLE_REPO}" = "true" ]; then
+              echo "HELM_E2E_REGISTRY=${REGISTRY}/${NAMESPACE}"
+              echo "HELM_E2E_SINGLE_REPO=${REPOSITORY}"
+            else
+              echo "HELM_E2E_REGISTRY=${REGISTRY}/${NAMESPACE}/${REPOSITORY}"
+            fi
           } >> "$GITHUB_ENV"
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
@@ -171,8 +126,8 @@ jobs:
           check-latest: true
 
       # The Kubernetes install test exercises the same pull path as the
-      # registry tests and already runs in the dockerhub job, so this job
-      # skips the kind cluster and covers only the registry.
+      # registry tests and already runs per-PR against a kind cluster in
+      # e2e.yml, so these jobs skip it and cover only the registry.
       - name: Run end-to-end tests
         if: steps.config.outputs.configured == 'true'
         run: make test-e2e
