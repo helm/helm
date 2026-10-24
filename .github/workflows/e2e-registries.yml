@@ -52,9 +52,6 @@ concurrency:
   group: e2e-registries
   cancel-in-progress: false
 
-env:
-  KIND_VERSION: v0.33.0
-
 jobs:
   registry:
     name: ${{ matrix.name }}
@@ -66,13 +63,9 @@ jobs:
           - id: DOCKER
             name: Docker Hub
             single-repo: true
-            # The Kubernetes install test exercises the same pull path as the
-            # registry tests, so one registry running it is enough.
-            kubernetes: true
           - id: GITLAB
             name: GitLab
             single-repo: false
-            kubernetes: false
     steps:
       # Configuration is read as environment variables rather than interpolated
       # into the script, so neither a credential nor a variable becomes shell
@@ -132,15 +125,9 @@ jobs:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
 
-      - name: Create a kind cluster
-        if: steps.config.outputs.configured == 'true' && matrix.kubernetes
-        run: |
-          set -euo pipefail
-          go install "sigs.k8s.io/kind@${KIND_VERSION}"
-          kind create cluster --name helm-e2e --wait 120s
-
+      # The Kubernetes install test exercises the same pull path as the
+      # registry tests and already runs per-PR against a kind cluster in
+      # e2e.yml, so these jobs skip it and cover only the registry.
       - name: Run end-to-end tests
         if: steps.config.outputs.configured == 'true'
-        env:
-          HELM_E2E_KUBERNETES: ${{ matrix.kubernetes && 'true' || '' }}
         run: make test-e2e
