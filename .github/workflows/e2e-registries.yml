@@ -33,6 +33,8 @@ name: e2e-registries
 #           every repository in it. Its token endpoint only implements the
 #           distribution GET flow, not OAuth2 POST, which makes it the registry
 #           that catches a regression in Helm's token flow fallback.
+#   QUAY    Quay.io. Does not nest repository paths, and a robot account is
+#           granted write access per repository: single-repo.
 #
 # Adding a registry is a matrix entry plus its five settings.
 
@@ -66,6 +68,9 @@ jobs:
           - id: GITLAB
             name: GitLab
             single-repo: false
+          - id: QUAY
+            name: Quay
+            single-repo: true
     steps:
       # Configuration is read as environment variables rather than interpolated
       # into the script, so neither a credential nor a variable becomes shell
