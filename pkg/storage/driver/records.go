@@ -114,6 +114,10 @@ func newRecord(key string, rls *rspb.Release) *record {
 	var lbs labels
 
 	lbs.init()
+
+	// apply custom labels
+	lbs.fromMap(rls.Labels)
+
 	lbs.set("name", rls.Name)
 	lbs.set("owner", "helm")
 	lbs.set("status", rls.Info.Status.String())
