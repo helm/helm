@@ -171,7 +171,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		// policy.json is written for container images, so it is only enforced on
 		// charts when the caller opts in.
 		if (client.policyEnforcement || client.signatureVerification) && configs.PolicyConfig != nil {
-			evaluator, err := configs.PolicyEvaluator()
+			evaluator, err := newPolicyEvaluator(configs, client.signatureVerification)
 			if err != nil {
 				return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
 			}
@@ -293,23 +293,19 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Replace the config-derived evaluator with one scoped to this repository's
-	// registries.d signature storage.
-	if c.signatureVerification && c.configs.RegistriesDConfig != nil && c.configs.PolicyConfig != nil {
-		scope := props.Reference.Registry
-		if props.Reference.Repository != "" {
-			scope += "/" + props.Reference.Repository
-		}
-		verifier := signature.NewSignedByVerifierFromConfig(c.configs.RegistriesDConfig, scope)
-		if verifier != nil {
-			scopedEval, err := c.configs.PolicyEvaluator(policy.WithSignedByVerifier(verifier))
-			if err != nil {
-				return nil, fmt.Errorf("failed to build signature policy evaluator for %q: %w", scope, err)
-			}
-			repo.Registry.Policy = scopedEval
-		}
-	}
 	return repo, nil
+}
+
+// newPolicyEvaluator builds the policy.json evaluator. With signature
+// verification enabled it also verifies signedBy requirements against the
+// registries.d lookaside storage; the verifier resolves the lookaside URL for
+// each repository, so one evaluator serves every repository.
+func newPolicyEvaluator(configs *remoteconfig.Configs, signatureVerification bool) (*policy.Evaluator, error) {
+	var opts []policy.EvaluatorOption
+	if signatureVerification && configs.RegistriesDConfig != nil {
+		opts = append(opts, policy.WithSignedByVerifier(signature.NewSignedByVerifierFromConfig(configs.RegistriesDConfig)))
+	}
+	return configs.PolicyEvaluator(opts...)
 }
 
 // newRegistry creates a configured remote.Registry for the given reference (used by Login).
