@@ -411,42 +411,38 @@ func TestNewRegistry_TokenFlow(t *testing.T) {
 	}
 }
 
-func TestNewRepository_SignatureVerificationEvaluator(t *testing.T) {
+func TestNewPolicyEvaluator_SignatureVerification(t *testing.T) {
 	t.Parallel()
 
-	newSigClient := func(t *testing.T, options ...ClientOption) *Client {
-		t.Helper()
-		options = append([]ClientOption{
-			ClientOptWriter(io.Discard),
-			ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
-			ClientOptSignatureVerification(true),
-		}, options...)
-		c, err := NewClient(options...)
-		require.NoError(t, err)
-
-		// Replace the host's config stack with a policy and a registries.d
-		// lookaside so a signature verifier is built for every scope.
-		c.configs = &remoteconfig.Configs{
-			PolicyConfig: policy.NewInsecureAcceptAnythingPolicy(),
-			RegistriesDConfig: &remoteconfig.RegistriesDConfig{
-				DefaultDocker: &remoteconfig.RegistriesDDockerConfig{Lookaside: "file://" + t.TempDir()},
-			},
-		}
-		return c
+	configs := &remoteconfig.Configs{
+		PolicyConfig: policy.NewPolicy().SetDefault(&policy.PRSignedBy{KeyType: "GPGKeys", KeyData: "unused"}),
+		RegistriesDConfig: &remoteconfig.RegistriesDConfig{
+			DefaultDocker: &remoteconfig.RegistriesDDockerConfig{Lookaside: "file://" + t.TempDir()},
+		},
+	}
+	image := policy.ImageReference{
+		Transport: policy.TransportNameDocker,
+		Scope:     "example.test/charts/mychart",
+		Reference: "example.test/charts/mychart@sha256:" + strings.Repeat("a", 64),
 	}
 
-	t.Run("config-derived evaluator is replaced", func(t *testing.T) {
+	t.Run("disabled leaves signedBy unverifiable", func(t *testing.T) {
 		t.Parallel()
-		c := newSigClient(t)
-		configEval, err := c.configs.PolicyEvaluator()
+		eval, err := newPolicyEvaluator(configs, false)
 		require.NoError(t, err)
-		c.policyEvaluator = configEval
-		c.builder.PolicyEvaluator = configEval
+		_, err = eval.IsImageAllowed(context.Background(), image)
+		require.ErrorContains(t, err, "requires a SignedByVerifier")
+	})
 
-		repo, err := c.newRepository("example.test/charts/mychart:1.0.0")
+	t.Run("enabled installs a registries.d verifier", func(t *testing.T) {
+		t.Parallel()
+		eval, err := newPolicyEvaluator(configs, true)
 		require.NoError(t, err)
-		require.NotNil(t, repo.Registry.Policy)
-		require.NotSame(t, configEval, repo.Registry.Policy, "signature-scoped evaluator should be installed")
+		allowed, err := eval.IsImageAllowed(context.Background(), image)
+		require.False(t, allowed, "an unsigned image must not be allowed")
+		if err != nil {
+			require.NotContains(t, err.Error(), "requires a SignedByVerifier")
+		}
 	})
 }
 
