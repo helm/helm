@@ -22,12 +22,13 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"path/filepath"
 	"testing"
 
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	"github.com/oras-project/oras-go/v3/registry/remote/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 var errMockRead = errors.New("mock read error")
@@ -448,4 +449,23 @@ func Test_NewTransport(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewClient_builderTransport(t *testing.T) {
+	defer func(orig http.RoundTripper) { http.DefaultTransport = orig }(http.DefaultTransport)
+
+	installed := &nonClonableTransport{}
+	http.DefaultTransport = installed
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+	)
+	require.NoError(t, err)
+
+	// The builder only applies TLS settings to an *http.Transport, so the
+	// config-driven path must not start from the replaced default transport.
+	_, ok := c.builder.BaseTransport.(*http.Transport)
+	require.True(t, ok, "TLS settings can only be applied to an *http.Transport, got %T", c.builder.BaseTransport)
+	assert.NotSame(t, installed, c.builder.BaseTransport, "the process-wide default transport must not be handed out")
 }

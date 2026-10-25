@@ -197,6 +197,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	// maps Docker Hub to its server address and walks the request's namespaces
 	// from most to least specific, so namespaced logins apply.
 	builder.CredentialStore = credStore
+	// Start from a transport Helm owns so TLS settings from certs.d and CLI
+	// flags apply even when http.DefaultTransport has been replaced.
+	builder.BaseTransport = defaultTransport()
 	builder.UserAgent = version.GetUserAgent()
 	builder.Logger = logger
 	builder.PolicyEvaluator = client.policyEvaluator
