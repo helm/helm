@@ -11,12 +11,13 @@ name: e2e-registries
 # Each registry in the matrix below is configured by the same five settings,
 # named after its id. If none is set the job is skipped, so forks running this
 # on a schedule do not fail. If only some is set, that is a misconfiguration
-# and the job fails loudly rather than being silently skipped. Only the token
-# is a secret; the rest are repository variables, so they show up unmasked in
-# the logs.
+# and the job fails loudly rather than being silently skipped. The token and
+# username are secrets; the rest are repository variables, so they show up
+# unmasked in the logs. The username is still read from a variable when no
+# secret is set, so existing configuration keeps working while it moves.
 #
 #   vars.E2E_<ID>_REGISTRY      registry host, e.g. registry.gitlab.com
-#   vars.E2E_<ID>_USERNAME      user, robot account or deploy token name
+#   secrets.E2E_<ID>_USERNAME   user, robot account or deploy token name
 #   secrets.E2E_<ID>_PASSWORD   token with read and write access
 #   vars.E2E_<ID>_NAMESPACE     user, org or group that owns the repository
 #   vars.E2E_<ID>_REPOSITORY    repository (or project) charts are pushed to
@@ -77,7 +78,7 @@ jobs:
           NAME: ${{ matrix.name }}
           SINGLE_REPO: ${{ matrix.single-repo }}
           REGISTRY: ${{ vars[format('E2E_{0}_REGISTRY', matrix.id)] }}
-          USERNAME: ${{ vars[format('E2E_{0}_USERNAME', matrix.id)] }}
+          USERNAME: ${{ secrets[format('E2E_{0}_USERNAME', matrix.id)] || vars[format('E2E_{0}_USERNAME', matrix.id)] }}
           PASSWORD: ${{ secrets[format('E2E_{0}_PASSWORD', matrix.id)] }}
           NAMESPACE: ${{ vars[format('E2E_{0}_NAMESPACE', matrix.id)] }}
           REPOSITORY: ${{ vars[format('E2E_{0}_REPOSITORY', matrix.id)] }}
@@ -91,7 +92,7 @@ jobs:
 
           missing=""
           [ -n "${REGISTRY}" ] || missing="${missing} vars.E2E_${ID}_REGISTRY"
-          [ -n "${USERNAME}" ] || missing="${missing} vars.E2E_${ID}_USERNAME"
+          [ -n "${USERNAME}" ] || missing="${missing} secrets.E2E_${ID}_USERNAME"
           [ -n "${PASSWORD}" ] || missing="${missing} secrets.E2E_${ID}_PASSWORD"
           [ -n "${NAMESPACE}" ] || missing="${missing} vars.E2E_${ID}_NAMESPACE"
           [ -n "${REPOSITORY}" ] || missing="${missing} vars.E2E_${ID}_REPOSITORY"
