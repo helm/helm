@@ -108,6 +108,14 @@ Docker Hub, in single-repository mode, and against GitLab, in the default
 layout, to catch changes that break a particular registry implementation rather
 than OCI in general.
 
+Each registry is one entry in that workflow's matrix, configured by the same
+settings named after its id: `vars.E2E_<ID>_REGISTRY`,
+`vars.E2E_<ID>_NAMESPACE`, `vars.E2E_<ID>_REPOSITORY`,
+`secrets.E2E_<ID>_USERNAME` and `secrets.E2E_<ID>_PASSWORD`. The username is
+still read from `vars.E2E_<ID>_USERNAME` when no secret is set. Adding a
+registry is a new matrix entry, saying
+whether it needs single-repository mode, plus those settings.
+
 To run it against GitLab yourself, create a project, then a deploy token on it
 with the `read_registry` and `write_registry` scopes, and point the suite at the
 project's registry:
