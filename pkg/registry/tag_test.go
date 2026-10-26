@@ -94,6 +94,14 @@ func TestGetTagMatchingVersionOrConstraint_UnderscoreTag(t *testing.T) {
 	got, err = GetTagMatchingVersionOrConstraint(tags, "1.1.17+meta")
 	require.NoError(t, err)
 	assert.Equal(t, "1.1.17_meta", got)
+
+	// A version written in the underscore form itself must match too. This
+	// goes through the exact-match branch, which only works because Tags
+	// now returns the stored tag: before, the tag arrived as 1.1.17+meta
+	// and a request for 1.1.17_meta matched nothing.
+	got, err = GetTagMatchingVersionOrConstraint(tags, "1.1.17_meta")
+	require.NoError(t, err)
+	assert.Equal(t, "1.1.17_meta", got)
 }
 
 func TestGetTagMatchingVersionOrConstraint_ExactMatchHasPrecedence(t *testing.T) {

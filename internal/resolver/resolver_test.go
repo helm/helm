@@ -186,6 +186,16 @@ func TestResolveOCIUnderscoreTag(t *testing.T) {
 
 	registryClient, err := registry.NewClient(registry.ClientOptPlainHTTP())
 	require.NoError(t, err)
+
+	// The reported failure is in what Tags hands to the resolver and to
+	// pull references: without the fix it returns 1.1.17+meta, a tag that
+	// does not exist in the registry, while the resolution below happens
+	// to succeed on the normalized form either way. Assert the tags are
+	// the stored strings so this test fails without the fix.
+	tags, err := registryClient.Tags(strings.TrimPrefix(server.URL, "http://") + "/testrepo/my-subchart")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"1.1.17_meta", "0.9.0"}, tags)
+
 	r := New("", "", registryClient)
 
 	repoURL := "oci://" + strings.TrimPrefix(server.URL, "http://") + "/testrepo"
