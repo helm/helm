@@ -62,7 +62,7 @@ func actionConfigFixtureWithDummyResources(t *testing.T, dummyResources kube.Res
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: dummyResources},
+		KubeClient:     &kubefake.FailingKubeClient{Out: io.Discard, DummyResources: dummyResources},
 		Capabilities:   common.DefaultCapabilities,
 		RegistryClient: registryClient,
 	}
