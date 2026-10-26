@@ -18,6 +18,7 @@ limitations under the License.
 package fake
 
 import (
+	"bytes"
 	"io"
 	"sync"
 	"time"
@@ -52,7 +53,9 @@ type FailingKubeClient struct {
 	RecordedWaitOptions []kube.WaitOption
 	// RecordedWaitStrategies stores the WaitStrategy passed to each GetWaiter call for testing
 	RecordedWaitStrategies []kube.WaitStrategy
-	mu                     sync.Mutex
+	// RecordedBuildInputs stores a copy of every reader passed to Build, in order.
+	RecordedBuildInputs [][]byte
+	mu                  sync.Mutex
 }
 
 var _ kube.Interface = &FailingKubeClient{}
@@ -134,7 +137,11 @@ func (f *FailingKubeClient) Update(r, modified kube.ResourceList, options ...kub
 }
 
 // Build returns the configured error if set or prints
-func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error) {
+func (f *FailingKubeClient) Build(r io.Reader, validate bool) (kube.ResourceList, error) {
+	data, _ := io.ReadAll(r)
+	f.mu.Lock()
+	f.RecordedBuildInputs = append(f.RecordedBuildInputs, data)
+	f.mu.Unlock()
 	if f.BuildError != nil {
 		return []*resource.Info{}, f.BuildError
 	}
@@ -144,7 +151,7 @@ func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error
 	if f.BuildDummy {
 		return createDummyResourceList(), nil
 	}
-	return f.PrintingKubeClient.Build(r, false)
+	return f.PrintingKubeClient.Build(bytes.NewReader(data), validate)
 }
 
 // BuildTable returns the configured error if set or prints
