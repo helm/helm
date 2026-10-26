@@ -277,11 +277,9 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 	// This would potentially be a breaking change
 	// and should only happen between major versions.
 	return &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   key,
-			Labels: lbs.toMap(),
-		},
-		Type: "helm.sh/release.v2",
-		Data: map[string][]byte{"release": []byte(s)},
+		Name:   key,
+		Labels: lbs.toMap(),
+		Type:   "helm.sh/release.v2",
+		Data:   map[string][]byte{"release": []byte(s)},
 	}, nil
 }
