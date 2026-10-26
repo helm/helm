@@ -18,6 +18,7 @@ package registry
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -46,7 +47,11 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 	// Otherwise try to find the first available version matching the string,
 	// in case it is a constraint
 	for _, v := range tags {
-		test, err := semver.NewVersion(v)
+		// Tags are the original registry strings, so a tag stored under
+		// the underscore convention from #10166 (1.1.17_meta) is not valid
+		// semver as written. Parse its plus form, but return the original
+		// tag so the pull reference names a tag that exists.
+		test, err := semver.NewVersion(strings.ReplaceAll(v, "_", "+"))
 		if err != nil {
 			continue
 		}
