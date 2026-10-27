@@ -147,7 +147,7 @@ func TestLoadArchive(t *testing.T) {
 
 			if tc.expectedError != "" {
 				require.Errorf(t, err, "Expected error containing %q, but got no error", tc.expectedError)
-				assert.ErrorContains(t, err, tc.expectedError)
+				require.ErrorContains(t, err, tc.expectedError)
 			} else {
 				require.NoError(t, err)
 
@@ -275,8 +275,8 @@ func TestLoadFileArchiveErrorReason(t *testing.T) {
 			}
 
 			require.Error(t, err)
-			assert.ErrorContains(t, err, tt.wantErr)
-			assert.ErrorContains(t, err, "unable to load chart archive "+chartPath)
+			require.ErrorContains(t, err, tt.wantErr)
+			require.ErrorContains(t, err, "unable to load chart archive "+chartPath)
 		})
 	}
 }
