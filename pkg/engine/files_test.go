@@ -62,7 +62,7 @@ func TestFileGlob(t *testing.T) {
 	f := getTestFiles()
 
 	matched, err := f.Glob("story/**")
-	as.NoError(err)
+	require.NoError(t, err)
 
 	as.Len(matched, 2, "Should be two files in glob story/**")
 	as.Equal("Joseph Conrad", matched.Get("story/author.txt"))
@@ -77,7 +77,7 @@ func TestFileGlobInvalidPattern(t *testing.T) {
 	matched, err := f.Glob("story/[")
 	require.Error(t, err)
 	require.Nil(t, matched)
-	assert.ErrorContains(t, err, `invalid glob pattern "story/[":`)
+	require.ErrorContains(t, err, `invalid glob pattern "story/[":`)
 }
 
 func TestToConfig(t *testing.T) {
@@ -86,12 +86,12 @@ func TestToConfig(t *testing.T) {
 	f := getTestFiles()
 
 	captain, err := f.Glob("**/captain.txt")
-	as.NoError(err)
+	require.NoError(t, err)
 	out := captain.AsConfig()
 	as.Equal("captain.txt: The Captain", out)
 
 	ship, err := f.Glob("ship/**")
-	as.NoError(err)
+	require.NoError(t, err)
 	out = ship.AsConfig()
 	as.Equal("captain.txt: The Captain\nstowaway.txt: Legatt", out)
 }
@@ -102,7 +102,7 @@ func TestToSecret(t *testing.T) {
 	f := getTestFiles()
 
 	ship, err := f.Glob("ship/**")
-	as.NoError(err)
+	require.NoError(t, err)
 	out := ship.AsSecrets()
 	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0", out)
 }
