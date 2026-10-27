@@ -18,9 +18,12 @@ package engine
 
 import (
 	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"math"
 	"reflect"
@@ -28,11 +31,14 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"unicode/utf8"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
+
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 )
 
 // funcMap returns a mapping of all of the functions that Engine has.
@@ -67,6 +73,8 @@ func funcMap() template.FuncMap {
 		"mustToJson":    mustToJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
+		"compress":      compress,
+		"decompress":    decompress,
 
 		// Duration helpers
 		"mustToDuration":       mustToDuration,
@@ -473,4 +481,109 @@ func durationTruncateTo(v, m any) time.Duration {
 		return d
 	}
 	return d.Truncate(mul)
+}
+
+// -----------------------------------------------------------------------------
+// Compression helpers
+// -----------------------------------------------------------------------------
+
+// compressionSizeLimit is the Kubernetes limit for Secret/ConfigMap (1MB). It
+// applies to compressed data: the output of compress and the input of decompress.
+const compressionSizeLimit = 1048576
+
+// compressionAlgorithms maps the algorithm names accepted by compress and
+// decompress to their implementations. The size limits and UTF-8 validation
+// in compress and decompress apply to every algorithm.
+var compressionAlgorithms = map[string]struct {
+	newWriter func(io.Writer) io.WriteCloser
+	newReader func(io.Reader) (io.ReadCloser, error)
+}{
+	"gzip": {
+		newWriter: func(w io.Writer) io.WriteCloser { return gzip.NewWriter(w) },
+		newReader: func(r io.Reader) (io.ReadCloser, error) { return gzip.NewReader(r) },
+	},
+}
+
+// compress compresses a string using the given algorithm and returns the base64
+// encoded result. "gzip" is currently the only supported algorithm.
+//
+// It enforces a size limit (1MB) on the output to prevent creating objects too large for Kubernetes Secrets/ConfigMap.
+//
+// This is designed to be called from a template, e.g. {{ .Files.Get "dashboard.json" | compress "gzip" }}.
+func compress(algorithm, str string) (string, error) {
+	alg, ok := compressionAlgorithms[algorithm]
+	if !ok {
+		return "", fmt.Errorf("compress: unsupported algorithm %q", algorithm)
+	}
+
+	if !utf8.ValidString(str) {
+		return "", errors.New("compress: content is not valid UTF-8 text")
+	}
+
+	var b bytes.Buffer
+	w := alg.newWriter(&b)
+	if _, err := w.Write([]byte(str)); err != nil {
+		return "", fmt.Errorf("compress: write failed: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return "", fmt.Errorf("compress: close failed: %w", err)
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(b.Bytes())
+	if len(encoded) > compressionSizeLimit {
+		return "", fmt.Errorf("compress: output size %d exceeds limit of %d bytes", len(encoded), compressionSizeLimit)
+	}
+
+	return encoded, nil
+}
+
+// decompress decodes a base64 encoded string and decompresses it using the
+// given algorithm. "gzip" is currently the only supported algorithm.
+//
+// It enforces a size limit (1MB) on the input. The decompressed output may
+// exceed 1MB, since compressing such data to fit in a Secret/ConfigMap is the
+// main use case, but is bounded by archive.MaxDecompressedChartSize to
+// prevent decompression bombs.
+//
+// This is designed to be called from a template, e.g. {{ .Values.dashboard | decompress "gzip" }}.
+func decompress(algorithm, str string) (string, error) {
+	alg, ok := compressionAlgorithms[algorithm]
+	if !ok {
+		return "", fmt.Errorf("decompress: unsupported algorithm %q", algorithm)
+	}
+
+	if len(str) > compressionSizeLimit {
+		return "", fmt.Errorf("decompress: input size %d exceeds limit of %d bytes", len(str), compressionSizeLimit)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return "", fmt.Errorf("decompress: base64 decode failed: %w", err)
+	}
+
+	r, err := alg.newReader(bytes.NewReader(decoded))
+	if err != nil {
+		return "", fmt.Errorf("decompress: %s reader failed: %w", algorithm, err)
+	}
+	defer r.Close()
+
+	// Enforce a size limit on the decompressed content.
+	maxSize := archive.MaxDecompressedChartSize
+	limitR := io.LimitReader(r, maxSize+1)
+
+	b, err := io.ReadAll(limitR)
+	if err != nil {
+		return "", fmt.Errorf("decompress: read failed: %w", err)
+	}
+
+	if int64(len(b)) > maxSize {
+		return "", fmt.Errorf("decompress: decompressed content exceeds size limit of %d bytes", maxSize)
+	}
+
+	// Ensure the content is valid text (UTF-8) to prevent binary obfuscation.
+	if !utf8.Valid(b) {
+		return "", errors.New("decompress: content is not valid UTF-8 text")
+	}
+
+	return string(b), nil
 }
