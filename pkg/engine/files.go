@@ -18,6 +18,7 @@ package engine
 
 import (
 	"encoding/base64"
+	"fmt"
 	"path"
 	"strings"
 
@@ -66,15 +67,18 @@ func (f files) Get(name string) string {
 // Glob takes a glob pattern and returns another files object only containing
 // matched files.
 //
+// An invalid pattern is reported instead of being replaced by a pattern that
+// matches every file of the chart.
+//
 // This is designed to be called from a template.
 //
 // {{ range $name, $content := .Files.Glob("foo/**") }}
 // {{ $name }}: |
 // {{ .Files.Get($name) | indent 4 }}{{ end }}
-func (f files) Glob(pattern string) files {
+func (f files) Glob(pattern string) (files, error) {
 	g, err := glob.Compile(pattern, '/')
 	if err != nil {
-		g, _ = glob.Compile("**")
+		return nil, fmt.Errorf("invalid glob pattern %q: %w", pattern, err)
 	}
 
 	nf := newFiles(nil)
@@ -84,7 +88,7 @@ func (f files) Glob(pattern string) files {
 		}
 	}
 
-	return nf
+	return nf, nil
 }
 
 // AsConfig turns a Files group and flattens it to a YAML map suitable for

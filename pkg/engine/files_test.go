@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var cases = []struct {
@@ -60,20 +61,38 @@ func TestFileGlob(t *testing.T) {
 
 	f := getTestFiles()
 
-	matched := f.Glob("story/**")
+	matched, err := f.Glob("story/**")
+	as.NoError(err)
 
 	as.Len(matched, 2, "Should be two files in glob story/**")
 	as.Equal("Joseph Conrad", matched.Get("story/author.txt"))
+}
+
+func TestFileGlobInvalidPattern(t *testing.T) {
+	f := getTestFiles()
+
+	// A pattern the glob compiler rejects used to be replaced by a pattern that
+	// matches every file of the chart, which renders unrelated files (including
+	// files a chart keeps under secrets/) into the template output.
+	matched, err := f.Glob("story/[")
+	require.Error(t, err)
+	require.Nil(t, matched)
+	assert.ErrorContains(t, err, `invalid glob pattern "story/[":`)
 }
 
 func TestToConfig(t *testing.T) {
 	as := assert.New(t)
 
 	f := getTestFiles()
-	out := f.Glob("**/captain.txt").AsConfig()
+
+	captain, err := f.Glob("**/captain.txt")
+	as.NoError(err)
+	out := captain.AsConfig()
 	as.Equal("captain.txt: The Captain", out)
 
-	out = f.Glob("ship/**").AsConfig()
+	ship, err := f.Glob("ship/**")
+	as.NoError(err)
+	out = ship.AsConfig()
 	as.Equal("captain.txt: The Captain\nstowaway.txt: Legatt", out)
 }
 
@@ -82,7 +101,9 @@ func TestToSecret(t *testing.T) {
 
 	f := getTestFiles()
 
-	out := f.Glob("ship/**").AsSecrets()
+	ship, err := f.Glob("ship/**")
+	as.NoError(err)
+	out := ship.AsSecrets()
 	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0", out)
 }
 
