@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -209,5 +210,102 @@ metadata:
 	sorted = sortManifestsByKind(sorted, InstallOrder)
 	for i, m := range generic {
 		assert.Equal(t, m.Content, sorted[i].Content)
+	}
+}
+
+func TestSortManifestsHookAnnotationTokens(t *testing.T) {
+	const manifest = `apiVersion: v1
+kind: Job
+metadata:
+  name: hook
+  annotations:
+    "helm.sh/hook": %q
+    "helm.sh/hook-delete-policy": %q
+    "helm.sh/hook-output-log-policy": %q
+`
+
+	tests := []struct {
+		name                  string
+		hookTypes             string
+		deletePolicy          string
+		outputLogPolicy       string
+		wantEvents            []release.HookEvent
+		wantDeletePolicies    []release.HookDeletePolicy
+		wantOutputLogPolicies []release.HookOutputLogPolicy
+	}{
+		{
+			name:                  "trailing comma",
+			hookTypes:             "pre-install,",
+			wantEvents:            []release.HookEvent{release.HookPreInstall},
+			wantDeletePolicies:    []release.HookDeletePolicy{},
+			wantOutputLogPolicies: []release.HookOutputLogPolicy{},
+		},
+		{
+			name:                  "leading comma",
+			hookTypes:             ", post-install",
+			wantEvents:            []release.HookEvent{release.HookPostInstall},
+			wantDeletePolicies:    []release.HookDeletePolicy{},
+			wantOutputLogPolicies: []release.HookOutputLogPolicy{},
+		},
+		{
+			name:      "empty token between hook types",
+			hookTypes: "pre-install,,post-install",
+			wantEvents: []release.HookEvent{
+				release.HookPreInstall,
+				release.HookPostInstall,
+			},
+			wantDeletePolicies:    []release.HookDeletePolicy{},
+			wantOutputLogPolicies: []release.HookOutputLogPolicy{},
+		},
+		{
+			name:      "empty annotation value",
+			hookTypes: "",
+		},
+		{
+			name:      "annotation value with commas only",
+			hookTypes: ", ,",
+		},
+		{
+			name:      "unknown hook type is still skipped",
+			hookTypes: "pre-install,no-such-hook",
+		},
+		{
+			name:                  "delete policy with a trailing comma",
+			hookTypes:             "pre-install",
+			deletePolicy:          "hook-succeeded,",
+			wantEvents:            []release.HookEvent{release.HookPreInstall},
+			wantDeletePolicies:    []release.HookDeletePolicy{release.HookSucceeded},
+			wantOutputLogPolicies: []release.HookOutputLogPolicy{},
+		},
+		{
+			name:                  "output log policy with a trailing comma",
+			hookTypes:             "pre-install",
+			outputLogPolicy:       "hook-succeeded,",
+			wantEvents:            []release.HookEvent{release.HookPreInstall},
+			wantDeletePolicies:    []release.HookDeletePolicy{},
+			wantOutputLogPolicies: []release.HookOutputLogPolicy{release.HookOutputOnSucceeded},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := map[string]string{
+				"templates/hook.yaml": fmt.Sprintf(manifest, tt.hookTypes, tt.deletePolicy, tt.outputLogPolicy),
+			}
+
+			hs, generic, err := SortManifests(files, nil, InstallOrder)
+			require.NoError(t, err)
+			assert.Empty(t, generic)
+
+			if tt.wantEvents == nil {
+				assert.Empty(t, hs, "expected the resource not to become a hook")
+				return
+			}
+
+			require.Len(t, hs, 1)
+			assert.Equal(t, tt.wantEvents, hs[0].Events)
+			assert.Equal(t, tt.wantDeletePolicies, hs[0].DeletePolicies)
+			assert.Equal(t, tt.wantOutputLogPolicies, hs[0].OutputLogPolicies)
+		})
 	}
 }

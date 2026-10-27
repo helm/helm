@@ -187,6 +187,11 @@ func (file *manifestFile) sort(result *result) error {
 		isUnknownHook := false
 		for hookType := range strings.SplitSeq(hookTypes, ",") {
 			hookType = strings.ToLower(strings.TrimSpace(hookType))
+			if hookType == "" {
+				// An empty annotation value or a trailing comma produces empty
+				// tokens, which are not hook types.
+				continue
+			}
 			e, ok := events[hookType]
 			if !ok {
 				isUnknownHook = true
@@ -197,6 +202,14 @@ func (file *manifestFile) sort(result *result) error {
 
 		if isUnknownHook {
 			slog.Info("skipping unknown hooks", "hookTypes", hookTypes)
+			continue
+		}
+
+		if len(h.Events) == 0 {
+			// The annotation carried no hook type at all, for example an empty
+			// value or a lone comma. Without an event the resource cannot run as
+			// a hook, so it is skipped like a hook with an unknown type.
+			slog.Info("skipping hook without hook types", "hookTypes", hookTypes)
 			continue
 		}
 
@@ -238,6 +251,9 @@ func operateAnnotationValues(entry SimpleHead, annotation string, operate func(p
 	if dps, ok := entry.Metadata.Annotations[annotation]; ok {
 		for dp := range strings.SplitSeq(dps, ",") {
 			dp = strings.ToLower(strings.TrimSpace(dp))
+			if dp == "" {
+				continue
+			}
 			operate(dp)
 		}
 	}
