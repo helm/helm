@@ -133,7 +133,7 @@ func LoadFile(name string) (chart.Charter, error) {
 		if errors.Is(err, gzip.ErrHeader) {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %w)", name, err)
 		}
-		return nil, errors.New("unable to load chart archive")
+		return nil, fmt.Errorf("unable to load chart archive %s: %w", name, err)
 	}
 
 	for _, f := range files {
