@@ -424,12 +424,14 @@ func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 		// We have a nested object. Send to t.key
 		inner := map[string]any{}
 		if len(list) > i {
-			var ok bool
-			inner, ok = list[i].(map[string]any)
-			if !ok {
-				// We have indices out of order. Initialize empty value.
-				list[i] = map[string]any{}
-				inner = list[i].(map[string]any)
+			// A nil element means the indices are out of order; a set element
+			// that is not a map would be replaced and its value lost.
+			if existed := list[i]; existed != nil {
+				m, ok := existed.(map[string]any)
+				if !ok {
+					return list, fmt.Errorf("cannot set nested key at index %d: it is already set to a value that is not a map", i)
+				}
+				inner = m
 			}
 		}
 

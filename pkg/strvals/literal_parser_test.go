@@ -459,6 +459,7 @@ func TestParseLiteralConflictingKinds(t *testing.T) {
 		input  string
 		input2 string
 		errStr string
+		expect map[string]any
 	}{
 		{
 			input:  "a=b",
@@ -485,13 +486,38 @@ func TestParseLiteralConflictingKinds(t *testing.T) {
 			input2: "a[0][1]=y",
 			errStr: "cannot set index 0 of a nested list: it is already set to a value that is not a list",
 		},
+		{
+			input:  "a[0]=x",
+			input2: "a[0].b=y",
+			errStr: "cannot set nested key at index 0: it is already set to a value that is not a map",
+		},
+		{
+			input:  "a[0][1]=x",
+			input2: "a[0].b=y",
+			errStr: "cannot set nested key at index 0: it is already set to a value that is not a map",
+		},
+		{
+			input:  "a[1].b=x",
+			input2: "a[0].c=y",
+			expect: map[string]any{"a": []any{map[string]any{"c": "y"}, map[string]any{"b": "x"}}},
+		},
+		{
+			input:  "a[0].b=x",
+			input2: "a[0].c=y",
+			expect: map[string]any{"a": []any{map[string]any{"b": "x", "c": "y"}}},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input+","+tt.input2, func(t *testing.T) {
 			dest := map[string]any{}
 			require.NoError(t, ParseLiteralInto(tt.input, dest))
-			require.EqualError(t, ParseLiteralInto(tt.input2, dest), tt.errStr)
+			if tt.errStr != "" {
+				require.EqualError(t, ParseLiteralInto(tt.input2, dest), tt.errStr)
+				return
+			}
+			require.NoError(t, ParseLiteralInto(tt.input2, dest))
+			assert.Equal(t, tt.expect, dest)
 		})
 	}
 }

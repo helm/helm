@@ -783,6 +783,26 @@ func TestParseSetConflictingKinds(t *testing.T) {
 			errStr: "cannot set index 0 of a nested list: it is already set to a value that is not a list",
 		},
 		{
+			str:    "a[0]=x,a[0].b=1",
+			errStr: "cannot set nested key at index 0: it is already set to a value that is not a map",
+		},
+		{
+			str:    "a[0]=1,a[0].b=2",
+			errStr: "cannot set nested key at index 0: it is already set to a value that is not a map",
+		},
+		{
+			str:    "a[0][1]=x,a[0].b=1",
+			errStr: "cannot set nested key at index 0: it is already set to a value that is not a map",
+		},
+		{
+			str:    "a[0].b=1,a[0].c=2",
+			expect: map[string]any{"a": []any{map[string]any{"b": int64(1), "c": int64(2)}}},
+		},
+		{
+			str:    "a[1].b=2,a[0].c=3",
+			expect: map[string]any{"a": []any{map[string]any{"c": int64(3)}, map[string]any{"b": int64(2)}}},
+		},
+		{
 			str:    "a[0]=x,a[1]=y",
 			expect: map[string]any{"a": []any{"x", "y"}},
 		},
