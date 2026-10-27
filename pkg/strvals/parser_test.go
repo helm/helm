@@ -755,3 +755,56 @@ func TestParseSetNestedLevels(t *testing.T) {
 		})
 	}
 }
+
+func TestParseSetConflictingKinds(t *testing.T) {
+	tests := []struct {
+		str    string
+		expect map[string]any
+		errStr string
+	}{
+		{
+			str:    "a=b,a[0]=c",
+			errStr: `cannot set index of "a": it is already set to a value that is not a list`,
+		},
+		{
+			str:    "a.b=1,a[0]=c",
+			errStr: `cannot set index of "a": it is already set to a value that is not a list`,
+		},
+		{
+			str:    "a[0]=x,a.b=1",
+			errStr: `cannot set nested key under "a": it is already set to a value that is not a map`,
+		},
+		{
+			str:    "a[0]=x,a[0][1]=y",
+			errStr: "cannot set index 0 of a nested list: it is already set to a value that is not a list",
+		},
+		{
+			str:    "a[0].b=1,a[0][1]=y",
+			errStr: "cannot set index 0 of a nested list: it is already set to a value that is not a list",
+		},
+		{
+			str:    "a[0]=x,a[1]=y",
+			expect: map[string]any{"a": []any{"x", "y"}},
+		},
+		{
+			str:    "a[0][1]=x,a[0][2]=y",
+			expect: map[string]any{"a": []any{[]any{nil, "x", "y"}}},
+		},
+		{
+			str:    "a.b=1,a.c=2",
+			expect: map[string]any{"a": map[string]any{"b": int64(1), "c": int64(2)}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.str, func(t *testing.T) {
+			got, err := Parse(tt.str)
+			if tt.errStr != "" {
+				require.EqualError(t, err, tt.errStr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expect, got)
+		})
+	}
+}

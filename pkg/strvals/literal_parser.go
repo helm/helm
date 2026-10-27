@@ -121,8 +121,12 @@ func (t *literalParser) key(data map[string]any, nestedNameLevel int) (reterr er
 
 			// first, create or find the target map in the given data
 			inner := map[string]any{}
-			if _, ok := data[string(key)]; ok {
-				inner = data[string(key)].(map[string]any)
+			if existing, ok := data[string(key)]; ok {
+				m, ok := existing.(map[string]any)
+				if !ok {
+					return fmt.Errorf("cannot set nested key under %q: it is already set to a value that is not a map", string(key))
+				}
+				inner = m
 			}
 
 			// recurse on sub-tree with remaining data
@@ -145,8 +149,12 @@ func (t *literalParser) key(data map[string]any, nestedNameLevel int) (reterr er
 
 			// find or create target list
 			list := []any{}
-			if _, ok := data[kk]; ok {
-				list = data[kk].([]any)
+			if existing, ok := data[kk]; ok {
+				l, ok := existing.([]any)
+				if !ok {
+					return fmt.Errorf("cannot set index of %q: it is already set to a value that is not a list", kk)
+				}
+				list = l
 			}
 
 			// now we need to get the value after the ]
@@ -220,7 +228,11 @@ func (t *literalParser) listItem(list []any, i, nestedNameLevel int) ([]any, err
 			// If nested list already exists, take the value of list to next cycle.
 			existed := list[i]
 			if existed != nil {
-				crtList = list[i].([]any)
+				l, ok := existed.([]any)
+				if !ok {
+					return list, fmt.Errorf("cannot set index %d of a nested list: it is already set to a value that is not a list", i)
+				}
+				crtList = l
 			}
 		}
 
