@@ -17,12 +17,15 @@ limitations under the License.
 package repo
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v4/internal/fileutil"
 )
 
 // File represents the repositories.yaml file
@@ -112,14 +115,57 @@ func (r *File) Remove(name string) bool {
 	return found
 }
 
-// WriteFile writes a repositories file to the given path.
+// WriteFile writes a repositories file to the given path via AtomicWriteFile.
+// The path is made absolute before writing so the temporary file is created in
+// the destination directory (including for bare relative names). A destination
+// that is a symlink is resolved and the shared target is updated. perm is used
+// only when creating a new file; an existing destination keeps its mode.
 func (r *File) WriteFile(path string, perm os.FileMode) error {
 	data, err := yaml.Marshal(r)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+
+	writePath, err := resolveRepoFileWritePath(path)
+	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, perm)
+	if err := os.MkdirAll(filepath.Dir(writePath), 0o755); err != nil {
+		return err
+	}
+
+	mode := perm
+	if fi, err := os.Stat(writePath); err == nil {
+		mode = fi.Mode().Perm()
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	return fileutil.AtomicWriteFile(writePath, bytes.NewReader(data), mode)
+}
+
+// resolveRepoFileWritePath returns an absolute write path, following a symlink
+// destination to its target when present.
+func resolveRepoFileWritePath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	fi, err := os.Lstat(abs)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return abs, nil
+		}
+		return "", err
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		return abs, nil
+	}
+
+	target, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", err
+	}
+	return target, nil
 }
