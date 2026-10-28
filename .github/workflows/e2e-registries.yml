@@ -30,12 +30,14 @@ name: e2e-registries
 #
 #   DOCKER  Docker Hub. Does not nest repository paths, and a scoped access
 #           token may only write to one repository: single-repo.
-#   GITLAB  GitLab. Nests paths under the project, and a deploy token covers
-#           every repository in it. Its token endpoint only implements the
-#           distribution GET flow, not OAuth2 POST, which makes it the registry
-#           that catches a regression in Helm's token flow fallback.
-#   QUAY    Quay.io. Does not nest repository paths, and a robot account is
-#           granted write access per repository: single-repo.
+#   GITLAB  GitLab. Nests paths under the project, and a deploy token with
+#           read_registry and write_registry covers every repository in it.
+#           Its token endpoint only implements the distribution GET flow, not
+#           OAuth2 POST, which makes it the registry that catches a regression
+#           in Helm's token flow fallback.
+#   QUAY    Quay.io. Does not nest repository paths, and a robot account,
+#           named <namespace>+<robot>, is granted write access per repository:
+#           single-repo.
 #
 # Adding a registry is a matrix entry plus its five settings.
 
