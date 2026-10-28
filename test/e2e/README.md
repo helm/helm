@@ -104,9 +104,9 @@ $ export HELM_E2E_SINGLE_REPO=helm-e2e
 The suite has no registry-specific behavior — everything comes from the
 environment — so covering a new registry is a matter of pointing the same tests
 at it. `.github/workflows/e2e-registries.yml` runs it on a schedule against
-Docker Hub, in single-repository mode, and against GitLab, in the default
-layout, to catch changes that break a particular registry implementation rather
-than OCI in general.
+Docker Hub, in single-repository mode, and against GitLab and GHCR, in the
+default layout, to catch changes that break a particular registry
+implementation rather than OCI in general.
 
 Each registry is one entry in that workflow's matrix, configured by the same
 settings named after its id: `vars.E2E_<ID>_REGISTRY`,
@@ -124,6 +124,17 @@ project's registry:
 $ export HELM_E2E_REGISTRY=registry.gitlab.com/<namespace>/<project>
 $ export HELM_E2E_USERNAME=gitlab+deploy-token-<id>
 $ export HELM_E2E_PASSWORD=<deploy token>
+$ make test-e2e
+```
+
+GHCR creates a package on its first push, so no repository needs to exist
+beforehand. Use a classic personal access token with the `write:packages`
+scope:
+
+```console
+$ export HELM_E2E_REGISTRY=ghcr.io/<owner>/<repository>
+$ export HELM_E2E_USERNAME=<user>
+$ export HELM_E2E_PASSWORD=<personal access token>
 $ make test-e2e
 ```
 
