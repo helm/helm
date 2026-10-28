@@ -35,8 +35,8 @@ name: e2e-registries
 #           distribution GET flow, not OAuth2 POST, which makes it the registry
 #           that catches a regression in Helm's token flow fallback.
 #   GHCR    GitHub Container Registry. Nests paths under the owner, and a
-#           personal access token with write:packages covers every package the
-#           owner has, so it runs in the default layout.
+#           classic personal access token with write:packages covers every
+#           package the owner has. Packages are created on first push.
 #
 # Adding a registry is a matrix entry plus its five settings.
 
