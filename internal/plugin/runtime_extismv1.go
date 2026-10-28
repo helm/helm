@@ -276,7 +276,11 @@ func buildPluginConfig(input *Input, r *RuntimeExtismV1) extism.PluginConfig {
 }
 
 func buildHostFunctions(hostFunctions map[string]extism.HostFunction, rc *RuntimeConfigExtismV1) ([]extism.HostFunction, error) {
-	result := make([]extism.HostFunction, len(rc.HostFunctions))
+	// A length here would prepend one zero-value HostFunction per requested
+	// name, and extism.NewPlugin rejects those ("a module name must not be
+	// empty") because their namespace is empty. Only the appended entries are
+	// wanted, so the value is the capacity.
+	result := make([]extism.HostFunction, 0, len(rc.HostFunctions))
 	for _, fnName := range rc.HostFunctions {
 		fn, ok := hostFunctions[fnName]
 		if !ok {
