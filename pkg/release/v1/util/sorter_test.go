@@ -18,6 +18,7 @@ package util
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -122,8 +123,8 @@ func TestSortTieBreakers(t *testing.T) {
 	}
 	reversed := func(in []*rspb.Release) []*rspb.Release {
 		out := make([]*rspb.Release, 0, len(in))
-		for i := len(in) - 1; i >= 0; i-- {
-			out = append(out, in[i])
+		for _, r := range slices.Backward(in) {
+			out = append(out, r)
 		}
 		return out
 	}
