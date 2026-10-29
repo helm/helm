@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
@@ -108,4 +109,49 @@ func TestLocalInstallerTarball(t *testing.T) {
 	// Verify plugin was installed
 	_, err = os.Stat(i.Path())
 	require.NoErrorf(t, err, "plugin not found at %s", i.Path())
+}
+
+func TestLocalInstaller_Path(t *testing.T) {
+	customPluginsDir := "/foo/bar"
+
+	tests := []struct {
+		name           string
+		source         string
+		helmPluginsDir string
+		expectPath     string
+	}{
+		{
+			name:           "default helm plugins dir",
+			source:         "../testdata/plugdir/good/echo-v1",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "echo-v1"),
+		}, {
+			name:           "archive default helm plugins dir",
+			source:         "../testdata/plugdir/good/archive-1.2.3.tar.gz",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "archive"),
+		}, {
+			name:           "custom helm plugins dir",
+			source:         "../testdata/plugdir/good/echo-v1",
+			helmPluginsDir: customPluginsDir,
+			expectPath:     filepath.Join(customPluginsDir, "echo-v1"),
+		}, {
+			name:           "archive custom helm plugins dir",
+			source:         "../testdata/plugdir/good/archive-1.2.3.tar.gz",
+			helmPluginsDir: customPluginsDir,
+			expectPath:     filepath.Join(customPluginsDir, "archive"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.helmPluginsDir != "" {
+				t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+			}
+			installer, err := NewLocalInstaller(tt.source)
+			require.NoError(t, err)
+			path := installer.Path()
+			assert.Equal(t, tt.expectPath, path)
+		})
+	}
 }
