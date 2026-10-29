@@ -20,11 +20,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
@@ -322,4 +325,30 @@ func TestInstallFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "install --generate-name", true)
 	checkFileCompletion(t, "install myname", true)
 	checkFileCompletion(t, "install myname mychart", false)
+}
+
+// A chart verified from a local archive must be loaded from the bytes that
+// were verified, not by reading the path again.
+func TestLoadLocatedChart(t *testing.T) {
+	signed, err := os.ReadFile("testdata/testcharts/signtest-0.1.0.tgz")
+	require.NoError(t, err)
+	// Path names a different chart, so the result shows which source was read.
+	const otherChart = "testdata/testcharts/compressedchart-0.1.0.tgz"
+
+	for _, tc := range []struct {
+		name string
+		lc   *action.LocatedChart
+		want string
+	}{
+		{"verified bytes are loaded", &action.LocatedChart{Path: otherChart, Data: signed}, "signtest"},
+		{"path is loaded without verified bytes", &action.LocatedChart{Path: otherChart}, "compressedchart"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := loadLocatedChart(tc.lc)
+			require.NoError(t, err)
+			ac, err := chart.NewAccessor(c)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, ac.Name())
+		})
+	}
 }

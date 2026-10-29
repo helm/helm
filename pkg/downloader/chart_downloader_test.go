@@ -155,6 +155,36 @@ func TestVerifyChart(t *testing.T) {
 	assert.NotEmpty(t, v.FileHash, "Digest missing")
 }
 
+func TestVerifyChartData(t *testing.T) {
+	const archive = "testdata/signtest-0.1.0.tgz"
+	v, data, err := VerifyChartData(archive, archive+".prov", "testdata/helm-test-key.pub")
+	require.NoError(t, err)
+
+	want, err := os.ReadFile(archive)
+	require.NoError(t, err)
+	assert.Equal(t, want, data, "returned bytes should be the archive that was verified")
+
+	// VerifyChart wraps VerifyChartData and must report the same result.
+	v2, err := VerifyChart(archive, archive+".prov", "testdata/helm-test-key.pub")
+	require.NoError(t, err)
+	assert.Equal(t, v.FileHash, v2.FileHash)
+	assert.Equal(t, v.FileName, v2.FileName)
+}
+
+func TestVerifyChartDataFailureReturnsNoBytes(t *testing.T) {
+	// The provenance file belongs to a different archive, so the hash check fails.
+	dir := t.TempDir()
+	archive := filepath.Join(dir, "signtest-0.1.0.tgz")
+	require.NoError(t, os.WriteFile(archive, []byte("not the signed archive"), 0o644))
+	prov, err := os.ReadFile("testdata/signtest-0.1.0.tgz.prov")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(archive+".prov", prov, 0o644))
+
+	_, data, err := VerifyChartData(archive, archive+".prov", "testdata/helm-test-key.pub")
+	require.Error(t, err)
+	assert.Nil(t, data, "bytes that failed verification must not be returned")
+}
+
 func TestIsTar(t *testing.T) {
 	tests := map[string]bool{
 		"foo.tgz":           true,

@@ -51,6 +51,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/postrenderer"
+	"helm.sh/helm/v4/pkg/provenance"
 	"helm.sh/helm/v4/pkg/registry"
 	ri "helm.sh/helm/v4/pkg/release"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
@@ -893,8 +894,42 @@ func urlEqual(u1, u2 *url.URL) bool {
 //
 // If 'verify' was set on ChartPathOptions, this will attempt to also verify the chart.
 func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
+	lc, err := c.locateChart(name, settings)
+	return lc.Path, err
+}
+
+// LocatedChart is the result of resolving a chart reference with
+// LocateChartWithVerification.
+type LocatedChart struct {
+	// Path is the resolved chart path, as returned by LocateChart.
+	Path string
+	// Data holds the archive bytes that were verified, or nil when the chart
+	// was not verified from a local archive. Callers holding Data should load
+	// the chart from it rather than re-reading Path.
+	Data []byte
+	// Verification is the provenance verification result, or nil when Verify
+	// was not set.
+	Verification *provenance.Verification
+}
+
+// LocateChartWithVerification resolves a chart reference as LocateChart does.
+// When Verify is set it also returns the verification result and, for a local
+// chart archive, the bytes that were verified, so the chart can be loaded from
+// them without reading the file again.
+func (c *ChartPathOptions) LocateChartWithVerification(name string, settings *cli.EnvSettings) (*LocatedChart, error) {
+	lc, err := c.locateChart(name, settings)
+	if err != nil {
+		return nil, err
+	}
+	return lc, nil
+}
+
+// locateChart implements LocateChart and LocateChartWithVerification. It
+// always returns a non-nil LocatedChart, whose Path may be set alongside an
+// error, as LocateChart has always done.
+func (c *ChartPathOptions) locateChart(name string, settings *cli.EnvSettings) (*LocatedChart, error) {
 	if registry.IsOCI(name) && c.registryClient == nil {
-		return "", fmt.Errorf("unable to lookup chart %q, missing registry client", name)
+		return &LocatedChart{}, fmt.Errorf("unable to lookup chart %q, missing registry client", name)
 	}
 
 	name = strings.TrimSpace(name)
@@ -904,17 +939,20 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		if _, err := os.Stat(name); err == nil {
 			abs, err := filepath.Abs(name)
 			if err != nil {
-				return abs, err
+				return &LocatedChart{Path: abs}, err
 			}
+			var data []byte
+			var verification *provenance.Verification
 			if c.Verify {
-				if _, err := downloader.VerifyChart(abs, abs+".prov", c.Keyring); err != nil {
-					return "", err
+				verification, data, err = downloader.VerifyChartData(abs, abs+".prov", c.Keyring)
+				if err != nil {
+					return &LocatedChart{}, err
 				}
 			}
-			return abs, nil
+			return &LocatedChart{Path: abs, Data: data, Verification: verification}, nil
 		}
 		if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-			return name, fmt.Errorf("path %q not found", name)
+			return &LocatedChart{Path: name}, fmt.Errorf("path %q not found", name)
 		}
 	}
 
@@ -954,7 +992,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			repo.WithPassCredentialsAll(c.PassCredentialsAll),
 		)
 		if err != nil {
-			return "", err
+			return &LocatedChart{}, err
 		}
 		name = chartURL
 
@@ -962,11 +1000,11 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		// location of the chart repo and the chart are the same domain.
 		u1, err := url.Parse(c.RepoURL)
 		if err != nil {
-			return "", err
+			return &LocatedChart{}, err
 		}
 		u2, err := url.Parse(chartURL)
 		if err != nil {
-			return "", err
+			return &LocatedChart{}, err
 		}
 
 		// Host on URL (returned from url.Parse) contains the port if present.
@@ -982,17 +1020,17 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	if err := os.MkdirAll(settings.RepositoryCache, 0o755); err != nil {
-		return "", err
+		return &LocatedChart{}, err
 	}
 
-	filename, _, err := dl.DownloadToCache(name, version)
+	filename, verification, err := dl.DownloadToCache(name, version)
 	if err != nil {
-		return "", err
+		return &LocatedChart{}, err
 	}
 
 	lname, err := filepath.Abs(filename)
 	if err != nil {
-		return filename, err
+		return &LocatedChart{Path: filename}, err
 	}
-	return lname, nil
+	return &LocatedChart{Path: lname, Verification: verification}, nil
 }
