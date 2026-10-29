@@ -45,6 +45,9 @@ func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
 
 func init() {
 	action.Timestamper = testTimestamper
+	// Timestamps are rendered in local time; pin the local zone to UTC so
+	// golden-file output does not depend on the machine's timezone.
+	time.Local = time.UTC
 }
 
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
