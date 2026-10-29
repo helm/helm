@@ -117,7 +117,7 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 			return shutdownNoOp, fmt.Errorf("unable to get waiter: %w", err)
 		}
 		// Watch hook resources until they have completed
-		err = waiter.WatchUntilReady(resources, timeout)
+		err = waiter.Wait(resources, timeout)
 		// Note the time of success/failure
 		h.LastRun.CompletedAt = time.Now()
 		// Mark hook as succeeded or failed
