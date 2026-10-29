@@ -29,7 +29,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -45,11 +44,9 @@ func newDeploymentResource(name, namespace, generateName string) *resource.Info 
 			GroupVersionKind: schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
 		},
 		Object: &appsv1.Deployment{
-			ObjectMeta: v1.ObjectMeta{
-				Name:         name,
-				Namespace:    namespace,
-				GenerateName: generateName,
-			},
+			Name:         name,
+			Namespace:    namespace,
+			GenerateName: generateName,
 		},
 	}
 }
@@ -64,10 +61,8 @@ func newMissingDeployment(name, namespace string) *resource.Info {
 			Scope:            meta.RESTScopeNamespace,
 		},
 		Object: &appsv1.Deployment{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
+			Name:      name,
+			Namespace: namespace,
 		},
 		Client: fakeClientWith(http.StatusNotFound, appsV1GV, ""),
 	}
@@ -77,12 +72,10 @@ func newMissingDeployment(name, namespace string) *resource.Info {
 
 func newDeploymentWithOwner(name, namespace string, labels, annotations map[string]string) *resource.Info {
 	obj := &appsv1.Deployment{
-		ObjectMeta: v1.ObjectMeta{
-			Name:        name,
-			Namespace:   namespace,
-			Labels:      labels,
-			Annotations: annotations,
-		},
+		Name:        name,
+		Namespace:   namespace,
+		Labels:      labels,
+		Annotations: annotations,
 	}
 	return &resource.Info{
 		Name:      name,

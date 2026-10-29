@@ -186,7 +186,7 @@ func TestSelectorsForObject(t *testing.T) {
 		{
 			name: "corev1 Service with selector",
 			object: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{Name: "svc"},
+				Name: "svc",
 				Spec: corev1.ServiceSpec{
 					Selector: map[string]string{"svc": "yes"},
 				},
@@ -197,8 +197,8 @@ func TestSelectorsForObject(t *testing.T) {
 		{
 			name: "corev1 Service without selector",
 			object: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-				Spec:       corev1.ServiceSpec{Selector: map[string]string{}},
+				Name: "svc",
+				Spec: corev1.ServiceSpec{Selector: map[string]string{}},
 			},
 			expectError:   true,
 			errorContains: "invalid service 'svc': Service is defined without a selector",
@@ -250,8 +250,8 @@ func TestLegacyWaiter_waitForPodSuccess(t *testing.T) {
 		{
 			name: "pod succeeded",
 			obj: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod1"},
-				Status:     corev1.PodStatus{Phase: corev1.PodSucceeded},
+				Name:   "pod1",
+				Status: corev1.PodStatus{Phase: corev1.PodSucceeded},
 			},
 			wantDone: true,
 			wantErr:  false,
@@ -259,8 +259,8 @@ func TestLegacyWaiter_waitForPodSuccess(t *testing.T) {
 		{
 			name: "pod failed",
 			obj: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod2"},
-				Status:     corev1.PodStatus{Phase: corev1.PodFailed},
+				Name:   "pod2",
+				Status: corev1.PodStatus{Phase: corev1.PodFailed},
 			},
 			wantDone:   true,
 			wantErr:    true,
@@ -269,8 +269,8 @@ func TestLegacyWaiter_waitForPodSuccess(t *testing.T) {
 		{
 			name: "pod pending",
 			obj: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod3"},
-				Status:     corev1.PodStatus{Phase: corev1.PodPending},
+				Name:   "pod3",
+				Status: corev1.PodStatus{Phase: corev1.PodPending},
 			},
 			wantDone: false,
 			wantErr:  false,
@@ -278,8 +278,8 @@ func TestLegacyWaiter_waitForPodSuccess(t *testing.T) {
 		{
 			name: "pod running",
 			obj: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod4"},
-				Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+				Name:   "pod4",
+				Status: corev1.PodStatus{Phase: corev1.PodRunning},
 			},
 			wantDone: false,
 			wantErr:  false,

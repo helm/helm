@@ -74,7 +74,7 @@ func TestHistoryRun(t *testing.T) {
 
 func TestHistoryRun_UnreachableKubeClient(t *testing.T) {
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.ConnectionError = errors.New("connection refused")
 	config.KubeClient = &failingKubeClient
 

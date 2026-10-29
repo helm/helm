@@ -281,10 +281,8 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 
 	// create and return configmap object
 	return &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   key,
-			Labels: lbs.toMap(),
-		},
-		Data: map[string]string{"release": s},
+		Name:   key,
+		Labels: lbs.toMap(),
+		Data:   map[string]string{"release": s},
 	}, nil
 }

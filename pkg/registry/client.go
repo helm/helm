@@ -32,7 +32,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
@@ -915,10 +914,10 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	ociAnnotations map[string]string, parsedRef reference,
 ) (ocispec.Descriptor, error) {
 	manifest := ocispec.Manifest{
-		Versioned:   specs.Versioned{SchemaVersion: 2},
-		Config:      configDescriptor,
-		Layers:      layers,
-		Annotations: ociAnnotations,
+		SchemaVersion: 2,
+		Config:        configDescriptor,
+		Layers:        layers,
+		Annotations:   ociAnnotations,
 	}
 
 	manifestData, err := json.Marshal(manifest)

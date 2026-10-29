@@ -1309,11 +1309,9 @@ func newDaemonSet(name string, maxUnavailable, numberReady, desiredNumberSchedul
 		generation = 2
 	}
 	return &appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       name,
-			Namespace:  defaultNamespace,
-			Generation: generation,
-		},
+		Name:       name,
+		Namespace:  defaultNamespace,
+		Generation: generation,
 		Spec: appsv1.DaemonSetSpec{
 			UpdateStrategy: appsv1.DaemonSetUpdateStrategy{
 				Type: appsv1.RollingUpdateDaemonSetStrategyType,
@@ -1351,11 +1349,9 @@ func newStatefulSet(name string, replicas, partition, readyReplicas, updatedRepl
 		generation = 2
 	}
 	return &appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       name,
-			Namespace:  defaultNamespace,
-			Generation: generation,
-		},
+		Name:       name,
+		Namespace:  defaultNamespace,
+		Generation: generation,
 		Spec: appsv1.StatefulSetSpec{
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
@@ -1393,11 +1389,9 @@ func newDeployment(name string, replicas, maxSurge, maxUnavailable int, generati
 		generation = 2
 	}
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       name,
-			Namespace:  defaultNamespace,
-			Generation: generation,
-		},
+		Name:       name,
+		Namespace:  defaultNamespace,
+		Generation: generation,
 		Spec: appsv1.DeploymentSpec{
 			Strategy: appsv1.DeploymentStrategy{
 				Type: appsv1.RollingUpdateDeploymentStrategyType,
@@ -1434,10 +1428,8 @@ func newReplicationController(name string, generationInSync bool) *corev1.Replic
 		generation = 2
 	}
 	return &corev1.ReplicationController{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       name,
-			Generation: generation,
-		},
+		Name:       name,
+		Generation: generation,
 		Status: corev1.ReplicationControllerStatus{
 			ObservedGeneration: observedGeneration,
 		},
@@ -1447,13 +1439,11 @@ func newReplicationController(name string, generationInSync bool) *corev1.Replic
 func newReplicaSet(name string, replicas, readyReplicas int, generationInSync bool) *appsv1.ReplicaSet {
 	d := newDeployment(name, replicas, 0, 0, generationInSync)
 	return &appsv1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            name,
-			Namespace:       defaultNamespace,
-			Labels:          d.Spec.Selector.MatchLabels,
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(d, d.GroupVersionKind())},
-			Generation:      d.Generation,
-		},
+		Name:            name,
+		Namespace:       defaultNamespace,
+		Labels:          d.Spec.Selector.MatchLabels,
+		OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(d, d.GroupVersionKind())},
+		Generation:      d.Generation,
 		Spec: appsv1.ReplicaSetSpec{
 			Selector: d.Spec.Selector,
 			Replicas: intToInt32(replicas),
@@ -1468,11 +1458,9 @@ func newReplicaSet(name string, replicas, readyReplicas int, generationInSync bo
 
 func newPodWithCondition(name string, podReadyCondition corev1.ConditionStatus) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: defaultNamespace,
-			Labels:    map[string]string{"name": name},
-		},
+		Name:      name,
+		Namespace: defaultNamespace,
+		Labels:    map[string]string{"name": name},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
@@ -1493,10 +1481,8 @@ func newPodWithCondition(name string, podReadyCondition corev1.ConditionStatus) 
 
 func newPersistentVolumeClaim(name string, phase corev1.PersistentVolumeClaimPhase) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: defaultNamespace,
-		},
+		Name:      name,
+		Namespace: defaultNamespace,
 		Status: corev1.PersistentVolumeClaimStatus{
 			Phase: phase,
 		},
@@ -1505,10 +1491,8 @@ func newPersistentVolumeClaim(name string, phase corev1.PersistentVolumeClaimPha
 
 func newJob(name string, backoffLimit int, completions *int32, succeeded, failed int) *batchv1.Job {
 	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: defaultNamespace,
-		},
+		Name:      name,
+		Namespace: defaultNamespace,
 		Spec: batchv1.JobSpec{
 			BackoffLimit: intToInt32(backoffLimit),
 			Completions:  completions,
@@ -1535,11 +1519,9 @@ func newJob(name string, backoffLimit int, completions *int32, succeeded, failed
 
 func newService(name string, serviceSpec corev1.ServiceSpec) *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: defaultNamespace,
-		},
-		Spec: serviceSpec,
+		Name:      name,
+		Namespace: defaultNamespace,
+		Spec:      serviceSpec,
 		Status: corev1.ServiceStatus{
 			LoadBalancer: corev1.LoadBalancerStatus{
 				Ingress: nil,
@@ -1550,23 +1532,19 @@ func newService(name string, serviceSpec corev1.ServiceSpec) *corev1.Service {
 
 func newcrdBetaReady(name string, crdBetaStatus apiextv1beta1.CustomResourceDefinitionStatus) apiextv1beta1.CustomResourceDefinition {
 	return apiextv1beta1.CustomResourceDefinition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: defaultNamespace,
-		},
-		Spec:   apiextv1beta1.CustomResourceDefinitionSpec{},
-		Status: crdBetaStatus,
+		Name:      name,
+		Namespace: defaultNamespace,
+		Spec:      apiextv1beta1.CustomResourceDefinitionSpec{},
+		Status:    crdBetaStatus,
 	}
 }
 
 func newcrdReady(name string, crdBetaStatus apiextv1.CustomResourceDefinitionStatus) apiextv1.CustomResourceDefinition {
 	return apiextv1.CustomResourceDefinition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: defaultNamespace,
-		},
-		Spec:   apiextv1.CustomResourceDefinitionSpec{},
-		Status: crdBetaStatus,
+		Name:      name,
+		Namespace: defaultNamespace,
+		Spec:      apiextv1.CustomResourceDefinitionSpec{},
+		Status:    crdBetaStatus,
 	}
 }
 
