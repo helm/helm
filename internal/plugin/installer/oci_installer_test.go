@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -545,7 +546,7 @@ func TestExtractTar_UnknownFileType(t *testing.T) {
 	unknownHeader := &tar.Header{
 		Name:     "unknown-type",
 		Mode:     0o644,
-		Typeflag: tar.TypeSymlink, // Use a type that's not handled
+		Typeflag: tar.TypeFifo, // Use a type that's not handled (TypeFifo instead of TypeSymlink)
 	}
 
 	require.NoError(t, tarWriter.WriteHeader(unknownHeader))
@@ -554,6 +555,92 @@ func TestExtractTar_UnknownFileType(t *testing.T) {
 
 	// Test extraction - should fail due to unknown type
 	assert.ErrorContains(t, extractTar(bytes.NewReader(buf.Bytes()), tempDir), "unknown type")
+}
+
+func TestExtractTar_Symlink(t *testing.T) {
+	tests := []struct {
+		name        string
+		linkname    string
+		targetName  string
+		expectError bool
+		errContains string
+	}{
+		{
+			name:        "valid relative symlink pointing inside",
+			linkname:    "test-file.txt",
+			targetName:  "valid-symlink",
+			expectError: false,
+		},
+		{
+			name:        "invalid absolute target symlink",
+			linkname:    "/etc/passwd",
+			targetName:  "invalid-symlink-abs",
+			expectError: true,
+			errContains: "absolute target",
+		},
+		{
+			name:        "invalid escaping relative target symlink",
+			linkname:    "../escaped-file.txt",
+			targetName:  "invalid-symlink-escape",
+			expectError: true,
+			errContains: "escapes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+
+			var buf bytes.Buffer
+			tarWriter := tar.NewWriter(&buf)
+
+			// Add a regular file
+			testContent := "test content"
+			fileHeader := &tar.Header{
+				Name:     "test-file.txt",
+				Mode:     0o644,
+				Size:     int64(len(testContent)),
+				Typeflag: tar.TypeReg,
+			}
+			if err := tarWriter.WriteHeader(fileHeader); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := tarWriter.Write([]byte(testContent)); err != nil {
+				t.Fatal(err)
+			}
+
+			// Add symlink
+			symHeader := &tar.Header{
+				Name:     tt.targetName,
+				Mode:     0o755,
+				Typeflag: tar.TypeSymlink,
+				Linkname: tt.linkname,
+			}
+			if err := tarWriter.WriteHeader(symHeader); err != nil {
+				t.Fatal(err)
+			}
+
+			tarWriter.Close()
+
+			err := extractTar(bytes.NewReader(buf.Bytes()), tempDir)
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error for symlink extraction but got nil")
+				} else if !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("expected error containing %q, got: %v", tt.errContains, err)
+				}
+			} else {
+				if err != nil {
+					// On Windows, symlink creation might fail if not running with admin privileges.
+					// We only fail if the error is not a privilege error.
+					errStr := err.Error()
+					if !strings.Contains(errStr, "privilege") && !strings.Contains(errStr, "not held") {
+						t.Errorf("unexpected error for symlink extraction: %v", err)
+					}
+				}
+			}
+		})
+	}
 }
 
 func TestExtractTar_SuccessfulExtraction(t *testing.T) {
@@ -659,3 +746,169 @@ func TestOCIInstaller_Install_ValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+func createTestPluginTarGzWithSymlink(t *testing.T, pluginName string) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gzWriter := gzip.NewWriter(&buf)
+	tarWriter := tar.NewWriter(gzWriter)
+
+	// Add plugin.yaml
+	pluginYAML := fmt.Sprintf(`name: %s
+version: "1.0.0"
+description: "Test plugin with symlinks"
+command: "$HELM_PLUGIN_DIR/bin/%s"
+`, pluginName, pluginName)
+	header := &tar.Header{
+		Name:     "plugin.yaml",
+		Mode:     0o644,
+		Size:     int64(len(pluginYAML)),
+		Typeflag: tar.TypeReg,
+	}
+	if err := tarWriter.WriteHeader(header); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tarWriter.Write([]byte(pluginYAML)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add a regular file for target
+	testContent := "target content"
+	targetHeader := &tar.Header{
+		Name:     "target.txt",
+		Mode:     0o644,
+		Size:     int64(len(testContent)),
+		Typeflag: tar.TypeReg,
+	}
+	if err := tarWriter.WriteHeader(targetHeader); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tarWriter.Write([]byte(testContent)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add valid relative symlink
+	symHeader := &tar.Header{
+		Name:     "link.txt",
+		Mode:     0o755,
+		Typeflag: tar.TypeSymlink,
+		Linkname: "target.txt",
+	}
+	if err := tarWriter.WriteHeader(symHeader); err != nil {
+		t.Fatal(err)
+	}
+
+	tarWriter.Close()
+	gzWriter.Close()
+
+	return buf.Bytes()
+}
+
+func TestExtractOCIPluginWithSymlinks(t *testing.T) {
+	ensure.HelmHome(t)
+
+	pluginName := "test-plugin-symlink"
+
+	// Create mock registry hosting plugin with symlinks
+	pluginData := createTestPluginTarGzWithSymlink(t, pluginName)
+	layerDigest := fmt.Sprintf("sha256:%x", sha256Sum(pluginData))
+	configData := []byte("{}")
+	configDigest := fmt.Sprintf("sha256:%x", sha256Sum(configData))
+
+	manifest := ocispec.Manifest{
+		MediaType:    ocispec.MediaTypeImageManifest,
+		ArtifactType: "application/vnd.helm.plugin.v1+json",
+		Config: ocispec.Descriptor{
+			MediaType: "application/vnd.oci.empty.v1+json",
+			Digest:    digest.Digest(configDigest),
+			Size:      int64(len(configData)),
+		},
+		Layers: []ocispec.Descriptor{
+			{
+				MediaType: "application/vnd.oci.image.layer.v1.tar",
+				Digest:    digest.Digest(layerDigest),
+				Size:      int64(len(pluginData)),
+				Annotations: map[string]string{
+					ocispec.AnnotationTitle: pluginName + "-1.0.0.tgz",
+				},
+			},
+		},
+	}
+
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestDigest := fmt.Sprintf("sha256:%x", sha256Sum(manifestData))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/v2/") && !strings.Contains(r.URL.Path, "/manifests/") && !strings.Contains(r.URL.Path, "/blobs/"):
+			w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("{}"))
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/manifests/") && strings.Contains(r.URL.Path, pluginName):
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Header().Set("Docker-Content-Digest", manifestDigest)
+			w.WriteHeader(http.StatusOK)
+			w.Write(manifestData)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blobs/"+layerDigest):
+			w.Header().Set("Content-Type", "application/vnd.oci.image.layer.v1.tar")
+			w.WriteHeader(http.StatusOK)
+			w.Write(pluginData)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blobs/"+configDigest):
+			w.Header().Set("Content-Type", "application/vnd.oci.empty.v1+json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(configData)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registryHost := serverURL.Host
+
+	source := fmt.Sprintf("oci://%s/%s:latest", registryHost, pluginName)
+	installer, err := NewOCIInstaller(source, getter.WithPlainHTTP(true))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	actualPath := installer.Path()
+
+	err = Install(installer)
+	if err != nil {
+		// On Windows, if symlinks are not supported, Install might return an error.
+		// Let's verify that if it returns an error, it is a privilege error.
+		if runtime.GOOS == "windows" {
+			errStr := err.Error()
+			if strings.Contains(errStr, "privilege") || strings.Contains(errStr, "not supported") || strings.Contains(errStr, "not held") {
+				t.Skip("skipping symlink integration test on Windows due to lack of symlink privilege")
+			}
+		}
+		t.Fatalf("expected installation to succeed, got error: %v", err)
+	}
+
+	if !isPlugin(actualPath) {
+		t.Errorf("expected plugin directory %s to contain plugin.yaml", actualPath)
+	}
+
+	// Verify the symlink exists (if supported by OS)
+	if runtime.GOOS != "windows" || hasSymlinkPrivilege() {
+		linkPath := filepath.Join(actualPath, "link.txt")
+		fi, err := os.Lstat(linkPath)
+		if err != nil {
+			t.Fatalf("failed to stat symlink: %v", err)
+		}
+		if fi.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("expected %s to be a symlink, got mode %s", linkPath, fi.Mode())
+		}
+	}
+}
+
