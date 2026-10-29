@@ -74,12 +74,13 @@ func stopProfiling() error {
 		f, err := os.Create(memProfilePath)
 		if err != nil {
 			errs = append(errs, err)
-		}
-		defer f.Close()
+		} else {
+			defer f.Close()
 
-		runtime.GC() // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			errs = append(errs, err)
+			runtime.GC() // get up-to-date statistics
+			if err := pprof.WriteHeapProfile(f); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 
