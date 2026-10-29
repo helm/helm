@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -123,14 +124,62 @@ func TestValidateVersion(t *testing.T) {
 			args{
 				ver: "1.1.3.sd.023658",
 			},
+			semver.ErrInvalidCharacters,
+		},
+		{
+			"Incomplete version number",
+			args{
+				ver: "1.2",
+			},
 			semver.ErrInvalidSemVer,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateVersion(tt.args.ver); err != nil {
-				assert.ErrorIs(t, err, tt.wantErr)
+			err := validateVersion(tt.args.ver)
+			if tt.wantErr == nil {
+				require.NoError(t, err)
+				return
 			}
+			assert.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestRunRejectsNonStrictSemVer(t *testing.T) {
+	tests := []struct {
+		name            string
+		chartVersion    string
+		overrideVersion string
+	}{
+		{
+			name:         "Chart.yaml version",
+			chartVersion: "1.2",
+		},
+		{
+			name:            "version override",
+			chartVersion:    "1.2.3",
+			overrideVersion: "1.2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chartDir := t.TempDir()
+			chartYAML := "apiVersion: v2\nname: invalid-semver\nversion: " + tt.chartVersion + "\n"
+			require.NoError(t, os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte(chartYAML), 0o644))
+
+			destination := t.TempDir()
+			client := NewPackage()
+			client.Destination = destination
+			client.Version = tt.overrideVersion
+
+			_, err := client.Run(chartDir, nil)
+			require.ErrorIs(t, err, semver.ErrInvalidSemVer)
+
+			archives, err := filepath.Glob(filepath.Join(destination, "*.tgz"))
+			require.NoError(t, err)
+			assert.Empty(t, archives)
 		})
 	}
 }
