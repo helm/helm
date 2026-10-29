@@ -79,3 +79,50 @@ func TestLoadArchiveFiles(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadArchiveFilesAtMaxDecompressedSize(t *testing.T) {
+	const content = "apiVersion: v2\nname: mychart\nversion: 0.1.0\n"
+
+	archiveOf := func(t *testing.T) *bytes.Buffer {
+		t.Helper()
+		buf := &bytes.Buffer{}
+		gzw := gzip.NewWriter(buf)
+		tw := tar.NewWriter(gzw)
+		require.NoError(t, tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeReg,
+			Name:     "mychart/Chart.yaml",
+			Size:     int64(len(content)),
+		}))
+		_, err := tw.Write([]byte(content))
+		require.NoError(t, err)
+		require.NoError(t, tw.Close())
+		require.NoError(t, gzw.Close())
+		return buf
+	}
+
+	orig := MaxDecompressedChartSize
+	t.Cleanup(func() { MaxDecompressedChartSize = orig })
+
+	for _, tc := range []struct {
+		name    string
+		budget  int64
+		wantErr bool
+	}{
+		{"one byte over the chart size", int64(len(content)) + 1, false},
+		// A chart that exactly fills the budget is at the limit, not over it,
+		// and BudgetedReader accepts it for directory loads.
+		{"exactly the chart size", int64(len(content)), false},
+		{"one byte under the chart size", int64(len(content)) - 1, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			MaxDecompressedChartSize = tc.budget
+			files, err := LoadArchiveFiles(archiveOf(t))
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, files, 1)
+		})
+	}
+}
