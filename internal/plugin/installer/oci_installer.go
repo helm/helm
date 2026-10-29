@@ -242,9 +242,13 @@ func extractTar(r io.Reader, targetDir string) error {
 			if err != nil {
 				return err
 			}
-			defer outFile.Close()
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				return err
+			_, copyErr := io.Copy(outFile, tarReader)
+			closeErr := outFile.Close()
+			if copyErr != nil {
+				return copyErr
+			}
+			if closeErr != nil {
+				return closeErr
 			}
 		case tar.TypeXGlobalHeader, tar.TypeXHeader:
 			// Skip these
