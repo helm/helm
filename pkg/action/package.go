@@ -140,9 +140,9 @@ func (p *Package) Run(path string, _ map[string]any) (string, error) {
 	return name, err
 }
 
-// validateVersion Verify that version is a Version, and error out if it is not.
+// validateVersion verifies that version is a strict SemVer 2 version.
 func validateVersion(ver string) error {
-	if _, err := semver.NewVersion(ver); err != nil {
+	if _, err := semver.StrictNewVersion(ver); err != nil {
 		return err
 	}
 	return nil
