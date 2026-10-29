@@ -62,6 +62,7 @@ func (c *Client) PullPlugin(ref, pluginName string, options ...PluginPullOption)
 	genericResult, err := genericClient.PullGeneric(ref, GenericPullOptions{
 		// Allow manifests and all layer types - we'll validate artifact type after download
 		AllowedMediaTypes: []string{
+			ocispec.MediaTypeImageIndex,
 			ocispec.MediaTypeImageManifest,
 			"application/vnd.oci.image.layer.v1.tar",
 			"application/vnd.oci.image.layer.v1.tar+gzip",
