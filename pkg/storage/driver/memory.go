@@ -79,7 +79,7 @@ func (mem *Memory) Get(key string) (release.Releaser, error) {
 		}
 		if recs, ok := mem.cache[mem.namespace][name]; ok {
 			if r := recs.Get(key); r != nil {
-				return r.rls, nil
+				return copyRelease(r.rls), nil
 			}
 		}
 		return nil, ErrReleaseNotFound
@@ -100,8 +100,11 @@ func (mem *Memory) List(filter func(release.Releaser) bool) ([]release.Releaser,
 		}
 		for _, recs := range mem.cache[namespace] {
 			recs.Iter(func(_ int, rec *record) bool {
-				if filter(rec.rls) {
-					ls = append(ls, rec.rls)
+				// Copy before filtering so the callback cannot reach the
+				// stored release either.
+				rls := copyRelease(rec.rls)
+				if filter(rls) {
+					ls = append(ls, rls)
 				}
 				return true
 			})
@@ -137,7 +140,7 @@ func (mem *Memory) Query(keyvals map[string]string) ([]release.Releaser, error) 
 					return false
 				}
 				if rec.lbs.match(lbs) {
-					ls = append(ls, rec.rls)
+					ls = append(ls, copyRelease(rec.rls))
 				}
 				return true
 			})

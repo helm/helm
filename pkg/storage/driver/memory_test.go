@@ -264,3 +264,82 @@ func TestMemoryDelete(t *testing.T) {
 		}
 	}
 }
+
+// A stored release should only change through Update, which is the contract the
+// persistent drivers already provide by encoding on write and decoding on read.
+func TestMemoryReleaseIsolation(t *testing.T) {
+	key := testKey("copy-me", 1)
+	tests := []struct {
+		desc   string
+		mutate func(t *testing.T, mem *Memory, rls *rspb.Release)
+	}{
+		{
+			desc: "create input",
+			mutate: func(_ *testing.T, _ *Memory, rls *rspb.Release) {
+				rls.Info.Status = common.StatusFailed
+			},
+		},
+		{
+			desc: "update input",
+			mutate: func(t *testing.T, mem *Memory, rls *rspb.Release) {
+				t.Helper()
+				require.NoError(t, mem.Update(key, rls))
+				rls.Info.Status = common.StatusFailed
+			},
+		},
+		{
+			desc: "get result",
+			mutate: func(t *testing.T, mem *Memory, _ *rspb.Release) {
+				t.Helper()
+				rel, err := mem.Get(key)
+				require.NoError(t, err)
+				convertReleaserToV1(t, rel).Info.Status = common.StatusFailed
+			},
+		},
+		{
+			desc: "list result",
+			mutate: func(t *testing.T, mem *Memory, _ *rspb.Release) {
+				t.Helper()
+				ls, err := mem.List(func(release.Releaser) bool { return true })
+				require.NoError(t, err)
+				require.Len(t, ls, 1)
+				convertReleaserToV1(t, ls[0]).Info.Status = common.StatusFailed
+			},
+		},
+		{
+			desc: "list filter argument",
+			mutate: func(t *testing.T, mem *Memory, _ *rspb.Release) {
+				t.Helper()
+				_, err := mem.List(func(rel release.Releaser) bool {
+					convertReleaserToV1(t, rel).Info.Status = common.StatusFailed
+					return false
+				})
+				require.NoError(t, err)
+			},
+		},
+		{
+			desc: "query result",
+			mutate: func(t *testing.T, mem *Memory, _ *rspb.Release) {
+				t.Helper()
+				ls, err := mem.Query(map[string]string{"name": "copy-me"})
+				require.NoError(t, err)
+				require.Len(t, ls, 1)
+				convertReleaserToV1(t, ls[0]).Info.Status = common.StatusFailed
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			mem := NewMemory()
+			rls := releaseFixture()
+			require.NoError(t, mem.Create(key, rls))
+
+			tt.mutate(t, mem, rls)
+
+			stored, err := mem.Get(key)
+			require.NoError(t, err)
+			assert.Equal(t, common.StatusDeployed, convertReleaserToV1(t, stored).Info.Status)
+		})
+	}
+}
