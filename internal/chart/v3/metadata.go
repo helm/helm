@@ -81,6 +81,9 @@ type Metadata struct {
 	Dependencies []*Dependency `json:"dependencies,omitempty"`
 	// Specifies the chart type: application or library
 	Type string `json:"type,omitempty"`
+	// The URL from which the chart was obtained (a Helm repository URL,
+	// an OCI reference, or a direct artifact URL). Used to record provenance.
+	RepoURL string `json:"repoURL,omitempty"`
 }
 
 // Validate checks the metadata for known issues and sanitizes string
@@ -98,6 +101,7 @@ func (md *Metadata) Validate() error {
 	md.Tags = sanitizeString(md.Tags)
 	md.AppVersion = sanitizeString(md.AppVersion)
 	md.KubeVersion = sanitizeString(md.KubeVersion)
+	md.RepoURL = sanitizeString(md.RepoURL)
 	for i := range md.Sources {
 		md.Sources[i] = sanitizeString(md.Sources[i])
 	}
