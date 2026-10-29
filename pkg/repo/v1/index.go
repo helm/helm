@@ -52,6 +52,8 @@ var (
 	ErrNoChartName = errors.New("no chart name found")
 	// ErrEmptyIndexYaml indicates that the content of index.yaml is empty.
 	ErrEmptyIndexYaml = errors.New("empty index.yaml file")
+	// ErrRepositoryMoved indicates that the repository index has moved to a new URL.
+	ErrRepositoryMoved = errors.New("repository moved to new URL")
 )
 
 // ChartVersions is a list of versioned chart references.
@@ -86,6 +88,9 @@ type IndexFile struct {
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
 	PublicKeys []string                 `json:"publicKeys,omitempty"`
+
+	// RedirectURL specifies a new repository URL if this repository has moved.
+	RedirectURL string `json:"redirectURL,omitempty"`
 
 	// Annotations are additional mappings uninterpreted by Helm. They are made available for
 	// other applications to add information to the index file.
