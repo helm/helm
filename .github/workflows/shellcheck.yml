@@ -1,0 +1,20 @@
+name: ShellCheck
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - name: Run ShellCheck
+        run: |
+          shellcheck --version
+          find . -type f -name "*.sh" -not -path "./vendor/*" -not -path "./.git/*" | xargs shellcheck
