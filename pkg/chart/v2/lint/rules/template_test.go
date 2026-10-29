@@ -458,3 +458,68 @@ func TestIsYamlFileExtension(t *testing.T) {
 		assert.Equal(t, test.expected, result, "isYamlFileExtension(%s) = %v; want %v", test.filename, result, test.expected)
 	}
 }
+
+func TestValidateContainerNames(t *testing.T) {
+	tests := []struct {
+		name    string
+		obj     *k8sYamlStruct
+		wantErr bool
+	}{
+		{"valid pod container name", &k8sYamlStruct{Kind: "Pod", Spec: k8sYamlSpec{k8sYamlPodSpec: k8sYamlPodSpec{Containers: []k8sYamlNamed{{Name: "web"}}}}}, false},
+		{"invalid pod container name", &k8sYamlStruct{Kind: "Pod", Spec: k8sYamlSpec{k8sYamlPodSpec: k8sYamlPodSpec{Containers: []k8sYamlNamed{{Name: "alpha_regression"}}}}}, true},
+		{"invalid pod init container name", &k8sYamlStruct{Kind: "Pod", Spec: k8sYamlSpec{k8sYamlPodSpec: k8sYamlPodSpec{InitContainers: []k8sYamlNamed{{Name: "Init.Container"}}}}}, true},
+		{"valid pod volume name", &k8sYamlStruct{Kind: "Pod", Spec: k8sYamlSpec{k8sYamlPodSpec: k8sYamlPodSpec{Volumes: []k8sYamlNamed{{Name: "my-volume"}}}}}, false},
+		{"invalid pod volume name", &k8sYamlStruct{Kind: "Pod", Spec: k8sYamlSpec{k8sYamlPodSpec: k8sYamlPodSpec{Volumes: []k8sYamlNamed{{Name: "my_volume"}}}}}, true},
+		{"invalid ephemeral container name", &k8sYamlStruct{Kind: "Pod", Spec: k8sYamlSpec{k8sYamlPodSpec: k8sYamlPodSpec{EphemeralContainers: []k8sYamlNamed{{Name: "debug_shell"}}}}}, true},
+		{"valid deployment", &k8sYamlStruct{Kind: "Deployment", Spec: k8sYamlSpec{Template: &k8sYamlTemplate{Spec: k8sYamlPodSpec{Containers: []k8sYamlNamed{{Name: "web"}}}}}}, false},
+		{"invalid deployment container name", &k8sYamlStruct{Kind: "Deployment", Spec: k8sYamlSpec{Template: &k8sYamlTemplate{Spec: k8sYamlPodSpec{Containers: []k8sYamlNamed{{Name: "web_1"}}}}}}, true},
+		{"invalid cronjob container name", &k8sYamlStruct{Kind: "CronJob", Spec: k8sYamlSpec{JobTemplate: &k8sYamlJobTemplate{Spec: k8sYamlJobSpec{Template: k8sYamlTemplate{Spec: k8sYamlPodSpec{Containers: []k8sYamlNamed{{Name: "myjob.1"}}}}}}}}, true},
+		{"non-workload kind is ignored", &k8sYamlStruct{Kind: "ConfigMap", Spec: k8sYamlSpec{k8sYamlPodSpec: k8sYamlPodSpec{Containers: []k8sYamlNamed{{Name: "not_a_container"}}}}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateContainerNames(tt.obj)
+			if tt.wantErr {
+				require.Error(t, err, "validateContainerNames()")
+			} else {
+				require.NoError(t, err, "validateContainerNames()")
+			}
+		})
+	}
+}
+
+// TestInvalidContainerNameFailsLint is a regression test for
+// https://github.com/helm/helm/issues/10627
+func TestInvalidContainerNameFailsLint(t *testing.T) {
+	mychart := chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: "v2",
+			Name:       "badcontainer",
+			Version:    "0.1.0",
+		},
+		Templates: []*common.File{
+			{
+				Name:    "templates/deployment.yaml",
+				ModTime: time.Now(),
+				Data:    []byte("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: badcontainer\nspec:\n  selector:\n    matchLabels:\n      app: badcontainer\n  template:\n    metadata:\n      labels:\n        app: badcontainer\n    spec:\n      containers:\n        - name: alpha_regression\n          image: nginx\n"),
+			},
+		},
+	}
+	tmpdir := t.TempDir()
+
+	require.NoError(t, chartutil.SaveDir(&mychart, tmpdir))
+
+	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Metadata.Name)}
+	Templates(
+		&linter,
+		namespace,
+		values,
+		TemplateLinterSkipSchemaValidation(false))
+	if !assert.Len(t, linter.Messages, 1) {
+		for i, msg := range linter.Messages {
+			t.Logf("Message %d: %s", i, msg)
+		}
+	}
+	require.Len(t, linter.Messages, 1, "Expected 1 lint message")
+	assert.ErrorContains(t, linter.Messages[0].Err, "Kubernetes naming requirements")
+}
