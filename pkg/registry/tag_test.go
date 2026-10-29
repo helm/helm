@@ -83,17 +83,19 @@ func TestGetTagMatchingVersionOrConstraint_OrderMatters_FirstMatchReturned(t *te
 func TestGetTagMatchingVersionOrConstraint_UnderscoreTag(t *testing.T) {
 	// Tags returns the original registry strings, so a chart stored under
 	// the underscore convention from #10166 arrives here as 1.1.17_meta.
-	// It must still match a constraint and be returned in its original
-	// form so the pull reference names a tag that exists.
+	// It must still match a constraint, and the returned form is the
+	// plus form: the pull path converts it back to the underscore tag
+	// when fetching, while user-facing uses such as the pulled file
+	// name show the chart version.
 	tags := []string{"1.1.17_meta", "1.0.0"}
 	got, err := GetTagMatchingVersionOrConstraint(tags, "1.x.x")
 	require.NoError(t, err)
-	assert.Equal(t, "1.1.17_meta", got)
+	assert.Equal(t, "1.1.17+meta", got)
 
 	// A version written with build metadata must match the underscore tag.
 	got, err = GetTagMatchingVersionOrConstraint(tags, "1.1.17+meta")
 	require.NoError(t, err)
-	assert.Equal(t, "1.1.17_meta", got)
+	assert.Equal(t, "1.1.17+meta", got)
 
 	// A version written in the underscore form itself must match too. This
 	// goes through the exact-match branch, which only works because Tags
@@ -101,7 +103,7 @@ func TestGetTagMatchingVersionOrConstraint_UnderscoreTag(t *testing.T) {
 	// and a request for 1.1.17_meta matched nothing.
 	got, err = GetTagMatchingVersionOrConstraint(tags, "1.1.17_meta")
 	require.NoError(t, err)
-	assert.Equal(t, "1.1.17_meta", got)
+	assert.Equal(t, "1.1.17+meta", got)
 }
 
 func TestGetTagMatchingVersionOrConstraint_ExactMatchHasPrecedence(t *testing.T) {
