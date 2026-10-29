@@ -18,6 +18,7 @@ package registry
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net/http"
@@ -25,6 +26,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 var errMockRead = errors.New("mock read error")
@@ -33,6 +36,24 @@ type errorReader struct{}
 
 func (e *errorReader) Read(_ []byte) (n int, err error) {
 	return 0, errMockRead
+}
+
+// nonClonableTransport stands in for a RoundTripper an imported package replaced
+// http.DefaultTransport with: DefaultTransport is a variable of interface type, so
+// it does not always hold an *http.Transport.
+type nonClonableTransport struct{}
+
+func (*nonClonableTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("never called")
+}
+
+// baseTransport unwraps the transport NewTransport built the retry transport from.
+func baseTransport(t *testing.T, transport *retry.Transport) http.RoundTripper {
+	t.Helper()
+	if logged, ok := transport.Base.(*LoggingTransport); ok {
+		return logged.RoundTripper
+	}
+	return transport.Base
 }
 
 func Test_isPrintableContentType(t *testing.T) {
@@ -381,6 +402,50 @@ func Test_containsCredentials(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, containsCredentials(tt.body))
+		})
+	}
+}
+
+func Test_NewTransport(t *testing.T) {
+	defer func(orig http.RoundTripper) { http.DefaultTransport = orig }(http.DefaultTransport)
+
+	tests := []struct {
+		name      string
+		debug     bool
+		installed http.RoundTripper
+	}{
+		{name: "clonable default transport", installed: &http.Transport{}},
+		{name: "replaced default transport", installed: &nonClonableTransport{}},
+		{name: "clonable default transport, debug", debug: true, installed: &http.Transport{}},
+		{name: "replaced default transport, debug", debug: true, installed: &nonClonableTransport{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			http.DefaultTransport = tt.installed
+
+			transport := NewTransport(tt.debug)
+			base := baseTransport(t, transport)
+
+			if tt.debug {
+				_, ok := transport.Base.(*LoggingTransport)
+				require.True(t, ok, "expected the transport to be wrapped for debug output, got %T", transport.Base)
+			}
+
+			assert.NotSame(t, tt.installed, base, "the process-wide default transport must not be handed out")
+
+			httpTransport, ok := base.(*http.Transport)
+			require.True(t, ok, "TLS settings can only be applied to an *http.Transport, got %T", base)
+
+			conf := &tls.Config{InsecureSkipVerify: true}
+			_, err := ensureTLSConfig(&auth.Client{Client: &http.Client{Transport: transport}}, conf)
+			require.NoError(t, err, "TLS settings should be applicable to a Helm registry transport")
+			assert.Same(t, conf, httpTransport.TLSClientConfig)
+
+			if shared, ok := tt.installed.(*http.Transport); ok {
+				assert.NotSame(t, conf, shared.TLSClientConfig,
+					"configuring Helm's transport must not reach the process-wide default transport")
+			}
 		})
 	}
 }

@@ -438,9 +438,7 @@ func parseTemplateNoTemplateError(s, remainder string) (TraceableError, bool) {
 // Use LastIndex to avoid splitting colons within line:col info.
 // Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
 func parseTemplateSimpleErrorString(remainder string) (TraceableError, bool) {
-	if sep := strings.LastIndex(remainder, ": "); sep != -1 {
-		templateName := remainder[:sep]
-		errMsg := remainder[sep+2:]
+	if templateName, errMsg, found := strings.CutLast(remainder, ": "); found {
 		if cut := strings.Index(errMsg, " template:"); cut != -1 {
 			errMsg = errMsg[:cut]
 		}
