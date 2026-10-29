@@ -196,6 +196,17 @@ func TestFindChartInRepoURL(t *testing.T) {
 	assert.Equalf(t, "https://charts.helm.sh/stable/nginx-0.1.0.tgz", chartURL, "%s is not the valid URL", chartURL)
 }
 
+func TestFindChartInRepoURLWithDigest(t *testing.T) {
+	srv, err := startLocalServerForTests(nil)
+	require.NoError(t, err)
+	defer srv.Close()
+
+	chartURL, digest, err := FindChartInRepoURLWithDigest(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.2.0"))
+	require.NoError(t, err)
+	assert.Equal(t, "https://charts.helm.sh/stable/nginx-0.2.0.tgz", chartURL)
+	assert.Equal(t, "sha256:1234567890abcdef", digest)
+}
+
 func TestErrorFindChartInRepoURL(t *testing.T) {
 	g := getter.All(&cli.EnvSettings{
 		RepositoryCache: t.TempDir(),

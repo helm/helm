@@ -117,7 +117,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 	downloadSourceRef := chartRef
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInRepoURL(
+		chartURL, digest, err := repo.FindChartInRepoURLWithDigest(
 			p.RepoURL,
 			chartRef,
 			getter.All(p.Settings),
@@ -131,6 +131,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			return out.String(), err
 		}
 		downloadSourceRef = chartURL
+		c.IndexDigest = digest
 	}
 
 	saved, v, err := c.DownloadTo(downloadSourceRef, p.Version, dest)
