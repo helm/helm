@@ -782,3 +782,25 @@ func TestUpgradeRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+func TestUpgradeRelease_IgnoreNotFound(t *testing.T) {
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	upAction.IgnoreNotFound = true
+
+	// No release with this name exists in storage at all.
+	res, err := upAction.Run("not-installed", buildChart(), map[string]any{})
+	req.NoError(err)
+	req.Nil(res)
+}
+
+// Red baseline for current master: without the field set, the same call errors.
+func TestUpgradeRelease_NotFound_NoIgnore(t *testing.T) {
+	req := require.New(t)
+
+	upAction := upgradeAction(t) // IgnoreNotFound defaults to false
+
+	_, err := upAction.Run("not-installed", buildChart(), map[string]any{})
+	req.ErrorContains(err, "has no deployed releases")
+}
