@@ -77,10 +77,8 @@ func newPodWithStatus(name string, status v1.PodStatus, namespace string) v1.Pod
 		ns = namespace
 	}
 	return v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
+		Name:      name,
+		Namespace: ns,
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{
 				Name:  "app:v4",

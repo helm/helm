@@ -37,7 +37,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
@@ -438,15 +437,11 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 	if i.CreateNamespace {
 		ns := &v1.Namespace{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "Namespace",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: i.Namespace,
-				Labels: map[string]string{
-					"name": i.Namespace,
-				},
+			APIVersion: "v1",
+			Kind:       "Namespace",
+			Name:       i.Namespace,
+			Labels: map[string]string{
+				"name": i.Namespace,
 			},
 		}
 		buf, err := yaml.Marshal(ns)
