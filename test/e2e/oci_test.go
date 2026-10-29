@@ -423,7 +423,7 @@ func deleteNamespace(t *testing.T, namespace string) {
 	}
 }
 
-// TestOCIRegistryDependencyUpdateWithMetaTag reproduces issue #32582: a
+// TestOCIRegistryDependencyUpdateWithMetaTag is regression coverage for #32582: a
 // chart pushed under a version with build metadata (1.1.17+meta) is stored
 // under the tag 1.1.17_meta, and a parent chart depending on it from an OCI
 // repository with a ~1.1.17 constraint must resolve it on dependency update.

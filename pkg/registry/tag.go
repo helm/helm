@@ -53,16 +53,20 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 	for _, v := range tags {
 		// Tags are the original registry strings, so a tag stored under
 		// the underscore convention from #10166 (1.1.17_meta) is not valid
-		// semver as written. Parse its plus form and return that form:
-		// the pull path converts it back to the underscore tag when
-		// fetching, and returning the stored form would leak the storage
+		// semver as written. Parse its plus form for the constraint
+		// check, but return the original string with only the
+		// underscore converted: normalizing through semver would
+		// rewrite loose tags like v1.2.0 to 1.2.0, which is not a
+		// tag in the registry. The pull path converts the plus
+		// form back to the underscore tag when fetching, and
+		// returning the stored form would leak the storage
 		// encoding into user-facing uses such as the pulled file name.
 		test, err := semver.NewVersion(strings.ReplaceAll(v, "_", "+"))
 		if err != nil {
 			continue
 		}
 		if constraint.Check(test) {
-			return test.String(), nil
+			return strings.ReplaceAll(v, "_", "+"), nil
 		}
 	}
 

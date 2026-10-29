@@ -65,6 +65,15 @@ func TestGetTagMatchingVersionOrConstraint_NoMatches(t *testing.T) {
 	assert.ErrorContains(t, err, ">=1.0.0", "expected error to contain version string")
 }
 
+func TestGetTagMatchingVersionOrConstraint_LooseTagReturnedVerbatim(t *testing.T) {
+	// A loose tag like v1.2.0 must come back as stored: normalizing it
+	// through semver would return 1.2.0, which is not a tag in the registry.
+	tags := []string{"v1.2.0", "1.0.0"}
+	got, err := GetTagMatchingVersionOrConstraint(tags, ">=1.0.0")
+	require.NoError(t, err)
+	assert.Equal(t, "v1.2.0", got)
+}
+
 func TestGetTagMatchingVersionOrConstraint_SkipsNonSemverTags(t *testing.T) {
 	tags := []string{"alpha", "1.0.0", "beta", "1.1.0"}
 	got, err := GetTagMatchingVersionOrConstraint(tags, ">=1.0.0 <2.0.0")
