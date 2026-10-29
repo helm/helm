@@ -172,9 +172,10 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 }
 
 func (o *pluginPackageOptions) promptUser(name string) ([]byte, error) {
-	fmt.Printf("Password for key %q >  ", name)
+	// Prompts go to stderr so stdout stays clean for scripting.
+	fmt.Fprintf(os.Stderr, "Password for key %q >  ", name)
 	pw, err := term.ReadPassword(int(syscall.Stdin))
-	fmt.Println()
+	fmt.Fprintln(os.Stderr)
 	return pw, err
 }
 
