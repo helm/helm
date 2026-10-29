@@ -79,6 +79,27 @@ func TestManuallyProcessArgs(t *testing.T) {
 	}
 }
 
+func TestManuallyProcessArgsEmptyArg(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       []string
+		wantKnown   []string
+		wantUnknown []string
+	}{
+		{"only empty", []string{""}, []string{}, []string{""}},
+		{"empty before arg", []string{"", "foo"}, []string{}, []string{"", "foo"}},
+		{"empty after arg", []string{"foo", ""}, []string{}, []string{"foo", ""}},
+		{"empty with known flag", []string{"--debug", "", "-n", "ns"}, []string{"--debug", "-n", "ns"}, []string{""}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			known, unknown := manuallyProcessArgs(tt.input)
+			assert.Equal(t, tt.wantKnown, known)
+			assert.Equal(t, tt.wantUnknown, unknown)
+		})
+	}
+}
+
 func TestLoadCLIPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repositories.yaml"
