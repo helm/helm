@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/internal/fileutil"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
 )
 
 // File represents the repositories.yaml file
@@ -115,11 +116,13 @@ func (r *File) Remove(name string) bool {
 	return found
 }
 
-// WriteFile writes a repositories file to the given path via AtomicWriteFile.
+// WriteFile writes a repositories file to the given path atomically.
 // The path is made absolute before writing so the temporary file is created in
 // the destination directory (including for bare relative names). A destination
-// that is a symlink is resolved and the shared target is updated. perm is used
-// only when creating a new file; an existing destination keeps its mode.
+// that is a symlink is resolved and the shared target is updated, including when
+// the final target is missing. perm is used only when creating a new file and is
+// subject to the process umask, matching os.WriteFile; an existing destination
+// keeps its mode.
 func (r *File) WriteFile(path string, perm os.FileMode) error {
 	data, err := yaml.Marshal(r)
 	if err != nil {
@@ -134,18 +137,52 @@ func (r *File) WriteFile(path string, perm os.FileMode) error {
 		return err
 	}
 
-	mode := perm
 	if fi, err := os.Stat(writePath); err == nil {
-		mode = fi.Mode().Perm()
+		return fileutil.AtomicWriteFile(writePath, bytes.NewReader(data), fi.Mode().Perm())
 	} else if !os.IsNotExist(err) {
 		return err
 	}
 
-	return fileutil.AtomicWriteFile(writePath, bytes.NewReader(data), mode)
+	return atomicWriteRepoFileNew(writePath, data, perm)
+}
+
+// atomicWriteRepoFileNew creates a new destination with perm subject to umask.
+// Unlike fileutil.AtomicWriteFile it does not Chmod after create, so a call with
+// perm=0o644 and umask=0o077 yields 0o600 the way os.WriteFile does.
+func atomicWriteRepoFileNew(filename string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(filename)
+	f, err := os.CreateTemp(dir, ".repositories.yaml-")
+	if err != nil {
+		return err
+	}
+	tempName := f.Name()
+	_ = f.Close()
+	_ = os.Remove(tempName)
+
+	f, err = os.OpenFile(tempName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tempName)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tempName)
+		return err
+	}
+
+	if err := fs.RenameWithFallback(tempName, filename); err != nil {
+		_ = os.Remove(tempName)
+		return err
+	}
+	return nil
 }
 
 // resolveRepoFileWritePath returns an absolute write path, following a symlink
-// destination to its target when present.
+// destination to its target when present. A dangling symlink still resolves to
+// its link text so the shared target can be created while the link is kept.
 func resolveRepoFileWritePath(path string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -164,8 +201,16 @@ func resolveRepoFileWritePath(path string) (string, error) {
 	}
 
 	target, err := filepath.EvalSymlinks(abs)
-	if err != nil {
+	if err == nil {
+		return target, nil
+	}
+
+	link, lerr := os.Readlink(abs)
+	if lerr != nil {
 		return "", err
 	}
-	return target, nil
+	if !filepath.IsAbs(link) {
+		link = filepath.Join(filepath.Dir(abs), link)
+	}
+	return filepath.Clean(link), nil
 }

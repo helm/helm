@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -212,6 +213,12 @@ func TestWriteFileRelativeBareNameUsesDestinationDir(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 
+	// Make $TMPDIR unusable so a temp file created there would fail. Destination-
+	// local CreateTemp/OpenFile must still succeed for a bare relative name.
+	badTmp := filepath.Join(t.TempDir(), "missing-tmpdir")
+	t.Setenv("TMPDIR", badTmp)
+	t.Setenv("TMP", badTmp)
+
 	f := NewFile()
 	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
 	require.NoError(t, f.WriteFile("repositories.yaml", 0o600))
@@ -228,6 +235,43 @@ func TestWriteFileRelativeBareNameUsesDestinationDir(t *testing.T) {
 		names = append(names, e.Name())
 	}
 	assert.Equal(t, []string{"repositories.yaml"}, names)
+}
+
+func TestWriteFileCreatesThroughDanglingSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "shared-repositories.yaml")
+	link := filepath.Join(dir, "repositories.yaml")
+	require.NoError(t, os.Symlink(target, link))
+
+	f := NewFile()
+	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, f.WriteFile(link, 0o600))
+
+	fi, err := os.Lstat(link)
+	require.NoError(t, err)
+	assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "destination symlink must be preserved")
+
+	repos, err := LoadFile(target)
+	require.NoError(t, err)
+	assert.True(t, repos.Has("stable"))
+}
+
+func TestWriteFileNewFileHonorsUmask(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not implement POSIX umask")
+	}
+
+	path := filepath.Join(t.TempDir(), "repositories.yaml")
+	old := syscall.Umask(0o077)
+	t.Cleanup(func() { syscall.Umask(old) })
+
+	f := NewFile()
+	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, f.WriteFile(path, 0o644))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equalf(t, os.FileMode(0o600), info.Mode().Perm(), "perm=0644 with umask 0077 must yield 0600")
 }
 
 func TestWriteFileUpdatesSymlinkTarget(t *testing.T) {
