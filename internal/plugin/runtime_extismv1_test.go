@@ -16,6 +16,7 @@ limitations under the License.
 package plugin
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -82,6 +83,34 @@ func TestRuntimeExtismV1InvokePlugin(t *testing.T) {
 
 	msg := output.Message.(schema.OutputMessageTestV1)
 	assert.Equal(t, "Hello, Phippy! (6)", msg.Greeting)
+}
+
+// TestRuntimeExtismV1InvokePostRendererPlugin guards against the
+// InputMessagePostRendererV1.Manifests buffer being silently dropped when
+// the extism/v1 runtime JSON-encodes it to send to the plugin: a wasm
+// post-renderer plugin should see the manifests Helm rendered, not an
+// empty string.
+func TestRuntimeExtismV1InvokePostRendererPlugin(t *testing.T) {
+	r := RuntimeExtismV1{}
+
+	pr := buildLoadExtismPlugin(t, "testdata/src/extismv1-postrenderer-test")
+	require.Equal(t, "postrenderer/v1", pr.Metadata.Type)
+
+	p, err := r.CreatePlugin(pr.Dir, &pr.Metadata)
+	require.NoError(t, err, "expected no error creating plugin")
+	assert.NotNil(t, p, "expected plugin to be created")
+
+	manifests := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+	output, err := p.Invoke(t.Context(), &Input{
+		Message: schema.InputMessagePostRendererV1{
+			Manifests: bytes.NewBufferString(manifests),
+		},
+	})
+	require.NoError(t, err)
+
+	msg := output.Message.(schema.OutputMessagePostRendererV1)
+	require.NotNil(t, msg.Manifests)
+	assert.Equal(t, "# post-rendered\n"+manifests, msg.Manifests.String())
 }
 
 func TestBuildManifest(t *testing.T) {
