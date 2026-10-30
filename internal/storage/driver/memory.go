@@ -70,22 +70,16 @@ func (mem *Memory) Name() string {
 func (mem *Memory) Get(key string) (release.Releaser, error) {
 	defer unlock(mem.rlock())
 
-	keyWithoutPrefix := strings.TrimPrefix(key, "sh.helm.release.v1.")
-	switch elems := strings.Split(keyWithoutPrefix, ".v"); len(elems) {
-	case 2:
-		name, ver := elems[0], elems[1]
-		if _, err := strconv.Atoi(ver); err != nil {
-			return nil, ErrInvalidKey
-		}
-		if recs, ok := mem.cache[mem.namespace][name]; ok {
-			if r := recs.Get(key); r != nil {
-				return r.rls, nil
-			}
-		}
-		return nil, ErrReleaseNotFound
-	default:
-		return nil, ErrInvalidKey
+	name, err := releaseNameFromKey(key)
+	if err != nil {
+		return nil, err
 	}
+	if recs, ok := mem.cache[mem.namespace][name]; ok {
+		if r := recs.Get(key); r != nil {
+			return r.rls, nil
+		}
+	}
+	return nil, ErrReleaseNotFound
 }
 
 // List returns the list of all releases such that filter(release) == true
@@ -214,16 +208,9 @@ func (mem *Memory) Update(key string, rel release.Releaser) error {
 func (mem *Memory) Delete(key string) (release.Releaser, error) {
 	defer unlock(mem.wlock())
 
-	keyWithoutPrefix := strings.TrimPrefix(key, "sh.helm.release.v1.")
-	elems := strings.Split(keyWithoutPrefix, ".v")
-
-	if len(elems) != 2 {
-		return nil, ErrInvalidKey
-	}
-
-	name, ver := elems[0], elems[1]
-	if _, err := strconv.Atoi(ver); err != nil {
-		return nil, ErrInvalidKey
+	name, err := releaseNameFromKey(key)
+	if err != nil {
+		return nil, err
 	}
 	if _, ok := mem.cache[mem.namespace]; ok {
 		if recs, ok := mem.cache[mem.namespace][name]; ok {
@@ -235,6 +222,21 @@ func (mem *Memory) Delete(key string) (release.Releaser, error) {
 		}
 	}
 	return nil, ErrReleaseNotFound
+}
+
+// releaseNameFromKey returns the release name from a key of the form
+// "sh.helm.release.v1.<name>.v<version>". Release names may contain dots,
+// so only the last ".v" separates the name from the version.
+func releaseNameFromKey(key string) (string, error) {
+	keyWithoutPrefix := strings.TrimPrefix(key, "sh.helm.release.v1.")
+	i := strings.LastIndex(keyWithoutPrefix, ".v")
+	if i == -1 {
+		return "", ErrInvalidKey
+	}
+	if _, err := strconv.Atoi(keyWithoutPrefix[i+len(".v"):]); err != nil {
+		return "", ErrInvalidKey
+	}
+	return keyWithoutPrefix[:i], nil
 }
 
 // wlock locks mem for writing
