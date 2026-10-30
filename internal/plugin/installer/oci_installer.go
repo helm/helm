@@ -16,7 +16,6 @@ limitations under the License.
 package installer
 
 import (
-	"archive/tar"
 	"bytes"
 	"compress/gzip"
 	"errors"
@@ -207,54 +206,6 @@ func extractTarGz(r io.Reader, targetDir string) error {
 	defer gzr.Close()
 
 	return extractTar(gzr, targetDir)
-}
-
-// extractTar extracts a tar archive to a directory
-func extractTar(r io.Reader, targetDir string) error {
-	tarReader := tar.NewReader(r)
-
-	for {
-		header, err := tarReader.Next()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		path, err := cleanJoin(targetDir, header.Name)
-		if err != nil {
-			return err
-		}
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(path, 0o755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			dir := filepath.Dir(path)
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return err
-			}
-
-			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-			defer outFile.Close()
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				return err
-			}
-		case tar.TypeXGlobalHeader, tar.TypeXHeader:
-			// Skip these
-			continue
-		default:
-			return fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
-		}
-	}
-
-	return nil
 }
 
 // SupportsVerification returns true since OCI plugins can be verified
