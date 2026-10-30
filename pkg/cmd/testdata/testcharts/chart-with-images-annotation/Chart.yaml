@@ -11,6 +11,3 @@ annotations:
       image: docker.io/library/redis:6.0.8
       dependency: redis
       whitelisted: true
-dependencies:
-  - name: redis
-    version: 0.1.0

@@ -1,3 +1,0 @@
-image:
-  repository: docker.io/library/redis
-  tag: 6.0.8
