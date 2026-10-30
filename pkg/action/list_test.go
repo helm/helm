@@ -19,16 +19,23 @@ package action
 import (
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	ri "helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 func TestListStates(t *testing.T) {
@@ -419,4 +426,76 @@ func TestListRun_UnreachableKubeClient(t *testing.T) {
 
 	assert.Nil(t, result)
 	assert.ErrorContains(t, err, "connection refused")
+}
+
+func TestList_AllNamespacesDriverScope(t *testing.T) {
+	lister := newListFixture(t)
+	for _, ns := range []string{"ns-a", "ns-b"} {
+		rel := namedReleaseStub("rel-"+ns, common.StatusDeployed)
+		rel.Namespace = ns
+		require.NoError(t, lister.cfg.Releases.Create(rel))
+	}
+	mem, ok := lister.cfg.Releases.Driver.(*driver.Memory)
+	require.True(t, ok)
+	mem.SetNamespace("ns-a")
+
+	lister.AllNamespaces = true
+	list, err := lister.Run()
+	require.NoError(t, err)
+	assert.Len(t, list, 2)
+
+	// The shared configuration must not stay widened after the call.
+	assert.Equal(t, "ns-a", mem.Namespace())
+	lister.AllNamespaces = false
+	list, err = lister.Run()
+	require.NoError(t, err)
+	assert.Len(t, list, 1)
+}
+
+func TestList_AllNamespacesSecretsRequestsEveryNamespace(t *testing.T) {
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/secrets") {
+			paths = append(paths, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"kind":"SecretList","apiVersion":"v1","items":[]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	kubeconfig := filepath.Join(t.TempDir(), "config")
+	require.NoError(t, os.WriteFile(kubeconfig, []byte(`apiVersion: v1
+kind: Config
+clusters:
+- name: c
+  cluster: {server: `+server.URL+`}
+contexts:
+- name: x
+  context: {cluster: c, user: u}
+current-context: x
+users:
+- name: u
+  user: {}
+`), 0o600))
+	flags := genericclioptions.NewConfigFlags(false)
+	flags.KubeConfig = &kubeconfig
+
+	cfg := NewConfiguration()
+	require.NoError(t, cfg.Init(flags, "ns-a", "secret"))
+	lister := NewList(cfg)
+
+	_, err := lister.Run()
+	require.NoError(t, err)
+	lister.AllNamespaces = true
+	_, err = lister.Run()
+	require.NoError(t, err)
+	lister.AllNamespaces = false
+	_, err = lister.Run()
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"/api/v1/namespaces/ns-a/secrets",
+		"/api/v1/secrets",
+		"/api/v1/namespaces/ns-a/secrets",
+	}, paths)
 }
