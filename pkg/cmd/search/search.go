@@ -204,12 +204,20 @@ func (s scoreSorter) Less(a, b int) bool {
 		return true
 	}
 	if first.Name == second.Name {
-		v1, err := semver.NewVersion(first.Chart.Version)
-		if err != nil {
-			return true
-		}
-		v2, err := semver.NewVersion(second.Chart.Version)
-		if err != nil {
+		v1, err1 := semver.NewVersion(first.Chart.Version)
+		v2, err2 := semver.NewVersion(second.Chart.Version)
+		switch {
+		case err1 != nil && err2 != nil:
+			// Nothing here can be ranked by version, so rank by the version
+			// string. Returning a value that depends on which argument is
+			// first would make Less inconsistent for equal inputs, and sort
+			// only guarantees a stable result for a strict weak ordering.
+			return first.Chart.Version < second.Chart.Version
+		case err1 != nil:
+			// Unversioned or malformed versions cannot be ordered against a
+			// real semver, so they always sort after one.
+			return false
+		case err2 != nil:
 			return true
 		}
 		// Sort so that the newest chart is higher than the oldest chart. This is

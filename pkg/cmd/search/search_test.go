@@ -17,6 +17,7 @@ limitations under the License.
 package search
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -273,4 +274,82 @@ func TestCalcScore(t *testing.T) {
 	assert.Equalf(t, 2, r, "Expected 2, got %d", r)
 	r = i.calcScore(14, matchline)
 	assert.Equalf(t, 3, r, "Expected 3, got %d", r)
+}
+
+// Results sharing a name and a score are ordered by chart version. Versions that
+// cannot be parsed as semver have no place on that scale, so they must rank after
+// every parseable version and, among themselves, by the raw string. Anything else
+// makes Less report true for both Less(a, b) and Less(b, a), which is not a strict
+// weak ordering, and sort only produces a predictable result for one.
+func TestSortScoreVersionTieBreaker(t *testing.T) {
+	tests := []struct {
+		name   string
+		first  string
+		second string
+		// firstLess and secondLess report whether each argument must sort before
+		// the other. Both being false means the two results are equivalent.
+		firstLess  bool
+		secondLess bool
+	}{
+		{name: "newest version first", first: "1.2.4", second: "1.2.3", firstLess: true, secondLess: false},
+		{name: "parseable version outranks a malformed one", first: "1.2.3", second: "not-a-version", firstLess: true, secondLess: false},
+		{name: "malformed version yields to a parseable one", first: "not-a-version", second: "1.2.3", firstLess: false, secondLess: true},
+		{name: "parseable version outranks an empty one", first: "0.1.0", second: "", firstLess: true, secondLess: false},
+		{name: "empty version yields to a parseable one", first: "", second: "0.1.0", firstLess: false, secondLess: true},
+		{name: "malformed versions compare as strings", first: "also-bad", second: "not-a-version", firstLess: true, secondLess: false},
+		{name: "malformed versions compare as strings, reversed", first: "not-a-version", second: "also-bad", firstLess: false, secondLess: true},
+		{name: "equal malformed versions are not less than each other", first: "not-a-version", second: "not-a-version", firstLess: false, secondLess: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			less := func(a, b string) bool {
+				return scoreSorter(newResults([]string{a, b})).Less(0, 1)
+			}
+			assert.Equal(t, tt.firstLess, less(tt.first, tt.second))
+			assert.Equal(t, tt.secondLess, less(tt.second, tt.first))
+		})
+	}
+}
+
+func TestSortScoreIsIndependentOfInputOrder(t *testing.T) {
+	versions := []string{"2.0.0", "1.0.0", "not-a-version", "also-bad"}
+	expect := []string{"2.0.0", "1.0.0", "also-bad", "not-a-version"}
+
+	inputs := make([][]string, 0, len(versions)+1)
+	for i := range versions {
+		rotation := append(append([]string{}, versions[i:]...), versions[:i]...)
+		inputs = append(inputs, rotation)
+	}
+	reversed := make([]string, 0, len(versions))
+	for _, version := range slices.Backward(versions) {
+		reversed = append(reversed, version)
+	}
+	inputs = append(inputs, reversed)
+
+	for _, input := range inputs {
+		sorted := newResults(input)
+		SortScore(sorted)
+		assert.Equal(t, expect, versionsOf(sorted))
+	}
+}
+
+func newResults(versions []string) []*Result {
+	res := make([]*Result, 0, len(versions))
+	for _, version := range versions {
+		res = append(res, &Result{
+			Name:  "same-name",
+			Score: 5,
+			Chart: &repo.ChartVersion{Metadata: &chart.Metadata{Version: version}},
+		})
+	}
+	return res
+}
+
+func versionsOf(results []*Result) []string {
+	versions := make([]string, 0, len(results))
+	for _, r := range results {
+		versions = append(versions, r.Chart.Version)
+	}
+	return versions
 }
