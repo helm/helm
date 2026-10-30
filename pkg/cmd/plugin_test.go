@@ -109,6 +109,7 @@ func TestLoadCLIPlugins(t *testing.T) {
 		code   int
 	}{
 		{"args", "echo args", "This echos args", "-a -b -c\n", []string{"-a", "-b", "-c"}, 0},
+		{"downloader", "echo downloader", "This is a legacy plugin with downloaders", "downloader\n", []string{"-x"}, 0},
 		{"echo", "echo stuff", "This echos stuff", "hello\n", []string{}, 0},
 		{"exitwith", "exitwith code", "This exits with the specified exit code", "", []string{"2"}, 2},
 		{"fullenv", "show env vars", "show all env vars", fullEnvOutput, []string{}, 0},
@@ -144,6 +145,18 @@ func TestLoadCLIPlugins(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLoadCLIPluginsLegacyNameConflict(t *testing.T) {
+	// testdata/legacy-conflict/echo is a legacy plugin with downloaders named like the cli/v1 "echo" plugin
+	settings.PluginsDirectory = "testdata/legacy-conflict" + string(os.PathListSeparator) + "testdata/helmhome/helm/plugins"
+
+	cmd := &cobra.Command{}
+	loadCLIPlugins(cmd, &bytes.Buffer{})
+
+	// The cli/v1 plugin keeps its name, and the plugins after the conflict still load
+	require.Len(t, cmd.Commands(), 6)
+	assert.Equal(t, "echo stuff", cmd.Commands()[2].Short)
 }
 
 func TestLoadPluginsWithSpace(t *testing.T) {
@@ -224,6 +237,7 @@ func TestLoadCLIPluginsForCompletion(t *testing.T) {
 
 	tests := []staticCompletionDetails{
 		{"args", []string{}, []string{}, []staticCompletionDetails{}},
+		{"downloader", []string{}, []string{}, []staticCompletionDetails{}},
 		{"echo", []string{}, []string{}, []staticCompletionDetails{}},
 		{"exitwith", []string{}, []string{}, []staticCompletionDetails{
 			{"code", []string{}, []string{"a", "b"}, []staticCompletionDetails{}},
