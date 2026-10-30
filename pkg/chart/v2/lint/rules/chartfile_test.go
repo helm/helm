@@ -189,6 +189,55 @@ func TestValidateChartIconURL(t *testing.T) {
 	}
 }
 
+func TestValidateChartImagesPresence(t *testing.T) {
+	t.Run("Annotations absent", func(t *testing.T) {
+		testChart := &chart.Metadata{}
+		assert.NoError(t, validateChartImagesPresence(testChart))
+	})
+	t.Run("Images annotation absent", func(t *testing.T) {
+		testChart := &chart.Metadata{
+			Annotations: map[string]string{"category": "Infrastructure"},
+		}
+		assert.ErrorContains(t, validateChartImagesPresence(testChart), `annotation "helm.sh/images" is recommended`)
+	})
+	t.Run("Images annotation present", func(t *testing.T) {
+		testChart := &chart.Metadata{
+			Annotations: map[string]string{chart.ImagesAnnotation: "- name: podinfo\n  image: ghcr.io/stefanprodan/podinfo:6.0.0\n"},
+		}
+		assert.NoError(t, validateChartImagesPresence(testChart))
+	})
+	t.Run("Images annotation empty", func(t *testing.T) {
+		testChart := &chart.Metadata{
+			Annotations: map[string]string{chart.ImagesAnnotation: ""},
+		}
+		assert.NoError(t, validateChartImagesPresence(testChart))
+	})
+}
+
+func TestValidateChartImages(t *testing.T) {
+	t.Run("Images annotation absent", func(t *testing.T) {
+		assert.NoError(t, validateChartImages(&chart.Metadata{}))
+	})
+	t.Run("Images annotation valid", func(t *testing.T) {
+		testChart := &chart.Metadata{
+			Annotations: map[string]string{chart.ImagesAnnotation: "- name: redis\n  image: docker.io/library/redis:6.0.8\n  dependency: redis\n  whitelisted: true\n"},
+		}
+		assert.NoError(t, validateChartImages(testChart))
+	})
+	t.Run("Images annotation malformed", func(t *testing.T) {
+		testChart := &chart.Metadata{
+			Annotations: map[string]string{chart.ImagesAnnotation: "- name: [podinfo"},
+		}
+		assert.ErrorContains(t, validateChartImages(testChart), `annotation "helm.sh/images" is not a valid list of images`)
+	})
+	t.Run("Images annotation entry without image", func(t *testing.T) {
+		testChart := &chart.Metadata{
+			Annotations: map[string]string{chart.ImagesAnnotation: "- name: podinfo\n"},
+		}
+		assert.ErrorContains(t, validateChartImages(testChart), `image "podinfo" must have an image reference`)
+	})
+}
+
 func TestChartfile(t *testing.T) {
 	t.Run("Chart.yaml basic validity issues", func(t *testing.T) {
 		linter := support.Linter{ChartDir: badChartDir}
