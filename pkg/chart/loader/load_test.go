@@ -23,7 +23,9 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,7 +147,7 @@ func TestLoadArchive(t *testing.T) {
 
 			if tc.expectedError != "" {
 				require.Errorf(t, err, "Expected error containing %q, but got no error", tc.expectedError)
-				assert.ErrorContains(t, err, tc.expectedError)
+				require.ErrorContains(t, err, tc.expectedError)
 			} else {
 				require.NoError(t, err)
 
@@ -165,6 +167,116 @@ func TestLoadArchive(t *testing.T) {
 				}
 				assert.Equalf(t, loadedAPIVersion, tc.apiVersion, "Expected API version %q, got %q", tc.apiVersion, loadedAPIVersion)
 			}
+		})
+	}
+}
+
+type archiveEntry struct {
+	path string
+	body string
+}
+
+// archiveBytes packs the given entries into a gzipped tar archive, keeping the
+// entry paths verbatim so that malformed archives can be exercised.
+func archiveBytes(t *testing.T, entries []archiveEntry) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	for _, e := range entries {
+		hdr := &tar.Header{
+			Name:    e.path,
+			Mode:    0o644,
+			Size:    int64(len(e.body)),
+			ModTime: time.Now(),
+		}
+		require.NoErrorf(t, tw.WriteHeader(hdr), "Failed to write tar header for %s", e.path)
+		_, err := tw.Write([]byte(e.body))
+		require.NoErrorf(t, err, "Failed to write tar data for %s", e.path)
+	}
+	require.NoError(t, tw.Close())
+	require.NoError(t, gw.Close())
+	return buf.Bytes()
+}
+
+// gzipBytes returns a gzipped stream that has no tar framing at all.
+func gzipBytes(t *testing.T, payload string) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	_, err := gw.Write([]byte(payload))
+	require.NoError(t, err)
+	require.NoError(t, gw.Close())
+	return buf.Bytes()
+}
+
+// writeArchiveFile stores data as a chart archive in a temporary directory.
+func writeArchiveFile(t *testing.T, data []byte) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "chart.tgz")
+	require.NoError(t, os.WriteFile(path, data, 0o600))
+	return path
+}
+
+func TestLoadFileArchiveErrorReason(t *testing.T) {
+	const chartYAML = "apiVersion: v2\nname: mychart\nversion: 0.1.0\n"
+
+	truncated := archiveBytes(t, []archiveEntry{{"mychart/Chart.yaml", chartYAML}})
+	truncated = truncated[:len(truncated)/3]
+
+	tests := []struct {
+		name    string
+		data    []byte
+		wantErr string
+	}{
+		{
+			name:    "archive referencing the parent directory",
+			data:    archiveBytes(t, []archiveEntry{{"mychart/Chart.yaml", chartYAML}, {"mychart/../../evil.yaml", "x: 1\n"}}),
+			wantErr: "chart illegally references parent directory",
+		},
+		{
+			name:    "archive with an absolute path",
+			data:    archiveBytes(t, []archiveEntry{{"mychart/Chart.yaml", chartYAML}, {"mychart//etc/passwd", "x: 1\n"}}),
+			wantErr: "chart illegally contains absolute paths",
+		},
+		{
+			name:    "Chart.yaml outside of the base directory",
+			data:    archiveBytes(t, []archiveEntry{{"Chart.yaml", chartYAML}}),
+			wantErr: `chart illegally contains content outside the base directory: "Chart.yaml"`,
+		},
+		{
+			name:    "truncated archive",
+			data:    truncated,
+			wantErr: "unexpected EOF",
+		},
+		{
+			name:    "gzip stream without tar framing",
+			data:    gzipBytes(t, strings.Repeat("helm ", 200)),
+			wantErr: "archive/tar: invalid tar header",
+		},
+		{
+			name: "valid archive",
+			data: archiveBytes(t, []archiveEntry{{"mychart/Chart.yaml", chartYAML}}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chartPath := writeArchiveFile(t, tt.data)
+
+			loaded, err := LoadFile(chartPath)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.NotNil(t, loaded)
+				return
+			}
+
+			require.Error(t, err)
+			require.ErrorContains(t, err, tt.wantErr)
+			require.ErrorContains(t, err, "unable to load chart archive "+chartPath)
 		})
 	}
 }
