@@ -710,7 +710,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	repository, err := remote.NewRepository(parsedRef.String())
+	dest := parsedRef.pushString()
+	repository, err := remote.NewRepository(dest)
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +720,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 
 	ctx = withScopeHint(ctx, repository, auth.ActionPull, auth.ActionPush)
 
-	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
+	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, dest, repository, dest, oras.DefaultExtendedCopyOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -740,7 +741,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		},
 		Chart: chartSummary,
 		Prov:  &descriptorPushSummary{}, // prevent nil references
-		Ref:   parsedRef.String(),
+		Ref:   dest,
 	}
 	if operation.provData != nil {
 		result.Prov = &descriptorPushSummary{
@@ -926,7 +927,7 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	}
 
 	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
-		manifestData, parsedRef.String())
+		manifestData, parsedRef.pushString())
 }
 
 // add actions when request a registry authentication token(jwt)

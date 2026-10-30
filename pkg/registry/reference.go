@@ -72,13 +72,16 @@ func newReference(raw string) (result reference, err error) {
 
 func (r *reference) String() string {
 	if r.Digest != "" {
-		// The digest must always be part of the result: it is the content
-		// address the caller pinned, and oras treats it as authoritative over a
-		// tag. Dropping it here would silently resolve a mutable tag instead.
 		return r.orasReference.String() + "@" + r.Digest
 	}
-	// Without a digest, report the tag, or the bare repository when there is no
-	// tag either.
+	return r.orasReference.String()
+}
+
+// pushString is the destination name for Push (tag when present, else digest).
+func (r *reference) pushString() string {
+	if r.Tag == "" && r.Digest != "" {
+		return r.orasReference.String() + "@" + r.Digest
+	}
 	return r.orasReference.String()
 }
 

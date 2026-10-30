@@ -118,3 +118,42 @@ func TestReferenceString(t *testing.T) {
 		})
 	}
 }
+
+func TestReferencePushString(t *testing.T) {
+	const digest = "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888"
+
+	tests := []struct {
+		name string
+		ref  string
+		want string
+	}{
+		{
+			name: "tag only",
+			ref:  "registry.example.com/repository:1.0",
+			want: "registry.example.com/repository:1.0",
+		},
+		{
+			name: "digest only",
+			ref:  "registry.example.com/repository@" + digest,
+			want: "registry.example.com/repository@" + digest,
+		},
+		{
+			name: "tag and digest drop digest for push destination",
+			ref:  "registry.example.com/repository:newtag@" + digest,
+			want: "registry.example.com/repository:newtag",
+		},
+		{
+			name: "no tag and no digest",
+			ref:  "registry.example.com/repository",
+			want: "registry.example.com/repository",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ref, err := newReference(tt.ref)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, ref.pushString())
+		})
+	}
+}
