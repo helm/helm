@@ -305,6 +305,14 @@ func TestParseSet(t *testing.T) {
 			},
 		},
 		{
+			str: "list[0].foo=",
+			expect: map[string]any{
+				"list": []any{
+					map[string]any{"foo": ""},
+				},
+			},
+		},
+		{
 			str: "list[0].foo=bar,list[0].hello=world",
 			expect: map[string]any{
 				"list": []any{
