@@ -1074,6 +1074,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	if err != nil {
 		return nil, err
 	}
+	if err := checkPushPolicy(ctx, repository, parsedRef.String()); err != nil {
+		return nil, err
+	}
 
 	ctx = withScopeHint(ctx, repository, auth.ActionPull, auth.ActionPush)
 
@@ -1114,6 +1117,35 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 
 	return result, err
+}
+
+// checkPushPolicy applies policy.json to a push destination, then removes the
+// evaluator from the repository for the copy. Only reference-level
+// requirements (reject, insecureAcceptAnything) apply to a push: signedBy and
+// sigstoreSigned describe what may be consumed, and the chart cannot have been
+// signed yet because its manifest only exists once it is pushed. Left on the
+// repository, the evaluator would verify signatures for the destination and
+// refuse every push to a signed scope.
+func checkPushPolicy(ctx context.Context, repository *remote.Repository, ref string) error {
+	evaluator := repository.Registry.Policy
+	if evaluator == nil {
+		return nil
+	}
+	repository.Registry.Policy = nil
+
+	repoRef := repository.Reference()
+	allowed, err := evaluator.IsReferenceAllowed(ctx, policy.ImageReference{
+		Transport: policy.TransportNameDocker,
+		Scope:     repoRef.Registry + "/" + repoRef.Repository,
+		Reference: ref,
+	})
+	if err != nil {
+		return fmt.Errorf("policy check failed: %w", err)
+	}
+	if !allowed {
+		return fmt.Errorf("access denied by policy for %s: %w", ref, policy.ErrDenied)
+	}
+	return nil
 }
 
 // PushOptProvData returns a function that sets the prov bytes setting on push
