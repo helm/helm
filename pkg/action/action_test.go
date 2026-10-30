@@ -28,6 +28,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	kyamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v4/internal/logging"
@@ -425,6 +427,26 @@ metadata:
     postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
 data:
   key: value
+`,
+		},
+		{
+			name: "single file with JSON manifest",
+			files: map[string]string{
+				"templates/cm.json": `{"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "test"}, "data": {"key": "hello"}}`,
+			},
+			// The merged output must not be re-emitted in flow style: a
+			// document annotated in flow style can start with '{' while
+			// containing YAML-only syntax (unquoted keys, single-quoted
+			// values), which k8s.io/apimachinery's decoder misidentifies as
+			// pure JSON and fails to parse.
+			expected: `"apiVersion": "v1"
+"kind": "ConfigMap"
+"metadata":
+  "name": "test"
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.json'
+"data":
+  "key": "hello"
 `,
 		},
 		{
@@ -1796,6 +1818,34 @@ data:
 		}
 
 		assert.Equal(t, normalizeContent(originalContent), normalizeContent(reconstructedContent))
+	}
+}
+
+// TestAnnotateAndMerge_JSONManifest_DecodableByApimachinery reproduces
+// https://github.com/helm/helm/issues/32668: a chart resource written as pure
+// JSON must still be decodable by k8s.io/apimachinery's YAML serializer after
+// annotateAndMerge adds the post-render filename annotation. Before the fix,
+// kyaml preserved the document's flow style, so the annotated document was
+// re-emitted starting with '{' while containing YAML-only syntax (an
+// unquoted annotation key and single-quoted value); apimachinery's decoder
+// assumes anything starting with '{' is pure JSON and failed to parse it.
+func TestAnnotateAndMerge_JSONManifest_DecodableByApimachinery(t *testing.T) {
+	files := map[string]string{
+		"templates/cm.json": `{"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "test"}, "data": {"key": "hello"}}`,
+	}
+
+	merged, err := annotateAndMerge(files)
+	require.NoError(t, err)
+	require.False(t, strings.HasPrefix(strings.TrimSpace(merged), "{"),
+		"merged output must not start with '{', or apimachinery's decoder will misidentify it as pure JSON: %s", merged)
+
+	deserializer := kyamlserializer.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+	for doc := range strings.SplitSeq(merged, "---") {
+		if strings.TrimSpace(doc) == "" {
+			continue
+		}
+		_, _, err := deserializer.Decode([]byte(doc), nil, new(unstructured.Unstructured))
+		require.NoError(t, err)
 	}
 }
 
