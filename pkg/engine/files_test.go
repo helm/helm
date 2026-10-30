@@ -61,8 +61,7 @@ func TestFileGlob(t *testing.T) {
 
 	f := getTestFiles()
 
-	matched, err := f.Glob("story/**")
-	require.NoError(t, err)
+	matched := f.Glob("story/**")
 
 	as.Len(matched, 2, "Should be two files in glob story/**")
 	as.Equal("Joseph Conrad", matched.Get("story/author.txt"))
@@ -71,12 +70,14 @@ func TestFileGlob(t *testing.T) {
 func TestFileGlobInvalidPattern(t *testing.T) {
 	f := getTestFiles()
 
-	// A pattern the glob compiler rejects used to be replaced by a pattern that
-	// matches every file of the chart, which renders unrelated files (including
-	// files a chart keeps under secrets/) into the template output.
-	matched, err := f.Glob("story/[")
+	// Glob stays tolerant: an invalid pattern falls back to matching every file.
+	matched := f.Glob("story/[")
+	require.Len(t, matched, len(f))
+
+	// MustGlob reports the invalid pattern instead of widening the match.
+	mustMatched, err := f.MustGlob("story/[")
 	require.Error(t, err)
-	require.Nil(t, matched)
+	require.Nil(t, mustMatched)
 	require.ErrorContains(t, err, `invalid glob pattern "story/[":`)
 }
 
@@ -85,14 +86,10 @@ func TestToConfig(t *testing.T) {
 
 	f := getTestFiles()
 
-	captain, err := f.Glob("**/captain.txt")
-	require.NoError(t, err)
-	out := captain.AsConfig()
+	out := f.Glob("**/captain.txt").AsConfig()
 	as.Equal("captain.txt: The Captain", out)
 
-	ship, err := f.Glob("ship/**")
-	require.NoError(t, err)
-	out = ship.AsConfig()
+	out = f.Glob("ship/**").AsConfig()
 	as.Equal("captain.txt: The Captain\nstowaway.txt: Legatt", out)
 }
 
@@ -101,9 +98,7 @@ func TestToSecret(t *testing.T) {
 
 	f := getTestFiles()
 
-	ship, err := f.Glob("ship/**")
-	require.NoError(t, err)
-	out := ship.AsSecrets()
+	out := f.Glob("ship/**").AsSecrets()
 	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0", out)
 }
 

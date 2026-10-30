@@ -67,15 +67,38 @@ func (f files) Get(name string) string {
 // Glob takes a glob pattern and returns another files object only containing
 // matched files.
 //
-// An invalid pattern is reported instead of being replaced by a pattern that
-// matches every file of the chart.
+// An invalid pattern falls back to matching every file of the chart, matching
+// historical template behaviour. Use MustGlob when an invalid pattern should
+// abort rendering instead.
 //
 // This is designed to be called from a template.
 //
 // {{ range $name, $content := .Files.Glob("foo/**") }}
 // {{ $name }}: |
 // {{ .Files.Get($name) | indent 4 }}{{ end }}
-func (f files) Glob(pattern string) (files, error) {
+func (f files) Glob(pattern string) files {
+	g, err := glob.Compile(pattern, '/')
+	if err != nil {
+		g, _ = glob.Compile("**")
+	}
+
+	nf := newFiles(nil)
+	for name, contents := range f {
+		if g.Match(name) {
+			nf[name] = contents
+		}
+	}
+
+	return nf
+}
+
+// MustGlob is like Glob but returns an error when the pattern is invalid
+// instead of falling back to matching every file.
+//
+// {{ range $name, $content := .Files.MustGlob("foo/**") }}
+// {{ $name }}: |
+// {{- end }}
+func (f files) MustGlob(pattern string) (files, error) {
 	g, err := glob.Compile(pattern, '/')
 	if err != nil {
 		return nil, fmt.Errorf("invalid glob pattern %q: %w", pattern, err)
