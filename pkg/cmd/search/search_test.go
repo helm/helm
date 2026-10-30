@@ -17,6 +17,7 @@ limitations under the License.
 package search
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -321,8 +322,8 @@ func TestSortScoreIsIndependentOfInputOrder(t *testing.T) {
 		inputs = append(inputs, rotation)
 	}
 	reversed := make([]string, 0, len(versions))
-	for i := len(versions) - 1; i >= 0; i-- {
-		reversed = append(reversed, versions[i])
+	for _, version := range slices.Backward(versions) {
+		reversed = append(reversed, version)
 	}
 	inputs = append(inputs, reversed)
 
