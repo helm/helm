@@ -24,10 +24,12 @@ These dependencies are expressed as interfaces so that alternate implementations
 package cli
 
 import (
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -118,6 +120,16 @@ func New() *EnvSettings {
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
+	// One session ID per settings instance: a CLI invocation creates a single
+	// EnvSettings, so every Kubernetes client built while running one command
+	// shares the same session and all of its API requests can be correlated
+	// in the Kubernetes audit log. SDK clients performing distinct operations
+	// with separate settings get distinct sessions. Logged once at debug
+	// level so a user can quote it to their cluster admin, who will see the
+	// same value in the helm-session request header.
+	sessionID := kubeenv.NewSessionID()
+	var logSessionOnce sync.Once
+
 	// bind to kubernetes config flags
 	config := &genericclioptions.ConfigFlags{
 		Namespace:        &env.namespace,
@@ -133,8 +145,16 @@ func New() *EnvSettings {
 		WrapConfigFn: func(config *rest.Config) *rest.Config {
 			config.Burst = env.BurstLimit
 			config.QPS = env.QPS
+			logSessionOnce.Do(func() {
+				slog.Debug("created Kubernetes client session", "helm-session", sessionID)
+			})
 			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
-				return &kubeenv.RetryingRoundTripper{Wrapped: rt}
+				return &kubeenv.SessionRoundTripper{
+					// Session wrapper stays outside the retry wrapper so
+					// retries keep the same session ID.
+					Wrapped:   &kubeenv.RetryingRoundTripper{Wrapped: rt},
+					SessionID: sessionID,
+				}
 			})
 			config.UserAgent = version.GetUserAgent()
 			return config
