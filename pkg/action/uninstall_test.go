@@ -21,10 +21,12 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -357,4 +359,133 @@ data:
 	is.Contains(logOutput, "dry-run: would skip resource")
 	is.Contains(logOutput, "dryrun-unowned-deploy")
 	is.Contains(logOutput, "Deployment")
+}
+
+// newOwnedDeployment returns a resource owned by the release. The live object
+// served by the fake client also carries liveAnnotations, the object built
+// from the manifest does not.
+func newOwnedDeployment(name, releaseName, namespace string, liveAnnotations map[string]string) *resource.Info {
+	annotations := map[string]string{
+		helmReleaseNameAnnotation:      releaseName,
+		helmReleaseNamespaceAnnotation: namespace,
+	}
+	maps.Copy(annotations, liveAnnotations)
+	info := newDeploymentWithOwner(name, namespace, map[string]string{appManagedByLabel: appManagedByHelm}, annotations)
+	info.Object = newDeploymentResource(name, namespace, "").Object
+	return info
+}
+
+func deploymentManifest(name string) string {
+	return "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: " + name + "\n---\n"
+}
+
+const keptSecretManifest = `apiVersion: v1
+kind: Secret
+metadata:
+  name: kept-secret
+  annotations:
+    helm.sh/resource-policy: keep
+---
+`
+
+var liveKeepAnnotations = map[string]string{kube.ResourcePolicyAnno: kube.KeepPolicy}
+
+func TestUninstallRelease_deleteRelease_LiveKeepPolicy(t *testing.T) {
+	const releaseName = "live-keep"
+
+	testCases := []struct {
+		name        string
+		manifest    string
+		resources   kube.ResourceList
+		wantDeleted []string
+		wantKept    string
+	}{
+		{
+			name:      "keep set on the live object only",
+			manifest:  deploymentManifest("live-keep-deploy"),
+			resources: kube.ResourceList{newOwnedDeployment("live-keep-deploy", releaseName, "default", liveKeepAnnotations)},
+			wantKept:  "These resources were kept due to the resource policy:\n[Deployment] live-keep-deploy\n",
+		},
+		{
+			name:     "keep set in the manifest and on another live object",
+			manifest: keptSecretManifest + deploymentManifest("live-keep-deploy") + deploymentManifest("deleted-deploy"),
+			resources: kube.ResourceList{
+				newOwnedDeployment("live-keep-deploy", releaseName, "default", liveKeepAnnotations),
+				newOwnedDeployment("deleted-deploy", releaseName, "default", nil),
+			},
+			wantDeleted: []string{"deleted-deploy"},
+			wantKept:    "These resources were kept due to the resource policy:\n[Secret] kept-secret\n[Deployment] live-keep-deploy\n",
+		},
+		{
+			name:     "keep set on a live object not owned by the release",
+			manifest: deploymentManifest("live-keep-deploy") + deploymentManifest("unowned-deploy"),
+			resources: kube.ResourceList{
+				newOwnedDeployment("live-keep-deploy", releaseName, "default", liveKeepAnnotations),
+				newDeploymentWithOwner("unowned-deploy", "default", nil, liveKeepAnnotations),
+			},
+			wantKept: "These resources were kept due to the resource policy:\n[Deployment] live-keep-deploy\n\n" +
+				"1 resource(s) were not deleted because they are not owned by this release:\n[Deployment] unowned-deploy\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			unAction := NewUninstall(actionConfigFixtureWithDummyResources(t, tc.resources))
+			rel := releaseStub()
+			rel.Name = releaseName
+			rel.Namespace = "default"
+			rel.Manifest = tc.manifest
+
+			deleted, kept, errs := unAction.deleteRelease(rel)
+			require.Empty(t, errs)
+			assert.Equal(t, tc.wantDeleted, resourceNames(deleted))
+			assert.Equal(t, tc.wantKept, kept)
+		})
+	}
+}
+
+func TestUninstallRelease_DryRun_LiveKeepPolicy(t *testing.T) {
+	testCases := []struct {
+		name     string
+		manifest string
+		wantInfo string
+	}{
+		{
+			name:     "keep set on the live object only",
+			manifest: deploymentManifest("live-keep-deploy") + deploymentManifest("deleted-deploy"),
+			wantInfo: "These resources were kept due to the resource policy:\n[Deployment] live-keep-deploy\n",
+		},
+		{
+			name:     "keep set in the manifest and on another live object",
+			manifest: keptSecretManifest + deploymentManifest("live-keep-deploy") + deploymentManifest("deleted-deploy"),
+			wantInfo: "These resources were kept due to the resource policy:\n[Secret] kept-secret\n[Deployment] live-keep-deploy\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			logBuffer := &bytes.Buffer{}
+			config := actionConfigFixtureWithDummyResources(t, kube.ResourceList{
+				newOwnedDeployment("live-keep-deploy", "dryrun-live-keep", "default", liveKeepAnnotations),
+				newOwnedDeployment("deleted-deploy", "dryrun-live-keep", "default", nil),
+			})
+			config.SetLogger(slog.NewTextHandler(logBuffer, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+			unAction := NewUninstall(config)
+			unAction.DisableHooks = true
+			unAction.DryRun = true
+
+			rel := releaseStub()
+			rel.Name = "dryrun-live-keep"
+			rel.Namespace = "default"
+			rel.Manifest = tc.manifest
+			require.NoError(t, config.Releases.Create(rel))
+
+			res, err := unAction.Run(rel.Name)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantInfo, res.Info)
+			assert.Contains(t, logBuffer.String(), "name=deleted-deploy")
+			assert.NotContains(t, logBuffer.String(), "name=live-keep-deploy")
+		})
+	}
 }

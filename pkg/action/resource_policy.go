@@ -36,10 +36,27 @@ func filterManifestsToKeep(manifests []releaseutil.Manifest) (keep, remaining []
 			continue
 		}
 
-		resourcePolicyType = strings.ToLower(strings.TrimSpace(resourcePolicyType))
-		if resourcePolicyType == kube.KeepPolicy {
+		if isKeepPolicy(resourcePolicyType) {
 			keep = append(keep, m)
 		}
 	}
 	return keep, remaining
+}
+
+// filterResourcesToKeep splits resources by the resource policy annotation on
+// their objects. Resources whose annotations cannot be read are not kept.
+func filterResourcesToKeep(resources kube.ResourceList) (keep, remaining kube.ResourceList) {
+	for _, info := range resources {
+		annotations, err := accessor.Annotations(info.Object)
+		if err == nil && isKeepPolicy(annotations[kube.ResourcePolicyAnno]) {
+			keep = append(keep, info)
+			continue
+		}
+		remaining = append(remaining, info)
+	}
+	return keep, remaining
+}
+
+func isKeepPolicy(resourcePolicyType string) bool {
+	return strings.ToLower(strings.TrimSpace(resourcePolicyType)) == kube.KeepPolicy
 }
