@@ -217,7 +217,7 @@ func (h *harness) ref(repo, chart, version string) string {
 // plainHTTPCommands are the helm subcommands that accept --plain-http. The
 // flag is only appended for these so that the harness can still run commands
 // such as `status` and `uninstall` against a plain HTTP registry.
-var plainHTTPCommands = map[string]bool{"push": true, "pull": true, "install": true, "upgrade": true}
+var plainHTTPCommands = map[string]bool{"push": true, "pull": true, "install": true, "upgrade": true, "dependency": true}
 
 // helm runs the helm binary with the given arguments and returns its combined
 // output. Arguments are logged, so callers must never pass a credential.
