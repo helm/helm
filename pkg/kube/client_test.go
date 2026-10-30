@@ -590,6 +590,102 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+// TestUpdateOwnershipCheck verifies that the delete phase of Update honors the
+// opt-in ownership safeguard: a resource that is live-annotated as belonging to
+// a different release is skipped instead of deleted, while resources owned by
+// the operating release (or carrying no release annotation at all) are deleted
+// as before.
+func TestUpdateOwnershipCheck(t *testing.T) {
+	const myRelease = "my-release"
+
+	// Build three pods that exist in the original release but are absent from
+	// the target, so all three enter the delete loop.
+	original := newPodList("transferme", "matchme", "noanno")
+
+	// Live cluster state returned by GET during the delete loop. The release-name
+	// annotation determines whether the safeguard skips the delete.
+	podWithRelease := func(name, releaseName string) v1.Pod {
+		pod := newPod(name)
+		annos := map[string]string{}
+		if releaseName != "" {
+			annos[releaseNameAnnotation] = releaseName
+		}
+		pod.ObjectMeta.Annotations = annos
+		return pod
+	}
+	liveTransferme := podWithRelease("transferme", "other-release")
+	liveMatchme := podWithRelease("matchme", myRelease)
+	liveNoanno := podWithRelease("noanno", "")
+
+	type testCase struct {
+		// releaseName passed via ClientUpdateOptionOwnership; empty means the
+		// option is omitted entirely (safeguard disabled).
+		releaseName   string
+		expectDeleted []string
+	}
+	testCases := map[string]testCase{
+		"safeguard enabled, foreign-owned skipped": {
+			releaseName:   myRelease,
+			expectDeleted: []string{"matchme", "noanno"},
+		},
+		"safeguard disabled, all deleted (regression)": {
+			releaseName:   "",
+			expectDeleted: []string{"transferme", "matchme", "noanno"},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			cb := func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				p, m := req.URL.Path, req.Method
+				switch {
+				case p == "/namespaces/default/pods/transferme" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &liveTransferme)
+				case p == "/namespaces/default/pods/matchme" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &liveMatchme)
+				case p == "/namespaces/default/pods/noanno" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &liveNoanno)
+				case m == http.MethodDelete:
+					return newResponse(http.StatusOK, &metav1.Status{Status: metav1.StatusSuccess})
+				}
+				t.Fatalf("unexpected request %s %s", m, p)
+				return nil, nil
+			}
+
+			c := newTestClient(t)
+			client := NewRequestResponseLogClient(t, cb)
+			c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			first, err := c.Build(objBody(&original), false)
+			require.NoError(t, err)
+			second, err := c.Build(objBody(&v1.PodList{}), false)
+			require.NoError(t, err)
+
+			opts := []ClientUpdateOption{
+				ClientUpdateOptionForceReplace(false),
+				ClientUpdateOptionServerSideApply(false, false),
+				ClientUpdateOptionThreeWayMergeForUnstructured(false),
+				ClientUpdateOptionUpgradeClientSideFieldManager(true),
+			}
+			if tc.releaseName != "" {
+				opts = append(opts, ClientUpdateOptionOwnership(tc.releaseName))
+			}
+
+			result, err := c.Update(first, second, opts...)
+			require.NoError(t, err)
+
+			var deleted []string
+			for _, info := range result.Deleted {
+				deleted = append(deleted, info.Name)
+			}
+			assert.Equal(t, tc.expectDeleted, deleted)
+		})
+	}
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string
