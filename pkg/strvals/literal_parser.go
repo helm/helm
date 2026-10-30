@@ -103,6 +103,10 @@ func (t *literalParser) key(data map[string]any, nestedNameLevel int) (reterr er
 			}
 			return fmt.Errorf("key %q has no value", string(key))
 
+		case len(key) == 0 && (lastRune == '=' || lastRune == '[' || lastRune == '.'):
+			// The assignment has no name, so set() would drop its value.
+			return errors.New("value name must not be empty")
+
 		case lastRune == '=':
 			// found end of key: swallow the '=' and get the value
 			value, err := t.val()
