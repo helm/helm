@@ -29,7 +29,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"oras.land/oras-go/v2/registry/remote/retry"
+	"github.com/oras-project/oras-go/v3/registry/remote/retry"
 )
 
 var (

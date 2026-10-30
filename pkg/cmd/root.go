@@ -22,7 +22,6 @@ import (
 	"io"
 	"log"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 
@@ -33,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"helm.sh/helm/v4/internal/gates"
 	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/action"
@@ -424,6 +424,7 @@ func newDefaultRegistryClient(out io.Writer, plainHTTP bool, username, password 
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 		registry.ClientOptBasicAuth(username, password),
 	}
+	opts = append(opts, containersConfigOptions()...)
 	if plainHTTP {
 		opts = append(opts, registry.ClientOptPlainHTTP())
 	}
@@ -439,33 +440,45 @@ func newDefaultRegistryClient(out io.Writer, plainHTTP bool, username, password 
 func newRegistryClientWithTLS(
 	out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSVerify bool, username, password string,
 ) (*registry.Client, error) {
-	tlsConf, err := tlsutil.NewTLSConfig(
+	// Validate the TLS files up front so a bad flag fails before any request.
+	if _, err := tlsutil.NewTLSConfig(
 		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
 		tlsutil.WithCAFile(caFile),
-	)
-	if err != nil {
+	); err != nil {
 		return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 	}
 
-	// Create a new registry client
-	registryClient, err := registry.NewClient(
+	// Pass the TLS settings as options rather than a custom HTTP client, so
+	// registries.conf and certs.d still apply alongside them.
+	opts := []registry.ClientOption{
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptEnableCache(true),
 		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
-		registry.ClientOptHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConf,
-				Proxy:           http.ProxyFromEnvironment,
-			},
-		}),
+		registry.ClientOptTLSClientConfig(certFile, keyFile, caFile),
+		registry.ClientOptInsecureSkipVerifyTLS(insecureSkipTLSVerify),
 		registry.ClientOptBasicAuth(username, password),
-	)
+	}
+	opts = append(opts, containersConfigOptions()...)
+	registryClient, err := registry.NewClient(opts...)
 	if err != nil {
 		return nil, err
 	}
 	return registryClient, nil
+}
+
+// containersConfigOptions loads the container ecosystem registry config when
+// the HELM_EXPERIMENTAL_CONTAINERS_CONFIG gate is set. Opting in to that config
+// also enforces its policy.json, with signature verification so signedBy
+// requirements can be met, as podman and buildah do for images.
+func containersConfigOptions() []registry.ClientOption {
+	enabled := gates.ContainersConfig.IsEnabled()
+	return []registry.ClientOption{
+		registry.ClientOptContainersConfig(enabled),
+		registry.ClientOptPolicyEnforcement(enabled),
+		registry.ClientOptSignatureVerification(enabled),
+	}
 }
 
 type CommandError struct {
