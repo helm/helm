@@ -52,7 +52,11 @@ type FailingKubeClient struct {
 	RecordedWaitOptions []kube.WaitOption
 	// RecordedWaitStrategies stores the WaitStrategy passed to each GetWaiter call for testing
 	RecordedWaitStrategies []kube.WaitStrategy
-	mu                     sync.Mutex
+	// RecordedCreateOptions stores the parsed options from the last Create call.
+	RecordedCreateOptions kube.ParsedCreateOptions
+	// RecordedUpdateOptions stores the parsed options from the last Update call.
+	RecordedUpdateOptions kube.ParsedUpdateOptions
+	mu                    sync.Mutex
 }
 
 var _ kube.Interface = &FailingKubeClient{}
@@ -69,6 +73,11 @@ type FailingKubeWaiter struct {
 
 // Create returns the configured error if set or prints
 func (f *FailingKubeClient) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+	if parsed, err := kube.ParseCreateOptions(options); err == nil {
+		f.mu.Lock()
+		f.RecordedCreateOptions = parsed
+		f.mu.Unlock()
+	}
 	if f.CreateError != nil {
 		return nil, f.CreateError
 	}
@@ -127,6 +136,11 @@ func (f *FailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, d time.
 
 // Update returns the configured error if set or prints
 func (f *FailingKubeClient) Update(r, modified kube.ResourceList, options ...kube.ClientUpdateOption) (*kube.Result, error) {
+	if parsed, err := kube.ParseUpdateOptions(options); err == nil {
+		f.mu.Lock()
+		f.RecordedUpdateOptions = parsed
+		f.mu.Unlock()
+	}
 	if f.UpdateError != nil {
 		return &kube.Result{}, f.UpdateError
 	}
