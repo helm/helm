@@ -95,7 +95,7 @@ func (f files) Glob(pattern string) files {
 // MustGlob is like Glob but returns an error when the pattern is invalid
 // instead of falling back to matching every file.
 //
-// {{ range $name, $content := .Files.MustGlob("foo/**") }}
+// {{ range $name, $content := .Files.MustGlob "foo/**" }}
 // {{ $name }}: |
 // {{- end }}
 func (f files) MustGlob(pattern string) (files, error) {
