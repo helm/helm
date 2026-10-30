@@ -74,37 +74,37 @@ func TestFileGlobInvalidPattern(t *testing.T) {
 	matched := f.Glob("story/[")
 	require.Len(t, matched, len(f))
 
-	// MustGlob reports the invalid pattern instead of widening the match.
-	mustMatched, err := f.MustGlob("story/[")
+	// GlobError reports the invalid pattern instead of widening the match.
+	mustMatched, err := f.GlobError("story/[")
 	require.Error(t, err)
 	require.Nil(t, mustMatched)
 	require.ErrorContains(t, err, `invalid glob pattern "story/[":`)
 }
 
-func TestFileMustGlobValidPattern(t *testing.T) {
+func TestFileGlobErrorValidPattern(t *testing.T) {
 	f := getTestFiles()
 
-	matched, err := f.MustGlob("story/**")
+	matched, err := f.GlobError("story/**")
 	require.NoError(t, err)
 	require.Len(t, matched, 2)
 	require.Equal(t, "Joseph Conrad", matched.Get("story/author.txt"))
 	require.Equal(t, "The Secret Sharer", matched.Get("story/name.txt"))
 }
 
-func TestFileMustGlobNoMatches(t *testing.T) {
+func TestFileGlobErrorNoMatches(t *testing.T) {
 	f := getTestFiles()
 
-	matched, err := f.MustGlob("missing/**")
+	matched, err := f.GlobError("missing/**")
 	require.NoError(t, err)
 	require.Empty(t, matched)
 	require.Equal(t, "{}", matched.AsConfig())
 	require.Equal(t, "{}", matched.AsSecrets())
 }
 
-func TestFileMustGlobAsConfigAndSecrets(t *testing.T) {
+func TestFileGlobErrorAsConfigAndSecrets(t *testing.T) {
 	f := getTestFiles()
 
-	matched, err := f.MustGlob("ship/**")
+	matched, err := f.GlobError("ship/**")
 	require.NoError(t, err)
 	require.Equal(t, "captain.txt: The Captain\nstowaway.txt: Legatt", matched.AsConfig())
 

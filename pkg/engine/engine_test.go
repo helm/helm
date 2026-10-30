@@ -711,14 +711,14 @@ func TestRenderBuiltinValues(t *testing.T) {
 	}
 }
 
-func TestRenderMustGlob(t *testing.T) {
+func TestRenderGlobError(t *testing.T) {
 	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "moby", APIVersion: chart.APIVersionV2},
 		Templates: []*common.File{
-			{Name: "templates/config", ModTime: modTime, Data: []byte(`{{ (.Files.MustGlob "ship/*").AsConfig }}`)},
-			{Name: "templates/secrets", ModTime: modTime, Data: []byte(`{{ (.Files.MustGlob "ship/*").AsSecrets }}`)},
-			{Name: "templates/nomatch", ModTime: modTime, Data: []byte(`{{ len (.Files.MustGlob "missing/*") }}`)},
+			{Name: "templates/config", ModTime: modTime, Data: []byte(`{{ (.Files.GlobError "ship/*").AsConfig }}`)},
+			{Name: "templates/secrets", ModTime: modTime, Data: []byte(`{{ (.Files.GlobError "ship/*").AsSecrets }}`)},
+			{Name: "templates/nomatch", ModTime: modTime, Data: []byte(`{{ len (.Files.GlobError "missing/*") }}`)},
 		},
 		Files: []*common.File{
 			{Name: "ship/captain.txt", ModTime: modTime, Data: []byte("The Captain")},
@@ -738,7 +738,7 @@ func TestRenderMustGlob(t *testing.T) {
 	bad := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "moby", APIVersion: chart.APIVersionV2},
 		Templates: []*common.File{
-			{Name: "templates/bad", ModTime: modTime, Data: []byte(`{{ (.Files.MustGlob "ship/[").AsConfig }}`)},
+			{Name: "templates/bad", ModTime: modTime, Data: []byte(`{{ (.Files.GlobError "ship/[").AsConfig }}`)},
 		},
 		Files: c.Files,
 	}
