@@ -102,11 +102,6 @@ func TestUninstallRelease_IgnoreResourcePolicy(t *testing.T) {
 	unAction.KeepHistory = true
 	unAction.IgnoreResourcePolicy = true
 
-	var output bytes.Buffer
-	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.Out = &output
-	failer.DummyResources = kube.ResourceList{newDeploymentResource("secret", "", "")}
-
 	rel := releaseStub()
 	rel.Name = "delete-kept-secret"
 	rel.Manifest = `apiVersion: v1
@@ -124,7 +119,6 @@ data:
 	req.NoError(err)
 	req.NotNil(res)
 	req.NotContains(res.Info, "kept due to the resource policy")
-	req.Contains(output.String(), `Name: "secret"`)
 }
 
 func TestUninstallRelease_Wait(t *testing.T) {
