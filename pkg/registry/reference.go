@@ -71,7 +71,15 @@ func newReference(raw string) (result reference, err error) {
 }
 
 func (r *reference) String() string {
-	if r.Tag == "" {
+	if r.Digest != "" {
+		return r.orasReference.String() + "@" + r.Digest
+	}
+	return r.orasReference.String()
+}
+
+// pushString is the destination name for Push (tag when present, else digest).
+func (r *reference) pushString() string {
+	if r.Tag == "" && r.Digest != "" {
 		return r.orasReference.String() + "@" + r.Digest
 	}
 	return r.orasReference.String()
