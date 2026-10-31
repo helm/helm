@@ -30,6 +30,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	v1 "k8s.io/api/core/v1"
@@ -51,6 +52,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/mergepatch"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
@@ -69,6 +71,17 @@ var metadataAccessor = meta.NewAccessor()
 // ManagedFieldsManager is the name of the manager of Kubernetes managedFields
 // first introduced in Kubernetes 1.18
 var ManagedFieldsManager string
+
+// ServerSideApplyRetryBackoff defines the default backoff configuration used when retrying transient
+// errors during server-side apply (such as ResourceQuota conflicts or temporary admission webhook unavailability).
+var ServerSideApplyRetryBackoff = wait.Backoff{
+	Steps:    5,
+	Duration: 1 * time.Second,
+	Factor:   2.0,
+	Jitter:   0.1,
+}
+
+var retrySleep = time.Sleep
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
@@ -271,6 +284,7 @@ type clientCreateOptions struct {
 	forceConflicts           bool
 	dryRun                   bool
 	fieldValidationDirective FieldValidationDirective
+	retryBackoff             wait.Backoff
 }
 
 type ClientCreateOption func(*clientCreateOptions) error
@@ -315,7 +329,26 @@ func ClientCreateOptionFieldValidationDirective(fieldValidationDirective FieldVa
 	}
 }
 
-func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun bool, fieldValidationDirective FieldValidationDirective) CreateApplyFunc {
+// ClientCreateOptionRetryBackoff specifies the retry backoff parameters to use for server-side apply.
+func ClientCreateOptionRetryBackoff(backoff wait.Backoff) ClientCreateOption {
+	return func(o *clientCreateOptions) error {
+		if backoff.Steps < 0 {
+			return errors.New("retry backoff steps must be non-negative")
+		}
+		if backoff.Duration < 0 {
+			return errors.New("retry backoff duration must be non-negative")
+		}
+		o.retryBackoff = backoff
+
+		return nil
+	}
+}
+
+func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun bool, fieldValidationDirective FieldValidationDirective, retryBackoff wait.Backoff) CreateApplyFunc {
+	if retryBackoff.Steps <= 0 {
+		retryBackoff = ServerSideApplyRetryBackoff
+	}
+
 	if serverSideApply {
 		c.Logger().Debug(
 			"using server-side apply for resource creation",
@@ -329,9 +362,8 @@ func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun boo
 				slog.String("name", target.Name),
 				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
 
-			return retry.OnError(
-				retry.DefaultRetry,
-				isServerSideRetryable,
+			return c.retryServerSideApply(
+				retryBackoff,
 				func() error {
 					err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
 					if err != nil {
@@ -356,6 +388,7 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 	createOptions := clientCreateOptions{
 		serverSideApply:          true, // Default to server-side apply
 		fieldValidationDirective: FieldValidationDirectiveStrict,
+		retryBackoff:             ServerSideApplyRetryBackoff,
 	}
 
 	errs := make([]error, 0, len(options))
@@ -370,7 +403,8 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		createOptions.serverSideApply,
 		createOptions.forceConflicts,
 		createOptions.dryRun,
-		createOptions.fieldValidationDirective)
+		createOptions.fieldValidationDirective,
+		createOptions.retryBackoff)
 	if err := perform(resources, createApplyFunc); err != nil {
 		return nil, err
 	}
@@ -713,6 +747,7 @@ type clientUpdateOptions struct {
 	dryRun                        bool
 	fieldValidationDirective      FieldValidationDirective
 	upgradeClientSideFieldManager bool
+	retryBackoff                  wait.Backoff
 }
 
 type ClientUpdateOption func(*clientUpdateOptions) error
@@ -796,6 +831,21 @@ func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManag
 	}
 }
 
+// ClientUpdateOptionRetryBackoff specifies the retry backoff parameters to use for server-side apply.
+func ClientUpdateOptionRetryBackoff(backoff wait.Backoff) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		if backoff.Steps < 0 {
+			return errors.New("retry backoff steps must be non-negative")
+		}
+		if backoff.Duration < 0 {
+			return errors.New("retry backoff duration must be non-negative")
+		}
+		o.retryBackoff = backoff
+
+		return nil
+	}
+}
+
 // Update takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
@@ -809,6 +859,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 	updateOptions := clientUpdateOptions{
 		serverSideApply:          true, // Default to server-side apply
 		fieldValidationDirective: FieldValidationDirectiveStrict,
+		retryBackoff:             ServerSideApplyRetryBackoff,
 	}
 
 	errs := make([]error, 0, len(options))
@@ -835,7 +886,8 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		updateOptions.serverSideApply,
 		updateOptions.forceConflicts,
 		updateOptions.dryRun,
-		updateOptions.fieldValidationDirective)
+		updateOptions.fieldValidationDirective,
+		updateOptions.retryBackoff)
 
 	makeUpdateApplyFunc := func() UpdateApplyFunc {
 		if updateOptions.forceReplace {
@@ -867,6 +919,12 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 				slog.Bool("dryRun", updateOptions.dryRun),
 				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)),
 				slog.Bool("upgradeClientSideFieldManager", updateOptions.upgradeClientSideFieldManager))
+
+			retryBackoff := updateOptions.retryBackoff
+			if retryBackoff.Steps <= 0 {
+				retryBackoff = ServerSideApplyRetryBackoff
+			}
+
 			return func(original, target *resource.Info) error {
 				logger := c.Logger().With(
 					slog.String("namespace", target.Namespace),
@@ -885,14 +943,17 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 					}
 				}
 
-				if err := patchResourceServerSide(target, updateOptions.dryRun, updateOptions.forceConflicts, updateOptions.fieldValidationDirective); err != nil {
-					logger.Debug("Error patching resource", slog.Any("error", err))
-					return err
-				}
+				return c.retryServerSideApply(
+					retryBackoff,
+					func() error {
+						if err := patchResourceServerSide(target, updateOptions.dryRun, updateOptions.forceConflicts, updateOptions.fieldValidationDirective); err != nil {
+							logger.Debug("Error patching resource", slog.Any("error", err))
+							return err
+						}
 
-				logger.Debug("Patched resource")
-
-				return nil
+						logger.Debug("Patched resource")
+						return nil
+					})
 			}
 		}
 
@@ -960,10 +1021,137 @@ func isIncompatibleServerError(err error) bool {
 	return sErr.Status().Code == http.StatusUnsupportedMediaType
 }
 
+// retryServerSideApply executes fn according to backoff settings, retrying transient
+// errors (such as webhook unavailability, 5xx, or 429). If a 429 response provides a
+// RetryAfterSeconds hint, that duration is honored as the minimum delay.
+func (c *Client) retryServerSideApply(backoff wait.Backoff, fn func() error) error {
+	steps := backoff.Steps
+	if steps <= 0 {
+		steps = 1
+	}
+	var lastErr error
+	for attempt := 0; attempt < steps; attempt++ {
+		err := fn()
+		if err == nil {
+			return nil
+		}
+		if !isServerSideRetryable(err) {
+			return err
+		}
+		lastErr = err
+
+		if attempt == steps-1 {
+			break
+		}
+
+		delay := backoff.Step()
+		if seconds, ok := apierrors.SuggestsClientDelay(err); ok && seconds > 0 {
+			suggestedDelay := time.Duration(seconds) * time.Second
+			if suggestedDelay > delay {
+				delay = suggestedDelay
+			}
+		}
+
+		if c != nil && c.WaitContext != nil {
+			select {
+			case <-c.WaitContext.Done():
+				return c.WaitContext.Err()
+			case <-time.After(delay):
+			}
+		} else {
+			retrySleep(delay)
+		}
+	}
+	return lastErr
+}
+
 // isServerSideRetryable checks if an error encountered during server-side apply
-// should be retried. Currently, only ResourceQuota conflicts are considered retryable.
+// should be retried. It returns true for transient errors such as ResourceQuota
+// conflicts, admission webhook connection failures, or temporary server unavailability.
+// It returns false for deterministic failures such as validation errors or admission denials.
 func isServerSideRetryable(err error) bool {
-	return isResourceQuotaConflict(err)
+	if err == nil {
+		return false
+	}
+
+	if isResourceQuotaConflict(err) {
+		return true
+	}
+
+	return isTransientWebhookError(err) || isTransientServerError(err)
+}
+
+// isTransientWebhookError determines if the error represents a transient failure
+// communicating with an admission webhook (such as connection refused, service unavailable,
+// timeout, or certificate injection races).
+// Deterministic webhook rejections ("denied the request") are explicitly not retried.
+func isTransientWebhookError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := err.Error()
+
+	// An admission webhook explicitly denying or rejecting a resource is deterministic.
+	if strings.Contains(errMsg, "denied the request") {
+		return false
+	}
+
+	// Webhook invocation failures returned by the API server.
+	if strings.Contains(errMsg, "failed calling webhook") {
+		return true
+	}
+
+	// Direct connection refused errors (e.g. webhook service/pod not yet listening).
+	if strings.Contains(errMsg, "connection refused") {
+		return true
+	}
+
+	// Webhook service has no endpoints available yet.
+	if strings.Contains(errMsg, "no endpoints available for service") {
+		return true
+	}
+
+	// Webhook TLS / certificate injection races (e.g. cert-manager cainjector).
+	if strings.Contains(errMsg, "webhook") && (strings.Contains(errMsg, "certificate signed by unknown authority") ||
+		strings.Contains(errMsg, "x509: certificate") ||
+		strings.Contains(errMsg, "tls: handshake failure") ||
+		strings.Contains(errMsg, "remote error: tls:") ||
+		strings.Contains(errMsg, "not ready") ||
+		strings.Contains(errMsg, "temporarily unavailable")) {
+		return true
+	}
+
+	return false
+}
+
+// isTransientServerError checks if an error is a transient server-side condition
+// returned by the Kubernetes API server (such as 502 Bad Gateway, 503 Service Unavailable,
+// 504 Gateway Timeout, or 429 Too Many Requests).
+func isTransientServerError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if strings.Contains(err.Error(), "denied the request") {
+		return false
+	}
+
+	if apierrors.IsServiceUnavailable(err) ||
+		apierrors.IsTimeout(err) ||
+		apierrors.IsServerTimeout(err) ||
+		apierrors.IsTooManyRequests(err) {
+		return true
+	}
+
+	if statusErr, ok := errors.AsType[*apierrors.StatusError](err); ok {
+		switch statusErr.Status().Code {
+		case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout, http.StatusTooManyRequests:
+			return true
+		}
+	}
+
+	return false
 }
 
 // isResourceQuotaConflict checks if the error is a conflict error specifically caused by
