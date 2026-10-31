@@ -394,12 +394,30 @@ func loadKeyRing(ringpath string) (openpgp.EntityList, error) {
 // way GnuPG imports them.
 func loadArmoredKeyRing(data []byte) (openpgp.EntityList, error) {
 	var ring openpgp.EntityList
-	r := bytes.NewReader(data)
-	for {
-		block, err := armor.Decode(r)
-		if errors.Is(err, io.EOF) {
+	for offset := 0; offset < len(data); {
+		start := bytes.Index(data[offset:], []byte("-----BEGIN "))
+		if start == -1 {
 			break
 		}
+		blockStart := offset + start
+
+		var blockBytes []byte
+		end := bytes.Index(data[blockStart:], []byte("-----END "))
+		if end == -1 {
+			blockBytes = data[blockStart:]
+			offset = len(data)
+		} else {
+			blockEnd := blockStart + end
+			if lineEnd := bytes.IndexByte(data[blockEnd:], '\n'); lineEnd == -1 {
+				blockBytes = data[blockStart:]
+				offset = len(data)
+			} else {
+				blockBytes = data[blockStart : blockEnd+lineEnd+1]
+				offset = blockEnd + lineEnd + 1
+			}
+		}
+
+		block, err := armor.Decode(bytes.NewReader(blockBytes))
 		if err != nil {
 			return nil, err
 		}
