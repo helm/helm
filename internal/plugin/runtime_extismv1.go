@@ -276,7 +276,7 @@ func buildPluginConfig(input *Input, r *RuntimeExtismV1) extism.PluginConfig {
 }
 
 func buildHostFunctions(hostFunctions map[string]extism.HostFunction, rc *RuntimeConfigExtismV1) ([]extism.HostFunction, error) {
-	result := make([]extism.HostFunction, len(rc.HostFunctions))
+	result := make([]extism.HostFunction, 0, len(rc.HostFunctions))
 	for _, fnName := range rc.HostFunctions {
 		fn, ok := hostFunctions[fnName]
 		if !ok {
