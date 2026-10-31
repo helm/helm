@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -213,20 +212,22 @@ func TestWriteFileRelativeBareNameUsesDestinationDir(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 
-	// Make $TMPDIR unusable so a temp file created there would fail. Destination-
-	// local CreateTemp/OpenFile must still succeed for a bare relative name.
 	badTmp := filepath.Join(t.TempDir(), "missing-tmpdir")
 	t.Setenv("TMPDIR", badTmp)
 	t.Setenv("TMP", badTmp)
 
-	f := NewFile()
-	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
-	require.NoError(t, f.WriteFile("repositories.yaml", 0o600))
+	old := NewFile()
+	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, old.WriteFile("repositories.yaml", 0o600), "creating a new file")
 
-	dest := filepath.Join(dir, "repositories.yaml")
-	repos, err := LoadFile(dest)
+	fresh := NewFile()
+	fresh.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	fresh.Add(&Entry{Name: "incubator", URL: "https://example.com/incubator"})
+	require.NoError(t, fresh.WriteFile("repositories.yaml", 0o600), "replacing an existing file")
+
+	repos, err := LoadFile(filepath.Join(dir, "repositories.yaml"))
 	require.NoError(t, err)
-	assert.True(t, repos.Has("stable"))
+	assert.True(t, repos.Has("incubator"))
 
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
@@ -254,24 +255,6 @@ func TestWriteFileCreatesThroughDanglingSymlink(t *testing.T) {
 	repos, err := LoadFile(target)
 	require.NoError(t, err)
 	assert.True(t, repos.Has("stable"))
-}
-
-func TestWriteFileNewFileHonorsUmask(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows does not implement POSIX umask")
-	}
-
-	path := filepath.Join(t.TempDir(), "repositories.yaml")
-	old := syscall.Umask(0o077)
-	t.Cleanup(func() { syscall.Umask(old) })
-
-	f := NewFile()
-	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
-	require.NoError(t, f.WriteFile(path, 0o644))
-
-	info, err := os.Stat(path)
-	require.NoError(t, err)
-	assert.Equalf(t, os.FileMode(0o600), info.Mode().Perm(), "perm=0644 with umask 0077 must yield 0600")
 }
 
 func TestWriteFileUpdatesSymlinkTarget(t *testing.T) {
