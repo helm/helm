@@ -70,7 +70,7 @@ func (f files) Get(name string) string {
 // An invalid pattern falls back to matching every file of the chart, matching
 // historical template behaviour.
 //
-// Deprecated: use GlobError to validate the error instead.
+// Deprecated: use MustGlob to validate the error instead.
 //
 // This is designed to be called from a template.
 //
@@ -93,15 +93,15 @@ func (f files) Glob(pattern string) files {
 	return nf
 }
 
-// GlobError is like Glob but returns an error when the pattern is invalid
+// MustGlob is like Glob but returns an error when the pattern is invalid
 // instead of falling back to matching every file.
 //
 // This is designed to be called from a template.
 //
-// {{ range $name, $content := .Files.GlobError "foo/**" }}
+// {{ range $name, $content := .Files.MustGlob "foo/**" }}
 // {{ $name }}: |
 // {{ $content | toString | indent 4 }}{{ end }}
-func (f files) GlobError(pattern string) (files, error) {
+func (f files) MustGlob(pattern string) (files, error) {
 	g, err := glob.Compile(pattern, '/')
 	if err != nil {
 		return nil, fmt.Errorf("invalid glob pattern %q: %w", pattern, err)
