@@ -96,9 +96,11 @@ func (f files) Glob(pattern string) files {
 // GlobError is like Glob but returns an error when the pattern is invalid
 // instead of falling back to matching every file.
 //
+// This is designed to be called from a template.
+//
 // {{ range $name, $content := .Files.GlobError "foo/**" }}
 // {{ $name }}: |
-// {{- end }}
+// {{ $content | toString | indent 4 }}{{ end }}
 func (f files) GlobError(pattern string) (files, error) {
 	g, err := glob.Compile(pattern, '/')
 	if err != nil {

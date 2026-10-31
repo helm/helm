@@ -117,7 +117,6 @@ func TestToConfig(t *testing.T) {
 	as := assert.New(t)
 
 	f := getTestFiles()
-
 	out := f.Glob("**/captain.txt").AsConfig()
 	as.Equal("captain.txt: The Captain", out)
 
