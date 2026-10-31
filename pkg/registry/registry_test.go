@@ -485,10 +485,7 @@ func testPush(suite *TestRegistry) {
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
 
-	// Push with tag@matching-digest must still create the tag when strict mode is off.
-	// Include provenance so the second push produces the same manifest digest as `result`
-	// (the digest we pin in the reference). Without PushOptProvData the digests diverge
-	// and this path would not cover the successful-but-untagged case.
+	// Same chart and provenance as result, so the pinned digest matches.
 	newTagRef := fmt.Sprintf("%s/testrepo/%s:newtag-with-digest@%s", suite.DockerRegistryHost, meta.Name, result.Manifest.Digest)
 	pushResult, err := suite.RegistryClient.Push(chartData, newTagRef, PushOptStrictMode(false), PushOptProvData(provData), PushOptCreationTime(testingChartCreationTime))
 	suite.Require().NoError(err, "no error pushing tag@matching-digest")
