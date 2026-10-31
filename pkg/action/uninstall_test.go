@@ -94,6 +94,33 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is.Contains(res.Info, expected)
 }
 
+func TestUninstallRelease_IgnoreResourcePolicy(t *testing.T) {
+	req := require.New(t)
+
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+	unAction.KeepHistory = true
+	unAction.IgnoreResourcePolicy = true
+
+	rel := releaseStub()
+	rel.Name = "delete-kept-secret"
+	rel.Manifest = `apiVersion: v1
+kind: Secret
+metadata:
+  name: secret
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  password: cGFzc3dvcmQ=`
+	req.NoError(unAction.cfg.Releases.Create(rel))
+
+	res, err := unAction.Run(rel.Name)
+	req.NoError(err)
+	req.NotNil(res)
+	req.NotContains(res.Info, "kept due to the resource policy")
+}
+
 func TestUninstallRelease_Wait(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
