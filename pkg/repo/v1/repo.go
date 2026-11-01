@@ -180,37 +180,52 @@ func atomicWriteRepoFileNew(filename string, data []byte, perm os.FileMode) erro
 	return nil
 }
 
+// maxRepoFileSymlinkHops bounds how many links resolveRepoFileWritePath
+// follows, matching the limit Linux applies to path resolution.
+const maxRepoFileSymlinkHops = 40
+
 // resolveRepoFileWritePath returns an absolute write path, following a symlink
-// destination to its target when present. A dangling symlink still resolves to
-// its link text so the shared target can be created while the link is kept.
+// destination to its final target. When the chain ends in a missing target,
+// every link is followed to that target so it can be created while all links
+// are kept.
 func resolveRepoFileWritePath(path string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return "", err
 	}
 
-	fi, err := os.Lstat(abs)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return abs, nil
+	cur := abs
+	for hops := 0; ; hops++ {
+		fi, err := os.Lstat(cur)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return cur, nil
+			}
+			return "", err
 		}
-		return "", err
-	}
-	if fi.Mode()&os.ModeSymlink == 0 {
-		return abs, nil
-	}
+		if fi.Mode()&os.ModeSymlink == 0 {
+			return cur, nil
+		}
+		if hops == 0 {
+			if target, err := filepath.EvalSymlinks(cur); err == nil {
+				return target, nil
+			}
+		}
+		if hops >= maxRepoFileSymlinkHops {
+			return "", fmt.Errorf("%s: too many levels of symbolic links", abs)
+		}
 
-	target, err := filepath.EvalSymlinks(abs)
-	if err == nil {
-		return target, nil
+		link, err := os.Readlink(cur)
+		if err != nil {
+			return "", err
+		}
+		if !filepath.IsAbs(link) {
+			dir := filepath.Dir(cur)
+			if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+				dir = resolved
+			}
+			link = filepath.Join(dir, link)
+		}
+		cur = filepath.Clean(link)
 	}
-
-	link, lerr := os.Readlink(abs)
-	if lerr != nil {
-		return "", err
-	}
-	if !filepath.IsAbs(link) {
-		link = filepath.Join(filepath.Dir(abs), link)
-	}
-	return filepath.Clean(link), nil
 }

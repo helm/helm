@@ -257,6 +257,46 @@ func TestWriteFileCreatesThroughDanglingSymlink(t *testing.T) {
 	assert.True(t, repos.Has("stable"))
 }
 
+func TestWriteFileCreatesThroughDanglingSymlinkChain(t *testing.T) {
+	dir := t.TempDir()
+	shared := filepath.Join(dir, "shared.yaml")
+	middle := filepath.Join(dir, "middle.yaml")
+	link := filepath.Join(dir, "repositories.yaml")
+	require.NoError(t, os.Symlink("shared.yaml", middle))
+	require.NoError(t, os.Symlink(middle, link))
+
+	f := NewFile()
+	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, f.WriteFile(link, 0o600))
+
+	for _, l := range []string{link, middle} {
+		fi, err := os.Lstat(l)
+		require.NoError(t, err)
+		assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "%s must stay a symlink", l)
+	}
+
+	repos, err := LoadFile(shared)
+	require.NoError(t, err)
+	assert.True(t, repos.Has("stable"))
+}
+
+func TestWriteFileSymlinkLoop(t *testing.T) {
+	dir := t.TempDir()
+	a := filepath.Join(dir, "a.yaml")
+	b := filepath.Join(dir, "b.yaml")
+	require.NoError(t, os.Symlink(b, a))
+	require.NoError(t, os.Symlink(a, b))
+
+	f := NewFile()
+	require.Error(t, f.WriteFile(a, 0o600))
+
+	for _, l := range []string{a, b} {
+		fi, err := os.Lstat(l)
+		require.NoError(t, err)
+		assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "%s must stay a symlink", l)
+	}
+}
+
 func TestWriteFileUpdatesSymlinkTarget(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "shared-repositories.yaml")
