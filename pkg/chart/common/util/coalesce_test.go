@@ -825,3 +825,106 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 	_, ok = keyMapping["password"]
 	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
 }
+
+// TestCoalesceValuesParentNullOverridesSubchartDefault tests that null values
+// set in the parent chart's values.yaml for a subchart scope correctly erase
+// the subchart's defaults, even when no --set or -f values target that scope.
+// Regression test for issue #32132.
+func TestCoalesceValuesParentNullOverridesSubchartDefault(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "always-on"},
+		Values: map[string]any{
+			"runAsUser":    65534,
+			"runAsGroup":   65534,
+			"runAsNonRoot": true,
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values: map[string]any{
+			"always-on": map[string]any{
+				"enabled":    true,
+				"runAsUser":  nil,
+				"runAsGroup": nil,
+			},
+		},
+	}, subchart)
+
+	// No --set or -f values — the parent values.yaml is the only source
+	vals := map[string]any{}
+
+	v, err := CoalesceValues(parent, vals)
+	req.NoError(err)
+
+	childVals, ok := v["always-on"].(map[string]any)
+	req.True(ok, "always-on values should be a map")
+
+	is.Equal(true, childVals["enabled"], "enabled should be true")
+	is.Equal(true, childVals["runAsNonRoot"], "runAsNonRoot should come from subchart default")
+
+	_, ok = childVals["runAsUser"]
+	is.False(ok, "Expected runAsUser to be removed by parent null override, but it is still present")
+
+	_, ok = childVals["runAsGroup"]
+	is.False(ok, "Expected runAsGroup to be removed by parent null override, but it is still present")
+}
+
+// TestCoalesceValuesParentNullOverridesGlobalDefault tests that null values
+// set in the parent chart's global scope correctly erase subchart global defaults.
+// Regression test for issue #32132.
+func TestCoalesceValuesParentNullOverridesGlobalDefault(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"global": map[string]any{
+				"hash": map[string]any{
+					"key1": 1,
+					"key2": 2,
+					"key3": 3,
+				},
+			},
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values: map[string]any{
+			"global": map[string]any{
+				"hash": map[string]any{
+					"key1": nil,
+					"key2": nil,
+					"key3": 13,
+				},
+			},
+		},
+	}, subchart)
+
+	vals := map[string]any{}
+
+	v, err := CoalesceValues(parent, vals)
+	req.NoError(err)
+
+	childVals, ok := v["child"].(map[string]any)
+	req.True(ok, "child values should be a map")
+
+	childGlobals, ok := childVals["global"].(map[string]any)
+	req.True(ok, "child global should be a map")
+
+	globalHash, ok := childGlobals["hash"].(map[string]any)
+	req.True(ok, "global hash should be a map")
+
+	_, ok = globalHash["key1"]
+	is.False(ok, "Expected global key1 to be removed by parent null override")
+
+	_, ok = globalHash["key2"]
+	is.False(ok, "Expected global key2 to be removed by parent null override")
+
+	is.Equal(13, globalHash["key3"], "key3 should have parent's override value")
+}
