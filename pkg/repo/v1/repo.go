@@ -187,7 +187,7 @@ const maxRepoFileSymlinkHops = 40
 // resolveRepoFileWritePath returns an absolute write path, following a symlink
 // destination to its final target. When the chain ends in a missing target,
 // every link is followed to that target so it can be created while all links
-// are kept.
+// are kept. A final target that exists but is not a regular file is an error.
 func resolveRepoFileWritePath(path string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -203,13 +203,11 @@ func resolveRepoFileWritePath(path string) (string, error) {
 			}
 			return "", err
 		}
-		if fi.Mode()&os.ModeSymlink == 0 {
+		switch mode := fi.Mode(); {
+		case mode.IsRegular():
 			return cur, nil
-		}
-		if hops == 0 {
-			if target, err := filepath.EvalSymlinks(cur); err == nil {
-				return target, nil
-			}
+		case mode&os.ModeSymlink == 0:
+			return "", fmt.Errorf("repository destination %q is not a regular file (mode %s)", cur, mode)
 		}
 		if hops >= maxRepoFileSymlinkHops {
 			return "", fmt.Errorf("%s: too many levels of symbolic links", abs)
