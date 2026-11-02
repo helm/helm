@@ -82,6 +82,10 @@ type ExpressionWarning struct {
 // an ExpressionWarning instead of aborting the entire wait.
 var errIncomparableOrdering = errors.New("ordering operators (<, <=, >, >=) require numeric values")
 
+// errObjectComparison marks a comparison value or JSONPath result that is an
+// object or list instead of a scalar. Object comparisons are not supported.
+var errObjectComparison = errors.New("object comparisons are not supported")
+
 // CustomReadinessEligibleResources returns the identities of resources that
 // may use custom readiness during a wait.
 func CustomReadinessEligibleResources(resources ResourceList) ([]object.ObjMetadata, error) {
@@ -179,6 +183,7 @@ func ParseReadinessExpressions(annotation string) ([]string, error) {
 // expression is well-formed and compiles to a valid JSONPath. It does not
 // evaluate anything against a live object. An empty or absent annotation is
 // valid. Ordering operators (<, <=, >, >=) require a numeric comparison value.
+// Comparison values must be scalars; object and list literals are rejected.
 func ValidateReadinessExpressions(annotation string) error {
 	exprs, err := ParseReadinessExpressions(annotation)
 	if err != nil {
@@ -196,6 +201,14 @@ func ValidateReadinessExpressions(annotation string) error {
 		}
 		if err := jsonpath.New("readiness").Parse(template); err != nil {
 			return fmt.Errorf("invalid JSONPath %q: %w", template, err)
+		}
+
+		// Check for unquoted object or list literal comparison values
+		// Quoted strings (even if they contain { or [) are acceptable
+		trimmedVal := strings.TrimSpace(val)
+		if (strings.HasPrefix(trimmedVal, "{") || strings.HasPrefix(trimmedVal, "[")) &&
+			!strings.HasPrefix(trimmedVal, "\"") && !strings.HasPrefix(trimmedVal, "'") {
+			return fmt.Errorf("expression %q: %w", expr, errObjectComparison)
 		}
 
 		switch op {
@@ -223,6 +236,30 @@ func evaluateExpression(obj map[string]any, expr string) (bool, error) {
 	jp := jsonpath.New("readiness")
 	if err := jp.Parse(template); err != nil {
 		return false, fmt.Errorf("invalid JSONPath %q: %w", template, err)
+	}
+
+	// Use FindResults to check if the result is an object or slice
+	results, err := jp.FindResults(obj)
+	if err != nil {
+		return false, nil
+	}
+
+	// Check that we have exactly one result and it's a scalar
+	if len(results) == 0 || len(results[0]) == 0 {
+		return false, nil
+	}
+
+	// Check if any result is a map or slice/array
+	for _, resultSet := range results {
+		for _, result := range resultSet {
+			if result.IsValid() {
+				val := result.Interface()
+				switch val.(type) {
+				case map[string]any, []any:
+					return false, fmt.Errorf("JSONPath result is an object or array: %w", errObjectComparison)
+				}
+			}
+		}
 	}
 
 	var buf bytes.Buffer

@@ -18,6 +18,7 @@ package kube
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -111,6 +112,14 @@ func (r *customReadinessStatusReader) readStatus(ctx context.Context, reader eng
 
 	result, useKstatus, warnings, err := EvaluateCustomReadiness(resource, successExprs, failureExprs)
 	if err != nil {
+		// Object comparison errors should fail the resource immediately
+		if errors.Is(err, errObjectComparison) {
+			return &event.ResourceStatus{
+				Identifier: identifier,
+				Status:     status.FailedStatus,
+				Message:    fmt.Sprintf("custom readiness expression error: %v", err),
+			}, nil
+		}
 		return nil, err
 	}
 	if useKstatus {

@@ -356,7 +356,9 @@ func TestValidateReadinessExpressions(t *testing.T) {
 		{name: "ordering operator with quoted string value", annotation: `["{.status.phase} > \"Running\""]`, wantErr: "requires a numeric comparison value"},
 		{name: "ordering operator with boolean value", annotation: `["{.status.ready} >= true"]`, wantErr: "requires a numeric comparison value"},
 		{name: "ordering operator with quoted numeric value is valid", annotation: `["{.status.replicas} >= \"3\""]`},
-		{name: "ordering operator with unquoted non-numeric value", annotation: `["{.status.phase} > Running"]`, wantErr: "requires a numeric comparison value"},
+		{name: "object literal comparison rejected", annotation: `["{.status.phase} == {\"x\":1}"]`, wantErr: "object comparisons are not supported"},
+		{name: "list literal comparison rejected", annotation: `["{.status.items} == [1,2,3]"]`, wantErr: "object comparisons are not supported"},
+		{name: "quoted object string accepted", annotation: `["{.status.data} == \"{\\\"key\\\":\\\"value\\\"}\""]`},
 	}
 
 	for _, tt := range tests {
@@ -511,4 +513,42 @@ func TestCompareValues_NumericStringIsNotBoolean(t *testing.T) {
 	met, err = compareValues("false", "!=", "true")
 	require.NoError(t, err)
 	assert.True(t, met)
+}
+
+func TestEvaluateReadiness_ObjectResult_ReturnsError(t *testing.T) {
+	obj := makeUnstructuredWithStatus(t, map[string]any{
+		"metadata": map[string]any{
+			"name": "test",
+		},
+	})
+
+	result, useKstatus, warnings, err := EvaluateCustomReadiness(
+		obj,
+		[]string{`{.metadata} == {}`},
+		[]string{`{.failed} >= 1`},
+	)
+
+	require.ErrorIs(t, err, errObjectComparison)
+	assert.Contains(t, err.Error(), "object comparisons are not supported")
+	assert.False(t, useKstatus)
+	assert.Equal(t, ReadinessPending, result)
+	assert.Empty(t, warnings)
+}
+
+func TestEvaluateReadiness_ArrayResult_ReturnsError(t *testing.T) {
+	obj := makeUnstructuredWithStatus(t, map[string]any{
+		"items": []any{"a", "b", "c"},
+	})
+
+	result, useKstatus, warnings, err := EvaluateCustomReadiness(
+		obj,
+		[]string{`{.items} == []`},
+		[]string{`{.failed} >= 1`},
+	)
+
+	require.ErrorIs(t, err, errObjectComparison)
+	assert.Contains(t, err.Error(), "object comparisons are not supported")
+	assert.False(t, useKstatus)
+	assert.Equal(t, ReadinessPending, result)
+	assert.Empty(t, warnings)
 }

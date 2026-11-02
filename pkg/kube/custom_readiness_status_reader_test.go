@@ -251,6 +251,25 @@ status:
 	}
 }
 
+func TestCustomReadinessStatusReaderObjectComparisonReturnsFailedStatus(t *testing.T) {
+	u := customReadinessTestObject(t, "object-comparison", map[string]string{
+		AnnotationReadinessSuccess: `["{.metadata} == {}"]`,
+		AnnotationReadinessFailure: `["{.failed} >= 1"]`,
+	}, "Running")
+	require.NoError(t, unstructured.SetNestedField(u.Object, map[string]any{"name": "test"}, "status", "metadata"))
+
+	reader := newCustomReadinessStatusReader(
+		slog.New(slog.DiscardHandler),
+		customReadinessFallback(),
+		eligibleReadinessObjects(t, u),
+	)
+
+	result, err := reader.ReadStatusForObject(context.Background(), nil, u)
+	require.NoError(t, err)
+	assert.Equal(t, status.FailedStatus, result.Status)
+	assert.Contains(t, result.Message, "object comparisons are not supported")
+}
+
 func customReadinessTestObject(t *testing.T, name string, annotations map[string]string, phase string) *unstructured.Unstructured {
 	t.Helper()
 	u := &unstructured.Unstructured{}

@@ -117,6 +117,24 @@ func TestReadinessRule_PresencePairs(t *testing.T) {
 			wantSubstring: "requires a numeric comparison value",
 		},
 		{
+			name: "object literal comparison",
+			annotations: map[string]string{
+				kube.AnnotationReadinessSuccess: `["{.status.config} == {\"key\":\"value\"}"]`,
+				kube.AnnotationReadinessFailure: validFailure,
+			},
+			wantError:     true,
+			wantSubstring: "object comparisons are not supported",
+		},
+		{
+			name: "list literal comparison",
+			annotations: map[string]string{
+				kube.AnnotationReadinessSuccess: `["{.status.items} == [1,2,3]"]`,
+				kube.AnnotationReadinessFailure: validFailure,
+			},
+			wantError:     true,
+			wantSubstring: "object comparisons are not supported",
+		},
+		{
 			name:        "both absent",
 			annotations: nil,
 		},
