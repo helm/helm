@@ -297,6 +297,28 @@ func TestWriteFileSymlinkLoop(t *testing.T) {
 	}
 }
 
+func TestWriteFileRejectsNonRegularDestination(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "repositories.d")
+	require.NoError(t, os.Mkdir(target, 0o755))
+	link := filepath.Join(dir, "repositories.yaml")
+	require.NoError(t, os.Symlink(target, link))
+
+	f := NewFile()
+	for _, p := range []string{target, link} {
+		err := f.WriteFile(p, 0o600)
+		require.Error(t, err, p)
+		assert.Contains(t, err.Error(), "not a regular file", p)
+	}
+
+	fi, err := os.Lstat(link)
+	require.NoError(t, err)
+	assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "link must stay a symlink")
+	fi, err = os.Lstat(target)
+	require.NoError(t, err)
+	assert.True(t, fi.IsDir(), "directory must not be replaced")
+}
+
 func TestWriteFileUpdatesSymlinkTarget(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "shared-repositories.yaml")
