@@ -157,3 +157,35 @@ func createTestingSchema(t *testing.T, dir string) string {
 	require.NoErrorf(t, os.WriteFile(schemafile, []byte(testSchema), 0o700), "Failed to write schema to tmpdir")
 	return schemafile
 }
+
+func writeSchemaWithRef(t *testing.T, dir string) {
+	t.Helper()
+	schema := `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": { "replicaCount": { "$ref": "schema/library.json#/definitions/replicas" } }
+}`
+	library := `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": { "replicas": { "type": "integer", "minimum": 1 } }
+}`
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "schema"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "values.schema.json"), []byte(schema), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "schema", "library.json"), []byte(library), 0o600))
+}
+
+func TestValidateValuesFileSchemaWithRelativeRef(t *testing.T) {
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte("replicaCount: 2"))
+	writeSchemaWithRef(t, tmpdir)
+
+	valfile := filepath.Join(tmpdir, "values.yaml")
+	require.NoError(t, validateValuesFile(valfile, map[string]any{}, false))
+}
+
+func TestValidateValuesFileSchemaWithRelativeRefFailure(t *testing.T) {
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte("replicaCount: 0"))
+	writeSchemaWithRef(t, tmpdir)
+
+	valfile := filepath.Join(tmpdir, "values.yaml")
+	assert.ErrorContains(t, validateValuesFile(valfile, map[string]any{}, false), "minimum")
+}
