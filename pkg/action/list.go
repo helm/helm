@@ -21,10 +21,13 @@ import (
 	"regexp"
 
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	ri "helm.sh/helm/v4/pkg/release"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 // ListStates represents zero or more status codes that a list item may have set
@@ -160,7 +163,13 @@ func (l *List) Run() ([]ri.Releaser, error) {
 		}
 	}
 
-	results, err := l.cfg.Releases.List(func(rel ri.Releaser) bool {
+	releases, restore, err := l.releaseStore()
+	if err != nil {
+		return nil, err
+	}
+	defer restore()
+
+	results, err := releases.List(func(rel ri.Releaser) bool {
 		r, err := releaserToV1Release(rel)
 		if err != nil {
 			return false
@@ -295,6 +304,45 @@ func (l *List) filterSelector(releases []*release.Release, selector labels.Selec
 	}
 
 	return desiredStateReleases
+}
+
+// releaseStore returns the storage to list from. With AllNamespaces it is a
+// storage not scoped to a namespace, and l.cfg is left unchanged.
+func (l *List) releaseStore() (*storage.Storage, func(), error) {
+	noop := func() {}
+	if !l.AllNamespaces || l.cfg.Releases == nil {
+		return l.cfg.Releases, noop, nil
+	}
+	var name string
+	switch l.cfg.Releases.Name() {
+	case driver.MemoryDriverName:
+		mem, ok := l.cfg.Releases.Driver.(*driver.Memory)
+		if !ok {
+			return l.cfg.Releases, noop, nil
+		}
+		// Memory has a single shared namespace field; put it back after listing.
+		prev := mem.Namespace()
+		mem.SetNamespace("")
+		return l.cfg.Releases, func() { mem.SetNamespace(prev) }, nil
+	case driver.SecretsDriverName:
+		name = "secret"
+	case driver.ConfigMapsDriverName:
+		name = "configmap"
+	case driver.SQLDriverName:
+		name = "sql"
+	default:
+		return l.cfg.Releases, noop, nil
+	}
+	getter, ok := l.cfg.RESTClientGetter.(genericclioptions.RESTClientGetter)
+	if !ok {
+		return l.cfg.Releases, noop, nil
+	}
+	all := NewConfiguration()
+	all.SetLogger(l.cfg.Logger().Handler())
+	if err := all.Init(getter, "", name); err != nil {
+		return nil, noop, err
+	}
+	return all.Releases, noop, nil
 }
 
 // SetStateMask calculates the state mask based on parameters.
