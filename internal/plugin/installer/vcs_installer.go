@@ -16,12 +16,16 @@ limitations under the License.
 package installer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	stdfs "io/fs"
 	"log/slog"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/vcs"
@@ -91,8 +95,30 @@ func (i *VCSInstaller) Install() error {
 		return ErrMissingMetadata
 	}
 
+	stopFSMonitor(i.Repo.LocalPath())
+
 	slog.Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
 	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
+}
+
+// fsmonitorStopTimeout bounds how long Install waits for git to stop the daemon.
+const fsmonitorStopTimeout = 10 * time.Second
+
+// stopFSMonitor stops the git fsmonitor daemon that a clone leaves running
+// when core.fsmonitor is enabled. Git keeps a socket in .git while the daemon
+// runs, and a socket cannot be copied. The .git directory itself is kept,
+// because "helm plugin update" needs it.
+func stopFSMonitor(repoPath string) {
+	if _, err := os.Stat(filepath.Join(repoPath, ".git")); err != nil {
+		return
+	}
+	// Git older than 2.37 has no daemon, and a repository that never started
+	// one answers with an error, so a failure here is not a problem.
+	ctx, cancel := context.WithTimeout(context.Background(), fsmonitorStopTimeout)
+	defer cancel()
+	if out, err := exec.CommandContext(ctx, "git", "-C", repoPath, "fsmonitor--daemon", "stop").CombinedOutput(); err != nil {
+		slog.Debug("no fsmonitor daemon stopped", "path", repoPath, "output", string(out))
+	}
 }
 
 // Update updates a remote repository
