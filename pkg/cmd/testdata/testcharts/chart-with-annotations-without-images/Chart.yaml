@@ -1,0 +1,7 @@
+apiVersion: v2
+name: chart-with-annotations-without-images
+description: Chart with annotations but without the HIP-0015 helm.sh/images annotation
+version: 0.1.0
+appVersion: "6.0.0"
+annotations:
+  category: Infrastructure
