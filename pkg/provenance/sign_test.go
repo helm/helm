@@ -443,10 +443,10 @@ func TestVerifyRenamedArchiveAmbiguous(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, w.Close())
 
-	provData := []byte(out.String())
+	provData := out.Bytes()
 
 	_, err = signer.Verify(archiveData, provData, "other-name-9.9.9.tgz")
-	assert.ErrorContains(t, err, `provenance does not contain a SHA for a file named "other-name-9.9.9.tgz"`)
+	require.ErrorContains(t, err, `provenance does not contain a SHA for a file named "other-name-9.9.9.tgz"`)
 
 	ver, err := signer.Verify(archiveData, provData, filepath.Base(testChartfile))
 	require.NoError(t, err)
