@@ -17,6 +17,8 @@ package getter
 
 import (
 	"context"
+	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -46,6 +48,23 @@ func TestCollectPlugins(t *testing.T) {
 
 	_, err = p.ByScheme("nosuchthing")
 	require.Error(t, err, "did not expect protocol handler for nosuchthing")
+}
+
+func TestCollectPluginsMultiplePluginDirs(t *testing.T) {
+	env := cli.New()
+	// HELM_PLUGINS may hold a list of directories separated by the OS path list separator
+	env.PluginsDirectory = t.TempDir() + string(os.PathListSeparator) + pluginDir
+
+	p, err := collectGetterPlugins(env)
+	require.NoError(t, err)
+
+	assert.Len(t, p, 2, "Expected 2 plugins, got %d: %v", len(p), p)
+
+	_, err = p.ByScheme("test2")
+	require.NoError(t, err)
+
+	_, err = p.ByScheme("test")
+	require.NoError(t, err)
 }
 
 func TestConvertOptions(t *testing.T) {
@@ -135,6 +154,26 @@ func TestGetterPlugin(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "fake-plugin output", buf.String())
+}
+
+type failingTestPlugin struct {
+	testPlugin
+}
+
+func (t *failingTestPlugin) Invoke(_ context.Context, _ *plugin.Input) (*plugin.Output, error) {
+	return nil, errors.New("exit status 1")
+}
+
+func TestGetterPluginInvokeErrorNamesPlugin(t *testing.T) {
+	gp := getterPlugin{
+		options: []Option{},
+		plg:     &failingTestPlugin{testPlugin{t: t, dir: "fake/dir"}},
+	}
+
+	_, err := gp.Get("test://example.com")
+	require.Error(t, err)
+
+	assert.Equal(t, `plugin "fake-plugin" failed to invoke: exit status 1`, err.Error())
 }
 
 func TestCollectGetterPluginsPassesEnv(t *testing.T) {

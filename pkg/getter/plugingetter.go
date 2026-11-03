@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path/filepath"
 
 	"helm.sh/helm/v4/internal/plugin"
 
@@ -33,7 +34,7 @@ func collectGetterPlugins(settings *cli.EnvSettings) (Providers, error) {
 	d := plugin.Descriptor{
 		Type: "getter/v1",
 	}
-	plgs, err := plugin.FindPlugins([]string{settings.PluginsDirectory}, d)
+	plgs, err := plugin.FindPlugins(filepath.SplitList(settings.PluginsDirectory), d)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +116,7 @@ func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error
 	}
 	output, err := g.plg.Invoke(context.Background(), input)
 	if err != nil {
-		return nil, fmt.Errorf("plugin %q failed to invoke: %w", g.plg, err)
+		return nil, fmt.Errorf("plugin %q failed to invoke: %w", g.plg.Metadata().Name, err)
 	}
 
 	outputMessage, ok := output.Message.(schema.OutputMessageGetterV1)
