@@ -195,11 +195,21 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			return joinErrors(errs, "; ")
 		}
 
+		// Hook deletion must always be awaited, regardless of the wait strategy
+		// configured for the release. HookOnlyStrategy's WaitForDelete is a
+		// no-op by design so that uninstall without --wait does not block, but
+		// skipping it here lets Helm recreate a hook while the previous one is
+		// still terminating. Use StatusWatcherStrategy for this wait instead,
+		// matching Helm 3's unconditional behavior.
+		deleteWaitStrategy := waitStrategy
+		if deleteWaitStrategy == kube.HookOnlyStrategy {
+			deleteWaitStrategy = kube.StatusWatcherStrategy
+		}
 		var waiter kube.Waiter
 		if c, supportsOptions := cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
-			waiter, err = c.GetWaiterWithOptions(waitStrategy, waitOptions...)
+			waiter, err = c.GetWaiterWithOptions(deleteWaitStrategy, waitOptions...)
 		} else {
-			waiter, err = cfg.KubeClient.GetWaiter(waitStrategy)
+			waiter, err = cfg.KubeClient.GetWaiter(deleteWaitStrategy)
 		}
 		if err != nil {
 			return err
