@@ -176,7 +176,7 @@ func (i *LocalInstaller) Path() string {
 		pluginName = stripPluginName(pluginName)
 	}
 
-	return helmpath.DataPath("plugins", pluginName)
+	return filepath.Join(i.pluginsDir(), pluginName)
 }
 
 // SupportsVerification returns true if the local installer can verify plugins
