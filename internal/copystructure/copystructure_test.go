@@ -18,6 +18,7 @@ package copystructure
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -193,37 +194,67 @@ func TestCopy_Map(t *testing.T) {
 }
 
 func TestCopy_Struct(t *testing.T) {
-	type TestStruct struct {
-		Name     string
-		Age      int
-		Active   bool
-		Scores   []int
-		Metadata map[string]any
-	}
+	t.Run("exported fields", func(t *testing.T) {
+		type TestStruct struct {
+			Name     string
+			Age      int
+			Active   bool
+			Scores   []int
+			Metadata map[string]any
+		}
 
-	input := TestStruct{
-		Name:   "John",
-		Age:    30,
-		Active: true,
-		Scores: []int{95, 87, 92},
-		Metadata: map[string]any{
-			"level": "advanced",
-			"tags":  []string{"go", "programming"},
-		},
-	}
+		input := TestStruct{
+			Name:   "John",
+			Age:    30,
+			Active: true,
+			Scores: []int{95, 87, 92},
+			Metadata: map[string]any{
+				"level": "advanced",
+				"tags":  []string{"go", "programming"},
+			},
+		}
 
-	result, err := Copy(input)
-	require.NoError(t, err)
+		result, err := Copy(input)
+		require.NoError(t, err)
 
-	resultStruct, ok := result.(TestStruct)
-	require.True(t, ok)
-	assert.Equal(t, input, resultStruct)
+		resultStruct, ok := result.(TestStruct)
+		require.True(t, ok)
+		assert.Equal(t, input, resultStruct)
 
-	// Verify deep copy
-	input.Name = "Modified"
-	input.Scores[0] = 999
-	assert.Equal(t, "John", resultStruct.Name)
-	assert.Equal(t, 95, resultStruct.Scores[0])
+		// Verify deep copy
+		input.Name = "Modified"
+		input.Scores[0] = 999
+		assert.Equal(t, "John", resultStruct.Name)
+		assert.Equal(t, 95, resultStruct.Scores[0])
+	})
+
+	t.Run("nil interface field", func(t *testing.T) {
+		type WithAny struct {
+			Name  string
+			Extra any
+		}
+
+		input := map[string]any{"s": WithAny{Name: "a"}}
+
+		result, err := Copy(input)
+		require.NoError(t, err)
+		assert.Equal(t, input, result)
+	})
+
+	t.Run("unexported fields", func(t *testing.T) {
+		type withUnexported struct {
+			Name   string
+			secret int
+		}
+
+		_, err := Copy(map[string]any{"s": withUnexported{Name: "a", secret: 1}})
+		require.Error(t, err)
+	})
+
+	t.Run("time.Time", func(t *testing.T) {
+		_, err := Copy(map[string]any{"t": time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)})
+		require.Error(t, err)
+	})
 }
 
 func TestCopy_Pointer(t *testing.T) {
@@ -268,6 +299,18 @@ func TestCopy_Pointer(t *testing.T) {
 		result, err := Copy(input)
 		require.NoError(t, err)
 		assert.Nil(t, result)
+	})
+
+	t.Run("pointer to nil interface", func(t *testing.T) {
+		var value any
+
+		result, err := Copy(&value)
+		require.NoError(t, err)
+
+		resultPtr, ok := result.(*any)
+		require.True(t, ok)
+		assert.Nil(t, *resultPtr)
+		assert.NotSame(t, &value, resultPtr)
 	})
 }
 
