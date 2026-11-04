@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"encoding/json"
 	"math"
 	"strings"
 	"testing"
@@ -36,6 +37,22 @@ func TestFuncs(t *testing.T) {
 		tpl:    `{{ toYaml . }}`,
 		expect: `foo: bar`,
 		vars:   map[string]any{"foo": "bar"},
+	}, {
+		tpl:    `{{ toYaml . }}`,
+		expect: "key: 13",
+		vars:   map[string]any{"key": json.Number("13")},
+	}, {
+		tpl:    `{{ toYaml . }}`,
+		expect: "large: 9007199254740993",
+		vars:   map[string]any{"large": json.Number("9007199254740993")},
+	}, {
+		tpl:    `{{ toYaml . }}`,
+		expect: "pi: 3.14",
+		vars:   map[string]any{"pi": json.Number("3.14")},
+	}, {
+		tpl:    `{{ toToml . }}`,
+		expect: "key = 13\n",
+		vars:   map[string]any{"key": json.Number("13")},
 	}, {
 		tpl:    `{{ toYamlPretty . }}`,
 		expect: "baz:\n  - 1\n  - 2\n  - 3",
