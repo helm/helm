@@ -105,6 +105,14 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.Replace = true // Skip the name check
 			client.APIVersions = common.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
+
+			// --show-only has to be applied before anything is written to
+			// --output-dir, so in that case render to memory and write the
+			// selected manifests to the output directory further below.
+			outputDir := client.OutputDir
+			if len(showFiles) > 0 {
+				client.OutputDir = ""
+			}
 			rel, err := runInstall(args, client, valueOpts, out)
 
 			if err != nil && !settings.Debug {
@@ -158,32 +166,34 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
 
-					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
-					var manifestsToRender []string
+					manifestNameRegex := regexp.MustCompile("# Source: ([^/]+/(.+))")
+					var manifestsToRender []sourcedManifest
 					for _, f := range showFiles {
 						missing := true
 						// Use linux-style filepath separators to unify user's input path
 						f = filepath.ToSlash(f)
+						// Only the first document rendered from a file carries the
+						// "# Source:" comment when the file holds several documents,
+						// as CRD files commonly do. Documents without the comment
+						// belong to the most recently seen source.
+						var source, manifestPath string
 						for _, manifestKey := range manifestsKeys {
 							manifest := splitManifests[manifestKey]
-							submatch := manifestNameRegex.FindStringSubmatch(manifest)
-							if len(submatch) == 0 {
+							// The source is rendered using linux-style filepath
+							// separators on Windows as well as macOS/linux.
+							if submatch := manifestNameRegex.FindStringSubmatch(manifest); len(submatch) > 0 {
+								source, manifestPath = submatch[1], submatch[2]
+							}
+							if source == "" {
 								continue
 							}
-							manifestName := submatch[1]
-							// manifest.Name is rendered using linux-style filepath separators on Windows as
-							// well as macOS/linux.
-							manifestPathSplit := strings.Split(manifestName, "/")
-							// manifest.Path is connected using linux-style filepath separators on Windows as
-							// well as macOS/linux
-							manifestPath := strings.Join(manifestPathSplit, "/")
 
 							// if the filepath provided matches a manifest path in the
 							// chart, render that manifest
 							if matched, _ := filepath.Match(f, manifestPath); !matched {
 								continue
 							}
-							manifestsToRender = append(manifestsToRender, manifest)
+							manifestsToRender = append(manifestsToRender, sourcedManifest{source: source, document: manifest})
 							missing = false
 						}
 						if missing {
@@ -194,8 +204,27 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							return fmt.Errorf("could not find template %s in chart", f)
 						}
 					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
+					if outputDir == "" {
+						for _, m := range manifestsToRender {
+							fmt.Fprintf(out, "---\n%s\n", m.document)
+						}
+					} else {
+						newDir := outputDir
+						if client.UseReleaseName {
+							newDir = filepath.Join(outputDir, client.ReleaseName)
+						}
+						fileWritten := make(map[string]bool)
+						for _, m := range manifestsToRender {
+							// writeToFile adds the "# Source:" comment itself, so drop the
+							// one added when rendering. Documents are separated by a blank
+							// line, as when --show-only is not used.
+							content := strings.TrimPrefix(m.document, "# Source: "+m.source+"\n")
+							content = strings.TrimRight(content, "\n") + "\n"
+							if err := writeToFile(newDir, m.source, content, fileWritten[m.source]); err != nil {
+								return err
+							}
+							fileWritten[m.source] = true
+						}
 					}
 				} else {
 					fmt.Fprintf(out, "%s", manifests.String())
@@ -227,6 +256,17 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("validate", "dry-run")
 
 	return cmd
+}
+
+// sourcedManifest is a single rendered YAML document and the chart file it was
+// rendered from.
+type sourcedManifest struct {
+	// source is the path of the file the document was rendered from, prefixed
+	// with the chart name, e.g. "mychart/templates/service.yaml".
+	source string
+	// document is the rendered document, starting with its "# Source:" comment
+	// when it has one.
+	document string
 }
 
 func isTestHook(h *release.Hook) bool {
