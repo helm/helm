@@ -71,6 +71,15 @@ func TestLoadDirWithDevNull(t *testing.T) {
 	assert.Error(t, err, "packages with an irregular file (/dev/null) should not load")
 }
 
+func TestLoadDirRejectsUnknownAPIVersion(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Chart.yaml"), []byte("apiVersion: v100\nname: test\nversion: 1.0.0\n"), 0o644))
+
+	_, err := LoadDir(dir)
+	require.Error(t, err, "charts with an unknown apiVersion should not load")
+	assert.Contains(t, err.Error(), "apiVersion \"v100\" is not valid")
+}
+
 func TestLoadDirWithSymlink(t *testing.T) {
 	sym := filepath.Join("..", "LICENSE")
 	link := filepath.Join("testdata", "frobnitz_with_symlink", "LICENSE")
