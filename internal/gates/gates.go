@@ -19,3 +19,9 @@ import "helm.sh/helm/v4/pkg/gates"
 
 // ChartV3 is the feature gate for chart API version v3.
 const ChartV3 gates.Gate = "HELM_EXPERIMENTAL_CHART_V3"
+
+// ContainersConfig is the feature gate for loading the container ecosystem
+// registry configuration (auth.json, registries.conf, certs.d, policy.json
+// and registries.d). With it set, the CLI also enforces policy.json and
+// verifies signatures configured in registries.d.
+const ContainersConfig gates.Gate = "HELM_EXPERIMENTAL_CONTAINERS_CONFIG"
