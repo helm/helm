@@ -45,6 +45,9 @@ of the values.yaml file
 const showChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the Chart.yaml file
+
+For charts in OCI registries, --oci-annotations also displays the annotations of
+the OCI manifest (such as org.opencontainers.image.created) under 'ociAnnotations'.
 `
 
 const readmeChartDesc = `
@@ -197,6 +200,9 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	if subCmd.Name() == "values" {
 		f.StringVar(&client.JSONPathTemplate, "jsonpath", "", "supply a JSONPath expression to filter the output")
 	}
+	if subCmd.Name() == "chart" || subCmd.Name() == "all" {
+		f.BoolVar(&client.IncludeOCIAnnotations, "oci-annotations", false, "include the annotations of the OCI manifest in the output (only applies to charts in OCI registries)")
+	}
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
 	err := subCmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -219,6 +225,9 @@ func runShow(args []string, client *action.Show) (string, error) {
 
 	cp, err := client.LocateChart(args[0], settings)
 	if err != nil {
+		return "", err
+	}
+	if err := client.LoadOCIAnnotations(args[0]); err != nil {
 		return "", err
 	}
 	return client.Run(cp)

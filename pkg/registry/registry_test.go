@@ -565,6 +565,27 @@ func testPull(suite *TestRegistry) {
 	suite.Equal(provData, result.Prov.Data)
 }
 
+func testManifestAnnotations(suite *TestRegistry) {
+	// Load test chart (to build ref pushed in previous test)
+	chartData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
+	suite.Require().NoError(err, "no error loading test chart")
+	meta, err := extractChartMeta(chartData)
+	suite.Require().NoError(err, "no error extracting chart meta")
+	ref := fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
+
+	annotations, err := suite.RegistryClient.ManifestAnnotations(ref)
+	suite.Require().NoError(err, "no error fetching manifest annotations")
+	suite.Equal(meta.Name, annotations[ocispec.AnnotationTitle])
+	suite.Equal(meta.Version, annotations[ocispec.AnnotationVersion])
+	suite.Equal(meta.Description, annotations[ocispec.AnnotationDescription])
+	suite.Equal("1977-09-02T22:04:05Z", annotations[ocispec.AnnotationCreated])
+
+	// Missing reference
+	ref = suite.DockerRegistryHost + "/testrepo/no-existy:1.2.3"
+	_, err = suite.RegistryClient.ManifestAnnotations(ref)
+	suite.Require().Error(err, "error fetching manifest annotations of a non-existent ref")
+}
+
 func testTags(suite *TestRegistry) {
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
