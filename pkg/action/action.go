@@ -204,16 +204,14 @@ func annotateAndMerge(files map[string]string) (string, error) {
 			if strings.TrimSpace(doc) == "" {
 				continue
 			}
-			manifests, err := kio.ParseAll(doc)
+			manifest, err := kyaml.Parse(doc)
 			if err != nil {
 				return "", fmt.Errorf("parsing %s: %w", fname, err)
 			}
-			for _, manifest := range manifests {
-				if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
-					return "", fmt.Errorf("annotating %s: %w", fname, err)
-				}
-				combinedManifests = append(combinedManifests, manifest)
+			if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
+				return "", fmt.Errorf("annotating %s: %w", fname, err)
 			}
+			combinedManifests = append(combinedManifests, manifest)
 		}
 	}
 
@@ -234,13 +232,13 @@ func annotateAndMerge(files map[string]string) (string, error) {
 // group), so that merging results from different invocations does not collide
 // on the same synthetic key.
 func splitAndDeannotate(postrendered, fallbackPrefix string) (map[string]string, error) {
-	manifests, err := kio.ParseAll(postrendered)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing YAML: %w", err)
-	}
-
+	docs := releaseutil.SplitManifests(postrendered)
 	manifestsByFilename := make(map[string][]*kyaml.RNode)
-	for i, manifest := range manifests {
+	for i := 0; i < len(docs); i++ {
+		manifest, err := kyaml.Parse(docs[fmt.Sprintf("manifest-%d", i)])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing YAML: %w", err)
+		}
 		meta, err := manifest.GetMeta()
 		if err != nil {
 			return nil, fmt.Errorf("getting metadata: %w", err)

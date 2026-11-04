@@ -1704,7 +1704,7 @@ data:
 		{
 			name:          "invalid yaml input",
 			input:         "invalid: yaml: content:",
-			expectedError: "error parsing YAML: MalformedYAMLError",
+			expectedError: "error parsing YAML:",
 		},
 		{
 			name: "manifest without filename annotation",
@@ -1797,6 +1797,33 @@ data:
 
 		assert.Equal(t, normalizeContent(originalContent), normalizeContent(reconstructedContent))
 	}
+}
+
+func TestRenderResources_PostRenderer_ListAnchorRoundTrip(t *testing.T) {
+	cfg := actionConfigFixture(t)
+	ch := buildChartWithTemplates([]*common.File{{
+		Name:    "templates/list.yaml",
+		ModTime: time.Now(),
+		Data: []byte(`apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: cm-a
+  data: &shared
+    key: value
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: cm-b
+  data: *shared`),
+	}})
+
+	_, buf, _, err := cfg.renderResources(t.Context(), ch, nil, "test-release", "", false, false, false, &mockPostRenderer{}, false, false, false, PostRenderStrategyCombined)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "name: cm-a")
+	assert.Contains(t, buf.String(), "name: cm-b")
 }
 
 func TestRenderResources_PostRenderer_Success(t *testing.T) {
@@ -1915,7 +1942,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	assert.ErrorContains(t, err, "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
+	assert.ErrorContains(t, err, "error while parsing post rendered output: error parsing YAML:")
 }
 
 func TestRenderResources_PostRenderer_Integration(t *testing.T) {
