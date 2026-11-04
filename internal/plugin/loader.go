@@ -161,7 +161,7 @@ func LogIgnorePluginLoadErrorFilterFunc(pluginYAML string, err error) error {
 	return nil
 }
 
-// errorFilterFunc is a function that can filter errors during plugin loading
+// ErrorFilterFunc is a function that can filter errors during plugin loading
 type ErrorFilterFunc func(string, error) error
 
 // LoadAllDir load all plugins found beneath the base directory, using the provided error filter to determine whether to fail on individual plugin load errors.
