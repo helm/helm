@@ -81,13 +81,11 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 	return executeActionCommandStdinC(store, nil, cmd)
 }
 
-func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string) (*cobra.Command, string, error) {
+func executeActionCommandWithWriters(store *storage.Storage, in *os.File, outWriter, errWriter io.Writer, cmd string) (*cobra.Command, error) {
 	args, err := shellwords.Parse(cmd)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-
-	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{
 		Releases:     store,
@@ -95,13 +93,13 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Capabilities: common.DefaultCapabilities,
 	}
 
-	root, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
+	root, err := newRootCmdWithConfig(actionConfig, outWriter, args, SetupLogging)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	root.SetOut(buf)
-	root.SetErr(buf)
+	root.SetOut(outWriter)
+	root.SetErr(errWriter)
 	root.SetArgs(args)
 
 	oldStdin := os.Stdin
@@ -118,10 +116,13 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		mem.SetNamespace(settings.Namespace())
 	}
 	c, err := root.ExecuteC()
+	return c, err
+}
 
-	result := buf.String()
-
-	return c, result, err
+func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string) (*cobra.Command, string, error) {
+	buf := new(bytes.Buffer)
+	c, err := executeActionCommandWithWriters(store, in, buf, buf, cmd)
+	return c, buf.String(), err
 }
 
 // cmdTestCase describes a test case that works with releases.
@@ -300,4 +301,11 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 			}
 		})
 	}
+}
+
+func executeActionCommandErr(store *storage.Storage, in *os.File, cmd string) (*cobra.Command, string, string, error) {
+	bufOut := new(bytes.Buffer)
+	bufErr := new(bytes.Buffer)
+	c, err := executeActionCommandWithWriters(store, in, bufOut, bufErr, cmd)
+	return c, bufOut.String(), bufErr.String(), err
 }
