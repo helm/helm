@@ -26,7 +26,7 @@ import (
 	v2chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
-var NewAccessor func(chrt Charter) (Accessor, error) = NewDefaultAccessor //nolint:revive
+var NewAccessor func(chrt Charter) (Accessor, error) = NewDefaultAccessor
 
 func NewDefaultAccessor(chrt Charter) (Accessor, error) {
 	switch v := chrt.(type) {
