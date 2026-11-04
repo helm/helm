@@ -18,14 +18,19 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
 	deletevalchart := "testdata/testcharts/issue-9027"
+	multiDocCRDChart := "testdata/testcharts/issue-11321"
 
 	tests := []cmdTestCase{
 		{
@@ -114,6 +119,11 @@ func TestTemplateCmd(t *testing.T) {
 			repeat: 10,
 		},
 		{
+			name:   "template with show-only selecting a CRD file with several documents",
+			cmd:    fmt.Sprintf("template '%s' --include-crds --show-only crds/crds.yaml", multiDocCRDChart),
+			golden: "output/template-show-only-crds.txt",
+		},
+		{
 			name:   "sorted output of manifests (order of filenames, then order of objects within each YAML file)",
 			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/object-order"),
 			golden: "output/object-order.txt",
@@ -174,6 +184,71 @@ func TestTemplateCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestTemplateShowOnlyWithOutputDir(t *testing.T) {
+	multiDocCRDChart := "testdata/testcharts/issue-11321"
+
+	t.Run("writes only the selected templates", func(t *testing.T) {
+		outputDir := t.TempDir()
+		_, _, err := executeActionCommand(fmt.Sprintf(
+			"template '%s' --include-crds --output-dir '%s' --show-only crds/crds.yaml --show-only templates/pre-install-job.yaml",
+			multiDocCRDChart, outputDir))
+		require.NoError(t, err)
+
+		chartDir := filepath.Join(outputDir, "issue-11321")
+		assert.NoFileExists(t, filepath.Join(chartDir, "templates", "configmap.yaml"))
+
+		crds, err := os.ReadFile(filepath.Join(chartDir, "crds", "crds.yaml"))
+		require.NoError(t, err)
+		assert.Equal(t, `---
+# Source: issue-11321/crds/crds.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: firsts.example.com
+
+---
+# Source: issue-11321/crds/crds.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: seconds.example.com
+
+`, string(crds))
+
+		hook, err := os.ReadFile(filepath.Join(chartDir, "templates", "pre-install-job.yaml"))
+		require.NoError(t, err)
+		assert.Equal(t, `---
+# Source: issue-11321/templates/pre-install-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: release-name-pre-install
+  annotations:
+    "helm.sh/hook": pre-install
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: pre-install
+          image: busybox
+
+`, string(hook))
+	})
+
+	t.Run("writes nothing when a selected template does not exist", func(t *testing.T) {
+		outputDir := t.TempDir()
+		_, _, err := executeActionCommand(fmt.Sprintf(
+			"template '%s' --output-dir '%s' --show-only templates/missing.yaml",
+			multiDocCRDChart, outputDir))
+		require.ErrorContains(t, err, "could not find template templates/missing.yaml in chart")
+
+		entries, err := os.ReadDir(outputDir)
+		require.NoError(t, err)
+		assert.Empty(t, entries)
+	})
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {
