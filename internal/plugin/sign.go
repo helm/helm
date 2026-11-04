@@ -104,16 +104,13 @@ func parsePluginMessageBlock(data []byte) (*Metadata, *provenance.SumCollection,
 // CreatePluginTarball creates a gzipped tarball from a plugin directory
 func CreatePluginTarball(sourceDir, pluginName string, w io.Writer) error {
 	gzw := gzip.NewWriter(w)
-	defer gzw.Close()
-
 	tw := tar.NewWriter(gzw)
-	defer tw.Close()
 
 	// Use the plugin name as the base directory in the tarball
 	baseDir := pluginName
 
 	// Walk the directory tree
-	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -153,4 +150,15 @@ func CreatePluginTarball(sourceDir, pluginName string, w io.Writer) error {
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	if err := tw.Close(); err != nil {
+		return fmt.Errorf("closing tar writer: %w", err)
+	}
+	if err := gzw.Close(); err != nil {
+		return fmt.Errorf("closing gzip writer: %w", err)
+	}
+	return nil
 }
