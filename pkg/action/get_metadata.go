@@ -28,6 +28,29 @@ import (
 	"helm.sh/helm/v4/pkg/release"
 )
 
+// ReleaseSourceAnnotation is the chart metadata annotation under which Helm
+// records the location a release's chart was installed or upgraded from, so it
+// can be surfaced by 'helm list --show-source' and 'helm get metadata'.
+const ReleaseSourceAnnotation = "meta.helm.sh/release-source"
+
+// setChartSourceAnnotation records source on the chart's metadata under
+// ReleaseSourceAnnotation. It is a no-op when source is empty. Callers must
+// invoke it only after render values have been computed/rendered, so the
+// annotation is persisted on the stored release without leaking into the
+// template render context via .Chart.Annotations.
+func setChartSourceAnnotation(chrt *chart.Chart, source string) {
+	if source == "" {
+		return
+	}
+	if chrt.Metadata == nil {
+		chrt.Metadata = &chart.Metadata{}
+	}
+	if chrt.Metadata.Annotations == nil {
+		chrt.Metadata.Annotations = make(map[string]string)
+	}
+	chrt.Metadata.Annotations[ReleaseSourceAnnotation] = source
+}
+
 // GetMetadata is the action for checking a given release's metadata.
 //
 // It provides the implementation of 'helm get metadata'.
@@ -42,7 +65,14 @@ type Metadata struct {
 	Chart      string `json:"chart" yaml:"chart"`
 	Version    string `json:"version" yaml:"version"`
 	AppVersion string `json:"appVersion" yaml:"appVersion"`
-	// Annotations are fetched from the Chart.yaml file
+	// Source is where the chart was installed or upgraded from (a repository URL
+	// or chart reference), recorded via the meta.helm.sh/release-source
+	// annotation. Empty for releases created before this was recorded.
+	Source string `json:"source,omitempty" yaml:"source,omitempty"`
+	// Annotations are the chart metadata annotations from Chart.yaml. For a
+	// release installed or upgraded with a recorded source, this map also
+	// includes the meta.helm.sh/release-source annotation Helm adds at
+	// install/upgrade time (also surfaced separately via Source above).
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// Labels of the release which are stored in driver metadata fields storage
 	Labels       map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
@@ -98,6 +128,7 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 		Chart:        chrt.Metadata.Name,
 		Version:      chrt.Metadata.Version,
 		AppVersion:   chrt.Metadata.AppVersion,
+		Source:       chrt.Metadata.Annotations[ReleaseSourceAnnotation],
 		Dependencies: ac.MetaDependencies(),
 		Annotations:  chrt.Metadata.Annotations,
 		Labels:       rac.Labels(),
