@@ -29,10 +29,10 @@ if [[ -z "${PREVIOUS_RELEASE}" || -z "${RELEASE}" ]]; then
 fi
 
 ## validate git tags
-for tag in $RELEASE $PREVIOUS_RELEASE; do
-  OK=$(git tag -l ${tag} | wc -l)
+for tag in "$RELEASE" "$PREVIOUS_RELEASE"; do
+  OK=$(git tag -l "$tag" | wc -l)
   if [[ "$OK" == "0" ]]; then
-    echo ${tag} is not a valid release version
+    echo "$tag is not a valid release version"
     exit 1
   fi
 done
@@ -46,20 +46,20 @@ if [[ ! -e "./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum" ]]; then
 fi
 
 ## Generate CHANGELOG from git log
-CHANGELOG=$(git log --no-merges --pretty=format:'- %s %H (%aN)' ${PREVIOUS_RELEASE}..${RELEASE})
-if [[ ! $? -eq 0 ]]; then
+CHANGELOG=$(git log --no-merges --pretty=format:'- %s %H (%aN)' "${PREVIOUS_RELEASE}".."${RELEASE}")
+if ! git log --no-merges --pretty=format:'- %s %H (%aN)' "${PREVIOUS_RELEASE}".."${RELEASE}" > /dev/null; then
   echo "Error creating changelog"
   echo "try running \`git log --no-merges --pretty=format:'- %s %H (%aN)' ${PREVIOUS_RELEASE}..${RELEASE}\`"
   exit 1
 fi
 
 ## guess at MAJOR / MINOR / PATCH versions
-MAJOR=$(echo ${RELEASE} | sed 's/^v//' | cut -f1 -d.)
-MINOR=$(echo ${RELEASE} | sed 's/^v//' | cut -f2 -d.)
-PATCH=$(echo ${RELEASE} | sed 's/^v//' | cut -f3 -d.)
+MAJOR=$(echo "${RELEASE}" | sed 's/^v//' | cut -f1 -d.)
+MINOR=$(echo "${RELEASE}" | sed 's/^v//' | cut -f2 -d.)
+PATCH=$(echo "${RELEASE}" | sed 's/^v//' | cut -f3 -d.)
 
 ## Print release notes to stdout
-cat <<EOF
+cat <<'EOF'
 ## ${RELEASE}
 
 Helm ${RELEASE} is a feature release. This release, we focused on <insert focal point>. Users are encouraged to upgrade for the best experience.
@@ -98,8 +98,8 @@ The [Quickstart Guide](https://helm.sh/docs/intro/quickstart/) will get you goin
 
 ## What's Next
 
-- ${MAJOR}.${MINOR}.$(expr ${PATCH} + 1) will contain only bug fixes.
-- ${MAJOR}.$(expr ${MINOR} + 1).${PATCH} is the next feature release. This release will focus on ...
+- ${MAJOR}.${MINOR}.$((${PATCH} + 1)) will contain only bug fixes.
+- ${MAJOR}.$((${MINOR} + 1)).${PATCH} is the next feature release. This release will focus on ...
 
 ## Changelog
 
