@@ -104,28 +104,24 @@ $ export HELM_E2E_SINGLE_REPO=helm-e2e
 The suite has no registry-specific behavior — everything comes from the
 environment — so covering a new registry is a matter of pointing the same tests
 at it. `.github/workflows/e2e-registries.yml` runs it on a schedule against
-Docker Hub, in single-repository mode, and against GitLab, in the default
-layout, to catch changes that break a particular registry implementation rather
-than OCI in general.
+each registry in its matrix, to catch changes that break a particular registry
+implementation rather than OCI in general. The comments in that workflow say
+which registries run in single-repository mode and what kind of token each one
+needs.
 
 Each registry is one entry in that workflow's matrix, configured by the same
 settings named after its id: `vars.E2E_<ID>_REGISTRY`,
 `vars.E2E_<ID>_NAMESPACE`, `vars.E2E_<ID>_REPOSITORY`,
 `secrets.E2E_<ID>_USERNAME` and `secrets.E2E_<ID>_PASSWORD`. The username is
 still read from `vars.E2E_<ID>_USERNAME` when no secret is set. Adding a
-registry is a new matrix entry, saying
-whether it needs single-repository mode, plus those settings.
+registry is a new matrix entry, saying whether it needs single-repository mode,
+plus those settings.
 
-To run it against GitLab yourself, create a project, then a deploy token on it
-with the `read_registry` and `write_registry` scopes, and point the suite at the
-project's registry:
-
-```console
-$ export HELM_E2E_REGISTRY=registry.gitlab.com/<namespace>/<project>
-$ export HELM_E2E_USERNAME=gitlab+deploy-token-<id>
-$ export HELM_E2E_PASSWORD=<deploy token>
-$ make test-e2e
-```
+To run the suite yourself against one of those registries, set
+`HELM_E2E_USERNAME` and `HELM_E2E_PASSWORD` to the same credential, and
+`HELM_E2E_REGISTRY` to `<registry>/<namespace>/<repository>`. For a
+single-repository registry, set `HELM_E2E_REGISTRY` to `<registry>/<namespace>`
+and `HELM_E2E_SINGLE_REPO` to `<repository>` instead.
 
 A default `registry` serves anonymous access, so the invalid-credential test
 skips itself there, as described above.
