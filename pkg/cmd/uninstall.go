@@ -36,6 +36,9 @@ as well as the release history, freeing it up for future use.
 Use the '--dry-run' flag to see which releases will be uninstalled without actually
 uninstalling them.
 
+Use the '--ignore-resource-policy' flag to delete resources annotated with
+'helm.sh/resource-policy: keep'.
+
 Use '--cascade foreground' with '--wait' to ensure resources with finalizers
 are fully deleted before the command returns.
 `
@@ -78,6 +81,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a uninstall")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during uninstallation")
 	f.BoolVar(&client.IgnoreNotFound, "ignore-not-found", false, `Treat "release not found" as a successful uninstall`)
+	f.BoolVar(&client.IgnoreResourcePolicy, "ignore-resource-policy", false, "delete resources annotated with helm.sh/resource-policy: keep")
 	f.BoolVar(&client.KeepHistory, "keep-history", false, "remove all associated resources and mark the release as deleted, but retain the release history")
 	f.StringVar(&client.DeletionPropagation, "cascade", "background", "Must be \"background\", \"orphan\", or \"foreground\". Selects the deletion cascading strategy for the dependents. Defaults to background. Use \"foreground\" with --wait to ensure resources with finalizers are fully deleted before returning.")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
