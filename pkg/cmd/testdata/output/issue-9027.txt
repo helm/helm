@@ -2,15 +2,15 @@
 # Source: issue-9027/charts/subchart/templates/values.yaml
 global:
   hash:
-    key1: 1
-    key2: 2
+    key1: null
+    key2: null
     key3: 13
     key4: 4
     key5: 5
     key6: 6
 hash:
-  key1: 1
-  key2: 2
+  key1: null
+  key2: null
   key3: 13
   key4: 4
   key5: 5
@@ -24,15 +24,15 @@ global:
 subchart:
   global:
     hash:
-      key1: 1
-      key2: 2
+      key1: null
+      key2: null
       key3: 13
       key4: 4
       key5: 5
       key6: 6
   hash:
-    key1: 1
-    key2: 2
+    key1: null
+    key2: null
     key3: 13
     key4: 4
     key5: 5

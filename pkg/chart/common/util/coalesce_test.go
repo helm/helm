@@ -211,8 +211,9 @@ func TestCoalesceValues(t *testing.T) {
 		assert.Falsef(t, ok, "Expected key %q to be removed, still present", nullKey)
 	}
 
-	_, ok := v["nested"].(map[string]any)["boat"]
-	assert.False(t, ok, "Expected nested boat key to be removed, still present")
+	nb, ok := v["nested"].(map[string]any)["boat"]
+	assert.True(t, ok, "Expected nested boat key to be present (nullified to nil)")
+	assert.Nil(t, nb, "Expected nested boat key to be nil")
 
 	subchart := v["pequod"].(map[string]any)
 	_, ok = subchart["boat"]
@@ -222,8 +223,9 @@ func TestCoalesceValues(t *testing.T) {
 	_, ok = subsubchart["boat"]
 	assert.False(t, ok, "Expected sub-subchart ahab boat key to be removed, still present")
 
-	_, ok = subsubchart["nested"].(map[string]any)["boat"]
-	assert.False(t, ok, "Expected sub-subchart nested boat key to be removed, still present")
+	snb, ok := subsubchart["nested"].(map[string]any)["boat"]
+	assert.True(t, ok, "Expected sub-subchart nested boat key to be present (nullified to nil)")
+	assert.Nil(t, snb, "Expected sub-subchart nested boat key to be nil")
 
 	_, ok = subsubchart["object"]
 	assert.False(t, ok, "Expected sub-subchart object map to be removed, still present")
@@ -423,7 +425,8 @@ func TestCoalesceTables(t *testing.T) {
 	assert.Equal(t, "MA", addr["state"].(string), "Unexpected state: %v", addr["state"])
 
 	_, ok = addr["country"]
-	assert.False(t, ok, "The country is not left out.")
+	assert.True(t, ok, "The country should be present as a nullified nil value")
+	assert.Nil(t, addr["country"], "The country should be nil")
 
 	det, ok := dst["details"].(map[string]any)
 	require.Truef(t, ok, "Details is the wrong type: %v", dst["details"])
@@ -433,7 +436,8 @@ func TestCoalesceTables(t *testing.T) {
 	assert.Equal(t, "pequod", dst["boat"].(string), "Expected boat string, got %v", dst["boat"])
 
 	_, ok = dst["hole"]
-	assert.False(t, ok, "The hole still exists.")
+	assert.True(t, ok, "The hole should be present as a nullified nil value")
+	assert.Nil(t, dst["hole"], "The hole should be nil")
 
 	dst2 := map[string]any{
 		"name": "Ishmael",
@@ -824,4 +828,60 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 
 	_, ok = keyMapping["password"]
 	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
+}
+
+// TestCoalesceValuesSubchartNullOverrideFromParentValues reproduces
+// helm/helm#32522: when a parent chart's values.yaml carries a subchart override
+// that nullifies a subchart default (e.g. grafana.securityContext.runAsUser: null),
+// the subchart default must NOT be silently re-injected. This mirrors the real
+// `helm template` path where the override lives in chrt.Values() (not in the
+// user's -f values) and CoalesceValues is invoked with an empty override map.
+func TestCoalesceValuesSubchartNullOverrideFromParentValues(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	// Subchart has a default that the user wants to erase.
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "grafana"},
+		Values: map[string]any{
+			"securityContext": map[string]any{
+				"runAsUser":  int64(472),
+				"runAsGroup": int64(472),
+				"fsGroup":    int64(472),
+			},
+		},
+	}
+
+	// Parent chart's values.yaml carries the subchart override that nullifies
+	// the default (this is exactly what the loader puts into chrt.Values()).
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values: map[string]any{
+			"grafana": map[string]any{
+				"securityContext": map[string]any{
+					"runAsUser":  nil,
+					"runAsGroup": nil,
+					"fsGroup":    nil,
+				},
+			},
+		},
+	}, subchart)
+
+	// The user supplies no -f values (helm template passes an empty map here).
+	v, err := CoalesceValues(parent, map[string]any{})
+	req.NoError(err)
+
+	childVals, ok := v["grafana"].(map[string]any)
+	is.True(ok, "grafana values should be a map")
+
+	sc, ok := childVals["securityContext"].(map[string]any)
+	is.True(ok, "securityContext should be a map")
+
+	// The subchart default 472 must NOT have been re-injected: the user's null
+	// wins and the key is present-but-nil (renders as no value).
+	_, ok = sc["runAsUser"]
+	is.True(ok, "Expected securityContext.runAsUser to be present (nil), not re-injected with the subchart default 472")
+	is.Nil(sc["runAsUser"], "Expected securityContext.runAsUser to be nil, but the subchart default 472 leaked through (helm/helm#32522)")
+	is.Nil(sc["runAsGroup"], "Expected securityContext.runAsGroup to be nil, but the subchart default leaked through")
+	is.Nil(sc["fsGroup"], "Expected securityContext.fsGroup to be nil, but the subchart default leaked through")
 }
