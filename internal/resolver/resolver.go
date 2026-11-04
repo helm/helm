@@ -133,6 +133,12 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			}
 			found = false
 		} else {
+			// OCI dependency: like the non-OCI branch, only a version that
+			// satisfies the constraint should count as found. Otherwise a
+			// missing/unmatched tag set would silently write the raw
+			// constraint (e.g. "1.x.x") into Chart.lock instead of raising
+			// the "can't get a valid version" error below.
+			found = false
 			version = d.Version
 
 			// Check to see if an explicit version has been provided
