@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"io"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 
@@ -27,17 +28,17 @@ const pluginHelp = `
 Manage client-side Helm plugins.
 `
 
-func newPluginCmd(out io.Writer) *cobra.Command {
+func newPluginCmd(logger *slog.Logger, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plugin",
 		Short: "install, list, or uninstall Helm plugins",
 		Long:  pluginHelp,
 	}
 	cmd.AddCommand(
-		newPluginInstallCmd(out),
-		newPluginListCmd(out),
-		newPluginUninstallCmd(out),
-		newPluginUpdateCmd(out),
+		newPluginInstallCmd(logger, out),
+		newPluginListCmd(logger, out),
+		newPluginUninstallCmd(logger, out),
+		newPluginUpdateCmd(logger, out),
 		newPluginPackageCmd(out),
 		newPluginVerifyCmd(out),
 	)
