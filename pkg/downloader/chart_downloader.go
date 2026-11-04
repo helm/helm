@@ -485,36 +485,51 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 // It assumes that a chart archive file is accompanied by a provenance file whose
 // name is the archive file name plus the ".prov" extension.
 func VerifyChart(path, provfile, keyring string) (*provenance.Verification, error) {
+	v, _, err := VerifyChartData(path, provfile, keyring)
+	return v, err
+}
+
+// VerifyChartData verifies the chart archive at path against provfile, as
+// VerifyChart does, and also returns the archive bytes that were verified.
+// Callers can then load the chart from those exact bytes rather than reading
+// path again.
+func VerifyChartData(path, provfile, keyring string) (*provenance.Verification, []byte, error) {
 	// For now, error out if it's not a tar file.
 	switch fi, err := os.Stat(path); {
 	case err != nil:
-		return nil, err
+		return nil, nil, err
 	case fi.IsDir():
-		return nil, errors.New("unpacked charts cannot be verified")
+		return nil, nil, errors.New("unpacked charts cannot be verified")
 	case !isTar(path):
-		return nil, errors.New("chart must be a tgz file")
+		return nil, nil, errors.New("chart must be a tgz file")
 	}
 
 	if _, err := os.Stat(provfile); err != nil {
-		return nil, fmt.Errorf("could not load provenance file %s: %w", provfile, err)
+		return nil, nil, fmt.Errorf("could not load provenance file %s: %w", provfile, err)
 	}
 
 	sig, err := provenance.NewFromKeyring(keyring, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to load keyring: %w", err)
+		return nil, nil, fmt.Errorf("failed to load keyring: %w", err)
 	}
 
 	// Read archive and provenance files
 	archiveData, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read chart archive: %w", err)
+		return nil, nil, fmt.Errorf("failed to read chart archive: %w", err)
 	}
 	provData, err := os.ReadFile(provfile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read provenance file: %w", err)
+		return nil, nil, fmt.Errorf("failed to read provenance file: %w", err)
 	}
 
-	return sig.Verify(archiveData, provData, filepath.Base(path))
+	// Verify returns a partial result alongside an error; pass it through, as
+	// VerifyChart always has, but return the bytes only once they verified.
+	v, err := sig.Verify(archiveData, provData, filepath.Base(path))
+	if err != nil {
+		return v, nil, err
+	}
+	return v, archiveData, nil
 }
 
 // isTar tests whether the given file is a tar file.

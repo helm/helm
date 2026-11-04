@@ -184,10 +184,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			chartPath, err := client.LocateChart(args[1], settings)
+			lc, err := client.LocateChartWithVerification(args[1], settings)
 			if err != nil {
 				return err
 			}
+			chartPath := lc.Path
 
 			p := getter.All(settings)
 			vals, err := valueOpts.MergeValues(p)
@@ -196,7 +197,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			// Check chart dependencies to make sure all are present in /charts
-			ch, err := loader.Load(chartPath)
+			ch, err := loadLocatedChart(lc)
 			if err != nil {
 				return err
 			}
@@ -231,7 +232,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if err := man.Update(); err != nil {
 						return err
 					}
-					// Reload the chart with the updated Chart.lock file.
+					// Reload the chart with the updated Chart.lock file. This
+					// must re-read the path; see runInstall.
 					if ch, err = loader.Load(chartPath); err != nil {
 						return fmt.Errorf("failed reloading chart after repo update: %w", err)
 					}
