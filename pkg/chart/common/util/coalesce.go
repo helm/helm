@@ -251,9 +251,11 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					// If the key is a child chart, coalesce tables with Merge set to true
 					merge := childChartMergeTrue(c, key, merge)
 
-					// When coalescing, clean nils from chart defaults before merging
-					// so they don't leak into the result.
-					if !merge {
+					// When coalescing a subchart default, clean nils from the chart
+					// defaults before merging so they don't leak into the result.
+					// Null values defined directly in the top-level chart's own
+					// values.yaml are preserved (see helm#32530).
+					if !merge && prefix != "" {
 						cleanNilValues(src)
 					}
 
@@ -264,9 +266,11 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 			}
 		} else {
 			// If the key is not in v, copy it from nv.
-			// When coalescing, skip chart default nils and clean nils from
-			// nested maps so they don't shadow globals or produce %!s(<nil>).
-			if !merge {
+			// When coalescing a subchart default, skip chart default nils and
+			// clean nils from nested maps so they don't shadow globals or
+			// produce %!s(<nil>). Null values defined directly in the top-level
+			// chart's own values.yaml are preserved (see helm#32530).
+			if !merge && prefix != "" {
 				if val == nil {
 					continue
 				}
