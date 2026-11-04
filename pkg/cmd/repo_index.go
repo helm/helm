@@ -44,10 +44,11 @@ existing charts.
 `
 
 type repoIndexOptions struct {
-	dir   string
-	url   string
-	merge string
-	json  bool
+	dir         string
+	url         string
+	merge       string
+	json        bool
+	redirectURL string
 }
 
 func newRepoIndexCmd(out io.Writer) *cobra.Command {
@@ -76,6 +77,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.url, "url", "", "url of chart repository")
 	f.StringVar(&o.merge, "merge", "", "merge the generated index into the given index")
 	f.BoolVar(&o.json, "json", false, "output in JSON format")
+	f.StringVar(&o.redirectURL, "redirect-url", "", "url to which this repository has been redirected")
 
 	return cmd
 }
@@ -86,15 +88,18 @@ func (i *repoIndexOptions) run(_ io.Writer) error {
 		return err
 	}
 
-	return index(path, i.url, i.merge, i.json)
+	return index(path, i.url, i.merge, i.json, i.redirectURL)
 }
 
-func index(dir, url, mergeTo string, json bool) error {
+func index(dir, url, mergeTo string, json bool, redirectURL string) error {
 	out := filepath.Join(dir, "index.yaml")
 
 	i, err := repo.IndexDirectory(dir, url)
 	if err != nil {
 		return err
+	}
+	if redirectURL != "" {
+		i.RedirectURL = redirectURL
 	}
 	if mergeTo != "" {
 		// if index.yaml is missing then create an empty one to merge into
