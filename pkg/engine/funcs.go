@@ -31,8 +31,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	goYaml "go.yaml.in/yaml/v4"
 	"sigs.k8s.io/yaml"
-	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
 
 // funcMap returns a mapping of all of the functions that Engine has.

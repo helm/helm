@@ -25,7 +25,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/kube"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	release "helm.sh/helm/v4/pkg/release/v1"

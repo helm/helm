@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Runtime represents a plugin runtime (subprocess, extism, etc) ie. how a plugin should be executed

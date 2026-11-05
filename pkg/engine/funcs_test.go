@@ -41,6 +41,29 @@ func TestFuncs(t *testing.T) {
 		expect: "baz:\n  - 1\n  - 2\n  - 3",
 		vars:   map[string]any{"baz": []int{1, 2, 3}},
 	}, {
+		tpl: `{{ toYamlPretty . }}`,
+		expect: "workload:\n  containers:\n    - args:\n" +
+			"        - --debug\n        - --port=8080\n      name: app",
+		vars: map[string]any{
+			"workload": map[string]any{
+				"containers": []any{
+					map[string]any{
+						"args": []string{"--debug", "--port=8080"},
+						"name": "app",
+					},
+				},
+			},
+		},
+	}, {
+		tpl: `{{ toYamlPretty . }}`,
+		expect: "boolean: \"true\"\nmessage: |\n  first\n  second\n" +
+			"number: \"123\"",
+		vars: map[string]any{
+			"boolean": "true",
+			"message": "first\nsecond\n",
+			"number":  "123",
+		},
+	}, {
 		tpl:    `{{ toToml . }}`,
 		expect: "foo = \"bar\"\n",
 		vars:   map[string]any{"foo": "bar"},
