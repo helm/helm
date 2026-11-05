@@ -269,6 +269,30 @@ func TestReadFileOriginal(t *testing.T) {
 	assert.Error(t, err, "Expected error when has special strings")
 }
 
+func TestMergeValuesLocalFilenames(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	for _, filename := range []string{"values%prod.yaml", "values%20prod.yaml"} {
+		t.Run(filename, func(t *testing.T) {
+			require.NoError(t, os.WriteFile(filename, []byte("foo: bar\n"), 0o600))
+
+			t.Run("values file", func(t *testing.T) {
+				opts := Options{ValueFiles: []string{filename}}
+				got, err := opts.MergeValues(getter.Providers{})
+				require.NoError(t, err)
+				assert.Equal(t, map[string]any{"foo": "bar"}, got)
+			})
+
+			t.Run("set-file", func(t *testing.T) {
+				opts := Options{FileValues: []string{"content=" + filename}}
+				got, err := opts.MergeValues(getter.Providers{})
+				require.NoError(t, err)
+				assert.Equal(t, map[string]any{"content": "foo: bar\n"}, got)
+			})
+		})
+	}
+}
+
 func TestMergeValuesCLI(t *testing.T) {
 	tests := []struct {
 		name     string
