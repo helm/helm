@@ -64,6 +64,30 @@ func TestFuncs(t *testing.T) {
 			"number":  "123",
 		},
 	}, {
+		tpl:    `{{ toYamlPretty . }}`,
+		expect: "long: " + strings.TrimSpace(strings.Repeat("word ", 30)),
+		vars:   map[string]any{"long": strings.TrimSpace(strings.Repeat("word ", 30))},
+	}, {
+		tpl:    `{{ toYamlPretty . }}`,
+		expect: `value: "yes"`,
+		vars:   map[string]any{"value": "yes"},
+	}, {
+		tpl:    `{{ toYamlPretty . }}`,
+		expect: `value: "on"`,
+		vars:   map[string]any{"value": "on"},
+	}, {
+		tpl:    `{{ toYamlPretty . }}`,
+		expect: `value: "~"`,
+		vars:   map[string]any{"value": "~"},
+	}, {
+		tpl:    `{{ toYamlPretty . }}`,
+		expect: `value: "012"`,
+		vars:   map[string]any{"value": "012"},
+	}, {
+		tpl:    `{{ toYamlPretty . }}`,
+		expect: `value: "0o12"`,
+		vars:   map[string]any{"value": "0o12"},
+	}, {
 		tpl:    `{{ toToml . }}`,
 		expect: "foo = \"bar\"\n",
 		vars:   map[string]any{"foo": "bar"},

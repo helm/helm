@@ -129,11 +129,19 @@ func mustToYAML(v any) string {
 
 func toYAMLPretty(v any) string {
 	var data bytes.Buffer
-	encoder := goYaml.NewEncoder(&data)
-	encoder.SetIndent(2)
-	err := encoder.Encode(v)
+	dumper, err := goYaml.NewDumper(&data,
+		goYaml.WithV3Defaults(),
+		goYaml.WithIndent(2),
+		goYaml.WithLineWidth(-1),
+	)
 	if err != nil {
+		return ""
+	}
+	if err := dumper.Dump(v); err != nil {
 		// Swallow errors inside of a template.
+		return ""
+	}
+	if err := dumper.Close(); err != nil {
 		return ""
 	}
 	return strings.TrimSuffix(data.String(), "\n")
