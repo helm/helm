@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"maps"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -440,6 +441,77 @@ func TestUninstallRelease_deleteRelease_LiveKeepPolicy(t *testing.T) {
 			require.Empty(t, errs)
 			assert.Equal(t, tc.wantDeleted, resourceNames(deleted))
 			assert.Equal(t, tc.wantKept, kept)
+		})
+	}
+}
+
+type uninstallWaitRecordingClient struct {
+	kube.Interface
+	waiter *uninstallRecordingWaiter
+}
+
+func (c *uninstallWaitRecordingClient) GetWaiter(kube.WaitStrategy) (kube.Waiter, error) {
+	return c.waiter, nil
+}
+
+type uninstallRecordingWaiter struct {
+	kube.Waiter
+	waited []kube.ResourceList
+}
+
+func (w *uninstallRecordingWaiter) WaitForDelete(resources kube.ResourceList, timeout time.Duration) error {
+	w.waited = append(w.waited, append(kube.ResourceList(nil), resources...))
+	return w.Waiter.WaitForDelete(resources, timeout)
+}
+
+func TestUninstallRelease_Run_Wait_LiveKeepPolicy(t *testing.T) {
+	const releaseName = "wait-live-keep"
+
+	testCases := []struct {
+		name       string
+		manifest   string
+		resources  kube.ResourceList
+		wantWaited []string
+	}{
+		{
+			name:     "wait only for deleted owned resources",
+			manifest: deploymentManifest("live-keep-deploy") + deploymentManifest("deleted-deploy") + deploymentManifest("unowned-deploy"),
+			resources: kube.ResourceList{
+				newOwnedDeployment("live-keep-deploy", releaseName, "default", liveKeepAnnotations),
+				newOwnedDeployment("deleted-deploy", releaseName, "default", nil),
+				newOwnedDeployment("unowned-deploy", "another-release", "default", nil),
+			},
+			wantWaited: []string{"deleted-deploy"},
+		},
+		{
+			name:      "all resources are live-kept",
+			manifest:  deploymentManifest("live-keep-deploy"),
+			resources: kube.ResourceList{newOwnedDeployment("live-keep-deploy", releaseName, "default", liveKeepAnnotations)},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			config := actionConfigFixtureWithDummyResources(t, tc.resources)
+			waiter := &uninstallRecordingWaiter{
+				Waiter: &kubefake.PrintingKubeWaiter{Out: io.Discard},
+			}
+			config.KubeClient = &uninstallWaitRecordingClient{Interface: config.KubeClient, waiter: waiter}
+			unAction := NewUninstall(config)
+			unAction.DisableHooks = true
+			unAction.WaitStrategy = kube.StatusWatcherStrategy
+
+			rel := releaseStub()
+			rel.Name = releaseName
+			rel.Namespace = "default"
+			rel.Manifest = tc.manifest
+			require.NoError(t, config.Releases.Create(rel))
+
+			res, err := unAction.Run(rel.Name)
+			require.NoError(t, err)
+			require.Len(t, waiter.waited, 1)
+			assert.Equal(t, tc.wantWaited, resourceNames(waiter.waited[0]))
+			assert.Contains(t, res.Info, "[Deployment] live-keep-deploy\n")
 		})
 	}
 }

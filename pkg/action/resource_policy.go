@@ -17,8 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"strings"
-
 	"helm.sh/helm/v4/pkg/kube"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
@@ -36,7 +34,7 @@ func filterManifestsToKeep(manifests []releaseutil.Manifest) (keep, remaining []
 			continue
 		}
 
-		if isKeepPolicy(resourcePolicyType) {
+		if kube.IsKeepPolicy(resourcePolicyType) {
 			keep = append(keep, m)
 		}
 	}
@@ -48,15 +46,11 @@ func filterManifestsToKeep(manifests []releaseutil.Manifest) (keep, remaining []
 func filterResourcesToKeep(resources kube.ResourceList) (keep, remaining kube.ResourceList) {
 	for _, info := range resources {
 		annotations, err := accessor.Annotations(info.Object)
-		if err == nil && isKeepPolicy(annotations[kube.ResourcePolicyAnno]) {
+		if err == nil && kube.IsKeepPolicy(annotations[kube.ResourcePolicyAnno]) {
 			keep = append(keep, info)
 			continue
 		}
 		remaining = append(remaining, info)
 	}
 	return keep, remaining
-}
-
-func isKeepPolicy(resourcePolicyType string) bool {
-	return strings.ToLower(strings.TrimSpace(resourcePolicyType)) == kube.KeepPolicy
 }
