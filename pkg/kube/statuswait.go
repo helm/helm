@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/aggregator"
@@ -33,7 +34,9 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -52,6 +55,8 @@ type statusWaiter struct {
 	waitForDeleteCtx     context.Context
 	readers              []engine.StatusReader
 	statusComputeWorkers int
+	// deleteRecheckInterval overrides defaultDeleteRecheckInterval in tests.
+	deleteRecheckInterval time.Duration
 	logging.LogHolder
 }
 
@@ -61,6 +66,10 @@ type statusWaiter struct {
 // "context deadline exceeded" errors. SDK callers can rely on this default
 // when they don't set a timeout.
 var DefaultStatusWatcherTimeout = 30 * time.Second
+
+// defaultDeleteRecheckInterval is how often a delete wait checks again without
+// a watcher event, the same interval the legacy waiter's WaitForDelete polls at.
+const defaultDeleteRecheckInterval = 2 * time.Second
 
 func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	return &status.Result{
@@ -154,7 +163,17 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.Logger()))
+	check := w.deleteStatusCheck(cancelCtx, cancel)
+	done := statusCollector.ListenWithObserver(eventCh, collector.ObserverFunc(func(rsc *collector.ResourceStatusCollector, _ event.Event) {
+		// The collector goroutine is the only writer and runs this callback,
+		// so the map can be read without the collector's lock.
+		statuses := make([]*event.ResourceStatus, 0, len(rsc.ResourceStatuses))
+		for _, rs := range rsc.ResourceStatuses {
+			statuses = append(statuses, rs)
+		}
+		check(statuses)
+	}))
+	go w.recheckDeletes(cancelCtx, statusCollector, check)
 	<-done
 
 	if statusCollector.Error != nil {
@@ -245,11 +264,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs == nil {
 				continue
 			}
-			// If a resource is already deleted before waiting has started, it will show as unknown.
-			// This check ensures we don't wait forever for a resource that is already deleted.
-			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
-				continue
-			}
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
 			// that has already failed, as intervention is required to resolve the failure.
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
@@ -267,15 +281,126 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			return
 		}
 
-		if len(nonDesiredResources) > 0 {
-			// Log a single resource so the user knows what they're waiting for without an overwhelming amount of output
-			sort.Slice(nonDesiredResources, func(i, j int) bool {
-				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
-			})
-			first := nonDesiredResources[0]
-			logger.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
+		logFirstNonDesiredResource(logger, desired, nonDesiredResources)
+	}
+}
+
+// deleteStatusCheck returns the completion check for delete waits, where the
+// desired status is NotFound. It is safe to call from more than one goroutine.
+//
+// UnknownStatus is ambiguous on this path. While the status watcher initializes
+// its informer caches, every watched resource briefly reports Unknown, so an
+// Unknown-only set must not complete the wait: resources that still exist would
+// be reported as deleted before a single real status event arrived (#32261).
+// But a resource deleted before the watch started also stays Unknown forever,
+// because the watcher never emits an event for an object absent from its
+// initial LIST; waiting for a real status event would hang until the timeout
+// for resources that are already gone (#32214).
+//
+// The check therefore confirms a resource still reporting Unknown with a live
+// lookup: NotFound confirms the deletion, while anything else keeps the wait
+// running. It runs on every watcher event and on a timer, and does not wait for
+// the watcher's Sync event, which never arrives while an informer keeps
+// retrying a failed initial list. Lookups stop at the first resource the lookup
+// does not confirm gone, so a check costs at most one lookup beyond those that
+// confirm a deletion.
+func (w *statusWaiter) deleteStatusCheck(ctx context.Context, cancel context.CancelFunc) func([]*event.ResourceStatus) {
+	desired := status.NotFoundStatus
+	var mu sync.Mutex
+	confirmedGone := map[object.ObjMetadata]bool{}
+	return func(statuses []*event.ResourceStatus) {
+		mu.Lock()
+		defer mu.Unlock()
+		if ctx.Err() != nil {
+			return
+		}
+		lookup := true
+		var rss []*event.ResourceStatus
+		var nonDesiredResources []*event.ResourceStatus
+		for _, rs := range statuses {
+			if rs == nil {
+				continue
+			}
+			if rs.Status == status.UnknownStatus {
+				if lookup && !confirmedGone[rs.Identifier] {
+					confirmedGone[rs.Identifier] = w.isResourceGone(ctx, rs.Identifier)
+					// A resource not confirmed gone keeps the wait running, so
+					// further lookups can't complete it on this check.
+					lookup = confirmedGone[rs.Identifier]
+				}
+				if confirmedGone[rs.Identifier] {
+					continue
+				}
+			}
+			rss = append(rss, rs)
+			if rs.Status != desired {
+				nonDesiredResources = append(nonDesiredResources, rs)
+			}
+		}
+
+		if aggregator.AggregateStatus(rss, desired) == desired {
+			w.Logger().Debug("all resources achieved desired status", "desiredStatus", desired, "resourceCount", len(rss))
+			cancel()
+			return
+		}
+
+		logFirstNonDesiredResource(w.Logger(), desired, nonDesiredResources)
+	}
+}
+
+// recheckDeletes runs check on a timer until ctx is done, so a lookup that
+// failed is retried, and resources that are already gone are confirmed, even
+// when the watcher has nothing new to report.
+func (w *statusWaiter) recheckDeletes(ctx context.Context, statusCollector *collector.ResourceStatusCollector, check func([]*event.ResourceStatus)) {
+	interval := w.deleteRecheckInterval
+	if interval <= 0 {
+		interval = defaultDeleteRecheckInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			check(statusCollector.LatestObservation().ResourceStatuses)
 		}
 	}
+}
+
+// isResourceGone reports whether the resource is confirmed absent from the
+// cluster by a live lookup. A kind with no REST mapping can't be looked up and
+// counts as gone; a CRD deleted along with its CRs leaves its kind unmapped.
+// Any other error (including transient API errors) reports false so the wait
+// keeps running; the lookup is retried on the next check.
+func (w *statusWaiter) isResourceGone(ctx context.Context, id object.ObjMetadata) bool {
+	mapping, err := w.restMapper.RESTMapping(id.GroupKind)
+	if meta.IsNoMatchError(err) {
+		w.Logger().Debug("resource kind has no REST mapping, treating it as deleted", "namespace", id.Namespace, "name", id.Name, "kind", id.GroupKind.Kind, "error", err)
+		return true
+	}
+	if err != nil {
+		w.Logger().Debug("unable to map resource to confirm deletion", "namespace", id.Namespace, "name", id.Name, "kind", id.GroupKind.Kind, "error", err)
+		return false
+	}
+	_, err = w.client.Resource(mapping.Resource).Namespace(id.Namespace).Get(ctx, id.Name, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		w.Logger().Debug("unable to confirm resource deletion", "namespace", id.Namespace, "name", id.Name, "kind", id.GroupKind.Kind, "error", err)
+	}
+	return apierrors.IsNotFound(err)
+}
+
+// logFirstNonDesiredResource logs a single resource so the user knows what
+// they're waiting for without an overwhelming amount of output
+func logFirstNonDesiredResource(logger *slog.Logger, desired status.Status, nonDesiredResources []*event.ResourceStatus) {
+	if len(nonDesiredResources) == 0 {
+		return
+	}
+	sort.Slice(nonDesiredResources, func(i, j int) bool {
+		return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
+	})
+	first := nonDesiredResources[0]
+	logger.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 }
 
 type hookOnlyWaiter struct {
