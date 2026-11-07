@@ -447,7 +447,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 			APIVersion: "v1",
 			Kind:       "Namespace",
 			Name:       i.Namespace,
-			Labels: nsLables,
+			Labels:     nsLabels,
 		}
 		buf, err := yaml.Marshal(ns)
 		if err != nil {
