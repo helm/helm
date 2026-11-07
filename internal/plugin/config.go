@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Config represents a plugin type specific configuration
