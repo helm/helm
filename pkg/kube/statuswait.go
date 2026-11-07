@@ -33,10 +33,14 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"helm.sh/helm/v4/internal/logging"
 	helmStatusReaders "helm.sh/helm/v4/internal/statusreaders"
@@ -67,6 +71,37 @@ func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 		Status:  status.CurrentStatus,
 		Message: "Resource is current",
 	}, nil
+}
+
+// computeOrCurrent wraps status.Compute for the generic status reader. kstatus
+// fails to compute a status for some custom resources (for example an Argo
+// Rollout, which stores status.observedGeneration as a string). The generic
+// reader would turn that failure into Unknown with an error attached, which
+// keeps the wait running until the timeout. Helm 3 considered kinds it could not
+// evaluate as ready, so report them as current. Errors raised by other readers,
+// such as a failed list of ReplicaSets, are untouched and still block the wait.
+func computeOrCurrent(u *unstructured.Unstructured) (*status.Result, error) {
+	res, err := status.Compute(u)
+	if err != nil {
+		return &status.Result{
+			Status:  status.CurrentStatus,
+			Message: "Resource status cannot be computed, treating it as current",
+		}, nil
+	}
+	return res, nil
+}
+
+// newStatusReader mirrors statusreaders.NewStatusReader, with the generic reader
+// computing status through computeOrCurrent. The delegating order is the same,
+// so custom readers come first and the generic reader last.
+func newStatusReader(mapper meta.RESTMapper, readers ...engine.StatusReader) engine.StatusReader {
+	generic := statusreaders.NewGenericStatusReader(mapper, computeOrCurrent)
+	replicaSet := statusreaders.NewReplicaSetStatusReader(mapper, generic)
+	deployment := statusreaders.NewDeploymentResourceReader(mapper, replicaSet)
+	statefulSet := statusreaders.NewStatefulSetResourceReader(mapper, generic)
+	return &statusreaders.DelegatingStatusReader{
+		StatusReaders: append(readers, deployment, statefulSet, replicaSet, generic),
+	}
 }
 
 func getStatusWatcher(dynamicClient dynamic.Interface, mapper meta.RESTMapper) *watcher.DefaultStatusWatcher {
@@ -107,7 +142,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
-	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
+	sw.StatusReader = newStatusReader(w.restMapper, w.readers...)
 	return w.wait(ctx, resourceList, sw)
 }
 
@@ -123,7 +158,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
 	readers = append(readers, newCustomJobStatusReader)
-	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
+	customSR := newStatusReader(w.restMapper, readers...)
 	sw.StatusReader = customSR
 	return w.wait(ctx, resourceList, sw)
 }
@@ -194,6 +229,15 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		resources = append(resources, obj)
 	}
 
+	// Ensure the RESTMapper can resolve every GroupKind before the status
+	// watcher starts its informers. Otherwise a CRD that is being created or
+	// established asynchronously would cause the watcher to permanently
+	// abandon the informer for that GroupKind, leaving the affected resources
+	// stuck in the Unknown status until the wait times out.
+	if err := w.ensureResourceMappingsReady(cancelCtx, resources); err != nil {
+		return err
+	}
+
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
@@ -235,6 +279,105 @@ func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Con
 		ctx = context.Background()
 	}
 	return watchtools.ContextWithOptionalTimeout(ctx, timeout)
+}
+
+// ensureResourceMappingsReady blocks until the RESTMapper can resolve every
+// GroupKind present in resources, or until the context is done.
+//
+// The status watcher starts one informer per GroupKind. If a GroupKind cannot
+// be mapped when its informer starts (e.g. because the backing CRD was created
+// by the same release and is not established yet), the underlying watcher gives
+// up on that informer permanently, leaving the affected resources stuck in the
+// Unknown status until the wait times out. Resolving the mappings up front
+// avoids that race so informers always start successfully.
+func (w *statusWaiter) ensureResourceMappingsReady(ctx context.Context, resources []object.ObjMetadata) error {
+	// Do not do any work if the wait has already been cancelled.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	groupKinds := make([]schema.GroupKind, 0, len(resources))
+	seen := make(map[schema.GroupKind]struct{}, len(resources))
+	for _, r := range resources {
+		if r.GroupKind.Kind == "" {
+			// A resource without a type cannot be resolved; leave it to the
+			// watcher to report as not ready.
+			continue
+		}
+		if _, ok := seen[r.GroupKind]; ok {
+			continue
+		}
+		seen[r.GroupKind] = struct{}{}
+		groupKinds = append(groupKinds, r.GroupKind)
+	}
+	if len(groupKinds) == 0 {
+		return nil
+	}
+
+	// Fast path: if every GroupKind is already known there is nothing to wait
+	// for and the status watcher can start immediately.
+	if mappingsResolved(w.restMapper, groupKinds) {
+		return nil
+	}
+	w.Logger().Debug("waiting for resource types to become available",
+		"groupKinds", groupKindNames(groupKinds))
+
+	err := wait.PollUntilContextCancel(ctx, time.Second, true, func(_ context.Context) (bool, error) {
+		for _, gk := range groupKinds {
+			if _, err := w.restMapper.RESTMapping(gk); err != nil {
+				if isRetryableMappingError(err) {
+					return false, nil
+				}
+				return false, err
+			}
+		}
+		return true, nil
+	})
+	if err != nil && !wait.Interrupted(err) {
+		return err
+	}
+	return nil
+}
+
+// mappingsResolved returns true when the RESTMapper can resolve every GroupKind.
+func mappingsResolved(mapper meta.RESTMapper, groupKinds []schema.GroupKind) bool {
+	for _, gk := range groupKinds {
+		if _, err := mapper.RESTMapping(gk); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// groupKindNames returns the GroupKinds in a human-readable form.
+func groupKindNames(groupKinds []schema.GroupKind) []string {
+	names := make([]string, 0, len(groupKinds))
+	for _, gk := range groupKinds {
+		if gk.Group == "" {
+			names = append(names, gk.Kind)
+		} else {
+			names = append(names, gk.Group+"/"+gk.Kind)
+		}
+	}
+	return names
+}
+
+// isRetryableMappingError returns true if a RESTMapper lookup failed because a
+// resource type is not (yet) known to the API server, which is expected while a
+// CRD is being created or established.
+func isRetryableMappingError(err error) bool {
+	if meta.IsNoMatchError(err) {
+		return true
+	}
+	discoveryFailed, ok := errors.AsType[*apiutil.ErrResourceDiscoveryFailed](err)
+	if !ok {
+		return false
+	}
+	for _, gvErr := range *discoveryFailed {
+		if meta.IsNoMatchError(gvErr) || apierrors.IsNotFound(gvErr) {
+			return true
+		}
+	}
+	return false
 }
 
 func statusObserver(cancel context.CancelFunc, desired status.Status, logger *slog.Logger) collector.ObserverFunc {
