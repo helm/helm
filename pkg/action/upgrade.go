@@ -466,11 +466,14 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 
 	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
+	// Use three-way merge when taking ownership (and not using server-side apply)
+	updateThreeWayMergeForUnstructured := u.TakeOwnership && !serverSideApply
 	results, err := u.cfg.KubeClient.Update(
 		current,
 		target,
 		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
 		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+		kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
 		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
