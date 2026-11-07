@@ -1,0 +1,6 @@
+name: echo
+version: 0.1.0
+command: "echo legacy"
+downloaders:
+  - command: "echo"
+    protocols: ["echo"]
