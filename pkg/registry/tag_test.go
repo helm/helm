@@ -65,6 +65,15 @@ func TestGetTagMatchingVersionOrConstraint_NoMatches(t *testing.T) {
 	assert.ErrorContains(t, err, ">=1.0.0", "expected error to contain version string")
 }
 
+func TestGetTagMatchingVersionOrConstraint_LooseTagReturnedVerbatim(t *testing.T) {
+	// A loose tag like v1.2.0 must come back as stored: normalizing it
+	// through semver would return 1.2.0, which is not a tag in the registry.
+	tags := []string{"v1.2.0", "1.0.0"}
+	got, err := GetTagMatchingVersionOrConstraint(tags, ">=1.0.0")
+	require.NoError(t, err)
+	assert.Equal(t, "v1.2.0", got)
+}
+
 func TestGetTagMatchingVersionOrConstraint_SkipsNonSemverTags(t *testing.T) {
 	tags := []string{"alpha", "1.0.0", "beta", "1.1.0"}
 	got, err := GetTagMatchingVersionOrConstraint(tags, ">=1.0.0 <2.0.0")
@@ -78,6 +87,32 @@ func TestGetTagMatchingVersionOrConstraint_OrderMatters_FirstMatchReturned(t *te
 	got, err := GetTagMatchingVersionOrConstraint(tags, ">=1.2.0 <2.0.0")
 	require.NoError(t, err)
 	assert.Equal(t, "1.3.0", got, "first satisfying tag")
+}
+
+func TestGetTagMatchingVersionOrConstraint_UnderscoreTag(t *testing.T) {
+	// Tags returns the original registry strings, so a chart stored under
+	// the underscore convention from #10166 arrives here as 1.1.17_meta.
+	// It must still match a constraint, and the returned form is the
+	// plus form: the pull path converts it back to the underscore tag
+	// when fetching, while user-facing uses such as the pulled file
+	// name show the chart version.
+	tags := []string{"1.1.17_meta", "1.0.0"}
+	got, err := GetTagMatchingVersionOrConstraint(tags, "1.x.x")
+	require.NoError(t, err)
+	assert.Equal(t, "1.1.17+meta", got)
+
+	// A version written with build metadata must match the underscore tag.
+	got, err = GetTagMatchingVersionOrConstraint(tags, "1.1.17+meta")
+	require.NoError(t, err)
+	assert.Equal(t, "1.1.17+meta", got)
+
+	// A version written in the underscore form itself must match too. This
+	// goes through the exact-match branch, which only works because Tags
+	// now returns the stored tag: before, the tag arrived as 1.1.17+meta
+	// and a request for 1.1.17_meta matched nothing.
+	got, err = GetTagMatchingVersionOrConstraint(tags, "1.1.17_meta")
+	require.NoError(t, err)
+	assert.Equal(t, "1.1.17+meta", got)
 }
 
 func TestGetTagMatchingVersionOrConstraint_ExactMatchHasPrecedence(t *testing.T) {
