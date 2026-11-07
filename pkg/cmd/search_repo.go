@@ -339,16 +339,25 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 	cobra.CompDebugln(fmt.Sprintf("Completions after repos: %v", completions), settings.Debug)
 
 	// Now handle completions for url prefixes
-	for _, url := range []string{"oci://\tChart OCI prefix", "https://\tChart URL prefix", "http://\tChart URL prefix", "file://\tChart local URL prefix"} {
-		if strings.HasPrefix(toComplete, url) {
+	urlPrefixes := []struct {
+		value string
+		desc  string
+	}{
+		{value: "oci://", desc: "Chart OCI prefix"},
+		{value: "https://", desc: "Chart URL prefix"},
+		{value: "http://", desc: "Chart URL prefix"},
+		{value: "file://", desc: "Chart local URL prefix"},
+	}
+	for _, prefix := range urlPrefixes {
+		if strings.HasPrefix(toComplete, prefix.value) {
 			// The user already put in the full url prefix; we don't have
 			// anything to add, but make sure the shell does not default
 			// to file completion since we could be returning an empty array.
 			noFile = true
 			noSpace = true
-		} else if strings.HasPrefix(url, toComplete) {
+		} else if strings.HasPrefix(prefix.value, toComplete) {
 			// We are completing a url prefix
-			completions = append(completions, url)
+			completions = append(completions, fmt.Sprintf("%s\t%s", prefix.value, prefix.desc))
 			noSpace = true
 		}
 	}
