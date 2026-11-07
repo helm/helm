@@ -29,7 +29,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -167,8 +166,7 @@ func TestExtract(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Get current umask to predict expected permissions
-	currentUmask := syscall.Umask(0)
-	syscall.Umask(currentUmask)
+	currentUmask := processUmask()
 
 	// Write a tarball to a buffer for us to extract
 	var tarbuf bytes.Buffer
@@ -226,8 +224,10 @@ func TestExtract(t *testing.T) {
 		require.NotErrorIs(t, err, fs.ErrNotExist, "Expected %s to exist but doesn't", pluginYAMLFullPath)
 	}
 	require.NoError(t, err)
-	require.Equalf(t, expectedPluginYAMLPerm, info.Mode().Perm(), "Expected %s to have %o mode but has %o (umask: %o)",
-		pluginYAMLFullPath, expectedPluginYAMLPerm, info.Mode().Perm(), currentUmask)
+	if posixPermsSupported {
+		require.Equalf(t, expectedPluginYAMLPerm, info.Mode().Perm(), "Expected %s to have %o mode but has %o (umask: %o)",
+			pluginYAMLFullPath, expectedPluginYAMLPerm, info.Mode().Perm(), currentUmask)
+	}
 
 	readmeFullPath := filepath.Join(tempDir, "README.md")
 	info, err = os.Stat(readmeFullPath)
@@ -235,8 +235,10 @@ func TestExtract(t *testing.T) {
 		require.NotErrorIs(t, err, fs.ErrNotExist, "Expected %s to exist but doesn't", readmeFullPath)
 	}
 	require.NoError(t, err)
-	require.Equalf(t, expectedReadmePerm, info.Mode().Perm(), "Expected %s to have %o mode but has %o (umask: %o)",
-		readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
+	if posixPermsSupported {
+		require.Equalf(t, expectedReadmePerm, info.Mode().Perm(), "Expected %s to have %o mode but has %o (umask: %o)",
+			readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
+	}
 }
 
 func TestCleanJoin(t *testing.T) {
