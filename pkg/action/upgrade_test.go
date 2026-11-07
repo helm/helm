@@ -782,3 +782,51 @@ func TestUpgradeRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+// updateOptionRecorder records whether three-way merge for unstructured objects was requested on Update.
+type updateOptionRecorder struct {
+	kubefake.FailingKubeClient
+	threeWayMergeForUnstructured bool
+}
+
+func (r *updateOptionRecorder) Update(_, _ kube.ResourceList, options ...kube.ClientUpdateOption) (*kube.Result, error) {
+	// The options struct is unexported, so inspect its effect via reflection.
+	for _, opt := range options {
+		optsPtr := reflect.New(reflect.TypeOf(opt).In(0).Elem())
+		if out := reflect.ValueOf(opt).Call([]reflect.Value{optsPtr}); !out[0].IsNil() {
+			continue
+		}
+		r.threeWayMergeForUnstructured = r.threeWayMergeForUnstructured ||
+			optsPtr.Elem().FieldByName("threeWayMergeForUnstructured").Bool()
+	}
+	return &kube.Result{}, errors.New("stop after update")
+}
+
+func TestUpgradeReleaseTakeOwnershipThreeWayMergeForUnstructured(t *testing.T) {
+	tests := []struct {
+		name            string
+		takeOwnership   bool
+		serverSideApply bool
+		expected        bool
+	}{
+		{name: "take ownership client-side", takeOwnership: true, expected: true},
+		{name: "take ownership server-side", takeOwnership: true, serverSideApply: true, expected: false},
+		{name: "no take ownership", expected: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			upAction := upgradeAction(t)
+			recorder := &updateOptionRecorder{}
+			upAction.cfg.KubeClient = recorder
+			upAction.TakeOwnership = tc.takeOwnership
+			upAction.DisableHooks = true
+
+			rel := releaseStub()
+			c := make(chan resultMessage, 1)
+			upAction.releasingUpgrade(c, rel, kube.ResourceList{}, kube.ResourceList{}, rel, tc.serverSideApply)
+
+			assert.Equal(t, tc.expected, recorder.threeWayMergeForUnstructured)
+		})
+	}
+}
