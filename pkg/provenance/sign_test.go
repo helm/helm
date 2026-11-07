@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/stretchr/testify/assert"
@@ -384,6 +385,72 @@ func TestVerify(t *testing.T) {
 	if assert.ErrorAs(t, err, &sErr, "Expected invalid signature error") {
 		t.Logf("Tampered sig block error: %s (%T)", sErr, sErr)
 	}
+}
+
+// TestVerifyRenamedArchive covers a chart that is published under a name which
+// the provenance file does not describe, for example when an OCI repository is
+// named differently from the chart it holds.
+func TestVerifyRenamedArchive(t *testing.T) {
+	signer, err := NewFromFiles(testKeyfile, testPubfile)
+	require.NoError(t, err)
+
+	archiveData, err := os.ReadFile(testChartfile)
+	require.NoError(t, err)
+
+	sigData, err := os.ReadFile(testSigBlock)
+	require.NoError(t, err)
+
+	ver, err := signer.Verify(archiveData, sigData, "other-name-9.9.9.tgz")
+	require.NoError(t, err, "the archive should verify against the name the signature was made over")
+	assert.Equal(t, filepath.Base(testChartfile), ver.FileName, "FileName is unexpectedly %q", ver.FileName)
+	assert.Equal(t, "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888", ver.FileHash)
+
+	// The digest still has to match, whatever name is asked for.
+	altered := bytes.Clone(archiveData)
+	altered[len(altered)-1] ^= 0xff
+
+	_, err = signer.Verify(altered, sigData, "other-name-9.9.9.tgz")
+	assert.ErrorContains(t, err, "sha256 sum does not match for hashtest-1.2.3.tgz")
+}
+
+// TestVerifyRenamedArchiveAmbiguous makes sure an unknown name is only resolved
+// against a message block that describes a single archive.
+func TestVerifyRenamedArchiveAmbiguous(t *testing.T) {
+	signer, err := NewFromFiles(testKeyfile, testPubfile)
+	require.NoError(t, err)
+
+	archiveData, err := os.ReadFile(testChartfile)
+	require.NoError(t, err)
+
+	chash, err := Digest(bytes.NewBuffer(archiveData))
+	require.NoError(t, err)
+
+	sums := &SumCollection{Files: map[string]string{
+		filepath.Base(testChartfile): "sha256:" + chash,
+		"otherchart-1.0.0.tgz":       "sha256:" + strings.Repeat("0", 64),
+	}}
+	sumsBytes, err := yaml.Marshal(sums)
+	require.NoError(t, err)
+
+	plain := bytes.NewBuffer(loadChartMetadataForSigning(t, testChartfile))
+	plain.WriteString("\n...\n")
+	plain.Write(sumsBytes)
+
+	out := bytes.NewBuffer(nil)
+	w, err := clearsign.Encode(out, signer.Entity.PrivateKey, &defaultPGPConfig)
+	require.NoError(t, err)
+	_, err = io.Copy(w, plain)
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	provData := out.Bytes()
+
+	_, err = signer.Verify(archiveData, provData, "other-name-9.9.9.tgz")
+	require.ErrorContains(t, err, `provenance does not contain a SHA for a file named "other-name-9.9.9.tgz"`)
+
+	ver, err := signer.Verify(archiveData, provData, filepath.Base(testChartfile))
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Base(testChartfile), ver.FileName)
 }
 
 // TestVerifyKeyboxKeyring mirrors TestVerify with the keyring loaded from a
