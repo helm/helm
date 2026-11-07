@@ -134,10 +134,8 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 }
 
 func parsePluginVersion(arg string) (name, version string) {
-	if i := strings.LastIndex(arg, "@"); i >= 0 {
-		return arg[:i], arg[i+1:]
-	}
-	return arg, ""
+	name, version, _ = strings.CutLast(arg, "@")
+	return name, version
 }
 
 func updatePlugin(p plugin.Plugin, version string) error {
