@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-configmap
+  annotations:
+    "helm.sh/hook": pre-install
+    helm.sh/resource-group: hooks
+    helm.sh/depends-on/resource-groups: '["databases"]'
+data:
+  key: value
