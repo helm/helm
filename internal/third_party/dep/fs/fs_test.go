@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -116,6 +117,30 @@ func TestCopyDir(t *testing.T) {
 		require.Equalf(t, file.fi.Mode(), gotinfo.Mode(), "expected %s: %#v\n to be the same mode as %s: %#v",
 			file.path, file.fi.Mode(), fn, gotinfo.Mode())
 	}
+}
+
+func TestCopyDirSkipsSocket(t *testing.T) {
+	dir := t.TempDir()
+	srcdir := filepath.Join(dir, "src")
+	require.NoError(t, os.MkdirAll(srcdir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcdir, "file"), []byte("contents"), 0o644))
+
+	socketPath := filepath.Join(srcdir, "socket")
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "unix", socketPath)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, listener.Close())
+	})
+
+	destdir := filepath.Join(dir, "dest")
+	require.NoError(t, CopyDir(srcdir, destdir))
+
+	contents, err := os.ReadFile(filepath.Join(destdir, "file"))
+	require.NoError(t, err)
+	require.Equal(t, "contents", string(contents))
+
+	_, err = os.Lstat(filepath.Join(destdir, "socket"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestCopyDirFail_SrcInaccessible(t *testing.T) {
