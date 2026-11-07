@@ -18,8 +18,10 @@ package repo
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"sigs.k8s.io/yaml"
@@ -51,8 +53,20 @@ func LoadFile(path string) (*File, error) {
 		return r, fmt.Errorf("couldn't load repositories file (%s): %w", path, err)
 	}
 
-	err = yaml.Unmarshal(b, r)
-	return r, err
+	if err := yaml.Unmarshal(b, r); err != nil {
+		return r, err
+	}
+
+	// An empty or null list item decodes to a nil *Entry, which carries no
+	// configuration. Drop it the way LoadIndexFile drops nil chart versions:
+	// callers dereference every entry and would panic.
+	before := len(r.Repositories)
+	r.Repositories = slices.DeleteFunc(r.Repositories, func(entry *Entry) bool { return entry == nil })
+	if skipped := before - len(r.Repositories); skipped > 0 {
+		slog.Warn("skipping loading invalid entry for repository: empty entry", "source", path, "count", skipped)
+	}
+
+	return r, nil
 }
 
 // Add adds one or more repo entries to a repo file.
@@ -70,6 +84,9 @@ func (r *File) Update(re ...*Entry) {
 
 func (r *File) update(e *Entry) {
 	for j, repo := range r.Repositories {
+		if repo == nil {
+			continue
+		}
 		if repo.Name == e.Name {
 			r.Repositories[j] = e
 			return
@@ -87,6 +104,9 @@ func (r *File) Has(name string) bool {
 // Get returns an entry with the given name if it exists, otherwise returns nil
 func (r *File) Get(name string) *Entry {
 	for _, entry := range r.Repositories {
+		if entry == nil {
+			continue
+		}
 		if entry.Name == name {
 			return entry
 		}
