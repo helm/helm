@@ -451,3 +451,33 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 		})
 	}
 }
+
+func TestParseLiteralEmptyKeyName(t *testing.T) {
+	// --set-literal consumes the rest of the line as the value, so only a nameless
+	// assignment at the start of a key can produce an empty name here.
+	tests := []struct {
+		str    string
+		expect map[string]any
+		errStr string
+	}{
+		{str: "=x", errStr: "value name must not be empty"},
+		{str: "[0]=x", errStr: "value name must not be empty"},
+		{str: ".b=x", errStr: "value name must not be empty"},
+		{str: ".b[0]=x", errStr: "value name must not be empty"},
+		{str: "a.=x", errStr: "value name must not be empty"},
+		{str: "a.b=x", expect: map[string]any{"a": map[string]any{"b": "x"}}},
+		{str: "a[0]=x", expect: map[string]any{"a": []any{"x"}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.str, func(t *testing.T) {
+			got, err := ParseLiteral(tt.str)
+			if tt.errStr != "" {
+				require.EqualError(t, err, tt.errStr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expect, got)
+		})
+	}
+}
