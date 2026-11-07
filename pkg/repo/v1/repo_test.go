@@ -18,6 +18,8 @@ package repo
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -176,6 +178,201 @@ func TestWriteFile(t *testing.T) {
 	for _, repo := range sampleRepository.Repositories {
 		assert.Truef(t, repos.Has(repo.Name), "expected repository %s not found", repo.Name)
 	}
+}
+
+func TestWriteFileKeepsPreviousContentsOnFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a read-only directory does not prevent replacing a file on Windows")
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "repositories.yaml")
+
+	old := NewFile()
+	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoErrorf(t, old.WriteFile(path, 0o600), "failed to write the initial file")
+
+	require.NoErrorf(t, os.Chmod(dir, 0o500), "failed to make %q read-only", dir)
+	t.Cleanup(func() {
+		require.NoErrorf(t, os.Chmod(dir, 0o700), "failed to restore permissions on %q", dir)
+	})
+
+	fresh := NewFile()
+	fresh.Add(&Entry{Name: "incubator", URL: "https://example.com/incubator"})
+	err := fresh.WriteFile(path, 0o600)
+	require.Error(t, err, "expected the write to fail in a directory that rejects new files")
+
+	repos, err := LoadFile(path)
+	require.NoError(t, err, "the previous file must still load")
+	assert.Truef(t, repos.Has("stable"), "expected the previous entry to survive, got %v", repos.Repositories)
+	assert.Falsef(t, repos.Has("incubator"), "unexpected entry from the failed write: %v", repos.Repositories)
+}
+
+func TestWriteFileRelativeBareNameUsesDestinationDir(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+
+	badTmp := filepath.Join(t.TempDir(), "missing-tmpdir")
+	t.Setenv("TMPDIR", badTmp)
+	t.Setenv("TMP", badTmp)
+
+	old := NewFile()
+	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, old.WriteFile("repositories.yaml", 0o600), "creating a new file")
+
+	fresh := NewFile()
+	fresh.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	fresh.Add(&Entry{Name: "incubator", URL: "https://example.com/incubator"})
+	require.NoError(t, fresh.WriteFile("repositories.yaml", 0o600), "replacing an existing file")
+
+	repos, err := LoadFile(filepath.Join(dir, "repositories.yaml"))
+	require.NoError(t, err)
+	assert.True(t, repos.Has("incubator"))
+
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	assert.Equal(t, []string{"repositories.yaml"}, names)
+}
+
+func TestWriteFileCreatesThroughDanglingSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "shared-repositories.yaml")
+	link := filepath.Join(dir, "repositories.yaml")
+	require.NoError(t, os.Symlink(target, link))
+
+	f := NewFile()
+	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, f.WriteFile(link, 0o600))
+
+	fi, err := os.Lstat(link)
+	require.NoError(t, err)
+	assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "destination symlink must be preserved")
+
+	repos, err := LoadFile(target)
+	require.NoError(t, err)
+	assert.True(t, repos.Has("stable"))
+}
+
+func TestWriteFileCreatesThroughDanglingSymlinkChain(t *testing.T) {
+	dir := t.TempDir()
+	shared := filepath.Join(dir, "shared.yaml")
+	middle := filepath.Join(dir, "middle.yaml")
+	link := filepath.Join(dir, "repositories.yaml")
+	require.NoError(t, os.Symlink("shared.yaml", middle))
+	require.NoError(t, os.Symlink(middle, link))
+
+	f := NewFile()
+	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, f.WriteFile(link, 0o600))
+
+	for _, l := range []string{link, middle} {
+		fi, err := os.Lstat(l)
+		require.NoError(t, err)
+		assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "%s must stay a symlink", l)
+	}
+
+	repos, err := LoadFile(shared)
+	require.NoError(t, err)
+	assert.True(t, repos.Has("stable"))
+}
+
+func TestWriteFileSymlinkLoop(t *testing.T) {
+	dir := t.TempDir()
+	a := filepath.Join(dir, "a.yaml")
+	b := filepath.Join(dir, "b.yaml")
+	require.NoError(t, os.Symlink(b, a))
+	require.NoError(t, os.Symlink(a, b))
+
+	f := NewFile()
+	require.Error(t, f.WriteFile(a, 0o600))
+
+	for _, l := range []string{a, b} {
+		fi, err := os.Lstat(l)
+		require.NoError(t, err)
+		assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "%s must stay a symlink", l)
+	}
+}
+
+func TestWriteFileRejectsNonRegularDestination(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "repositories.d")
+	require.NoError(t, os.Mkdir(target, 0o755))
+	link := filepath.Join(dir, "repositories.yaml")
+	require.NoError(t, os.Symlink(target, link))
+
+	f := NewFile()
+	for _, p := range []string{target, link} {
+		err := f.WriteFile(p, 0o600)
+		require.Error(t, err, p)
+		assert.Contains(t, err.Error(), "not a regular file", p)
+	}
+
+	fi, err := os.Lstat(link)
+	require.NoError(t, err)
+	assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "link must stay a symlink")
+	fi, err = os.Lstat(target)
+	require.NoError(t, err)
+	assert.True(t, fi.IsDir(), "directory must not be replaced")
+}
+
+func TestWriteFileUpdatesSymlinkTarget(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "shared-repositories.yaml")
+	link := filepath.Join(dir, "repositories.yaml")
+
+	old := NewFile()
+	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, old.WriteFile(target, 0o640))
+	require.NoError(t, os.Symlink(target, link))
+
+	fresh := NewFile()
+	fresh.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	fresh.Add(&Entry{Name: "incubator", URL: "https://example.com/incubator"})
+	require.NoError(t, fresh.WriteFile(link, 0o600))
+
+	fi, err := os.Lstat(link)
+	require.NoError(t, err)
+	assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "destination symlink must be preserved")
+
+	repos, err := LoadFile(target)
+	require.NoError(t, err)
+	assert.True(t, repos.Has("stable"))
+	assert.True(t, repos.Has("incubator"))
+
+	info, err := os.Stat(target)
+	require.NoError(t, err)
+	if runtime.GOOS != "windows" {
+		assert.Equalf(t, os.FileMode(0o640), info.Mode().Perm(), "existing target mode must be preserved")
+	}
+}
+
+func TestWriteFilePreservesExistingPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not implement POSIX permission bits")
+	}
+
+	path := filepath.Join(t.TempDir(), "repositories.yaml")
+
+	old := NewFile()
+	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, old.WriteFile(path, 0o640))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equalf(t, os.FileMode(0o640), info.Mode().Perm(), "expected the first write to honor 0o640")
+
+	fresh := NewFile()
+	fresh.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	fresh.Add(&Entry{Name: "incubator", URL: "https://example.com/incubator"})
+	require.NoError(t, fresh.WriteFile(path, 0o600))
+
+	info, err = os.Stat(path)
+	require.NoError(t, err)
+	assert.Equalf(t, os.FileMode(0o640), info.Mode().Perm(), "existing file mode must be preserved")
 }
 
 func TestRepoNotExists(t *testing.T) {

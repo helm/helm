@@ -17,12 +17,16 @@ limitations under the License.
 package repo
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v4/internal/fileutil"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
 )
 
 // File represents the repositories.yaml file
@@ -112,14 +116,114 @@ func (r *File) Remove(name string) bool {
 	return found
 }
 
-// WriteFile writes a repositories file to the given path.
+// WriteFile writes a repositories file to the given path atomically.
+// The path is made absolute before writing so the temporary file is created in
+// the destination directory (including for bare relative names). A destination
+// that is a symlink is resolved and the shared target is updated, including when
+// the final target is missing. perm is used only when creating a new file and is
+// subject to the process umask, matching os.WriteFile; an existing destination
+// keeps its mode.
 func (r *File) WriteFile(path string, perm os.FileMode) error {
 	data, err := yaml.Marshal(r)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+
+	writePath, err := resolveRepoFileWritePath(path)
+	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, perm)
+	if err := os.MkdirAll(filepath.Dir(writePath), 0o755); err != nil {
+		return err
+	}
+
+	if fi, err := os.Stat(writePath); err == nil {
+		return fileutil.AtomicWriteFile(writePath, bytes.NewReader(data), fi.Mode().Perm())
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	return atomicWriteRepoFileNew(writePath, data, perm)
+}
+
+// atomicWriteRepoFileNew creates a new destination with perm subject to umask.
+// Unlike fileutil.AtomicWriteFile it does not Chmod after create, so a call with
+// perm=0o644 and umask=0o077 yields 0o600 the way os.WriteFile does.
+func atomicWriteRepoFileNew(filename string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(filename)
+	f, err := os.CreateTemp(dir, ".repositories.yaml-")
+	if err != nil {
+		return err
+	}
+	tempName := f.Name()
+	_ = f.Close()
+	_ = os.Remove(tempName)
+
+	f, err = os.OpenFile(tempName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tempName)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tempName)
+		return err
+	}
+
+	if err := fs.RenameWithFallback(tempName, filename); err != nil {
+		_ = os.Remove(tempName)
+		return err
+	}
+	return nil
+}
+
+// maxRepoFileSymlinkHops bounds how many links resolveRepoFileWritePath
+// follows, matching the limit Linux applies to path resolution.
+const maxRepoFileSymlinkHops = 40
+
+// resolveRepoFileWritePath returns an absolute write path, following a symlink
+// destination to its final target. When the chain ends in a missing target,
+// every link is followed to that target so it can be created while all links
+// are kept. A final target that exists but is not a regular file is an error.
+func resolveRepoFileWritePath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	cur := abs
+	for hops := 0; ; hops++ {
+		fi, err := os.Lstat(cur)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return cur, nil
+			}
+			return "", err
+		}
+		switch mode := fi.Mode(); {
+		case mode.IsRegular():
+			return cur, nil
+		case mode&os.ModeSymlink == 0:
+			return "", fmt.Errorf("repository destination %q is not a regular file (mode %s)", cur, mode)
+		}
+		if hops >= maxRepoFileSymlinkHops {
+			return "", fmt.Errorf("%s: too many levels of symbolic links", abs)
+		}
+
+		link, err := os.Readlink(cur)
+		if err != nil {
+			return "", err
+		}
+		if !filepath.IsAbs(link) {
+			dir := filepath.Dir(cur)
+			if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+				dir = resolved
+			}
+			link = filepath.Join(dir, link)
+		}
+		cur = filepath.Clean(link)
+	}
 }
