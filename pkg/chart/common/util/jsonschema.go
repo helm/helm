@@ -19,6 +19,7 @@ package util
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -129,11 +130,38 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 		}
 	}()
 
+	validator, err := compileSchema(schemaJSON)
+	if err != nil {
+		return err
+	}
+
+	err = validator.Validate(values.AsMap())
+	if err != nil {
+		return JSONSchemaValidationError{err}
+	}
+
+	return nil
+}
+
+// compiledSchemaCache holds schemas compiled by compileSchema, keyed by the
+// SHA-256 of the schema document. Compiling a schema is expensive while
+// validating values against a compiled schema is cheap, and a compiled
+// schema is safe for concurrent use, so the compiled form is shared.
+var compiledSchemaCache sync.Map // map[[32]byte]*jsonschema.Schema
+
+// compileSchema compiles schemaJSON into a validator, reusing the cached
+// compilation when the same schema document was seen before.
+func compileSchema(schemaJSON []byte) (*jsonschema.Schema, error) {
+	key := sha256.Sum256(schemaJSON)
+	if cached, ok := compiledSchemaCache.Load(key); ok {
+		return cached.(*jsonschema.Schema), nil
+	}
+
 	// This unmarshal function leverages UseNumber() for number precision. The parser
 	// used for values does this as well.
 	schema, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaJSON))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	slog.Debug("unmarshalled JSON schema", "schema", schemaJSON)
 
@@ -147,22 +175,16 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 
 	compiler := jsonschema.NewCompiler()
 	compiler.UseLoader(loader)
-	err = compiler.AddResource("file:///values.schema.json", schema)
-	if err != nil {
-		return err
+	if err := compiler.AddResource("file:///values.schema.json", schema); err != nil {
+		return nil, err
 	}
 
-	validator, err := compiler.Compile("file:///values.schema.json")
+	compiled, err := compiler.Compile("file:///values.schema.json")
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	err = validator.Validate(values.AsMap())
-	if err != nil {
-		return JSONSchemaValidationError{err}
-	}
-
-	return nil
+	compiledSchemaCache.Store(key, compiled)
+	return compiled, nil
 }
 
 // URNResolverFunc allows SDK to plug a URN resolver. It must return a
