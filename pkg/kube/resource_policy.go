@@ -16,6 +16,8 @@ limitations under the License.
 
 package kube
 
+import "strings"
+
 // ResourcePolicyAnno is the annotation name for a resource policy
 const ResourcePolicyAnno = "helm.sh/resource-policy"
 
@@ -25,3 +27,9 @@ const ResourcePolicyAnno = "helm.sh/resource-policy"
 //
 //	during an uninstallRelease action.
 const KeepPolicy = "keep"
+
+// IsKeepPolicy reports whether a resource policy value is keep, ignoring
+// surrounding whitespace and case.
+func IsKeepPolicy(resourcePolicyType string) bool {
+	return strings.ToLower(strings.TrimSpace(resourcePolicyType)) == KeepPolicy
+}
