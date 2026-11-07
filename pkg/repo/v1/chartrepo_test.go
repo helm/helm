@@ -238,3 +238,101 @@ func TestResolveReferenceURL(t *testing.T) {
 		assert.Equalf(t, chartURL, tt.chartURL, "expected ResolveReferenceURL(%q, %q) to equal %q, got %q", tt.baseURL, tt.refURL, tt.chartURL, chartURL)
 	}
 }
+
+func TestEntry_GetPassword(t *testing.T) {
+	t.Run("nil entry", func(t *testing.T) {
+		var e *Entry
+		pass, err := e.GetPassword()
+		require.NoError(t, err)
+		assert.Empty(t, pass)
+	})
+
+	t.Run("static password set", func(t *testing.T) {
+		e := &Entry{
+			Password: "mysecretpassword",
+		}
+		pass, err := e.GetPassword()
+		require.NoError(t, err)
+		assert.Equal(t, "mysecretpassword", pass)
+	})
+
+	t.Run("static password takes precedence over password_command", func(t *testing.T) {
+		e := &Entry{
+			Password:        "staticpass",
+			PasswordCommand: "echo commandpass",
+		}
+		pass, err := e.GetPassword()
+		require.NoError(t, err)
+		assert.Equal(t, "staticpass", pass)
+	})
+
+	t.Run("empty entry", func(t *testing.T) {
+		e := &Entry{}
+		pass, err := e.GetPassword()
+		require.NoError(t, err)
+		assert.Empty(t, pass)
+	})
+
+	t.Run("password command success", func(t *testing.T) {
+		e := &Entry{
+			PasswordCommand: "echo mysecretpass",
+		}
+		pass, err := e.GetPassword()
+		require.NoError(t, err)
+		assert.Equal(t, "mysecretpass", pass)
+	})
+
+	t.Run("password command trims trailing newlines", func(t *testing.T) {
+		e := &Entry{
+			PasswordCommand: `printf "secret-with-newlines\r\n"`,
+		}
+		if runtime.GOOS == "windows" {
+			e.PasswordCommand = "echo secret-with-newlines"
+		}
+		pass, err := e.GetPassword()
+		require.NoError(t, err)
+		assert.Equal(t, "secret-with-newlines", pass)
+	})
+
+	t.Run("password command failure", func(t *testing.T) {
+		e := &Entry{
+			PasswordCommand: "false",
+		}
+		if runtime.GOOS == "windows" {
+			e.PasswordCommand = "exit /b 1"
+		}
+		_, err := e.GetPassword()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "password command")
+	})
+
+	t.Run("password command with stderr details", func(t *testing.T) {
+		e := &Entry{
+			PasswordCommand: "sh -c 'echo secret-vault-error >&2; exit 2'",
+		}
+		if runtime.GOOS == "windows" {
+			e.PasswordCommand = "cmd.exe /c echo secret-vault-error 1>&2 & exit /b 2"
+		}
+		_, err := e.GetPassword()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "secret-vault-error")
+	})
+
+	t.Run("yaml serialization", func(t *testing.T) {
+		e := &Entry{
+			Name:            "myrepo",
+			URL:             "https://example.com/charts",
+			Username:        "alice",
+			PasswordCommand: "pass show myrepo",
+		}
+		data, err := yaml.Marshal(e)
+		require.NoError(t, err)
+		assert.Contains(t, string(data), "password_command: pass show myrepo")
+		assert.NotContains(t, string(data), "password: pass show myrepo")
+
+		var loaded Entry
+		require.NoError(t, yaml.Unmarshal(data, &loaded))
+		assert.Equal(t, "pass show myrepo", loaded.PasswordCommand)
+		assert.Empty(t, loaded.Password)
+	})
+}

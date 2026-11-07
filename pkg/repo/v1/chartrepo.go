@@ -18,6 +18,7 @@ package repo
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -26,8 +27,11 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"helm.sh/helm/v4/internal/fileutil"
 	"helm.sh/helm/v4/pkg/getter"
@@ -40,11 +44,52 @@ type Entry struct {
 	URL                   string `json:"url"`
 	Username              string `json:"username"`
 	Password              string `json:"password"`
+	PasswordCommand       string `json:"password_command,omitempty"`
 	CertFile              string `json:"certFile"`
 	KeyFile               string `json:"keyFile"`
 	CAFile                string `json:"caFile"`
 	InsecureSkipTLSVerify bool   `json:"insecure_skip_tls_verify"`
 	PassCredentialsAll    bool   `json:"pass_credentials_all"`
+}
+
+// GetPassword returns the entry's password.
+// If Password is set, it is returned directly.
+// If Password is empty and PasswordCommand is set, the command is executed
+// and its standard output (trimmed of trailing newlines) is returned.
+func (e *Entry) GetPassword() (string, error) {
+	if e == nil {
+		return "", nil
+	}
+	if e.Password != "" {
+		return e.Password, nil
+	}
+	if e.PasswordCommand == "" {
+		return "", nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.CommandContext(ctx, "cmd.exe", "/c", e.PasswordCommand)
+	} else {
+		cmd = exec.CommandContext(ctx, "sh", "-c", e.PasswordCommand)
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		errMsg := strings.TrimSpace(stderr.String())
+		if errMsg != "" {
+			return "", fmt.Errorf("password command %q failed: %s: %w", e.PasswordCommand, errMsg, err)
+		}
+		return "", fmt.Errorf("password command %q failed: %w", e.PasswordCommand, err)
+	}
+
+	return strings.TrimRight(stdout.String(), "\r\n"), nil
 }
 
 // ChartRepository represents a chart repository
@@ -82,11 +127,16 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
+	password, err := r.Config.GetPassword()
+	if err != nil {
+		return "", err
+	}
+
 	resp, err := r.Client.Get(indexURL,
 		getter.WithURL(r.Config.URL),
 		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSVerify),
 		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
-		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
+		getter.WithBasicAuth(r.Config.Username, password),
 		getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
 	)
 	if err != nil {
