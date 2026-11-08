@@ -20,6 +20,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -57,6 +58,41 @@ func TestValidateChartYamlNotDirectory(t *testing.T) {
 func TestValidateChartYamlFormat(t *testing.T) {
 	require.Error(t, validateChartYamlFormat(errors.New("Read error")), "validateChartYamlFormat to return a linter error, got no error")
 	assert.NoError(t, validateChartYamlFormat(nil), "validateChartYamlFormat to return no error, got a linter error")
+}
+
+func TestValidateChartNameRFC1123(t *testing.T) {
+	failTest := []struct {
+		Name     string
+		ErrorMsg string
+	}{
+		{"FOO", "no capital letters"},
+		{"foo_bar", "no capital letters"},
+		{"foo bar", "no capital letters"},
+		{"-two", "must start and end"},
+		{"a..b", "must start and end"},
+		{strings.Repeat("a", 254), "must not be longer"},
+	}
+
+	successTest := []string{
+		"albatross",
+		"foo.bar1234baz.seventyone",
+		"123baz",
+		"one-two",
+		strings.Repeat("a", 253),
+	}
+
+	for _, test := range failTest {
+		cf := &chart.Metadata{Name: test.Name}
+		require.ErrorContainsf(t, validateChartNameRFC1123(cf), test.ErrorMsg, "validateChartNameRFC1123(%q) to return an error containing %q", test.Name, test.ErrorMsg)
+	}
+
+	for _, name := range successTest {
+		cf := &chart.Metadata{Name: name}
+		assert.NoError(t, validateChartNameRFC1123(cf), "validateChartNameRFC1123(%q) to return no error", name)
+	}
+
+	// Empty name is caught by validateChartName; validateChartNameRFC1123 is a no-op.
+	assert.NoError(t, validateChartNameRFC1123(&chart.Metadata{Name: ""}))
 }
 
 func TestValidateChartName(t *testing.T) {
