@@ -32,6 +32,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	ri "helm.sh/helm/v4/pkg/release"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -584,6 +585,28 @@ func TestUpgradeInstallServerSideApply(t *testing.T) {
 			relV1, err := releaserToV1Release(rel)
 			require.NoError(t, err, "unexpected error converting release")
 			assert.Equal(t, tt.expectedApplyMethod, relV1.ApplyMethod, "expected ApplyMethod %q, got %q", tt.expectedApplyMethod, relV1.ApplyMethod)
+		})
+	}
+}
+
+func TestIsReleaseUninstalled(t *testing.T) {
+	mk := func(v int, status rcommon.Status) ri.Releaser {
+		return release.Mock(&release.MockReleaseOptions{Name: "app", Version: v, Status: status})
+	}
+	tests := []struct {
+		name     string
+		versions []ri.Releaser
+		want     bool
+	}{
+		{"empty", nil, false},
+		{"latest uninstalled", []ri.Releaser{mk(1, rcommon.StatusSuperseded), mk(2, rcommon.StatusUninstalled)}, true},
+		{"latest deployed", []ri.Releaser{mk(1, rcommon.StatusUninstalled), mk(2, rcommon.StatusDeployed)}, false},
+		// Storage drivers may return records in name order (v10 before v2).
+		{"unsorted, latest uninstalled", []ri.Releaser{mk(1, rcommon.StatusSuperseded), mk(10, rcommon.StatusUninstalled), mk(2, rcommon.StatusSuperseded)}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isReleaseUninstalled(tt.versions))
 		})
 	}
 }
