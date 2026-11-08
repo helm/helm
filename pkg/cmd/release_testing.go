@@ -70,8 +70,10 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			reli, shutdown, runErr := client.Run(args[0])
 			defer func() {
 				if shutdownErr := shutdown(); shutdownErr != nil {
-					if returnError == nil {
+					if returnError == nil || errors.Is(shutdownErr, returnError) {
 						returnError = shutdownErr
+					} else if !errors.Is(returnError, shutdownErr) {
+						returnError = errors.Join(returnError, shutdownErr)
 					}
 				}
 			}()
