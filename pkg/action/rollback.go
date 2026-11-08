@@ -104,6 +104,10 @@ func (r *Rollback) Run(name string) error {
 
 	r.cfg.Logger().Debug("performing rollback", "name", name)
 	if _, err := r.performRollback(currentRelease, targetRelease, serverSideApply); err != nil {
+		if targetRelease.Info.Status == common.StatusPendingRollback {
+			targetRelease.SetStatus(common.StatusFailed, fmt.Sprintf("Rollback %q failed: %s", name, err))
+			r.cfg.recordRelease(targetRelease)
+		}
 		return err
 	}
 
