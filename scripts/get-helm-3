@@ -320,7 +320,7 @@ while [[ $# -gt 0 ]]; do
            fi
        else
            echo -e "Please provide the desired version. e.g. --version v3.0.0 or -v canary"
-           exit 0
+           exit 1
        fi
        ;;
     '--no-sudo')
