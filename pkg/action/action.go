@@ -212,6 +212,11 @@ func annotateAndMerge(files map[string]string) (string, error) {
 				if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
 					return "", fmt.Errorf("annotating %s: %w", fname, err)
 				}
+				// The annotation can turn a JSON object into flow-style YAML.
+				// Use block style at the root so Kubernetes decoders parse it as YAML.
+				if node := manifest.YNode(); node.Kind == kyaml.MappingNode {
+					node.Style &^= kyaml.FlowStyle
+				}
 				combinedManifests = append(combinedManifests, manifest)
 			}
 		}
