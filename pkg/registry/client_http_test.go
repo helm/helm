@@ -17,11 +17,16 @@ limitations under the License.
 package registry
 
 import (
+	"context"
 	"os"
 	"testing"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/suite"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 type HTTPRegistryClientTestSuite struct {
@@ -74,6 +79,28 @@ func (suite *HTTPRegistryClientTestSuite) Test_5_ImageIndex() {
 
 	_, err := suite.RegistryClient.Pull(ref)
 	suite.Require().NoError(err)
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_6_PluginImageIndex() {
+	pluginData := []byte("plugin tarball")
+	store, pluginManifest, otherManifest := newPluginStore(suite.T(), pluginData)
+	index := pushJSON(suite.T(), store, ocispec.MediaTypeImageIndex, newImageIndex(otherManifest, pluginManifest))
+	suite.Require().NoError(store.Tag(context.Background(), index, "idx"))
+
+	repo, err := remote.NewRepository(suite.DockerRegistryHost + "/testrepo/demo")
+	suite.Require().NoError(err)
+	repo.PlainHTTP = true
+	repo.Client = &auth.Client{Credential: auth.StaticCredential(suite.DockerRegistryHost, auth.Credential{
+		Username: testUsername,
+		Password: testPassword,
+	})}
+	_, err = oras.Copy(context.Background(), store, "idx", repo, "idx", oras.DefaultCopyOptions)
+	suite.Require().NoError(err)
+
+	result, err := suite.RegistryClient.PullPlugin(suite.DockerRegistryHost+"/testrepo/demo:idx", "demo")
+	suite.Require().NoError(err)
+	suite.Equal(pluginData, result.PluginData)
+	suite.Equal(index.Digest, result.Manifest.Digest)
 }
 
 func TestHTTPRegistryClientTestSuite(t *testing.T) {

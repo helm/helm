@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content/memory"
 )
 
 // Plugin-specific constants
@@ -82,6 +83,14 @@ func (c *Client) processPluginPull(genericResult *GenericPullResult, pluginName 
 	manifestData, err := c.Generic().GetDescriptorData(genericResult.MemoryStore, genericResult.Manifest)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve manifest: %w", err)
+	}
+
+	// An image index wraps the plugin manifest: use the entry that holds the plugin
+	if genericResult.Manifest.MediaType == ocispec.MediaTypeImageIndex {
+		manifestData, err = c.pluginManifestFromIndex(genericResult.MemoryStore, manifestData)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Parse the manifest to check artifact type
@@ -211,4 +220,32 @@ func PullPluginOptWithProv(withProv bool) PluginPullOption {
 	return func(operation *pluginPullOperation) {
 		operation.withProv = withProv
 	}
+}
+
+// pluginManifestFromIndex returns the first manifest of an image index whose
+// artifact type, or config media type for legacy manifests, is the plugin type
+func (c *Client) pluginManifestFromIndex(store *memory.Store, indexData []byte) ([]byte, error) {
+	var index ocispec.Index
+	if err := json.Unmarshal(indexData, &index); err != nil {
+		return nil, fmt.Errorf("unable to parse image index: %w", err)
+	}
+
+	for _, desc := range index.Manifests {
+		if desc.MediaType != ocispec.MediaTypeImageManifest {
+			continue
+		}
+		data, err := c.Generic().GetDescriptorData(store, desc)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve manifest %s from image index: %w", desc.Digest, err)
+		}
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			return nil, fmt.Errorf("unable to parse manifest %s from image index: %w", desc.Digest, err)
+		}
+		if manifest.ArtifactType == PluginArtifactType || (manifest.ArtifactType == "" && manifest.Config.MediaType == PluginArtifactType) {
+			return data, nil
+		}
+	}
+
+	return nil, fmt.Errorf("image index does not contain a manifest with artifact type %s", PluginArtifactType)
 }
