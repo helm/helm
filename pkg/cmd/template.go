@@ -213,6 +213,14 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						if client.UseReleaseName {
 							newDir = filepath.Join(outputDir, client.ReleaseName)
 						}
+						// The source is read from the rendered output, which the chart
+						// controls, so make sure that no selected manifest would be
+						// written outside of the output directory before writing any.
+						for _, m := range manifestsToRender {
+							if !filepath.IsLocal(filepath.FromSlash(m.source)) {
+								return fmt.Errorf("refusing to write template %s outside of the output directory", m.source)
+							}
+						}
 						fileWritten := make(map[string]bool)
 						for _, m := range manifestsToRender {
 							// writeToFile adds the "# Source:" comment itself, so drop the

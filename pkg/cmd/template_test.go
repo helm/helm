@@ -249,6 +249,27 @@ spec:
 		require.NoError(t, err)
 		assert.Empty(t, entries)
 	})
+
+	t.Run("refuses to write outside of the output directory", func(t *testing.T) {
+		// A document can claim any source in its "# Source:" comment.
+		chartDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(chartDir, "Chart.yaml"),
+			[]byte("apiVersion: v2\nname: escape\nversion: 0.1.0\n"), 0o644))
+		require.NoError(t, os.Mkdir(filepath.Join(chartDir, "crds"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(chartDir, "crds", "crds.yaml"),
+			[]byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: first\n---\n# Source: ../crds/crds.yaml\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: second\n"), 0o644))
+
+		rootDir := t.TempDir()
+		outputDir := filepath.Join(rootDir, "out")
+		_, _, err := executeActionCommand(fmt.Sprintf(
+			"template '%s' --include-crds --output-dir '%s' --show-only crds/crds.yaml",
+			chartDir, outputDir))
+		require.ErrorContains(t, err, "refusing to write template ../crds/crds.yaml outside of the output directory")
+
+		entries, err := os.ReadDir(rootDir)
+		require.NoError(t, err)
+		assert.Empty(t, entries)
+	})
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {
