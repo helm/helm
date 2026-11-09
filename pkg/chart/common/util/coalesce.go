@@ -318,31 +318,23 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 	if dst == nil {
 		return src
 	}
-	// Track original non-nil src keys before modifying src
-	// This lets us distinguish between user nullifying a chart default vs
-	// user setting nil for a key not in chart defaults.
-	srcOriginalNonNil := make(map[string]bool)
-	for key, val := range src {
-		if val != nil {
-			srcOriginalNonNil[key] = true
-		}
-	}
-	for key, val := range dst {
-		if val == nil {
-			src[key] = nil
-		}
-	}
 	// Because dest has higher precedence than src, dest values override src
 	// values.
+	//
+	// src is never modified: it may be the stored Config of a previous
+	// release (see --reuse-values) or a chart's default values.
 	for key, val := range src {
 		fullkey := concatPrefix(prefix, key)
 		dv, ok := dst[key]
 		switch {
-		case ok && !merge && dv == nil && srcOriginalNonNil[key]:
-			// When coalescing (not merging), if dst has nil and src has a non-nil
-			// value, the user is nullifying a chart default - remove the key.
-			// But if src also has nil (or key not in src), preserve the nil
-			delete(dst, key)
+		case ok && dv == nil:
+			// dst explicitly sets this key to nil. When coalescing (not
+			// merging) and src has a non-nil value, the user is nullifying a
+			// chart default - remove the key. Otherwise (merging, or src also
+			// has nil) preserve the nil in dst.
+			if !merge && val != nil {
+				delete(dst, key)
+			}
 		case !ok:
 			dst[key] = val
 		case istable(val):
