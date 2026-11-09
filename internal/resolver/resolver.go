@@ -134,12 +134,10 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			found = false
 		} else {
 			version = d.Version
+			ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, registry.OCIScheme+"://"), d.Name)
 
-			// Check to see if an explicit version has been provided
-			_, err := semver.NewVersion(version)
-
-			// Use an explicit version, otherwise search for tags
-			if err == nil {
+			// Use an explicit version (a tag), otherwise search for tags
+			if r.registryClient.VersionIsTag(ref, version) {
 				vs = []*repo.ChartVersion{{
 					Metadata: &chart.Metadata{
 						Version: version,
@@ -147,7 +145,6 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				}}
 			} else {
 				// Retrieve list of tags for repository
-				ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, registry.OCIScheme+"://"), d.Name)
 				tags, err := r.registryClient.Tags(ref)
 				if err != nil {
 					return nil, fmt.Errorf("could not retrieve list of tags for repository %s: %w", d.Repository, err)

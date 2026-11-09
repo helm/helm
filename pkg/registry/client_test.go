@@ -20,7 +20,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -150,6 +152,130 @@ func TestWarnIfHostHasPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.wantWarn, warnIfHostHasPath(tt.host))
+		})
+	}
+}
+
+// fakeTagRegistry is a minimal OCI registry serving the tag list endpoint and
+// HEAD requests for manifests, which is all that version resolution needs.
+type fakeTagRegistry struct {
+	tags  []string
+	heads int
+}
+
+func (f *fakeTagRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/tags/list"):
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"name":"testrepo/mychart","tags":["` + strings.Join(f.tags, `","`) + `"]}`))
+	case r.Method == http.MethodHead && strings.Contains(r.URL.Path, "/manifests/"):
+		f.heads++
+		tag := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+		if !slices.Contains(f.tags, tag) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+		w.Header().Set("Docker-Content-Digest", "sha256:"+strings.Repeat("a", 64))
+		w.Header().Set("Content-Length", "2")
+		w.WriteHeader(http.StatusOK)
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func TestValidateReferenceVersions(t *testing.T) {
+	tests := []struct {
+		name    string
+		tags    []string
+		version string
+		wantTag string
+		wantErr string
+		heads   int
+	}{
+		{
+			name:    "strict version is used as the tag without touching the registry",
+			tags:    []string{"1.2.0", "1.2.5"},
+			version: "1.2.5",
+			wantTag: "1.2.5",
+		},
+		{
+			name:    "partial version resolves to the highest matching tag",
+			tags:    []string{"1.1.0", "1.2.0", "1.2.5", "1.3.0"},
+			version: "1.2",
+			wantTag: "1.2.5",
+			heads:   1,
+		},
+		{
+			name:    "partial version prefers an existing literal tag",
+			tags:    []string{"1.2", "1.2.0", "1.2.5"},
+			version: "1.2",
+			wantTag: "1.2",
+			heads:   1,
+		},
+		{
+			name:    "major version resolves to the highest matching tag",
+			tags:    []string{"1.2.0", "1.2.5", "2.0.0"},
+			version: "1",
+			wantTag: "1.2.5",
+			heads:   1,
+		},
+		{
+			name:    "major version prefers an existing literal tag",
+			tags:    []string{"1", "1.2.0", "2.0.0"},
+			version: "1",
+			wantTag: "1",
+			heads:   1,
+		},
+		{
+			name:    "range resolves to the highest matching tag",
+			tags:    []string{"1.2.0", "1.2.5", "1.3.0"},
+			version: "~1.2",
+			wantTag: "1.2.5",
+		},
+		{
+			name:    "empty version resolves to the highest tag",
+			tags:    []string{"1.2.0", "1.3.0"},
+			version: "",
+			wantTag: "1.3.0",
+		},
+		{
+			name:    "partial version without any matching tag fails",
+			tags:    []string{"1.2.0", "1.2.5"},
+			version: "1.3",
+			wantErr: "could not locate a version matching provided version string 1.3",
+			heads:   1,
+		},
+		{
+			name:    "invalid version fails",
+			tags:    []string{"1.2.0"},
+			version: ">a1",
+			wantErr: "improper constraint",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg := &fakeTagRegistry{tags: tt.tags}
+			srv := httptest.NewServer(reg)
+			defer srv.Close()
+			host := strings.TrimPrefix(srv.URL, "http://")
+
+			client, err := NewClient(ClientOptPlainHTTP())
+			require.NoError(t, err)
+
+			ref := "oci://" + host + "/testrepo/mychart"
+			u, err := url.Parse(ref)
+			require.NoError(t, err)
+
+			_, got, err := client.ValidateReference(ref, tt.version, u)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, "testrepo/mychart:"+tt.wantTag, got.Path)
+			}
+			assert.Equal(t, tt.heads, reg.heads, "unexpected number of HEAD requests")
 		})
 	}
 }
