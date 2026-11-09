@@ -137,7 +137,11 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, registry.OCIScheme+"://"), d.Name)
 
 			// Use an explicit version (a tag), otherwise search for tags
-			if r.registryClient.VersionIsTag(ref, version) {
+			isTag, err := r.registryClient.VersionIsTag(ref, version)
+			if err != nil {
+				return nil, fmt.Errorf("could not resolve version %s for repository %s: %w", version, d.Repository, err)
+			}
+			if isTag {
 				vs = []*repo.ChartVersion{{
 					Metadata: &chart.Metadata{
 						Version: version,

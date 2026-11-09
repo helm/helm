@@ -296,6 +296,9 @@ func TestGetLocalPath(t *testing.T) {
 // HEAD requests for manifests, which is all that OCI dependency resolution needs.
 type fakeOCIRegistry struct {
 	tags []string
+	// headStatus, when set, is returned for every manifest HEAD request
+	// instead of answering from tags.
+	headStatus int
 }
 
 func (f *fakeOCIRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -304,6 +307,10 @@ func (f *fakeOCIRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"name":"testrepo/mychart","tags":["` + strings.Join(f.tags, `","`) + `"]}`))
 	case r.Method == http.MethodHead && strings.Contains(r.URL.Path, "/manifests/"):
+		if f.headStatus != 0 {
+			w.WriteHeader(f.headStatus)
+			return
+		}
 		tag := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
 		if !slices.Contains(f.tags, tag) {
 			w.WriteHeader(http.StatusNotFound)
@@ -320,17 +327,25 @@ func (f *fakeOCIRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func TestResolveOCIVersions(t *testing.T) {
 	tests := []struct {
-		name    string
-		tags    []string
-		version string
-		want    string
-		err     bool
+		name       string
+		tags       []string
+		version    string
+		want       string
+		err        bool
+		headStatus int
 	}{
 		{
 			name:    "strict version is locked as is",
 			tags:    []string{"1.2.0", "1.2.5"},
 			version: "1.2.5",
 			want:    "1.2.5",
+		},
+		{
+			name:       "partial version fails when the literal tag check is forbidden",
+			tags:       []string{"1.2", "1.2.0", "1.2.5"},
+			version:    "1.2",
+			err:        true,
+			headStatus: http.StatusForbidden,
 		},
 		{
 			name:    "partial version resolves to the highest matching tag",
@@ -372,7 +387,7 @@ func TestResolveOCIVersions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			srv := httptest.NewServer(&fakeOCIRegistry{tags: tt.tags})
+			srv := httptest.NewServer(&fakeOCIRegistry{tags: tt.tags, headStatus: tt.headStatus})
 			defer srv.Close()
 			host := strings.TrimPrefix(srv.URL, "http://")
 

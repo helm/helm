@@ -161,6 +161,9 @@ func TestWarnIfHostHasPath(t *testing.T) {
 type fakeTagRegistry struct {
 	tags  []string
 	heads int
+	// headStatus, when set, is returned for every manifest HEAD request
+	// instead of answering from tags.
+	headStatus int
 }
 
 func (f *fakeTagRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +173,10 @@ func (f *fakeTagRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"name":"testrepo/mychart","tags":["` + strings.Join(f.tags, `","`) + `"]}`))
 	case r.Method == http.MethodHead && strings.Contains(r.URL.Path, "/manifests/"):
 		f.heads++
+		if f.headStatus != 0 {
+			w.WriteHeader(f.headStatus)
+			return
+		}
 		tag := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
 		if !slices.Contains(f.tags, tag) {
 			w.WriteHeader(http.StatusNotFound)
@@ -186,18 +193,36 @@ func (f *fakeTagRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func TestValidateReferenceVersions(t *testing.T) {
 	tests := []struct {
-		name    string
-		tags    []string
-		version string
-		wantTag string
-		wantErr string
-		heads   int
+		name       string
+		tags       []string
+		version    string
+		wantTag    string
+		wantErr    string
+		heads      int
+		headStatus int
 	}{
 		{
 			name:    "strict version is used as the tag without touching the registry",
 			tags:    []string{"1.2.0", "1.2.5"},
 			version: "1.2.5",
 			wantTag: "1.2.5",
+		},
+		{
+			name:       "partial version fails when the literal tag check is forbidden",
+			tags:       []string{"1.2", "1.2.0", "1.2.5"},
+			version:    "1.2",
+			wantErr:    "unable to check whether",
+			heads:      1,
+			headStatus: http.StatusForbidden,
+		},
+		{
+			name:       "partial version fails when the literal tag check hits a server error",
+			tags:       []string{"1.2", "1.2.0", "1.2.5"},
+			version:    "1.2",
+			wantErr:    "unable to check whether",
+			headStatus: http.StatusInternalServerError,
+			// The ORAS client retries server errors before giving up.
+			heads: -1,
 		},
 		{
 			name:    "partial version resolves to the highest matching tag",
@@ -256,7 +281,7 @@ func TestValidateReferenceVersions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reg := &fakeTagRegistry{tags: tt.tags}
+			reg := &fakeTagRegistry{tags: tt.tags, headStatus: tt.headStatus}
 			srv := httptest.NewServer(reg)
 			defer srv.Close()
 			host := strings.TrimPrefix(srv.URL, "http://")
@@ -275,7 +300,11 @@ func TestValidateReferenceVersions(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, "testrepo/mychart:"+tt.wantTag, got.Path)
 			}
-			assert.Equal(t, tt.heads, reg.heads, "unexpected number of HEAD requests")
+			if tt.heads >= 0 {
+				assert.Equal(t, tt.heads, reg.heads, "unexpected number of HEAD requests")
+			} else {
+				assert.Positive(t, reg.heads, "expected at least one HEAD request")
+			}
 		})
 	}
 }

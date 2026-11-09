@@ -35,6 +35,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -852,17 +853,28 @@ func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
 // constraint, so 1.2 resolves to the newest 1.2.x tag just as it does for a
 // classic chart repository. Anything else (ranges such as ~1.2 or 1.x, or an
 // empty version) is never a tag.
-func (c *Client) VersionIsTag(ref, version string) bool {
+//
+// Checking for the tag asks the registry for its manifest. Only a "not found"
+// answer means the tag is absent; any other failure is returned so that a
+// registry or network problem cannot silently select a different version.
+func (c *Client) VersionIsTag(ref, version string) (bool, error) {
 	if _, err := semver.StrictNewVersion(version); err == nil {
-		return true
+		return true, nil
 	}
 	if _, err := semver.NewVersion(version); err != nil {
-		return false
+		return false, nil
 	}
 	// Charts may have been pushed with a non-strict tag (for example 1.2),
 	// and those tags keep taking precedence over resolving a range.
 	_, err := c.Resolve(ref + ":" + version)
-	return err == nil
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, errdef.ErrNotFound):
+		return false, nil
+	default:
+		return false, fmt.Errorf("unable to check whether %s:%s exists: %w", ref, version, err)
+	}
 }
 
 // ValidateReference for path and version
@@ -902,7 +914,11 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 	}
 
 	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
-	if c.VersionIsTag(registryReference.Registry+"/"+registryReference.Repository, version) {
+	isTag, err := c.VersionIsTag(registryReference.Registry+"/"+registryReference.Repository, version)
+	if err != nil {
+		return "", nil, err
+	}
+	if isTag {
 		tag = version
 	} else {
 		// Retrieve list of repository tags
