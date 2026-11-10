@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
@@ -54,6 +55,7 @@ func Chartfile(linter *support.Linter) {
 	chartFileForTypeCheck, _ := loadChartFileForTypeCheck(chartPath)
 
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
+	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartNameRFC1123(chartFile))
 
 	// Chart metadata
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
@@ -120,6 +122,32 @@ func validateChartName(cf *chart.Metadata) error {
 	name := filepath.Base(cf.Name)
 	if name != cf.Name {
 		return fmt.Errorf("chart name %q is invalid", cf.Name)
+	}
+	return nil
+}
+
+// validChartName is the regular expression for chart names. Chart names end up in
+// DNS-like names (e.g. label values and, by default, the release name), so they
+// must match RFC 1123's subdomain format.
+var validChartName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
+
+// maxChartNameLen is the maximum length Kubernetes allows for any name.
+const maxChartNameLen = 253
+
+// validateChartNameRFC1123 provides a hint for names that are syntactically
+// valid as a path, but not as a Kubernetes/DNS name (e.g. they use capital
+// letters, underscores or spaces). It deliberately reports at WarningSev so
+// charts with such names keep linting, but users get an actionable hint.
+func validateChartNameRFC1123(cf *chart.Metadata) error {
+	if cf.Name == "" {
+		// validateChartName already reports the missing name.
+		return nil
+	}
+	if len(cf.Name) > maxChartNameLen {
+		return fmt.Errorf("chart name %q is invalid: name must not be longer than %d characters", cf.Name, maxChartNameLen)
+	}
+	if !validChartName.MatchString(cf.Name) {
+		return fmt.Errorf("chart name %q is invalid: names must consist of lower case ASCII letters, numbers, '-' or '.', and must start and end with an alphanumeric (no capital letters, underscores or spaces)", cf.Name)
 	}
 	return nil
 }
