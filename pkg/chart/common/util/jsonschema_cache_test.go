@@ -17,9 +17,14 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -58,4 +63,51 @@ func BenchmarkValidateAgainstSingleSchema(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = ValidateAgainstSingleSchema(values, schema)
 	}
+}
+
+// Regression test for https://github.com/helm/helm/pull/32740: a schema
+// whose root document only $refs an external file must pick up changes to
+// that file on repeated validation. Caching the compiled schema on the
+// root bytes alone keeps validating against the stale external content.
+func TestValidateAgainstSingleSchema_ExternalFileRefRefresh(t *testing.T) {
+	dir := t.TempDir()
+	refPath := filepath.Join(dir, "ref.json")
+	require.NoError(t, os.WriteFile(refPath, []byte(`{"type": "object", "properties": {"n": {"minimum": 0}}}`), 0644))
+
+	root := []byte(fmt.Sprintf(`{"$ref": "file://%s"}`, refPath))
+	values := common.Values{"n": 5}
+
+	require.NoError(t, ValidateAgainstSingleSchema(values, root))
+
+	require.NoError(t, os.WriteFile(refPath, []byte(`{"type": "object", "properties": {"n": {"minimum": 10}}}`), 0644))
+	err := ValidateAgainstSingleSchema(values, root)
+	require.Error(t, err, "expected the updated external schema (minimum 10) to reject n=5")
+	assert.Contains(t, err.Error(), "minimum")
+}
+
+// Same regression via a URN $ref: when the URN resolver starts supplying
+// the referenced schema, repeated validation must use it instead of the
+// permissive fallback compiled on the first call.
+func TestValidateAgainstSingleSchema_ExternalURNRefRefresh(t *testing.T) {
+	urn := fmt.Sprintf("urn:example:test:external-ref-cache:%d", time.Now().UnixNano())
+	available := false
+	origResolver := URNResolver
+	URNResolver = func(u string) (any, error) {
+		if u != urn || !available {
+			return nil, fmt.Errorf("URN not resolved: %s", u)
+		}
+		return jsonschema.UnmarshalJSON(strings.NewReader(`{"type": "object", "properties": {"n": {"minimum": 10}}}`))
+	}
+	t.Cleanup(func() { URNResolver = origResolver })
+
+	root := []byte(fmt.Sprintf(`{"$ref": %q}`, urn))
+	values := common.Values{"n": 5}
+
+	// Backing data unavailable: the unresolved URN is soft-ignored.
+	require.NoError(t, ValidateAgainstSingleSchema(values, root))
+
+	available = true
+	err := ValidateAgainstSingleSchema(values, root)
+	require.Error(t, err, "expected the now-resolved URN schema (minimum 10) to reject n=5")
+	assert.Contains(t, err.Error(), "minimum")
 }

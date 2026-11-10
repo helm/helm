@@ -147,16 +147,14 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 // SHA-256 of the schema document. Compiling a schema is expensive while
 // validating values against a compiled schema is cheap, and a compiled
 // schema is safe for concurrent use, so the compiled form is shared.
+// Only self-contained schemas are cached: a schema referencing external
+// resources is resolved by loaders at compile time, so its content can
+// change while the root document stays identical.
 var compiledSchemaCache sync.Map // map[[32]byte]*jsonschema.Schema
 
 // compileSchema compiles schemaJSON into a validator, reusing the cached
-// compilation when the same schema document was seen before.
+// compilation when the same self-contained schema document was seen before.
 func compileSchema(schemaJSON []byte) (*jsonschema.Schema, error) {
-	key := sha256.Sum256(schemaJSON)
-	if cached, ok := compiledSchemaCache.Load(key); ok {
-		return cached.(*jsonschema.Schema), nil
-	}
-
 	// This unmarshal function leverages UseNumber() for number precision. The parser
 	// used for values does this as well.
 	schema, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaJSON))
@@ -164,6 +162,19 @@ func compileSchema(schemaJSON []byte) (*jsonschema.Schema, error) {
 		return nil, err
 	}
 	slog.Debug("unmarshalled JSON schema", "schema", schemaJSON)
+
+	// External references are resolved by loaders at compile time, so a
+	// compiled schema cached on the root bytes alone would keep validating
+	// against stale external content (e.g. an overwritten file or a URN
+	// that only later resolves). Such schemas are compiled fresh.
+	cacheable := !hasExternalRef(schema)
+	var key [32]byte
+	if cacheable {
+		key = sha256.Sum256(schemaJSON)
+		if cached, ok := compiledSchemaCache.Load(key); ok {
+			return cached.(*jsonschema.Schema), nil
+		}
+	}
 
 	// Configure compiler with loaders for different URL schemes
 	loader := jsonschema.SchemeURLLoader{
@@ -183,8 +194,49 @@ func compileSchema(schemaJSON []byte) (*jsonschema.Schema, error) {
 	if err != nil {
 		return nil, err
 	}
-	compiledSchemaCache.Store(key, compiled)
+	if cacheable {
+		compiledSchemaCache.Store(key, compiled)
+	}
 	return compiled, nil
+}
+
+// hasExternalRef reports whether the schema document references any resource
+// outside itself through $ref or $dynamicRef. A reference is external unless
+// it is a local fragment or points back at the root document, which is
+// registered with the compiler as file:///values.schema.json.
+func hasExternalRef(schema any) bool {
+	switch doc := schema.(type) {
+	case map[string]any:
+		for key, value := range doc {
+			if key == "$ref" || key == "$dynamicRef" {
+				if ref, ok := value.(string); ok && isExternalRef(ref) {
+					return true
+				}
+			}
+			if hasExternalRef(value) {
+				return true
+			}
+		}
+	case []any:
+		for _, value := range doc {
+			if hasExternalRef(value) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isExternalRef reports whether ref resolves to a resource other than the
+// document that contains it.
+func isExternalRef(ref string) bool {
+	if ref == "" || strings.HasPrefix(ref, "#") {
+		return false
+	}
+	if ref == "file:///values.schema.json" || strings.HasPrefix(ref, "file:///values.schema.json#") {
+		return false
+	}
+	return true
 }
 
 // URNResolverFunc allows SDK to plug a URN resolver. It must return a
