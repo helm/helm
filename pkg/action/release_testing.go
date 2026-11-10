@@ -138,16 +138,52 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 					continue
 				}
 
-				if h.Kind != "Pod" {
-					continue
-				}
-				if err := r.getContainerLogs(out, client, h.Name); err != nil {
-					return err
+				switch h.Kind {
+				case "Pod":
+					if err := r.getContainerLogs(out, client, h.Name); err != nil {
+						return err
+					}
+				case "Job":
+					if err := r.getJobLogs(out, client, h.Name); err != nil {
+						return err
+					}
 				}
 			}
 		}
 	}
 	return nil
+}
+
+// getJobLogs fetches logs from every pod selected by the Job, including retries.
+func (r *ReleaseTesting) getJobLogs(out io.Writer, client kubernetes.Interface, jobName string) error {
+	job, err := client.BatchV1().Jobs(r.Namespace).Get(context.Background(), jobName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("unable to get job %s: %w", jobName, err)
+	}
+	if job.Spec.Selector == nil || (len(job.Spec.Selector.MatchLabels) == 0 && len(job.Spec.Selector.MatchExpressions) == 0) {
+		return fmt.Errorf("job %s has no pod selector", jobName)
+	}
+	selector, err := metav1.LabelSelectorAsSelector(job.Spec.Selector)
+	if err != nil {
+		return fmt.Errorf("invalid pod selector for job %s: %w", jobName, err)
+	}
+	pods, err := client.CoreV1().Pods(r.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return fmt.Errorf("unable to get pods for job %s: %w", jobName, err)
+	}
+	if len(pods.Items) == 0 {
+		return fmt.Errorf("no pods found for job %s", jobName)
+	}
+	sort.Slice(pods.Items, func(i, j int) bool {
+		return pods.Items[i].Name < pods.Items[j].Name
+	})
+	var errs []error
+	for _, pod := range pods.Items {
+		if err := r.getContainerLogs(out, client, pod.Name); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // getContainerLogs fetches logs from all containers (init and regular) in the
