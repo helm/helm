@@ -18,7 +18,6 @@ package registry
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"testing"
@@ -26,6 +25,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 )
@@ -103,7 +103,7 @@ func pushJSON(t *testing.T, store *memory.Store, mediaType string, v any) ocispe
 func pushBlob(t *testing.T, store *memory.Store, mediaType string, data []byte) ocispec.Descriptor {
 	t.Helper()
 	desc := content.NewDescriptorFromBytes(mediaType, data)
-	require.NoError(t, store.Push(context.Background(), desc, bytes.NewReader(data)))
+	require.NoError(t, store.Push(t.Context(), desc, bytes.NewReader(data)))
 	return desc
 }
 
@@ -115,29 +115,38 @@ func newImageIndex(manifests ...ocispec.Descriptor) ocispec.Index {
 	}
 }
 
-// newPluginStore returns a store holding a plugin manifest for "demo" with
-// pluginData as its tarball, and a manifest of an unrelated artifact type
-func newPluginStore(t *testing.T, pluginData []byte) (*memory.Store, ocispec.Descriptor, ocispec.Descriptor) {
+// pluginFixture is a store holding a plugin manifest for "demo" and the
+// manifest of an unrelated artifact type, each with one tar+gzip layer
+type pluginFixture struct {
+	store          *memory.Store
+	pluginManifest ocispec.Descriptor
+	pluginLayer    ocispec.Descriptor
+	otherManifest  ocispec.Descriptor
+	otherLayer     ocispec.Descriptor
+}
+
+func newPluginFixture(t *testing.T, pluginData []byte) pluginFixture {
 	t.Helper()
-	store := memory.New()
-	layer := pushBlob(t, store, "application/vnd.oci.image.layer.v1.tar+gzip", pluginData)
-	layer.Annotations = map[string]string{ocispec.AnnotationTitle: "demo-1.0.0.tgz"}
-	config := pushBlob(t, store, ocispec.MediaTypeEmptyJSON, []byte("{}"))
-	pluginManifest := pushJSON(t, store, ocispec.MediaTypeImageManifest, ocispec.Manifest{
+	f := pluginFixture{store: memory.New()}
+	f.pluginLayer = pushBlob(t, f.store, "application/vnd.oci.image.layer.v1.tar+gzip", pluginData)
+	f.pluginLayer.Annotations = map[string]string{ocispec.AnnotationTitle: "demo-1.0.0.tgz"}
+	f.otherLayer = pushBlob(t, f.store, "application/vnd.oci.image.layer.v1.tar+gzip", []byte("other platform layer"))
+	config := pushBlob(t, f.store, ocispec.MediaTypeEmptyJSON, []byte("{}"))
+	f.pluginManifest = pushJSON(t, f.store, ocispec.MediaTypeImageManifest, ocispec.Manifest{
 		SchemaVersion: 2,
 		MediaType:     ocispec.MediaTypeImageManifest,
 		ArtifactType:  PluginArtifactType,
 		Config:        config,
-		Layers:        []ocispec.Descriptor{layer},
+		Layers:        []ocispec.Descriptor{f.pluginLayer},
 	})
-	otherManifest := pushJSON(t, store, ocispec.MediaTypeImageManifest, ocispec.Manifest{
+	f.otherManifest = pushJSON(t, f.store, ocispec.MediaTypeImageManifest, ocispec.Manifest{
 		SchemaVersion: 2,
 		MediaType:     ocispec.MediaTypeImageManifest,
 		ArtifactType:  "application/vnd.example.other",
 		Config:        config,
-		Layers:        []ocispec.Descriptor{},
+		Layers:        []ocispec.Descriptor{f.otherLayer},
 	})
-	return store, pluginManifest, otherManifest
+	return f
 }
 
 func TestProcessPluginPull(t *testing.T) {
@@ -147,37 +156,70 @@ func TestProcessPluginPull(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("manifest", func(t *testing.T) {
-		store, pluginManifest, _ := newPluginStore(t, pluginData)
+		f := newPluginFixture(t, pluginData)
 		result, err := client.processPluginPull(&GenericPullResult{
-			Manifest:    pluginManifest,
-			MemoryStore: store,
+			Manifest:    f.pluginManifest,
+			MemoryStore: f.store,
 			Ref:         "localhost:5000/plugins/demo:1.0.0",
-		}, "demo")
+		}, f.pluginManifest, "demo")
 		require.NoError(t, err)
 		assert.Equal(t, pluginData, result.PluginData)
+		assert.Equal(t, f.pluginManifest.Digest, result.Manifest.Digest)
 	})
 
-	t.Run("image index", func(t *testing.T) {
-		store, pluginManifest, otherManifest := newPluginStore(t, pluginData)
-		index := pushJSON(t, store, ocispec.MediaTypeImageIndex, newImageIndex(otherManifest, pluginManifest))
+	t.Run("manifest selected from an image index", func(t *testing.T) {
+		f := newPluginFixture(t, pluginData)
+		index := pushJSON(t, f.store, ocispec.MediaTypeImageIndex, newImageIndex(f.otherManifest, f.pluginManifest))
 		result, err := client.processPluginPull(&GenericPullResult{
-			Manifest:    index,
-			MemoryStore: store,
+			Manifest:    f.pluginManifest,
+			MemoryStore: f.store,
 			Ref:         "localhost:5000/plugins/demo:idx",
-		}, "demo")
+		}, index, "demo")
 		require.NoError(t, err)
 		assert.Equal(t, pluginData, result.PluginData)
 		assert.Equal(t, index.Digest, result.Manifest.Digest)
 	})
+}
 
-	t.Run("image index without a plugin manifest", func(t *testing.T) {
-		store, _, otherManifest := newPluginStore(t, pluginData)
-		index := pushJSON(t, store, ocispec.MediaTypeImageIndex, newImageIndex(otherManifest))
-		_, err := client.processPluginPull(&GenericPullResult{
-			Manifest:    index,
-			MemoryStore: store,
-			Ref:         "localhost:5000/plugins/demo:idx",
-		}, "demo")
+func TestPluginManifestFromIndex(t *testing.T) {
+	t.Run("plugin manifest", func(t *testing.T) {
+		f := newPluginFixture(t, []byte("plugin tarball"))
+		index := pushJSON(t, f.store, ocispec.MediaTypeImageIndex, newImageIndex(f.otherManifest, f.pluginManifest))
+		desc, err := pluginManifestFromIndex(t.Context(), f.store, index)
+		require.NoError(t, err)
+		assert.Equal(t, f.pluginManifest.Digest, desc.Digest)
+	})
+
+	t.Run("no plugin manifest", func(t *testing.T) {
+		f := newPluginFixture(t, []byte("plugin tarball"))
+		index := pushJSON(t, f.store, ocispec.MediaTypeImageIndex, newImageIndex(f.otherManifest))
+		_, err := pluginManifestFromIndex(t.Context(), f.store, index)
 		require.ErrorContains(t, err, "image index does not contain a manifest with artifact type "+PluginArtifactType)
 	})
+}
+
+func TestPluginPullOptionsCopiesOnlyThePluginManifest(t *testing.T) {
+	ctx := t.Context()
+	f := newPluginFixture(t, []byte("plugin tarball"))
+	index := pushJSON(t, f.store, ocispec.MediaTypeImageIndex, newImageIndex(f.otherManifest, f.pluginManifest))
+	require.NoError(t, f.store.Tag(ctx, index, "idx"))
+
+	var root ocispec.Descriptor
+	opts := pluginPullOptions(&root)
+	dst := memory.New()
+	copied, err := oras.Copy(ctx, f.store, "idx", dst, "", oras.CopyOptions{MapRoot: opts.MapRoot})
+	require.NoError(t, err)
+
+	assert.Equal(t, index.Digest, root.Digest)
+	assert.Equal(t, f.pluginManifest.Digest, copied.Digest)
+	for _, desc := range []ocispec.Descriptor{f.pluginManifest, f.pluginLayer} {
+		ok, err := dst.Exists(ctx, desc)
+		require.NoError(t, err)
+		assert.True(t, ok, "expected %s to be copied", desc.Digest)
+	}
+	for _, desc := range []ocispec.Descriptor{index, f.otherManifest, f.otherLayer} {
+		ok, err := dst.Exists(ctx, desc)
+		require.NoError(t, err)
+		assert.False(t, ok, "expected %s not to be copied", desc.Digest)
+	}
 }

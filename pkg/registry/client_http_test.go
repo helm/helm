@@ -17,7 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -83,9 +82,9 @@ func (suite *HTTPRegistryClientTestSuite) Test_5_ImageIndex() {
 
 func (suite *HTTPRegistryClientTestSuite) Test_6_PluginImageIndex() {
 	pluginData := []byte("plugin tarball")
-	store, pluginManifest, otherManifest := newPluginStore(suite.T(), pluginData)
-	index := pushJSON(suite.T(), store, ocispec.MediaTypeImageIndex, newImageIndex(otherManifest, pluginManifest))
-	suite.Require().NoError(store.Tag(context.Background(), index, "idx"))
+	f := newPluginFixture(suite.T(), pluginData)
+	index := pushJSON(suite.T(), f.store, ocispec.MediaTypeImageIndex, newImageIndex(f.otherManifest, f.pluginManifest))
+	suite.Require().NoError(f.store.Tag(suite.T().Context(), index, "idx"))
 
 	repo, err := remote.NewRepository(suite.DockerRegistryHost + "/testrepo/demo")
 	suite.Require().NoError(err)
@@ -94,10 +93,21 @@ func (suite *HTTPRegistryClientTestSuite) Test_6_PluginImageIndex() {
 		Username: testUsername,
 		Password: testPassword,
 	})}
-	_, err = oras.Copy(context.Background(), store, "idx", repo, "idx", oras.DefaultCopyOptions)
+	_, err = oras.Copy(suite.T().Context(), f.store, "idx", repo, "idx", oras.DefaultCopyOptions)
 	suite.Require().NoError(err)
 
-	result, err := suite.RegistryClient.PullPlugin(suite.DockerRegistryHost+"/testrepo/demo:idx", "demo")
+	ref := suite.DockerRegistryHost + "/testrepo/demo:idx"
+	var root ocispec.Descriptor
+	pulled, err := suite.RegistryClient.Generic().PullGeneric(ref, pluginPullOptions(&root))
+	suite.Require().NoError(err)
+	suite.Equal(index.Digest, root.Digest)
+	var digests []string
+	for _, desc := range pulled.Descriptors {
+		digests = append(digests, desc.Digest.String())
+	}
+	suite.ElementsMatch([]string{f.pluginManifest.Digest.String(), f.pluginLayer.Digest.String()}, digests)
+
+	result, err := suite.RegistryClient.PullPlugin(ref, "demo")
 	suite.Require().NoError(err)
 	suite.Equal(pluginData, result.PluginData)
 	suite.Equal(index.Digest, result.Manifest.Digest)
