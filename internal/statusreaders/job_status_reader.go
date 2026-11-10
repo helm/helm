@@ -70,7 +70,7 @@ func jobConditions(u *unstructured.Unstructured) (*status.Result, error) {
 	failed := status.GetIntField(obj, ".status.failed", 0)
 
 	// Conditions
-	// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/job/utils.go#L24
+	// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/job/util/utils.go
 	objc, err := status.GetObjectWithConditions(obj)
 	if err != nil {
 		return nil, err
