@@ -230,11 +230,12 @@ func (c *Client) pluginManifestFromIndex(store *memory.Store, indexData []byte) 
 		return nil, fmt.Errorf("unable to parse image index: %w", err)
 	}
 
+	generic := c.Generic()
 	for _, desc := range index.Manifests {
 		if desc.MediaType != ocispec.MediaTypeImageManifest {
 			continue
 		}
-		data, err := c.Generic().GetDescriptorData(store, desc)
+		data, err := generic.GetDescriptorData(store, desc)
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve manifest %s from image index: %w", desc.Digest, err)
 		}
