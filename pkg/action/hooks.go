@@ -60,9 +60,17 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration,
 	serverSideApply bool,
 ) (ExecuteShutdownFunc, error) {
+	return cfg.execHooksWithDelayedShutdown(rl, hook, rl.Hooks, waitStrategy, waitOptions, timeout, serverSideApply)
+}
+
+// execHooksWithDelayedShutdown executes the selected hooks while recording the complete release.
+func (cfg *Configuration) execHooksWithDelayedShutdown(rl *release.Release, hook release.HookEvent, hooks []*release.Hook,
+	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration,
+	serverSideApply bool,
+) (ExecuteShutdownFunc, error) {
 	executingHooks := []*release.Hook{}
 
-	for _, h := range rl.Hooks {
+	for _, h := range hooks {
 		for _, e := range h.Events {
 			if e == hook {
 				executingHooks = append(executingHooks, h)
