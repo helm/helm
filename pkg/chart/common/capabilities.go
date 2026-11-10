@@ -22,19 +22,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Masterminds/semver/v3"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sversion "k8s.io/apimachinery/pkg/util/version"
+	k8sbaseversion "k8s.io/component-base/version"
 
 	helmversion "helm.sh/helm/v4/internal/version"
 )
 
 const (
-	kubeVersionMajorTesting = 1
-	kubeVersionMinorTesting = 20
+	kubeVersionMajorTesting = "1"
+	kubeVersionMinorTesting = "20"
 )
 
 var (
@@ -151,30 +151,20 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
-	vstr, err := helmversion.K8sIOClientGoModVersion()
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
-	}
-
-	v, err := semver.NewVersion(vstr)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse k8s.io/client-go version %q: %w", vstr, err)
-	}
-
-	kubeVersionMajor := v.Major() + 1
-	kubeVersionMinor := v.Minor()
+	kubeVersionMajor := k8sbaseversion.Get().Major
+	kubeVersionMinor := k8sbaseversion.Get().Minor
 
 	return newCapabilities(kubeVersionMajor, kubeVersionMinor)
 }
 
-func newCapabilities(kubeVersionMajor, kubeVersionMinor uint64) (*Capabilities, error) {
-	version := fmt.Sprintf("v%d.%d.0", kubeVersionMajor, kubeVersionMinor)
+func newCapabilities(kubeVersionMajor, kubeVersionMinor string) (*Capabilities, error) {
+	version := fmt.Sprintf("v%s.%s.0", kubeVersionMajor, kubeVersionMinor)
 	return &Capabilities{
 		KubeVersion: KubeVersion{
 			Version:           version,
 			normalizedVersion: version,
-			Major:             strconv.FormatUint(kubeVersionMajor, 10),
-			Minor:             strconv.FormatUint(kubeVersionMinor, 10),
+			Major:             kubeVersionMajor,
+			Minor:             kubeVersionMinor,
 		},
 		APIVersions: DefaultVersionSet,
 		HelmVersion: helmversion.Get(),

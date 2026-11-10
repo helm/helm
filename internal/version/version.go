@@ -19,12 +19,11 @@ package version
 import (
 	"flag"
 	"fmt"
-	"log/slog"
 	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/Masterminds/semver/v3"
+	k8sbaseversion "k8s.io/component-base/version"
 )
 
 var (
@@ -85,22 +84,7 @@ func Get() BuildInfo {
 			return kubeClientGoVersionTesting
 		}
 
-		vstr, err := K8sIOClientGoModVersion()
-		if err != nil {
-			slog.Error("failed to retrieve k8s.io/client-go version", slog.Any("error", err))
-			return ""
-		}
-
-		v, err := semver.NewVersion(vstr)
-		if err != nil {
-			slog.Error("unable to parse k8s.io/client-go version", slog.String("version", vstr), slog.Any("error", err))
-			return ""
-		}
-
-		kubeClientVersionMajor := v.Major() + 1
-		kubeClientVersionMinor := v.Minor()
-
-		return fmt.Sprintf("v%d.%d", kubeClientVersionMajor, kubeClientVersionMinor)
+		return fmt.Sprintf("v%s.%s", k8sbaseversion.Get().Major, k8sbaseversion.Get().Minor)
 	}
 
 	v := BuildInfo{
