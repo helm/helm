@@ -451,7 +451,7 @@ func TestExecHook_WaitOptionsPassedDownstream(t *testing.T) {
 	req := require.New(t)
 
 	failer := &kubefake.FailingKubeClient{
-		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+		Out: io.Discard,
 	}
 
 	configuration := &Configuration{

@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
 )
@@ -36,17 +35,17 @@ func TestPodConditions(t *testing.T) {
 		{
 			name: "pod without status returns in progress",
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod-no-status"},
-				Spec:       v1.PodSpec{},
-				Status:     v1.PodStatus{},
+				Name:   "pod-no-status",
+				Spec:   v1.PodSpec{},
+				Status: v1.PodStatus{},
 			},
 			expectedStatus: status.InProgressStatus,
 		},
 		{
 			name: "pod succeeded returns current status",
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod-succeeded"},
-				Spec:       v1.PodSpec{},
+				Name: "pod-succeeded",
+				Spec: v1.PodSpec{},
 				Status: v1.PodStatus{
 					Phase: v1.PodSucceeded,
 				},
@@ -56,8 +55,8 @@ func TestPodConditions(t *testing.T) {
 		{
 			name: "pod failed returns failed status",
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod-failed"},
-				Spec:       v1.PodSpec{},
+				Name: "pod-failed",
+				Spec: v1.PodSpec{},
 				Status: v1.PodStatus{
 					Phase: v1.PodFailed,
 				},
@@ -67,8 +66,8 @@ func TestPodConditions(t *testing.T) {
 		{
 			name: "pod pending returns in progress status",
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod-pending"},
-				Spec:       v1.PodSpec{},
+				Name: "pod-pending",
+				Spec: v1.PodSpec{},
 				Status: v1.PodStatus{
 					Phase: v1.PodPending,
 				},
@@ -78,8 +77,8 @@ func TestPodConditions(t *testing.T) {
 		{
 			name: "pod running returns in progress status",
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod-running"},
-				Spec:       v1.PodSpec{},
+				Name: "pod-running",
+				Spec: v1.PodSpec{},
 				Status: v1.PodStatus{
 					Phase: v1.PodRunning,
 				},
@@ -89,8 +88,8 @@ func TestPodConditions(t *testing.T) {
 		{
 			name: "pod with unknown phase returns in progress status",
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "pod-unknown"},
-				Spec:       v1.PodSpec{},
+				Name: "pod-unknown",
+				Spec: v1.PodSpec{},
 				Status: v1.PodStatus{
 					Phase: v1.PodUnknown,
 				},

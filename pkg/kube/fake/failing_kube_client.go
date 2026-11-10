@@ -50,7 +50,9 @@ type FailingKubeClient struct {
 	WaitDuration           time.Duration
 	// RecordedWaitOptions stores the WaitOptions passed to GetWaiter for testing
 	RecordedWaitOptions []kube.WaitOption
-	mu                  sync.Mutex
+	// RecordedWaitStrategies stores the WaitStrategy passed to each GetWaiter call for testing
+	RecordedWaitStrategies []kube.WaitStrategy
+	mu                     sync.Mutex
 }
 
 var _ kube.Interface = &FailingKubeClient{}
@@ -160,14 +162,15 @@ func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error)
 	return f.GetWaiterWithOptions(ws)
 }
 
-func (f *FailingKubeClient) appendRecordedWaitOptionsLocked(opts ...kube.WaitOption) {
+func (f *FailingKubeClient) recordGetWaiterCallLocked(ws kube.WaitStrategy, opts ...kube.WaitOption) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.RecordedWaitStrategies = append(f.RecordedWaitStrategies, ws)
 	f.RecordedWaitOptions = append(f.RecordedWaitOptions, opts...)
 }
 
 func (f *FailingKubeClient) GetWaiterWithOptions(ws kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
-	f.appendRecordedWaitOptionsLocked(opts...)
+	f.recordGetWaiterCallLocked(ws, opts...)
 	waiter, _ := f.PrintingKubeClient.GetWaiterWithOptions(ws, opts...)
 	printingKubeWaiter, _ := waiter.(*PrintingKubeWaiter)
 	return &FailingKubeWaiter{

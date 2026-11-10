@@ -40,7 +40,7 @@ func TestNewStatus(t *testing.T) {
 
 func TestStatusRun(t *testing.T) {
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.BuildDummy = true
 	config.KubeClient = &failingKubeClient
 	client := NewStatus(config)
@@ -59,7 +59,7 @@ func TestStatusRun(t *testing.T) {
 
 func TestStatusRun_KubeClientNotReachable(t *testing.T) {
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.ConnectionError = errors.New("connection refused")
 	config.KubeClient = &failingKubeClient
 
@@ -72,7 +72,7 @@ func TestStatusRun_KubeClientNotReachable(t *testing.T) {
 
 func TestStatusRun_KubeClientBuildTableError(t *testing.T) {
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.BuildTableError = errors.New("build table error")
 	config.KubeClient = &failingKubeClient
 
@@ -90,7 +90,7 @@ func TestStatusRun_KubeClientBuildTableError(t *testing.T) {
 
 func TestStatusRun_KubeClientBuildError(t *testing.T) {
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.BuildError = errors.New("build error")
 	config.KubeClient = &failingKubeClient
 
@@ -107,7 +107,7 @@ func TestStatusRun_KubeClientBuildError(t *testing.T) {
 
 func TestStatusRun_KubeClientGetError(t *testing.T) {
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.BuildError = errors.New("get error")
 	config.KubeClient = &failingKubeClient
 

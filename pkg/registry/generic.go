@@ -113,34 +113,32 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 
 	var mu sync.Mutex
 	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
-		CopyGraphOptions: oras.CopyGraphOptions{
-			PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
-				// Apply a custom PreCopy function if provided
-				if options.PreCopy != nil {
-					if err := options.PreCopy(ctx, desc); err != nil {
-						return err
-					}
+		PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
+			// Apply a custom PreCopy function if provided
+			if options.PreCopy != nil {
+				if err := options.PreCopy(ctx, desc); err != nil {
+					return err
 				}
+			}
 
-				mediaType := desc.MediaType
+			mediaType := desc.MediaType
 
-				// Skip media types if specified
-				if slices.Contains(options.SkipMediaTypes, mediaType) {
+			// Skip media types if specified
+			if slices.Contains(options.SkipMediaTypes, mediaType) {
+				return oras.SkipNode
+			}
+
+			// Filter by allowed media types if specified
+			if len(allowedMediaTypes) > 0 {
+				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
 					return oras.SkipNode
 				}
+			}
 
-				// Filter by allowed media types if specified
-				if len(allowedMediaTypes) > 0 {
-					if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
-						return oras.SkipNode
-					}
-				}
-
-				mu.Lock()
-				descriptors = append(descriptors, desc)
-				mu.Unlock()
-				return nil
-			},
+			mu.Lock()
+			descriptors = append(descriptors, desc)
+			mu.Unlock()
+			return nil
 		},
 	})
 	if err != nil {

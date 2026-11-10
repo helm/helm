@@ -62,7 +62,7 @@ func TestReleaseTestNotesHandling(t *testing.T) {
 	// Set up action configuration properly
 	actionConfig := &action.Configuration{
 		Releases:     store,
-		KubeClient:   &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
+		KubeClient:   &kubefake.FailingKubeClient{Out: io.Discard},
 		Capabilities: common.DefaultCapabilities,
 	}
 
