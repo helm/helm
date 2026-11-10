@@ -152,9 +152,15 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
-	v, err := semver.NewVersion(k8sbaseversion.DefaultKubeBinaryVersion)
+	return capabilitiesFromKubeBinaryVersion(k8sbaseversion.DefaultKubeBinaryVersion)
+}
+
+// capabilitiesFromKubeBinaryVersion builds capabilities whose Kubernetes
+// major/minor are derived from the given Kubernetes binary version (e.g. "1.36").
+func capabilitiesFromKubeBinaryVersion(binaryVersion string) (*Capabilities, error) {
+	v, err := semver.NewVersion(binaryVersion)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse k8s.io/client-go version %q: %w", k8sbaseversion.DefaultKubeBinaryVersion, err)
+		return nil, fmt.Errorf("unable to parse k8s.io/component-base default kube binary version %q: %w", binaryVersion, err)
 	}
 
 	return newCapabilities(v.Major(), v.Minor())
