@@ -127,7 +127,16 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
 			if rel != nil {
 				var manifests bytes.Buffer
-				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+				if len(showFiles) > 0 && outputDir != "" {
+					// Selected manifests are written to files, so keep the
+					// whitespace of the rendered documents as it is.
+					fmt.Fprint(&manifests, rel.Manifest)
+					if !strings.HasSuffix(rel.Manifest, "\n") {
+						fmt.Fprintln(&manifests)
+					}
+				} else {
+					fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+				}
 				if !client.DisableHooks {
 					fileWritten := make(map[string]bool)
 					for _, m := range rel.Hooks {
@@ -166,7 +175,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
 
-					manifestNameRegex := regexp.MustCompile("# Source: ([^/]+/(.+))")
+					manifestNameRegex := regexp.MustCompile(`(?m)^# Source: ([^/]+/(.+))`)
 					var manifestsToRender []sourcedManifest
 					for _, f := range showFiles {
 						missing := true
@@ -223,11 +232,11 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						}
 						fileWritten := make(map[string]bool)
 						for _, m := range manifestsToRender {
-							// writeToFile adds the "# Source:" comment itself, so drop the
-							// one added when rendering. Documents are separated by a blank
-							// line, as when --show-only is not used.
+							// writeToFile adds the "# Source:" comment and the final newline
+							// itself, so drop the comment and the newline added when rendering.
+							// Everything else is left alone, as it may be part of a YAML value.
 							content := strings.TrimPrefix(m.document, "# Source: "+m.source+"\n")
-							content = strings.TrimRight(content, "\n") + "\n"
+							content = strings.TrimSuffix(content, "\n")
 							if err := writeToFile(newDir, m.source, content, fileWritten[m.source]); err != nil {
 								return err
 							}
