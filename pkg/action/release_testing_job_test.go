@@ -56,6 +56,10 @@ func TestReleaseTestingGetPodLogs_Job(t *testing.T) {
 		event         release.HookEvent
 		filters       map[string][]string
 		selectorMode  string
+		namespace     string
+		manifest      string
+		decoyJob      bool
+		followingPod  bool
 		noPods        bool
 		failPath      string
 		wantError     string
@@ -77,6 +81,12 @@ func TestReleaseTestingGetPodLogs_Job(t *testing.T) {
 		{name: "missing selector", selectorMode: "missing", wantError: "job smoke has no pod selector"},
 		{name: "empty selector", selectorMode: "empty", wantError: "job smoke has no pod selector"},
 		{name: "continue after pod log failure", failPath: podsPath + "/smoke-alpha/log", wantError: "unable to get logs for pod smoke-alpha", wantPods: []string{"smoke-zeta"}},
+		{name: "manifest without namespace", manifest: "metadata:\n  name: smoke\n", wantPods: []string{"smoke-alpha", "smoke-zeta"}},
+		{name: "manifest in release namespace", namespace: "test-ns", wantPods: []string{"smoke-alpha", "smoke-zeta"}},
+		{name: "manifest in another namespace", namespace: "hook-ns", wantPods: []string{"smoke-alpha", "smoke-zeta"}},
+		{name: "ignore same-name job in release namespace", namespace: "hook-ns", decoyJob: true, wantPods: []string{"smoke-alpha", "smoke-zeta"}},
+		{name: "later pod uses release namespace", namespace: "hook-ns", decoyJob: true, followingPod: true, wantPods: []string{"smoke-alpha", "smoke-zeta", "following"}},
+		{name: "invalid job manifest", manifest: "metadata: [", wantError: "unable to parse metadata.namespace", wantNoRequest: true},
 	}
 
 	for _, tt := range tests {
@@ -100,16 +110,45 @@ func TestReleaseTestingGetPodLogs_Job(t *testing.T) {
 			case "empty":
 				selector = &metav1.LabelSelector{}
 			}
-			pods := []v1.Pod{
-				{Name: "smoke-zeta", Namespace: "test-ns"},
-				{Name: "smoke-alpha", Namespace: "test-ns"},
+			namespace := "test-ns"
+			if tt.namespace != "" {
+				namespace = tt.namespace
 			}
-			for i := range pods {
-				pods[i].Spec.InitContainers = []v1.Container{{Name: "setup"}}
-				pods[i].Spec.Containers = []v1.Container{{Name: "test"}}
+			makePod := func(name, namespace string) v1.Pod {
+				return v1.Pod{
+					Name: name, Namespace: namespace,
+					Spec: v1.PodSpec{
+						InitContainers: []v1.Container{{Name: "setup"}},
+						Containers:     []v1.Container{{Name: "test"}},
+					},
+				}
+			}
+			pods := []v1.Pod{
+				makePod("smoke-zeta", namespace),
+				makePod("smoke-alpha", namespace),
 			}
 			if tt.noPods {
 				pods = nil
+			}
+			allPods := append([]v1.Pod(nil), pods...)
+			hookPodsPath := "/api/v1/namespaces/" + namespace + "/pods"
+			hookJobPath := "/apis/batch/v1/namespaces/" + namespace + "/jobs/smoke"
+			objects := map[string]any{
+				hookJobPath:  &batchv1.Job{Spec: batchv1.JobSpec{Selector: selector, ManualSelector: &manual}},
+				hookPodsPath: &v1.PodList{Items: pods},
+			}
+			selectors := map[string]string{hookPodsPath: wantSelector}
+			if tt.decoyJob {
+				decoyPod := makePod("smoke-decoy", "test-ns")
+				allPods = append(allPods, decoyPod)
+				objects[jobPath] = &batchv1.Job{Spec: batchv1.JobSpec{
+					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{batchv1.ControllerUidLabel: "decoy-uid"}},
+				}}
+				objects[podsPath] = &v1.PodList{Items: []v1.Pod{decoyPod}}
+				selectors[podsPath] = "batch.kubernetes.io/controller-uid=decoy-uid"
+			}
+			if tt.followingPod {
+				allPods = append(allPods, makePod("following", "test-ns"))
 			}
 
 			var requests []string
@@ -117,19 +156,17 @@ func TestReleaseTestingGetPodLogs_Job(t *testing.T) {
 				assert.Equal(t, http.MethodGet, req.Method)
 				requests = append(requests, req.URL.Path)
 				status := http.StatusOK
-				var object any
-				switch req.URL.Path {
-				case jobPath:
-					object = &batchv1.Job{Spec: batchv1.JobSpec{Selector: selector, ManualSelector: &manual}}
-				case podsPath:
-					assert.Equal(t, wantSelector, req.URL.Query().Get("labelSelector"))
-					object = &v1.PodList{Items: pods}
-				default:
-					for _, pod := range pods {
-						if req.URL.Path == podsPath+"/"+pod.Name {
+				object := objects[req.URL.Path]
+				if selector, ok := selectors[req.URL.Path]; ok {
+					assert.Equal(t, selector, req.URL.Query().Get("labelSelector"))
+				}
+				if object == nil {
+					for _, pod := range allPods {
+						podPath := "/api/v1/namespaces/" + pod.Namespace + "/pods/" + pod.Name
+						if req.URL.Path == podPath {
 							object = pod
 						}
-						if req.URL.Path == podsPath+"/"+pod.Name+"/log" && req.URL.Path != tt.failPath {
+						if req.URL.Path == podPath+"/log" && req.URL.Path != tt.failPath {
 							container := req.URL.Query().Get("container")
 							assert.Contains(t, []string{"setup", "test"}, container)
 							return &http.Response{
@@ -143,6 +180,10 @@ func TestReleaseTestingGetPodLogs_Job(t *testing.T) {
 				if req.URL.Path == tt.failPath {
 					status = http.StatusForbidden
 					object = &metav1.Status{Status: metav1.StatusFailure, Reason: metav1.StatusReasonForbidden, Code: http.StatusForbidden, Message: "access denied"}
+				}
+				if object == nil && req.URL.Path == jobPath && namespace == "hook-ns" {
+					status = http.StatusNotFound
+					object = &metav1.Status{Status: metav1.StatusFailure, Reason: metav1.StatusReasonNotFound, Code: http.StatusNotFound, Message: "not found"}
 				}
 				require.NotNil(t, object, "unexpected request: %s", req.URL)
 				data, err := json.Marshal(object)
@@ -160,6 +201,10 @@ func TestReleaseTestingGetPodLogs_Job(t *testing.T) {
 			client.Namespace = "test-ns"
 			client.Filters = tt.filters
 			hook := &release.Hook{Name: "smoke", Kind: "Job", Events: []release.HookEvent{release.HookTest}}
+			hook.Manifest = tt.manifest
+			if tt.namespace != "" {
+				hook.Manifest = "apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: smoke\n  namespace: " + tt.namespace + "\n"
+			}
 			if tt.kind != "" {
 				hook.Kind = tt.kind
 			}
@@ -169,8 +214,13 @@ func TestReleaseTestingGetPodLogs_Job(t *testing.T) {
 			if tt.event != "" {
 				hook.Events = []release.HookEvent{tt.event}
 			}
+			hooks := []*release.Hook{hook}
+			if tt.followingPod {
+				hooks = append(hooks, &release.Hook{Name: "following", Kind: "Pod", Weight: 1, Events: []release.HookEvent{release.HookTest}})
+			}
 			var out bytes.Buffer
-			err := client.GetPodLogs(&out, &release.Release{Hooks: []*release.Hook{hook}})
+			err := client.GetPodLogs(&out, &release.Release{Hooks: hooks})
+			assert.Equal(t, "test-ns", client.Namespace, "reading a hook's logs must not change the action namespace")
 			if tt.wantError != "" {
 				require.ErrorContains(t, err, tt.wantError)
 				if tt.failPath != "" {
@@ -181,6 +231,11 @@ func TestReleaseTestingGetPodLogs_Job(t *testing.T) {
 			}
 			if tt.wantNoRequest {
 				assert.Empty(t, requests)
+			}
+			if tt.namespace == "hook-ns" {
+				assert.Contains(t, requests, hookJobPath)
+				assert.NotContains(t, requests, jobPath)
+				assert.NotContains(t, out.String(), "smoke-decoy")
 			}
 			for _, pod := range tt.wantPods {
 				for _, container := range []string{"setup", "test"} {
