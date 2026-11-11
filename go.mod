@@ -20,7 +20,7 @@ require (
 	github.com/fluxcd/cli-utils v1.4.0
 	github.com/foxcpp/go-mockdns v1.3.0
 	github.com/gobwas/glob v1.1.0
-	github.com/gofrs/flock v0.13.1
+	github.com/gofrs/flock v0.13.2
 	github.com/gosuri/uitable v0.0.4
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.12.3
