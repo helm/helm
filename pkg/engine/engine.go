@@ -107,7 +107,10 @@ func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string
 //
 // TODO Helm v5: Rename this to Render (remove the current deprecated Render method) and 'go:fix inline' RenderWithContext method to call Render.
 func (e Engine) RenderWithContext(ctx context.Context, chrt ci.Charter, values common.Values) (map[string]string, error) {
-	tmap := allTemplates(chrt, values)
+	tmap, err := allTemplates(chrt, values)
+	if err != nil {
+		return nil, err
+	}
 	return e.render(ctx, tmap)
 }
 
@@ -560,22 +563,24 @@ func (p byPathLen) Less(i, j int) bool {
 // allTemplates returns all templates for a chart and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
-func allTemplates(c ci.Charter, vals common.Values) map[string]renderable {
+func allTemplates(c ci.Charter, vals common.Values) (map[string]renderable, error) {
 	templates := make(map[string]renderable)
-	recAllTpls(c, templates, vals)
-	return templates
+	if _, err := recAllTpls(c, templates, vals); err != nil {
+		return nil, err
+	}
+	return templates, nil
 }
 
 // recAllTpls recurses through the templates in a chart.
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Values) map[string]any {
+func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Values) (map[string]any, error) {
 	vals := values.AsMap()
 	subCharts := make(map[string]any)
 	accessor, err := ci.NewAccessor(c)
 	if err != nil {
-		slog.Error("error accessing chart", "error", err)
+		return nil, fmt.Errorf("error accessing chart: %w", err)
 	}
 	chartMetaData := accessor.MetadataAsMap()
 	chartMetaData["IsRoot"] = accessor.IsRoot()
@@ -598,9 +603,15 @@ func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Val
 	}
 
 	for _, child := range accessor.Dependencies() {
-		// TODO: Handle error
-		sub, _ := ci.NewAccessor(child)
-		subCharts[sub.Name()] = recAllTpls(child, templates, next)
+		sub, err := ci.NewAccessor(child)
+		if err != nil {
+			return nil, fmt.Errorf("error accessing subchart of %q: %w", accessor.Name(), err)
+		}
+		subVals, err := recAllTpls(child, templates, next)
+		if err != nil {
+			return nil, err
+		}
+		subCharts[sub.Name()] = subVals
 	}
 
 	newParentID := accessor.ChartFullPath()
@@ -618,7 +629,7 @@ func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Val
 		}
 	}
 
-	return next
+	return next, nil
 }
 
 // isTemplateValid returns true if the template is valid for the chart type
