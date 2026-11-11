@@ -74,25 +74,29 @@ func GetUserAgent() string {
 	return "Helm/" + strings.TrimPrefix(GetVersion(), "v")
 }
 
-// Get returns build info
-func Get() BuildInfo {
-	makeKubeClientVersionString := func() string {
-		// Test builds don't include debug info / module info
-		// (And even if they did, we probably want a stable version during tests anyway)
-		// Return a default value for test builds
-		if testing.Testing() {
-			return kubeClientGoVersionTesting
-		}
-
-		return fmt.Sprintf("v%s", k8sbaseversion.DefaultKubeBinaryVersion)
+// kubeClientVersion returns the Kubernetes version Helm was built against.
+func kubeClientVersion() string {
+	// Test builds return a stable default value for consistent test output
+	if testing.Testing() {
+		return kubeClientGoVersionTesting
 	}
 
+	return kubeBinaryVersion()
+}
+
+// kubeBinaryVersion returns the k8s.io/component-base default binary version, prefixed with "v".
+func kubeBinaryVersion() string {
+	return fmt.Sprintf("v%s", k8sbaseversion.DefaultKubeBinaryVersion)
+}
+
+// Get returns build info
+func Get() BuildInfo {
 	v := BuildInfo{
 		Version:           GetVersion(),
 		GitCommit:         gitCommit,
 		GitTreeState:      gitTreeState,
 		GoVersion:         runtime.Version(),
-		KubeClientVersion: makeKubeClientVersionString(),
+		KubeClientVersion: kubeClientVersion(),
 	}
 
 	// HACK(bacongobbler): strip out GoVersion during a test run for consistent test output
