@@ -42,6 +42,7 @@ func ValuesWithOverrides(linter *support.Linter, valueOverrides map[string]any, 
 		return
 	}
 
+	linter.RunLinterRule(support.WarningSev, file, validateNoBooleanLikeKeys(vf))
 	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(vf, valueOverrides, skipSchemaValidation))
 }
 
