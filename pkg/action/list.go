@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"path"
 	"regexp"
 
@@ -149,6 +150,12 @@ func NewList(cfg *Configuration) *List {
 func (l *List) Run() ([]ri.Releaser, error) {
 	if err := l.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
+	}
+
+	// A negative offset would otherwise panic in the slice expression below,
+	// as the out-of-bounds guard only covers offsets past the end of the list.
+	if l.Offset < 0 {
+		return nil, errors.New("list offset cannot be negative")
 	}
 
 	var filter *regexp.Regexp
