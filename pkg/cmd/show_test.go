@@ -19,6 +19,7 @@ package cmd
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -83,6 +84,43 @@ func TestShowPreReleaseChart(t *testing.T) {
 				assert.NoError(t, err)
 			}
 		})
+	}
+}
+
+func TestShowOCIChartRegistryPullMetadataGoesToStderr(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
+	defer srv.Stop()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t)
+
+	contentTmp := t.TempDir()
+	outdir := srv.Root()
+	cmdStr := fmt.Sprintf("show chart oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --registry-config %s --content-cache %s --plain-http",
+		ociSrv.RegistryURL,
+		filepath.Join(outdir, "config.json"),
+		contentTmp,
+	)
+
+	_, outStr, errStr, err := executeActionCommandErr(storageFixture(), nil, cmdStr)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if strings.Contains(outStr, "Pulled: ") || strings.Contains(outStr, "Digest: ") {
+		t.Fatalf("expected stdout to exclude registry pull metadata, got: %s", outStr)
+	}
+	if !strings.Contains(errStr, "Pulled: ") {
+		t.Fatalf("expected stderr to contain registry pull metadata, got: %s", errStr)
+	}
+	if !strings.Contains(outStr, "apiVersion:") {
+		t.Fatalf("expected chart metadata in output, got: %s", outStr)
 	}
 }
 
