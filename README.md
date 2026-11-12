@@ -69,7 +69,7 @@ helm mcp start               # read-only stdio server (default)
 helm mcp start --allow-write # also enable release-changing tools
 ```
 
-Configure your MCP client to run this Helm binary with the arguments `mcp start`. `helm mcp` also provides `stream` (HTTP transport) and `tools` (export tool definitions), but does not configure any specific client.
+Configure your MCP client to run this Helm binary with `mcp start` for read-only access, or `mcp start --allow-write` to permit release changes. `helm mcp` also provides `stream` (HTTP transport) and `tools` (export tool definitions), but does not configure any specific client.
 By default, only release listing, status, history and metadata, chart inspection and search, repository listing, and version are exposed. Add `--allow-write` to `start` to also expose release management (`install`, `upgrade`, `rollback`, `uninstall`, and `test`). Use `upgrade` with `--install` to deploy or update a release in one command. The same flag applies to `stream` and `tools`; other write commands, including plugins and registry pushes, are not exposed.
 To extend the tool set, update the exact command allowlist and selectors in `pkg/cmd/mcp.go` and its tests.
 MCP tools run Helm subprocesses with your current Kubernetes and Helm credentials. Read-only tools may return sensitive data; write tools can change or delete cluster resources and run chart hooks. Write tools are marked destructive, but clients may not require confirmation; use appropriate client approvals and least-privilege Kubernetes access.
