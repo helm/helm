@@ -19,11 +19,18 @@ package version
 import (
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	k8sbaseversion "k8s.io/component-base/version"
 )
 
 func TestKubeBinaryVersion(t *testing.T) {
+	assert.NotEmpty(t, k8sbaseversion.DefaultKubeBinaryVersion)
+	v, err := semver.NewVersion(k8sbaseversion.DefaultKubeBinaryVersion)
+	require.NoError(t, err)
+
+	assert.Equal(t, uint64(1), v.Major())
 	assert.Equal(t, "v"+k8sbaseversion.DefaultKubeBinaryVersion, kubeBinaryVersion())
 }
 

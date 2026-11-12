@@ -160,7 +160,7 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 func capabilitiesFromKubeBinaryVersion(binaryVersion string) (*Capabilities, error) {
 	v, err := semver.NewVersion(binaryVersion)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse k8s.io/component-base default kube binary version %q: %w", binaryVersion, err)
+		return nil, fmt.Errorf("unable to parse k8s.io/component-base Kubernetes client version %q: %w", binaryVersion, err)
 	}
 
 	return newCapabilities(v.Major(), v.Minor())

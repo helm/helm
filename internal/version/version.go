@@ -18,7 +18,6 @@ package version
 
 import (
 	"flag"
-	"fmt"
 	"runtime"
 	"strings"
 	"testing"
@@ -86,7 +85,7 @@ func kubeClientVersion() string {
 
 // kubeBinaryVersion returns the k8s.io/component-base default binary version, prefixed with "v".
 func kubeBinaryVersion() string {
-	return fmt.Sprintf("v%s", k8sbaseversion.DefaultKubeBinaryVersion)
+	return "v" + k8sbaseversion.DefaultKubeBinaryVersion
 }
 
 // Get returns build info
