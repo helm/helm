@@ -23,10 +23,6 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
-	"k8s.io/client-go/kubernetes/scheme"
-
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sversion "k8s.io/apimachinery/pkg/util/version"
 
 	helmversion "helm.sh/helm/v4/internal/version"
@@ -128,19 +124,19 @@ func (v VersionSet) Has(apiVersion string) bool {
 	return slices.Contains(v, apiVersion)
 }
 
+// allKnownVersions returns the built-in Kubernetes API group/versions that seed
+// the default capability version set.
+//
+// The list is generated (see gen_known_versions.go and
+// zz_generated_known_versions.go) by enumerating client-go's runtime scheme
+// plus the apiextensions groups. Returning the pre-computed slice here keeps
+// this package — and therefore every chart-handling binary — free of the
+// client-go, k8s.io/api and apiextensions-apiserver dependency trees, which
+// are only needed to build the list, not to consult it.
+//
+//go:generate go run gen_known_versions.go
 func allKnownVersions() VersionSet {
-	// We should register the built in extension APIs as well so CRDs are
-	// supported in the default version set. This has caused problems with `helm
-	// template` in the past, so let's be safe
-	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
-	apiextensionsv1.AddToScheme(scheme.Scheme)
-
-	groups := scheme.Scheme.PrioritizedVersionsAllGroups()
-	vs := make(VersionSet, 0, len(groups))
-	for _, gv := range groups {
-		vs = append(vs, gv.String())
-	}
-	return vs
+	return slices.Clone(defaultKnownVersions)
 }
 
 func makeDefaultCapabilities() (*Capabilities, error) {
@@ -151,9 +147,13 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
+	// K8sIOClientGoModVersion reads the client-go version from build info. When a
+	// consumer links Helm's chart libraries without client-go, that lookup fails;
+	// fall back to the built-in default kube version rather than erroring, since
+	// this default is advisory (it only seeds Capabilities.KubeVersion).
 	vstr, err := helmversion.K8sIOClientGoModVersion()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
+		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
 	v, err := semver.NewVersion(vstr)
