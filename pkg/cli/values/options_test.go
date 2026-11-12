@@ -240,10 +240,10 @@ func TestReadFileErrorMessages(t *testing.T) {
 		wantErr   string
 	}{
 		{
-			name:      "URL parse error",
+			name:      "URL parse error reads local file",
 			filePath:  "://invalid",
 			providers: getter.Providers{},
-			wantErr:   "missing protocol scheme",
+			wantErr:   "no such file or directory",
 		},
 		{
 			name:      "getter error with message",

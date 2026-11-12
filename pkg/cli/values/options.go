@@ -123,10 +123,7 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	u, err := url.Parse(filePath)
 	if err != nil {
 		// A local filename may contain characters that are invalid in a URL.
-		if data, fileErr := os.ReadFile(filePath); fileErr == nil {
-			return data, nil
-		}
-		return nil, err
+		return os.ReadFile(filePath)
 	}
 
 	// FIXME: maybe someone handle other protocols like ftp.
