@@ -152,7 +152,7 @@ func (i HTTPInstaller) Path() string {
 	if i.Source == "" {
 		return ""
 	}
-	return helmpath.DataPath("plugins", i.PluginName)
+	return filepath.Join(i.PluginsDirectory, i.PluginName)
 }
 
 // SupportsVerification returns true if the HTTP installer can verify plugins
