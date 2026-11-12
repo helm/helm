@@ -661,6 +661,13 @@ func mergeCustomLabels(current, desired map[string]string) map[string]string {
 			delete(labels, k)
 		}
 	}
+	// current comes from the previously stored release, which the k8s
+	// drivers (unlike Get) return with system labels still attached; strip
+	// them here so they don't ride along into the new release's Labels and
+	// clobber the fresh createdAt/modifiedAt set when it's persisted.
+	for _, k := range driver.GetSystemLabels() {
+		delete(labels, k)
+	}
 	return labels
 }
 
