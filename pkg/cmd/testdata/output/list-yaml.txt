@@ -3,5 +3,6 @@
   name: test-release
   namespace: default
   revision: "1"
+  source: https://example.com/repo
   status: deployed
   updated: 2016-01-16 00:00:00 +0000 UTC
