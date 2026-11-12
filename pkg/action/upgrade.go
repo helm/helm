@@ -621,6 +621,14 @@ func (u *Upgrade) reuseValues(chart *chartv2.Chart, current *release.Release, ne
 			return nil, fmt.Errorf("failed to rebuild old values: %w", err)
 		}
 
+		// A `--set key=null` cancels key's value from current.Config below,
+		// but that alone only stops CoalesceTables from copying it over.
+		// oldVals becomes chart.Values, which the final render-time coalesce
+		// falls back to for any key newVals doesn't have, so without pruning
+		// the same key here it would resurface from the release being
+		// reused instead of the chart's own default.
+		pruneNilOverrides(oldVals, newVals)
+
 		newVals = util.CoalesceTables(newVals, current.Config)
 
 		chart.Values = oldVals
@@ -642,6 +650,23 @@ func (u *Upgrade) reuseValues(chart *chartv2.Chart, current *release.Release, ne
 		newVals = current.Config
 	}
 	return newVals, nil
+}
+
+// pruneNilOverrides deletes from dst every key that is explicitly nil in
+// newVals, recursing into nested tables so an explicit `--set key=null`
+// removes the key from dst at whatever depth it appears.
+func pruneNilOverrides(dst, newVals map[string]any) {
+	for key, val := range newVals {
+		if val == nil {
+			delete(dst, key)
+			continue
+		}
+		if sub, ok := val.(map[string]any); ok {
+			if dsub, ok := dst[key].(map[string]any); ok {
+				pruneNilOverrides(dsub, sub)
+			}
+		}
+	}
 }
 
 func validateManifest(c kube.Interface, manifest []byte, openAPIValidation bool) error {
