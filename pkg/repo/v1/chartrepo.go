@@ -29,10 +29,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"sigs.k8s.io/yaml"
+
 	"helm.sh/helm/v4/internal/fileutil"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
+
+// maxRedirectHops defines the maximum number of repository index redirects to follow.
+const maxRedirectHops = 5
 
 // Entry represents a collection of parameters for chart repository
 type Entry struct {
@@ -101,6 +106,77 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	indexFile, err := loadIndex(index, r.Config.URL)
 	if err != nil {
 		return "", err
+	}
+
+	// Handle redirectURL tombstones if the repository moved to a new URL
+	if indexFile.RedirectURL != "" {
+		currentURL := r.Config.URL
+		targetURL := indexFile.RedirectURL
+		hops := 0
+		visited := map[string]bool{currentURL: true}
+
+		for targetURL != "" {
+			hops++
+			if hops > maxRedirectHops || visited[targetURL] {
+				return "", fmt.Errorf("%w: exceeded maximum redirect hops (%d)", ErrRepositoryMoved, maxRedirectHops)
+			}
+			visited[targetURL] = true
+
+			slog.Warn("repository has moved to a new URL; loading entries from new repository",
+				"repository", r.Config.Name,
+				"current_url", currentURL,
+				"redirect_url", targetURL,
+			)
+
+			nextIndexURL, err := ResolveReferenceURL(targetURL, "index.yaml")
+			if err != nil {
+				return "", fmt.Errorf("failed to resolve redirect URL %q: %w", targetURL, err)
+			}
+
+			// Make unauthenticated request against targetURL: do not forward credentials or client certs from the original repo
+			redirectResp, err := r.Client.Get(nextIndexURL, getter.WithURL(targetURL))
+			if err != nil {
+				return "", fmt.Errorf("failed to fetch redirected repository index at %q: %w", targetURL, err)
+			}
+
+			redirectBytes, err := io.ReadAll(redirectResp)
+			if err != nil {
+				return "", fmt.Errorf("failed to read redirected repository index at %q: %w", targetURL, err)
+			}
+
+			nextIndexFile, err := loadIndex(redirectBytes, targetURL)
+			if err != nil {
+				return "", fmt.Errorf("failed to parse redirected repository index at %q: %w", targetURL, err)
+			}
+
+			// Merge entries from target repository, resolving relative chart URLs against targetURL
+			if indexFile.Entries == nil {
+				indexFile.Entries = make(map[string]ChartVersions)
+			}
+			for name, versions := range nextIndexFile.Entries {
+				for _, v := range versions {
+					for i, u := range v.URLs {
+						if resolvedURL, err := ResolveReferenceURL(targetURL, u); err == nil {
+							v.URLs[i] = resolvedURL
+						}
+					}
+				}
+				if existing, ok := indexFile.Entries[name]; ok {
+					indexFile.Entries[name] = append(existing, versions...)
+				} else {
+					indexFile.Entries[name] = versions
+				}
+			}
+
+			currentURL = targetURL
+			targetURL = nextIndexFile.RedirectURL
+		}
+
+		indexFile.SortEntries()
+		// Re-marshal the merged indexFile to persist into cache
+		if mergedBytes, err := yaml.Marshal(indexFile); err == nil {
+			index = mergedBytes
+		}
 	}
 
 	// Create the chart list file in the cache directory
