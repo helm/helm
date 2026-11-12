@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,6 +41,22 @@ func TestCreate(t *testing.T) {
 	mychart, err := loader.LoadDir(c)
 	require.NoError(t, err, "Failed to load newly created chart %q", c)
 	assert.Equal(t, "foo", mychart.Name(), "Expected name to be 'foo', got %q", mychart.Name())
+
+	chartFileData, err := os.ReadFile(filepath.Join(dir, ChartfileName))
+	if err != nil {
+		t.Fatalf("Failed to read generated %s: %s", ChartfileName, err)
+	}
+
+	chartFile := string(chartFileData)
+	for _, expected := range []string{
+		"annotations:",
+		"org.opencontainers.image.revision:",
+		"OCI manifest when the chart is pushed to an OCI registry.",
+	} {
+		if !strings.Contains(chartFile, expected) {
+			t.Errorf("Expected generated %s to contain %q", ChartfileName, expected)
+		}
+	}
 
 	for _, f := range []string{
 		ChartfileName,
