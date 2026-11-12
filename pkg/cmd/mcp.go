@@ -26,8 +26,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// mcpReadCommands is intentionally an exact allowlist. Adding a new Helm command
-// must not silently grant an MCP client the ability to execute it.
+// MCP command lists are exact allowlists. New Helm commands must not
+// automatically become available to MCP clients.
 var mcpReadCommands = []string{
 	"helm list",
 	"helm status",
@@ -43,34 +43,62 @@ var mcpReadCommands = []string{
 	"helm version",
 }
 
+// These commands change releases or execute test hooks in a Kubernetes cluster.
+var mcpWriteCommands = []string{
+	"helm install",
+	"helm upgrade",
+	"helm rollback",
+	"helm uninstall",
+	"helm test",
+}
+
 func newMCPCmd(root *cobra.Command) *cobra.Command {
-	allowed := ophis.AllowCmds(mcpReadCommands...)
-	// Mark only the selected commands read-only in the generated MCP metadata.
-	for _, path := range mcpReadCommands {
-		parts := strings.Fields(path)[1:]
-		command, _, err := root.Find(parts)
-		if err != nil || command.CommandPath() != path {
-			continue
+	// Only explicitly listed commands are exposed, including when Helm gains new
+	// commands in the future. Mark writes as destructive for MCP clients.
+	for _, group := range []struct {
+		paths       []string
+		destructive bool
+	}{
+		{mcpReadCommands, false},
+		{mcpWriteCommands, true},
+	} {
+		for _, path := range group.paths {
+			parts := strings.Fields(path)[1:]
+			command, _, err := root.Find(parts)
+			if err != nil || command.CommandPath() != path {
+				continue
+			}
+			if command.Annotations == nil {
+				command.Annotations = make(map[string]string)
+			}
+			if group.destructive {
+				command.Annotations[ophis.AnnotationReadOnly] = "false"
+				command.Annotations[ophis.AnnotationDestructive] = "true"
+			} else {
+				command.Annotations[ophis.AnnotationReadOnly] = "true"
+			}
 		}
-		if command.Annotations == nil {
-			command.Annotations = make(map[string]string)
-		}
-		command.Annotations[ophis.AnnotationReadOnly] = "true"
 	}
 
-	mcpCmd := ophis.Command(&ophis.Config{
-		Selectors: []ophis.Selector{{
-			CmdSelector: allowed,
-			// Do not accept credentials or insecure transport options as MCP input.
-			LocalFlagSelector: ophis.ExcludeFlags(
-				"username", "password", "cert-file", "key-file",
-				"insecure-skip-tls-verify", "plain-http", "pass-credentials",
-			),
-			// Helm has many global authentication, impersonation and debug flags.
-			InheritedFlagSelector: ophis.AllowFlags("namespace", "kube-context", "kubeconfig"),
-			Middleware:            validateMCPArgs,
-		}},
-	})
+	selector := ophis.Selector{
+		CmdSelector: ophis.AllowCmds(mcpReadCommands...),
+		// Do not accept credentials or insecure transport options as MCP input.
+		LocalFlagSelector: ophis.ExcludeFlags(
+			"username", "password", "cert-file", "key-file",
+			"insecure-skip-tls-verify", "plain-http", "pass-credentials",
+			// A post-renderer runs an arbitrary local executable.
+			"post-renderer", "post-renderer-args",
+		),
+		// Helm has many global authentication, impersonation and debug flags.
+		InheritedFlagSelector: ophis.AllowFlags("namespace", "kube-context", "kubeconfig"),
+		Middleware:            validateMCPArgs,
+	}
+	writeSelector := selector
+	writeSelector.CmdSelector = ophis.AllowCmds(mcpWriteCommands...)
+	config := &ophis.Config{Selectors: []ophis.Selector{selector}}
+	mcpCmd := ophis.Command(config)
+	var allowWrite bool
+	mcpCmd.PersistentFlags().BoolVar(&allowWrite, "allow-write", false, "also expose commands that change releases or run test hooks")
 	mcpCmd.Long = "Manage the Helm MCP server"
 	// Ophis also provides editor-specific configuration commands. Helm only
 	// exposes generic server management commands; clients configure themselves.
@@ -81,6 +109,13 @@ func newMCPCmd(root *cobra.Command) *cobra.Command {
 		case "stream", "tools":
 		default:
 			mcpCmd.RemoveCommand(command)
+			continue
+		}
+		command.PreRun = func(_ *cobra.Command, _ []string) {
+			config.Selectors = []ophis.Selector{selector}
+			if allowWrite {
+				config.Selectors = append(config.Selectors, writeSelector)
+			}
 		}
 	}
 	return mcpCmd

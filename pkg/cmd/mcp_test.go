@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -32,52 +33,112 @@ import (
 	"helm.sh/helm/v4/pkg/action"
 )
 
-func TestMCPTools(t *testing.T) {
+type mcpTestTool struct {
+	Name        string `json:"name"`
+	Annotations struct {
+		ReadOnlyHint    bool  `json:"readOnlyHint"`
+		DestructiveHint *bool `json:"destructiveHint"`
+	} `json:"annotations"`
+	InputSchema struct {
+		Properties map[string]struct {
+			Properties map[string]json.RawMessage `json:"properties"`
+		} `json:"properties"`
+	} `json:"inputSchema"`
+}
+
+func exportMCPTools(t *testing.T, allowWrite bool) []mcpTestTool {
+	t.Helper()
 	t.Chdir(t.TempDir())
 	var out bytes.Buffer
-	root, err := newRootCmdWithConfig(action.NewConfiguration(), &out, []string{"mcp", "tools"}, SetupLogging)
+	args := []string{"mcp", "tools"}
+	if allowWrite {
+		args = append(args, "--allow-write")
+	}
+	root, err := newRootCmdWithConfig(action.NewConfiguration(), &out, args, SetupLogging)
 	require.NoError(t, err)
-	root.SetArgs([]string{"mcp", "tools"})
+	root.SetArgs(args)
 	require.NoError(t, root.Execute())
 
 	data, err := os.ReadFile("mcp-tools.json")
 	require.NoError(t, err)
-	var tools []struct {
-		Name        string `json:"name"`
-		Annotations struct {
-			ReadOnlyHint bool `json:"readOnlyHint"`
-		} `json:"annotations"`
-		InputSchema struct {
-			Properties map[string]struct {
-				Properties map[string]json.RawMessage `json:"properties"`
-			} `json:"properties"`
-		} `json:"inputSchema"`
-	}
+	var tools []mcpTestTool
 	require.NoError(t, json.Unmarshal(data, &tools))
-	require.Len(t, tools, len(mcpReadCommands))
+	return tools
+}
 
-	for _, tool := range tools {
-		path := strings.ReplaceAll(tool.Name, "_", " ")
-		assert.Contains(t, mcpReadCommands, path)
-		assert.True(t, tool.Annotations.ReadOnlyHint, tool.Name)
-		flags := tool.InputSchema.Properties["flags"].Properties
-		assert.NotContains(t, flags, "kube-token", tool.Name)
-		assert.NotContains(t, flags, "kube-as-user", tool.Name)
-		assert.NotContains(t, flags, "debug", tool.Name)
-		assert.Contains(t, flags, "namespace", tool.Name)
-	}
+func TestMCPTools(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		allowWrite bool
+	}{
+		{"read-only by default", false},
+		{"write enabled", true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tools := exportMCPTools(t, tt.allowWrite)
+			expectedCount := len(mcpReadCommands)
+			if tt.allowWrite {
+				expectedCount += len(mcpWriteCommands)
+			}
+			require.Len(t, tools, expectedCount)
 
-	var showFlags map[string]json.RawMessage
-	for _, tool := range tools {
-		if tool.Name == "helm_show_chart" {
-			showFlags = tool.InputSchema.Properties["flags"].Properties
-		}
+			var installFlags, upgradeFlags map[string]json.RawMessage
+			seen := make(map[string]bool)
+			for _, tool := range tools {
+				path := strings.ReplaceAll(tool.Name, "_", " ")
+				assert.False(t, seen[path], "duplicate MCP tool %q", path)
+				seen[path] = true
+				if slices.Contains(mcpWriteCommands, path) {
+					assert.True(t, tt.allowWrite, "write tool available by default: %s", path)
+					assert.False(t, tool.Annotations.ReadOnlyHint, tool.Name)
+					if assert.NotNil(t, tool.Annotations.DestructiveHint, tool.Name) {
+						assert.True(t, *tool.Annotations.DestructiveHint, tool.Name)
+					}
+				} else {
+					assert.Contains(t, mcpReadCommands, path)
+					assert.True(t, tool.Annotations.ReadOnlyHint, tool.Name)
+				}
+				flags := tool.InputSchema.Properties["flags"].Properties
+				assert.NotContains(t, flags, "kube-token", tool.Name)
+				assert.NotContains(t, flags, "kube-as-user", tool.Name)
+				assert.NotContains(t, flags, "debug", tool.Name)
+				assert.NotContains(t, flags, "post-renderer", tool.Name)
+				assert.NotContains(t, flags, "post-renderer-args", tool.Name)
+				assert.Contains(t, flags, "namespace", tool.Name)
+				switch tool.Name {
+				case "helm_install":
+					installFlags = flags
+				case "helm_upgrade":
+					upgradeFlags = flags
+				}
+			}
+			for _, path := range mcpReadCommands {
+				assert.True(t, seen[path], "missing MCP tool %q", path)
+			}
+			for _, path := range mcpWriteCommands {
+				assert.Equal(t, tt.allowWrite, seen[path], "MCP tool %q", path)
+			}
+			if tt.allowWrite {
+				require.NotNil(t, installFlags)
+				assert.Contains(t, installFlags, "dry-run")
+				require.NotNil(t, upgradeFlags)
+				assert.Contains(t, upgradeFlags, "install")
+				assert.Contains(t, upgradeFlags, "dry-run")
+			}
+
+			var showFlags map[string]json.RawMessage
+			for _, tool := range tools {
+				if tool.Name == "helm_show_chart" {
+					showFlags = tool.InputSchema.Properties["flags"].Properties
+				}
+			}
+			require.NotNil(t, showFlags)
+			assert.NotContains(t, showFlags, "password")
+			assert.NotContains(t, showFlags, "pass-credentials")
+			assert.NotContains(t, showFlags, "insecure-skip-tls-verify")
+			assert.Contains(t, showFlags, "version")
+		})
 	}
-	require.NotNil(t, showFlags)
-	assert.NotContains(t, showFlags, "password")
-	assert.NotContains(t, showFlags, "pass-credentials")
-	assert.NotContains(t, showFlags, "insecure-skip-tls-verify")
-	assert.Contains(t, showFlags, "version")
 }
 
 func TestMCPCommands(t *testing.T) {
@@ -91,6 +152,7 @@ func TestMCPCommands(t *testing.T) {
 	var names []string
 	for _, command := range mcpCmd.Commands() {
 		names = append(names, command.Name())
+		assert.NotNil(t, command.InheritedFlags().Lookup("allow-write"), command.Name())
 	}
 	assert.ElementsMatch(t, []string{"start", "stream", "tools"}, names)
 
