@@ -60,6 +60,23 @@ including installing pre-releases.
 
 Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/) or plunge into the [complete documentation](https://helm.sh/docs).
 
+### MCP (Model Context Protocol)
+
+Helm can serve a limited set of read-only commands as MCP tools using [Ophis](https://github.com/njayp/ophis):
+
+```sh
+helm mcp start                 # stdio server for an MCP client
+helm mcp claude enable         # configure Claude Desktop
+helm mcp vscode enable         # configure VS Code
+helm mcp cursor enable         # configure Cursor
+```
+
+The client must use the path to this Helm binary. `helm mcp` also provides `stream` (HTTP transport) and `tools` (export tool definitions).
+Only release listing, status, history and metadata, chart inspection, chart search, repository listing, and version are exposed; install, upgrade, uninstall, plugins, and other commands are not.
+To extend the tool set, update the exact command allowlist and selectors in `pkg/cmd/mcp.go` and its tests.
+MCP tools run Helm subprocesses with your current Kubernetes and Helm credentials; even read-only commands may return sensitive release or chart data.
+Only connect trusted MCP clients, and do not expose the HTTP transport to untrusted networks.
+
 ## Roadmap
 
 The [Helm roadmap uses GitHub milestones](https://github.com/helm/helm/milestones) to track the progress of the project.
