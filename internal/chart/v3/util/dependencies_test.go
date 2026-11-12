@@ -15,6 +15,8 @@ limitations under the License.
 package util
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -53,6 +55,29 @@ func TestLoadDependency(t *testing.T) {
 	c := loadChart(t, "testdata/frobnitz")
 	check(c.Metadata.Dependencies)
 	check(c.Lock.Dependencies)
+}
+
+// An absent condition path is the normal case for every unset condition and
+// must not be reported as a PathValue error, matching the v2 implementation.
+func TestProcessDependencyConditionsAbsentPathNoWarning(t *testing.T) {
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	var logBuf bytes.Buffer
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logBuf, nil)))
+
+	reqs := []*chart.Dependency{
+		{Name: "subchart1", Condition: "subchart1.enabled"},
+		{Name: "subchart2", Condition: "not.in.values"},
+	}
+	v := common.Values{"subchart1": map[string]any{"enabled": true}}
+
+	processDependencyConditions(reqs, v, "")
+
+	assert.True(t, reqs[0].Enabled, "expected the present condition to be applied")
+	assert.False(t, reqs[1].Enabled, "expected the absent condition to leave the dependency disabled")
+	assert.NotContains(t, logBuf.String(), "PathValue returned error",
+		"an absent condition path is not a PathValue error and must not be warned about")
 }
 
 func TestDependencyEnabled(t *testing.T) {
