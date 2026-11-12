@@ -300,6 +300,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newRegistryCmd(actionConfig, out),
 		newPushCmd(actionConfig, out),
 	)
+	cmd.AddCommand(newMCPCmd(cmd))
 
 	// Find and add CLI plugins
 	loadCLIPlugins(cmd, out)
