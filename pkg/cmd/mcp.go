@@ -58,7 +58,7 @@ func newMCPCmd(root *cobra.Command) *cobra.Command {
 		command.Annotations[ophis.AnnotationReadOnly] = "true"
 	}
 
-	return ophis.Command(&ophis.Config{
+	mcpCmd := ophis.Command(&ophis.Config{
 		Selectors: []ophis.Selector{{
 			CmdSelector: allowed,
 			// Do not accept credentials or insecure transport options as MCP input.
@@ -71,6 +71,19 @@ func newMCPCmd(root *cobra.Command) *cobra.Command {
 			Middleware:            validateMCPArgs,
 		}},
 	})
+	mcpCmd.Long = "Manage the Helm MCP server"
+	// Ophis also provides editor-specific configuration commands. Helm only
+	// exposes generic server management commands; clients configure themselves.
+	for _, command := range mcpCmd.Commands() {
+		switch command.Name() {
+		case "start":
+			command.Long = "Start the Helm MCP server over standard input and output"
+		case "stream", "tools":
+		default:
+			mcpCmd.RemoveCommand(command)
+		}
+	}
+	return mcpCmd
 }
 
 // Ophis appends positional arguments after flags when spawning the Helm CLI.

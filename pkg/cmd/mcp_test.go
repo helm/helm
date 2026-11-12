@@ -80,6 +80,28 @@ func TestMCPTools(t *testing.T) {
 	assert.Contains(t, showFlags, "version")
 }
 
+func TestMCPCommands(t *testing.T) {
+	root, err := newRootCmdWithConfig(action.NewConfiguration(), &bytes.Buffer{}, nil, SetupLogging)
+	require.NoError(t, err)
+
+	mcpCmd, _, err := root.Find([]string{"mcp"})
+	require.NoError(t, err)
+	require.Equal(t, "mcp", mcpCmd.Name())
+
+	var names []string
+	for _, command := range mcpCmd.Commands() {
+		names = append(names, command.Name())
+	}
+	assert.ElementsMatch(t, []string{"start", "stream", "tools"}, names)
+
+	for _, name := range []string{"claude", "vscode", "cursor"} {
+		found, remaining, err := root.Find([]string{"mcp", name, "enable"})
+		require.NoError(t, err)
+		assert.Same(t, mcpCmd, found, name)
+		assert.Equal(t, []string{name, "enable"}, remaining)
+	}
+}
+
 func TestValidateMCPArgs(t *testing.T) {
 	for _, args := range [][]string{{"--password=secret"}, {"chart", "--plain-http"}, {"-"}} {
 		_, _, err := validateMCPArgs(context.Background(), nil, ophis.ToolInput{Args: args}, func(context.Context, *mcp.CallToolRequest, ophis.ToolInput) (*mcp.CallToolResult, ophis.ToolOutput, error) {
