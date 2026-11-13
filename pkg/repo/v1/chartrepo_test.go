@@ -18,6 +18,7 @@ package repo
 
 import (
 	"bytes"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -217,6 +218,41 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 
 	_, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", g)
 	assert.EqualError(t, err, `chart "chartWithNoURL" has no downloadable URLs`, "Expected error for chart not found, but got a different error")
+}
+
+func TestFindChartInRepoURLParsesIndexOnce(t *testing.T) {
+	// An index with one invalid version: each parse of it logs one warning.
+	const index = `apiVersion: v1
+entries:
+  demo:
+  - apiVersion: v2
+    name: demo
+    version: 1.0.0
+    urls:
+    - demo-1.0.0.tgz
+  - apiVersion: v2
+    name: demo
+    version: not-a-version
+    urls:
+    - demo-bad.tgz
+`
+	srv, err := startLocalServerForTests(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(index))
+	}))
+	require.NoError(t, err)
+	defer srv.Close()
+
+	t.Setenv(helmpath.CacheHomeEnvVar, t.TempDir())
+
+	var logs bytes.Buffer
+	defaultLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(defaultLogger) })
+
+	chartURL, err := FindChartInRepoURL(srv.URL, "demo", getter.All(&cli.EnvSettings{}))
+	require.NoError(t, err)
+	assert.Equal(t, srv.URL+"/demo-1.0.0.tgz", chartURL)
+	assert.Equal(t, 1, strings.Count(logs.String(), "skipping loading invalid entry"), "the index should be parsed once:\n%s", logs.String())
 }
 
 func TestResolveReferenceURL(t *testing.T) {
