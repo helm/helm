@@ -825,3 +825,45 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 	_, ok = keyMapping["password"]
 	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
 }
+
+func TestCoalesceValuesTypeMismatchErrorMessage(t *testing.T) {
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"key": "value",
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}, subchart)
+
+	testcases := []struct {
+		name     string
+		vals     map[string]any
+		expectIn string
+	}{
+		{
+			name:     "scalar value for subchart section",
+			vals:     map[string]any{"child": "oops"},
+			expectIn: "oops",
+		},
+		{
+			name:     "null value for subchart section",
+			vals:     map[string]any{"child": nil},
+			expectIn: "<nil>",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			is := assert.New(t)
+			_, err := CoalesceValues(parent, tc.vals)
+			is.Error(err)
+			is.Contains(err.Error(), "type mismatch on child")
+			is.Contains(err.Error(), tc.expectIn, "error should render the offending value, not a malformed format directive")
+			is.NotContains(err.Error(), "%!t", "error must not contain an unformatted %t directive for a non-bool operand")
+		})
+	}
+}
