@@ -162,6 +162,9 @@ func (t *literalParser) keyIndex() (int, error) {
 	stop := runeSet([]rune{']'})
 	v, _, err := runesUntilLiteral(t.sc, stop)
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, fmt.Errorf("missing closing ']'")
+		}
 		return 0, err
 	}
 
