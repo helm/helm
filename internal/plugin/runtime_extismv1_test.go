@@ -16,6 +16,7 @@ limitations under the License.
 package plugin
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -120,4 +121,23 @@ func TestBuildManifest(t *testing.T) {
 	manifest, err := buildManifest("/path/to/plugin", "/tmp/foo", rc)
 	require.NoError(t, err)
 	assert.Equal(t, expected, manifest)
+}
+
+func TestBuildHostFunctions(t *testing.T) {
+	fn := extism.NewHostFunctionWithStack("helm_test_fn", func(context.Context, *extism.CurrentPlugin, []uint64) {}, nil, nil)
+
+	got, err := buildHostFunctions(map[string]extism.HostFunction{"helm_test_fn": fn}, &RuntimeConfigExtismV1{HostFunctions: []string{"helm_test_fn"}})
+	require.NoError(t, err)
+	// exactly the requested functions, without zero-value entries ahead of them
+	require.Len(t, got, 1)
+	assert.Equal(t, "helm_test_fn", got[0].Name)
+
+	m := extism.Manifest{Wasm: []extism.Wasm{extism.WasmData{Data: []byte("\x00asm\x01\x00\x00\x00")}}}
+	_, err = extism.NewPlugin(context.Background(), m, extism.PluginConfig{EnableWasi: true}, got)
+	assert.NoError(t, err)
+}
+
+func TestBuildHostFunctionsNotFound(t *testing.T) {
+	_, err := buildHostFunctions(map[string]extism.HostFunction{}, &RuntimeConfigExtismV1{HostFunctions: []string{"missing_fn"}})
+	assert.ErrorContains(t, err, `plugin requested host function "missing_fn" not found`)
 }
