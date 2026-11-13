@@ -103,7 +103,7 @@ func (i *OCIInstaller) Install() error {
 	}
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
 
-	tarballPath := helmpath.DataPath("plugins", filename)
+	tarballPath := filepath.Join(i.PluginsDirectory, filename)
 	if err := os.MkdirAll(filepath.Dir(tarballPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}

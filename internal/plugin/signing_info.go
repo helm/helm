@@ -24,8 +24,6 @@ import (
 	"strings"
 
 	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
-
-	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 // SigningInfo contains information about a plugin's signing status
@@ -40,10 +38,12 @@ type SigningInfo struct {
 	IsSigned bool // True if plugin has a valid signature (even if not verified against keyring)
 }
 
-// GetPluginSigningInfo returns signing information for an installed plugin
-func GetPluginSigningInfo(metadata Metadata) (*SigningInfo, error) {
+// GetPluginSigningInfo returns signing information for an installed plugin.
+// pluginDir is the directory the plugin is installed in; the tarball and
+// provenance file saved at install time are looked up next to it, in its
+// parent directory (one of the HELM_PLUGINS directories).
+func GetPluginSigningInfo(pluginDir string, metadata Metadata) (*SigningInfo, error) {
 	pluginName := metadata.Name
-	pluginDir := helmpath.DataPath("plugins", pluginName)
 
 	// Check if plugin directory exists
 	fi, err := os.Lstat(pluginDir)
@@ -60,7 +60,7 @@ func GetPluginSigningInfo(metadata Metadata) (*SigningInfo, error) {
 	}
 
 	// Find the exact tarball file for this plugin
-	pluginsDir := helmpath.DataPath("plugins")
+	pluginsDir := filepath.Dir(pluginDir)
 	tarballPath := filepath.Join(pluginsDir, fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version))
 	if _, err := os.Stat(tarballPath); err != nil {
 		return &SigningInfo{
@@ -162,7 +162,7 @@ func GetSigningInfoForPlugins(plugins []Plugin) map[string]*SigningInfo {
 	for _, p := range plugins {
 		m := p.Metadata()
 
-		info, err := GetPluginSigningInfo(m)
+		info, err := GetPluginSigningInfo(p.Dir(), m)
 		if err != nil {
 			// If there's an error, treat as unsigned
 			result[m.Name] = &SigningInfo{
