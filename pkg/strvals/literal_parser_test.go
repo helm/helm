@@ -451,3 +451,73 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 		})
 	}
 }
+
+func TestParseLiteralConflictingKinds(t *testing.T) {
+	// --set-literal consumes the rest of the line as the value, so two
+	// occurrences of the flag are needed to set conflicting kinds on one key.
+	tests := []struct {
+		input  string
+		input2 string
+		errStr string
+		expect map[string]any
+	}{
+		{
+			input:  "a=b",
+			input2: "a[0]=c",
+			errStr: `cannot set index of "a": it is already set to a value that is not a list`,
+		},
+		{
+			input:  "a.b=1",
+			input2: "a[0]=c",
+			errStr: `cannot set index of "a": it is already set to a value that is not a list`,
+		},
+		{
+			input:  "a[0]=x",
+			input2: "a.b=1",
+			errStr: `cannot set nested key under "a": it is already set to a value that is not a map`,
+		},
+		{
+			input:  "a[0]=x",
+			input2: "a[0][1]=y",
+			errStr: "cannot set index 0 of a nested list: it is already set to a value that is not a list",
+		},
+		{
+			input:  "a[0].b=1",
+			input2: "a[0][1]=y",
+			errStr: "cannot set index 0 of a nested list: it is already set to a value that is not a list",
+		},
+		{
+			input:  "a[0]=x",
+			input2: "a[0].b=y",
+			errStr: "cannot set nested key at index 0: it is already set to a value that is not a map",
+		},
+		{
+			input:  "a[0][1]=x",
+			input2: "a[0].b=y",
+			errStr: "cannot set nested key at index 0: it is already set to a value that is not a map",
+		},
+		{
+			input:  "a[1].b=x",
+			input2: "a[0].c=y",
+			expect: map[string]any{"a": []any{map[string]any{"c": "y"}, map[string]any{"b": "x"}}},
+		},
+		{
+			input:  "a[0].b=x",
+			input2: "a[0].c=y",
+			expect: map[string]any{"a": []any{map[string]any{"b": "x", "c": "y"}}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input+","+tt.input2, func(t *testing.T) {
+			dest := map[string]any{}
+			require.NoError(t, ParseLiteralInto(tt.input, dest))
+			if tt.errStr != "" {
+				require.EqualError(t, ParseLiteralInto(tt.input2, dest), tt.errStr)
+				return
+			}
+			require.NoError(t, ParseLiteralInto(tt.input2, dest))
+			assert.Equal(t, tt.expect, dest)
+		})
+	}
+}
