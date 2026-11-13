@@ -453,6 +453,31 @@ func TestBuild_WithRepositoryAlias(t *testing.T) {
 	})
 }
 
+func TestDependencyContentCache_SharedByWorktreesAndInvalidatedByChartYAML(t *testing.T) {
+	repo := t.TempDir()
+	commonGitDir := filepath.Join(repo, ".git")
+	worktreeOne := filepath.Join(repo, "worktree-one")
+	worktreeTwo := filepath.Join(repo, "worktree-two")
+	cache := filepath.Join(t.TempDir(), "content")
+
+	for _, worktree := range []string{worktreeOne, worktreeTwo} {
+		gitDir := filepath.Join(commonGitDir, "worktrees", filepath.Base(worktree))
+		require.NoError(t, os.MkdirAll(gitDir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(gitDir, "commondir"), []byte("../.."), 0o644))
+		require.NoError(t, os.MkdirAll(worktree, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(worktree, ".git"), []byte("gitdir: "+gitDir), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(worktree, "Chart.yaml"), []byte("name: example\nversion: 1.0.0\n"), 0o644))
+	}
+
+	managerOne := &Manager{ChartPath: worktreeOne, ContentCache: cache}
+	managerTwo := &Manager{ChartPath: worktreeTwo, ContentCache: cache}
+	sharedCache := managerOne.dependencyContentCache()
+	assert.Equal(t, sharedCache, managerTwo.dependencyContentCache(), "linked worktrees with identical Chart.yaml should share a content cache")
+
+	require.NoError(t, os.WriteFile(filepath.Join(worktreeTwo, "Chart.yaml"), []byte("name: example\nversion: 1.0.1\n"), 0o644))
+	assert.NotEqual(t, sharedCache, managerTwo.dependencyContentCache(), "a Chart.yaml change should select a distinct content cache")
+}
+
 func TestErrRepoNotFound_Error(t *testing.T) {
 	type fields struct {
 		Repos []string

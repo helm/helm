@@ -17,6 +17,7 @@ package downloader
 
 import (
 	"crypto"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -252,6 +253,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
+	contentCache := m.dependencyContentCache()
 	tmpPath := filepath.Join(m.ChartPath, fmt.Sprintf("tmpcharts-%d", os.Getpid()))
 
 	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
@@ -337,7 +339,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Keyring:          m.Keyring,
 			RepositoryConfig: m.RepositoryConfig,
 			RepositoryCache:  m.RepositoryCache,
-			ContentCache:     m.ContentCache,
+			ContentCache:     contentCache,
 			RegistryClient:   m.RegistryClient,
 			Getters:          m.Getters,
 			Options: []getter.Option{
@@ -359,7 +361,14 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithTagName(version))
 		}
 
-		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
+		cachedChart, _, downloadErr := dl.DownloadToCache(churl, version)
+		if downloadErr != nil {
+			err = downloadErr
+		} else {
+			chartFile := filepath.Join(tmpPath, fmt.Sprintf("%s-%s.tgz", dep.Name, dep.Version))
+			err = fs.CopyFile(cachedChart, chartFile)
+		}
+		if err != nil {
 			saveError = fmt.Errorf("could not download %s: %w", churl, err)
 			break
 		}
@@ -374,6 +383,72 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 	// now we can move all downloaded charts to destPath and delete outdated dependencies
 	return m.safeMoveDeps(deps, tmpPath, destPath)
+}
+
+// dependencyContentCache scopes dependency archives to the Git repository and
+// exact Chart.yaml contents. Linked worktrees share Git's common directory, so
+// they reuse archives while any Chart.yaml edit selects a fresh cache directory.
+func (m *Manager) dependencyContentCache() string {
+	if m.ContentCache == "" {
+		return ""
+	}
+	chartPath, err := filepath.Abs(m.ChartPath)
+	if err != nil {
+		return m.ContentCache
+	}
+	chartYAML, err := os.ReadFile(filepath.Join(chartPath, "Chart.yaml"))
+	if err != nil {
+		return m.ContentCache
+	}
+	gitDir, err := gitCommonDir(chartPath)
+	if err != nil {
+		return m.ContentCache
+	}
+	repoHash := sha256.Sum256([]byte(filepath.Clean(gitDir)))
+	chartHash := sha256.Sum256(chartYAML)
+	return filepath.Join(m.ContentCache, "worktrees", hex.EncodeToString(repoHash[:]), hex.EncodeToString(chartHash[:]))
+}
+
+// gitCommonDir finds the common Git directory for a chart path, including
+// linked worktrees whose .git entry is a file.
+func gitCommonDir(dir string) (string, error) {
+	for {
+		gitPath := filepath.Join(dir, ".git")
+		info, err := os.Stat(gitPath)
+		if err == nil {
+			commonDir := gitPath
+			if !info.IsDir() {
+				data, readErr := os.ReadFile(gitPath)
+				if readErr != nil {
+					return "", readErr
+				}
+				const prefix = "gitdir: "
+				gitDir := strings.TrimSpace(strings.TrimPrefix(string(data), prefix))
+				if gitDir == string(data) {
+					return "", fmt.Errorf("invalid git directory file")
+				}
+				if !filepath.IsAbs(gitDir) {
+					gitDir = filepath.Join(dir, gitDir)
+				}
+				commonDir = gitDir
+				if common, readErr := os.ReadFile(filepath.Join(gitDir, "commondir")); readErr == nil {
+					commonDir = strings.TrimSpace(string(common))
+					if !filepath.IsAbs(commonDir) {
+						commonDir = filepath.Join(gitDir, commonDir)
+					}
+				}
+			}
+			return filepath.Abs(commonDir)
+		}
+		if !errors.Is(err, stdfs.ErrNotExist) {
+			return "", err
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", os.ErrNotExist
+		}
+		dir = parent
+	}
 }
 
 func parseOCIRef(chartRef string) (string, string, error) {
