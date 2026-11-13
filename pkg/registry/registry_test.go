@@ -18,7 +18,9 @@ package registry
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -28,6 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -36,6 +39,8 @@ import (
 	_ "github.com/distribution/distribution/v3/registry/auth/token"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -69,6 +74,9 @@ type TestRegistry struct {
 	WorkspaceDir            string
 	RegistryClient          *Client
 	dockerRegistry          *registry.Registry
+	// authListener holds the reserved auth-server port open for the whole
+	// suite lifetime (see setup); nil for htpasswd-based suites.
+	authListener net.Listener
 }
 
 func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
@@ -126,27 +134,18 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	// Registry config
 	config := &configuration.Configuration{}
 	lnCfg := net.ListenConfig{}
-	ln, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
-	suite.Require().NoError(err, "no error finding free port for test registry")
-	defer func() { _ = ln.Close() }()
-
-	// Use localhost for HTTP tests and helm-test-registry for TLS tests.
-	// TLS tests need a different hostname to match the certificate.
-	port := ln.Addr().(*net.TCPAddr).Port
-	if tlsEnabled {
-		suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
-	} else {
-		suite.DockerRegistryHost = fmt.Sprintf("127.0.0.1:%d", port)
-	}
-
-	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
 
 	if auth == "token" {
 		ln, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
 		suite.Require().NoError(err, "no error finding free port for test auth server")
-		defer ln.Close()
+		// Keep this listener open and owned by the suite until teardown, and
+		// let the suite that serves the token realm start its server directly
+		// on it (see client_scope_test.go). Closing it here would hand the
+		// port back to the OS, where any other process could steal it before
+		// the realm server re-binds the same address.
+		suite.authListener = ln
 
 		// set test auth server host
 		suite.AuthServerHost = ln.Addr().String()
@@ -180,19 +179,49 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 			config.HTTP.TLS.ClientCAs = []string{tlsCA}
 		}
 	}
-	suite.dockerRegistry, err = registry.NewRegistry(suite.T().Context(), config)
-	suite.Require().NoError(err, "no error creating test registry")
+	// Bind and serve the registry. The probe listener must be closed before
+	// the registry can bind the address, and on a loaded machine a sibling
+	// test binary (or any process) can win that window, so the whole
+	// probe-bind-ready cycle is retried on a fresh port. serveTestRegistry
+	// only reports success once the address accepts connections, and a
+	// ListenAndServe failure is surfaced instead of discarded.
+	var lastErr error
+	for attempt := 0; attempt < maxRegistryBindAttempts; attempt++ {
+		ln, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
+		suite.Require().NoError(err, "no error finding free port for test registry")
+		// Use localhost for HTTP tests and helm-test-registry for TLS tests.
+		// TLS tests need a different hostname to match the certificate.
+		port := ln.Addr().(*net.TCPAddr).Port
+		config.HTTP.Addr = ln.Addr().String()
+		_ = ln.Close()
+
+		reg, err := serveTestRegistry(suite.T().Context(), config)
+		if err != nil {
+			lastErr = errors.Join(lastErr, err)
+			continue
+		}
+		suite.dockerRegistry = reg
+		if tlsEnabled {
+			suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+		} else {
+			suite.DockerRegistryHost = fmt.Sprintf("127.0.0.1:%d", port)
+		}
+		lastErr = nil
+		break
+	}
+	suite.Require().NoError(lastErr, "no error starting test registry")
 
 	suite.FakeRegistryHost = initFakeRegistryTestServer()
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
-	go func() {
-		_ = suite.dockerRegistry.ListenAndServe()
-	}()
 }
 
 func teardown(suite *TestRegistry) {
 	if suite.dockerRegistry != nil {
 		_ = suite.dockerRegistry.Shutdown(suite.T().Context())
+	}
+	if suite.authListener != nil {
+		_ = suite.authListener.Close()
+		suite.authListener = nil
 	}
 }
 
@@ -577,4 +606,109 @@ func testTags(suite *TestRegistry) {
 	tags, err := suite.RegistryClient.Tags(ref)
 	suite.Require().NoError(err, "no error retrieving tags")
 	suite.Len(tags, 1)
+}
+
+// maxRegistryBindAttempts bounds the port-reservation retry in setup(): the
+// probe listener must be closed before the registry can bind the address,
+// and another process can win that window on a loaded machine.
+const maxRegistryBindAttempts = 5
+
+// registryReadyTimeout bounds how long serveTestRegistry waits for the
+// freshly created registry to accept connections.
+const registryReadyTimeout = 30 * time.Second
+
+// serveTestRegistry starts the distribution registry described by config and
+// reports success only once config.HTTP.Addr accepts TCP connections. The
+// registry binds the address itself inside ListenAndServe, so any probe
+// listener for that address must already be closed by the caller. A
+// ListenAndServe failure (for example EADDRINUSE from losing the
+// probe-to-bind race) is returned instead of discarded, so the caller can
+// retry on a fresh port rather than run the suite against whatever happens
+// to answer on the address.
+func serveTestRegistry(ctx context.Context, config *configuration.Configuration) (*registry.Registry, error) {
+	reg, err := registry.NewRegistry(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating test registry: %w", err)
+	}
+	errCh := make(chan error, 1)
+	go func() { errCh <- reg.ListenAndServe() }()
+
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+	timeout := time.NewTimer(registryReadyTimeout)
+	defer timeout.Stop()
+	dialer := net.Dialer{}
+	for {
+		select {
+		case err := <-errCh:
+			return nil, listenAndServeFailure(err)
+		case <-ticker.C:
+			conn, err := dialer.DialContext(ctx, "tcp", config.HTTP.Addr)
+			if err != nil {
+				continue
+			}
+			_ = conn.Close()
+			// The dial may have been answered by a foreign listener that also
+			// made ListenAndServe fail; give that error a chance to surface.
+			select {
+			case err := <-errCh:
+				return nil, listenAndServeFailure(err)
+			default:
+			}
+			return reg, nil
+		case <-timeout.C:
+			select {
+			case err := <-errCh:
+				return nil, listenAndServeFailure(err)
+			default:
+			}
+			_ = reg.Shutdown(context.Background())
+			return nil, fmt.Errorf("timed out waiting for test registry on %s to accept connections", config.HTTP.Addr)
+		case <-ctx.Done():
+			_ = reg.Shutdown(context.Background())
+			return nil, ctx.Err()
+		}
+	}
+}
+
+// listenAndServeFailure normalizes the value reported on the ListenAndServe
+// error channel. The HTTP server is not running at this point, so no
+// shutdown is attempted here.
+func listenAndServeFailure(err error) error {
+	if err == nil {
+		return errors.New("test registry server exited before becoming ready")
+	}
+	return err
+}
+
+func TestServeTestRegistrySurfacesBindError(t *testing.T) {
+	// Deterministic guard for the discarded-ListenAndServe-error half of the
+	// flake: when the configured address is already taken, serveTestRegistry
+	// must report the failure instead of letting a suite run against the
+	// foreign listener.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err, "no error occupying a port")
+	defer func() { _ = ln.Close() }()
+
+	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.MinCost)
+	require.NoError(t, err, "no error generating bcrypt password")
+	htpasswdPath := filepath.Join(t.TempDir(), testHtpasswdFileBasename)
+	require.NoError(t, os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644), "no error creating test htpasswd file")
+
+	config := &configuration.Configuration{}
+	config.HTTP.Addr = ln.Addr().String()
+	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
+	config.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": "localhost",
+			"path":  htpasswdPath,
+		},
+	}
+
+	reg, err := serveTestRegistry(context.Background(), config)
+	require.Error(t, err, "serveTestRegistry must report the bind failure")
+	var opErr *net.OpError
+	assert.ErrorAs(t, err, &opErr)
+	assert.Nil(t, reg, "no registry is returned when the bind fails")
 }
