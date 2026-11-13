@@ -234,16 +234,17 @@ func TestReadFile(t *testing.T) {
 // TestReadFileErrorMessages tests specific error scenarios and their messages
 func TestReadFileErrorMessages(t *testing.T) {
 	tests := []struct {
-		name      string
-		filePath  string
-		providers getter.Providers
-		wantErr   string
+		name        string
+		filePath    string
+		providers   getter.Providers
+		wantErr     string
+		wantFileErr bool
 	}{
 		{
-			name:      "URL parse error reads local file",
-			filePath:  "://invalid",
-			providers: getter.Providers{},
-			wantErr:   "no such file or directory",
+			name:        "URL parse error reads local file",
+			filePath:    "://invalid",
+			providers:   getter.Providers{},
+			wantFileErr: true,
 		},
 		{
 			name:      "getter error with message",
@@ -256,6 +257,14 @@ func TestReadFileErrorMessages(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := readFile(tt.filePath, tt.providers)
+			if tt.wantFileErr {
+				_, wantErr := os.ReadFile(tt.filePath)
+				require.Error(t, wantErr)
+				var pathErr *os.PathError
+				require.ErrorAs(t, err, &pathErr)
+				assert.Equal(t, wantErr, pathErr)
+				return
+			}
 			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}
