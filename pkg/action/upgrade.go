@@ -471,7 +471,8 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		target,
 		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
 		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
-		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager),
+		kube.ClientUpdateOptionOwnership(upgradedRelease.Name))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
