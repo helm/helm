@@ -655,3 +655,34 @@ func TestWriteLock(t *testing.T) {
 		assert.Error(t, writeLock(filePath, lock, false))
 	})
 }
+
+func TestNoDependencies(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(*Manager) error
+	}{
+		{"build", (*Manager).Build},
+		{"update", (*Manager).Update},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			c := &chart.Chart{
+				Metadata: &chart.Metadata{
+					Name:       "no-deps",
+					Version:    "0.1.0",
+					APIVersion: "v2",
+				},
+			}
+			require.NoError(t, chartutil.SaveDir(c, dir))
+
+			var out bytes.Buffer
+			m := &Manager{
+				Out:       &out,
+				ChartPath: filepath.Join(dir, c.Metadata.Name),
+			}
+			require.NoError(t, tt.run(m))
+			assert.Equal(t, "No dependencies found\n", out.String())
+		})
+	}
+}
