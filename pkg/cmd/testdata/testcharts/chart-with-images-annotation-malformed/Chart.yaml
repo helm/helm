@@ -1,0 +1,9 @@
+apiVersion: v2
+name: chart-with-images-annotation-malformed
+description: Chart whose HIP-0015 helm.sh/images annotation is not a valid YAML list
+version: 0.1.0
+appVersion: "6.0.0"
+annotations:
+  helm.sh/images: |
+    - name: [podinfo
+      image: ghcr.io/stefanprodan/podinfo:6.0.0

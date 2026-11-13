@@ -90,6 +90,37 @@ func TestLintCmdWithKubeVersionFlag(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestLintCmdWithImagesAnnotation(t *testing.T) {
+	tests := []cmdTestCase{{
+		name:      "lint chart with valid images annotation",
+		cmd:       "lint testdata/testcharts/chart-with-images-annotation",
+		golden:    "output/lint-chart-with-images-annotation.txt",
+		wantError: false,
+	}, {
+		name:      "lint chart with malformed images annotation",
+		cmd:       "lint testdata/testcharts/chart-with-images-annotation-malformed",
+		golden:    "output/lint-chart-with-images-annotation-malformed.txt",
+		wantError: true,
+	}, {
+		name:      "lint chart with images annotation missing required fields",
+		cmd:       "lint testdata/testcharts/chart-with-images-annotation-missing-fields",
+		golden:    "output/lint-chart-with-images-annotation-missing-fields.txt",
+		wantError: true,
+	}, {
+		name:      "lint chart with annotations but without images annotation",
+		cmd:       "lint testdata/testcharts/chart-with-annotations-without-images",
+		golden:    "output/lint-chart-with-annotations-without-images.txt",
+		wantError: false,
+	}, {
+		// the images annotation recommendation is informational and must not fail strict linting
+		name:      "lint chart with annotations but without images annotation using strict flag",
+		cmd:       "lint --strict testdata/testcharts/chart-with-annotations-without-images",
+		golden:    "output/lint-chart-with-annotations-without-images.txt",
+		wantError: false,
+	}}
+	runTestCmd(t, tests)
+}
+
 func TestLintCmdRequiresArgs(t *testing.T) {
 	tests := []cmdTestCase{{
 		name:      "lint without arguments should fail",
