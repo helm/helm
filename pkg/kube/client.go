@@ -707,6 +707,7 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 
 type clientUpdateOptions struct {
 	threeWayMergeForUnstructured  bool
+	threeWayMergeForAdopted       map[*resource.Info]struct{}
 	serverSideApply               bool
 	forceReplace                  bool
 	forceConflicts                bool
@@ -723,6 +724,19 @@ func ClientUpdateOptionThreeWayMergeForUnstructured(threeWayMergeForUnstructured
 	return func(o *clientUpdateOptions) error {
 		o.threeWayMergeForUnstructured = threeWayMergeForUnstructured
 
+		return nil
+	}
+}
+
+// ClientUpdateOptionThreeWayMergeForAdoptedResources enables three-way merge for
+// unstructured objects adopted during a client-side update. adopted must contain
+// the corresponding entries from the originals passed to Update.
+func ClientUpdateOptionThreeWayMergeForAdoptedResources(adopted ResourceList) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.threeWayMergeForAdopted = make(map[*resource.Info]struct{}, len(adopted))
+		for _, original := range adopted {
+			o.threeWayMergeForAdopted[original] = struct{}{}
+		}
 		return nil
 	}
 }
@@ -819,7 +833,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		return &Result{}, fmt.Errorf("invalid client update option(s): %w", err)
 	}
 
-	if updateOptions.threeWayMergeForUnstructured && updateOptions.serverSideApply {
+	if (updateOptions.threeWayMergeForUnstructured || len(updateOptions.threeWayMergeForAdopted) > 0) && updateOptions.serverSideApply {
 		return &Result{}, errors.New("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
 	}
 
@@ -898,7 +912,8 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 
 		c.Logger().Debug("using client-side apply for resource update", slog.Bool("threeWayMergeForUnstructured", updateOptions.threeWayMergeForUnstructured))
 		return func(original, target *resource.Info) error {
-			return patchResourceClientSide(original.Object, target, updateOptions.threeWayMergeForUnstructured)
+			_, adopted := updateOptions.threeWayMergeForAdopted[original]
+			return patchResourceClientSide(original.Object, target, updateOptions.threeWayMergeForUnstructured || adopted)
 		}
 	}
 
