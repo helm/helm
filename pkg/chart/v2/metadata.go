@@ -108,6 +108,9 @@ func (md *Metadata) Validate() error {
 	if md.APIVersion == "" {
 		return ValidationError("chart.metadata.apiVersion is required")
 	}
+	if md.APIVersion != APIVersionV1 && md.APIVersion != APIVersionV2 {
+		return ValidationErrorf("chart.metadata.apiVersion %q is not valid. The value must be either %q or %q", md.APIVersion, APIVersionV1, APIVersionV2)
+	}
 	if md.Name == "" {
 		return ValidationError("chart.metadata.name is required")
 	}
