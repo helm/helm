@@ -1777,3 +1777,218 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 		})
 	}
 }
+
+var secretHookManifest = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hook-secret
+  namespace: ns
+  annotations:
+    helm.sh/hook: pre-upgrade
+type: Opaque
+data:
+  key: dmFsdWU=
+`
+
+var configMapManifest = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-cm
+  namespace: ns
+data:
+  key: value
+`
+
+// TestAlwaysReadySkipsWatcher verifies that always-ready resource kinds (Secret,
+// ConfigMap, batch/CronJob) do not cause a namespace-wide informer to be started
+// when waiting on them.  Instead, they are treated as immediately Current without
+// any LIST/WATCH call against the API server.
+func TestAlwaysReadySkipsWatcher(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		objManifests []string
+		testFunc     string // "WatchUntilReady", "Wait", "WaitWithJobs"
+	}{
+		{
+			name:         "WatchUntilReady skips namespace-wide watch for Secret hooks",
+			objManifests: []string{secretHookManifest},
+			testFunc:     "WatchUntilReady",
+		},
+		{
+			name:         "WatchUntilReady skips namespace-wide watch for ConfigMap hooks",
+			objManifests: []string{configMapManifest},
+			testFunc:     "WatchUntilReady",
+		},
+		{
+			name:         "Wait skips namespace-wide watch for Secret resources",
+			objManifests: []string{secretHookManifest},
+			testFunc:     "Wait",
+		},
+		{
+			name:         "Wait skips namespace-wide watch for ConfigMap resources",
+			objManifests: []string{configMapManifest},
+			testFunc:     "Wait",
+		},
+		{
+			name:         "WaitWithJobs skips namespace-wide watch for Secret resources",
+			objManifests: []string{secretHookManifest},
+			testFunc:     "WaitWithJobs",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			baseFakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Secret"),
+				v1.SchemeGroupVersion.WithKind("ConfigMap"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+
+			// Track whether any LIST/WATCH call is made for Secrets or ConfigMaps.
+			// If the fix works, no such call should be made.
+			var watchCallCount atomic.Int32
+			baseFakeClient.PrependReactor("list", "secrets", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+				watchCallCount.Add(1)
+				return false, nil, nil
+			})
+			baseFakeClient.PrependReactor("list", "configmaps", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+				watchCallCount.Add(1)
+				return false, nil, nil
+			})
+			baseFakeClient.PrependWatchReactor("secrets", func(_ clienttesting.Action) (bool, watch.Interface, error) {
+				watchCallCount.Add(1)
+				return false, nil, nil
+			})
+			baseFakeClient.PrependWatchReactor("configmaps", func(_ clienttesting.Action) (bool, watch.Interface, error) {
+				watchCallCount.Add(1)
+				return false, nil, nil
+			})
+
+			sw := statusWaiter{
+				client:     baseFakeClient,
+				restMapper: fakeMapper,
+			}
+			sw.SetLogger(slog.Default().Handler())
+
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				require.NoError(t, baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+			}
+
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			var err error
+			switch tt.testFunc {
+			case "WatchUntilReady":
+				err = sw.WatchUntilReady(resourceList, time.Second*3)
+			case "Wait":
+				err = sw.Wait(resourceList, time.Second*3)
+			case "WaitWithJobs":
+				err = sw.WaitWithJobs(resourceList, time.Second*3)
+			}
+			require.NoError(t, err)
+			assert.Equal(t, int32(0), watchCallCount.Load(),
+				"no namespace-wide LIST/WATCH should be issued for always-ready resource kinds")
+		})
+	}
+}
+
+// TestAlwaysReadyCustomReaderOverride verifies that a custom status reader that
+// supports Secret overrides the always-ready skip: the watcher IS started when a
+// custom reader is configured for that GroupKind.
+func TestAlwaysReadyCustomReaderOverride(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	baseFakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Secret"),
+	)
+
+	// A custom reader that supports Secret and reports it as immediately Current.
+	customReader := &mockStatusReader{
+		supportedGK: v1.SchemeGroupVersion.WithKind("Secret").GroupKind(),
+		status:      status.CurrentStatus,
+	}
+
+	// Track LIST/WATCH calls: since a custom reader overrides the skip, the
+	// watcher should start an informer and issue at least one LIST for Secrets.
+	var watchCallCount atomic.Int32
+	baseFakeClient.PrependReactor("list", "secrets", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+		watchCallCount.Add(1)
+		return false, nil, nil
+	})
+	baseFakeClient.PrependWatchReactor("secrets", func(_ clienttesting.Action) (bool, watch.Interface, error) {
+		watchCallCount.Add(1)
+		return false, nil, nil
+	})
+
+	sw := statusWaiter{
+		client:     baseFakeClient,
+		restMapper: fakeMapper,
+		readers:    []engine.StatusReader{customReader},
+	}
+	sw.SetLogger(slog.Default().Handler())
+
+	objs := getRuntimeObjFromManifests(t, []string{secretHookManifest})
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		require.NoError(t, baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+	require.NoError(t, sw.WatchUntilReady(resourceList, time.Second*3))
+	// With a custom reader for Secret, the watcher should have been started
+	// and issued at least one LIST/WATCH call.
+	assert.Greater(t, watchCallCount.Load(), int32(0),
+		"custom reader for Secret should cause the watcher to start an informer")
+}
+
+// TestAlwaysReadyMixedHooks verifies that when a release hook list contains
+// both a Job (needs watching) and a Secret (always-ready), the Secret does not
+// cause a namespace-wide informer while the Job is still properly waited on.
+func TestAlwaysReadyMixedHooks(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	baseFakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Secret"),
+		batchv1.SchemeGroupVersion.WithKind("Job"),
+	)
+
+	var secretWatchCount atomic.Int32
+	baseFakeClient.PrependReactor("list", "secrets", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+		secretWatchCount.Add(1)
+		return false, nil, nil
+	})
+	baseFakeClient.PrependWatchReactor("secrets", func(_ clienttesting.Action) (bool, watch.Interface, error) {
+		secretWatchCount.Add(1)
+		return false, nil, nil
+	})
+
+	sw := statusWaiter{
+		client:     baseFakeClient,
+		restMapper: fakeMapper,
+	}
+	sw.SetLogger(slog.Default().Handler())
+
+	objs := getRuntimeObjFromManifests(t, []string{jobCompleteManifest, secretHookManifest})
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		require.NoError(t, baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+	require.NoError(t, sw.WatchUntilReady(resourceList, time.Second*3))
+	assert.Equal(t, int32(0), secretWatchCount.Load(),
+		"Secret hook should not trigger a namespace-wide informer even when other hooks need watching")
+}
