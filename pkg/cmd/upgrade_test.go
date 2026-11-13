@@ -32,6 +32,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	ri "helm.sh/helm/v4/pkg/release"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -584,6 +585,97 @@ func TestUpgradeInstallServerSideApply(t *testing.T) {
 			relV1, err := releaserToV1Release(rel)
 			require.NoError(t, err, "unexpected error converting release")
 			assert.Equal(t, tt.expectedApplyMethod, relV1.ApplyMethod, "expected ApplyMethod %q, got %q", tt.expectedApplyMethod, relV1.ApplyMethod)
+		})
+	}
+}
+
+func TestIsReleaseUninstalled(t *testing.T) {
+	rel := func(version int, status rcommon.Status) *release.Release {
+		return &release.Release{
+			Name:    "funny-bunny",
+			Version: version,
+			Info:    &release.Info{Status: status},
+		}
+	}
+	toReleasers := func(rels ...*release.Release) []ri.Releaser {
+		out := make([]ri.Releaser, len(rels))
+		for i, r := range rels {
+			out[i] = r
+		}
+		return out
+	}
+
+	tests := []struct {
+		name     string
+		versions []ri.Releaser
+		want     bool
+	}{
+		{
+			name:     "empty history",
+			versions: nil,
+			want:     false,
+		},
+		{
+			name: "latest revision uninstalled, fewer than 10 revisions in order",
+			versions: toReleasers(
+				rel(1, rcommon.StatusSuperseded),
+				rel(2, rcommon.StatusSuperseded),
+				rel(3, rcommon.StatusUninstalled),
+			),
+			want: true,
+		},
+		{
+			// Storage drivers return records in name order, so with 10+
+			// revisions the order is v1, v10, v11, v2, ... and the last
+			// element is a superseded revision, not the latest revision.
+			name: "latest revision uninstalled, driver name order with 11 revisions",
+			versions: toReleasers(
+				rel(1, rcommon.StatusSuperseded),
+				rel(10, rcommon.StatusSuperseded),
+				rel(11, rcommon.StatusUninstalled),
+				rel(2, rcommon.StatusSuperseded),
+				rel(3, rcommon.StatusSuperseded),
+				rel(4, rcommon.StatusSuperseded),
+				rel(5, rcommon.StatusSuperseded),
+				rel(6, rcommon.StatusSuperseded),
+				rel(7, rcommon.StatusSuperseded),
+				rel(8, rcommon.StatusSuperseded),
+				rel(9, rcommon.StatusSuperseded),
+			),
+			want: true,
+		},
+		{
+			// The last element in driver name order is uninstalled, but the
+			// highest revision is deployed, so the release is not uninstalled.
+			name: "highest revision deployed, last element in driver name order uninstalled",
+			versions: toReleasers(
+				rel(1, rcommon.StatusSuperseded),
+				rel(10, rcommon.StatusSuperseded),
+				rel(11, rcommon.StatusDeployed),
+				rel(2, rcommon.StatusSuperseded),
+				rel(3, rcommon.StatusSuperseded),
+				rel(4, rcommon.StatusSuperseded),
+				rel(5, rcommon.StatusSuperseded),
+				rel(6, rcommon.StatusSuperseded),
+				rel(7, rcommon.StatusSuperseded),
+				rel(8, rcommon.StatusSuperseded),
+				rel(9, rcommon.StatusUninstalled),
+			),
+			want: false,
+		},
+		{
+			name: "latest revision deployed",
+			versions: toReleasers(
+				rel(1, rcommon.StatusSuperseded),
+				rel(2, rcommon.StatusDeployed),
+			),
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isReleaseUninstalled(tt.versions))
 		})
 	}
 }

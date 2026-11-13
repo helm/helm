@@ -335,5 +335,17 @@ func isReleaseUninstalled(versionsi []ri.Releaser) bool {
 		slog.Error("cannot convert release list to v1 release list", "error", err)
 		return false
 	}
-	return len(versions) > 0 && versions[len(versions)-1].Info.Status == common.StatusUninstalled
+	if len(versions) == 0 {
+		return false
+	}
+	// Storage drivers return release records in name order (v1, v10, v2, ...),
+	// not revision order, so the last element is not necessarily the latest
+	// revision. Select the release with the highest version instead.
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.Version > latest.Version {
+			latest = v
+		}
+	}
+	return latest.Info.Status == common.StatusUninstalled
 }
