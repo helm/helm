@@ -184,6 +184,19 @@ func TestPullCmd(t *testing.T) {
 			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "ocitest2", "oci-dependent-chart")),
 		},
 		{
+			name:       "Fetch OCI Chart with tag and untar",
+			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0 --untar --untardir ocitest-tag", ociSrv.RegistryURL),
+			expectFile: "./ocitest-tag/oci-dependent-chart",
+			expectDir:  true,
+		},
+		{
+			name:         "OCI Fetch with tag untar when dir with same name existed",
+			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0 --untar --untardir ocitest3", ociSrv.RegistryURL),
+			existDir:     "ocitest3/oci-dependent-chart",
+			wantError:    true,
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "ocitest3", "oci-dependent-chart")),
+		},
+		{
 			name:       "Fail fetching non-existent OCI chart",
 			args:       fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing --version 0.1.0", ociSrv.RegistryURL),
 			failExpect: "Failed to fetch",
