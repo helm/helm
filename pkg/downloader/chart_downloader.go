@@ -410,10 +410,14 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		if rc.CertFile != "" || rc.KeyFile != "" || rc.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile))
 		}
-		if rc.Username != "" && rc.Password != "" {
+		pass, err := rc.GetPassword()
+		if err != nil {
+			return "", u, err
+		}
+		if rc.Username != "" && pass != "" {
 			c.Options = append(
 				c.Options,
-				getter.WithBasicAuth(rc.Username, rc.Password),
+				getter.WithBasicAuth(rc.Username, pass),
 				getter.WithPassCredentialsAll(rc.PassCredentialsAll),
 			)
 		}
@@ -446,9 +450,13 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}
-		if r.Config.Username != "" && r.Config.Password != "" {
+		pass, err := r.Config.GetPassword()
+		if err != nil {
+			return "", u, err
+		}
+		if r.Config.Username != "" && pass != "" {
 			c.Options = append(c.Options,
-				getter.WithBasicAuth(r.Config.Username, r.Config.Password),
+				getter.WithBasicAuth(r.Config.Username, pass),
 				getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
 			)
 		}

@@ -238,3 +238,54 @@ func TestRepoAddWithPasswordFromStdin(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, result, fmt.Sprintf("%q has been added to your repositories", testName), "Repo was not successfully added. Output: %s", result)
 }
+
+func TestRepoAddWithPasswordCommand(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
+	)
+	defer srv.Stop()
+
+	defer resetEnv()()
+
+	tmpdir := t.TempDir()
+	repoFile := filepath.Join(tmpdir, "repositories.yaml")
+
+	store := storageFixture()
+
+	const testName = "test-name"
+	const username = "username"
+	cmd := fmt.Sprintf("repo add %s %s --repository-config %s --repository-cache %s --username %s --password-command \"echo password\"", testName, srv.URL(), repoFile, tmpdir, username)
+	_, result, err := executeActionCommandC(store, cmd)
+
+	require.NoError(t, err)
+	assert.Contains(t, result, fmt.Sprintf("%q has been added to your repositories", testName), "Repo was not successfully added. Output: %s", result)
+
+	f, err := repo.LoadFile(repoFile)
+	require.NoError(t, err)
+	entry := f.Get(testName)
+	require.NotNil(t, entry)
+	assert.Equal(t, "echo password", entry.PasswordCommand)
+	assert.Empty(t, entry.Password)
+}
+
+func TestRepoAddPasswordCommandFlags(t *testing.T) {
+	tmpdir := t.TempDir()
+	repoFile := filepath.Join(tmpdir, "repositories.yaml")
+	store := storageFixture()
+
+	t.Run("conflict with password", func(t *testing.T) {
+		cmd := fmt.Sprintf("repo add test-repo https://example.com --repository-config %s --repository-cache %s --username user --password pass --password-command \"echo pass\"", repoFile, tmpdir)
+		_, _, err := executeActionCommandC(store, cmd)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot use both --password-command and --password/--password-stdin")
+	})
+
+	t.Run("conflict with password-stdin", func(t *testing.T) {
+		cmd := fmt.Sprintf("repo add test-repo https://example.com --repository-config %s --repository-cache %s --username user --password-stdin --password-command \"echo pass\"", repoFile, tmpdir)
+		_, _, err := executeActionCommandC(store, cmd)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot use both --password-command and --password/--password-stdin")
+	})
+}
