@@ -86,6 +86,91 @@ func TestShowPreReleaseChart(t *testing.T) {
 	}
 }
 
+func TestShowOCIAnnotations(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
+	defer srv.Stop()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	require.NoError(t, err)
+	ociSrv.Run(t)
+
+	require.NoError(t, srv.LinkIndices())
+
+	chartRef := fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --plain-http --registry-config '%s' --content-cache '%s'",
+		ociSrv.RegistryURL,
+		filepath.Join(srv.Root(), "config.json"),
+		t.TempDir(),
+	)
+
+	tests := []struct {
+		name        string
+		cmd         string
+		wantOutput  []string
+		wantAbsent  []string
+		wantError   bool
+		expectedErr string
+	}{
+		{
+			name: "show chart with OCI annotations",
+			cmd:  "show chart " + chartRef + " --oci-annotations",
+			wantOutput: []string{
+				"name: oci-dependent-chart\n",
+				"ociAnnotations:\n",
+				"  org.opencontainers.image.title: oci-dependent-chart\n",
+				"  org.opencontainers.image.version: 0.1.0\n",
+				"  org.opencontainers.image.created: ",
+			},
+		},
+		{
+			name: "show all with OCI annotations",
+			cmd:  "show all " + chartRef + " --oci-annotations",
+			wantOutput: []string{
+				"ociAnnotations:\n",
+				"  org.opencontainers.image.title: oci-dependent-chart\n",
+				"\n---\n",
+			},
+		},
+		{
+			name:       "show chart without the flag omits OCI annotations",
+			cmd:        "show chart " + chartRef,
+			wantOutput: []string{"name: oci-dependent-chart\n"},
+			wantAbsent: []string{"ociAnnotations"},
+		},
+		{
+			name:       "flag is ignored for non-OCI charts",
+			cmd:        "show chart testdata/testcharts/alpine --oci-annotations",
+			wantOutput: []string{"name: alpine\n"},
+			wantAbsent: []string{"ociAnnotations"},
+		},
+		{
+			name:        "flag is not available on show values",
+			cmd:         "show values " + chartRef + " --oci-annotations",
+			wantError:   true,
+			expectedErr: "unknown flag: --oci-annotations",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, out, err := executeActionCommand(tt.cmd)
+			if tt.wantError {
+				require.ErrorContains(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			for _, want := range tt.wantOutput {
+				assert.Contains(t, out, want)
+			}
+			for _, absent := range tt.wantAbsent {
+				assert.NotContains(t, out, absent)
+			}
+		})
+	}
+}
+
 func TestShowVersionCompletion(t *testing.T) {
 	repoFile := "testdata/helmhome/helm/repositories.yaml"
 	repoCache := "testdata/helmhome/helm/repository"
