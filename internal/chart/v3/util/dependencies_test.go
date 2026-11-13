@@ -239,6 +239,60 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	assert.Nil(t, val, "expect nil value but got %v instead", val)
 }
 
+func TestProcessDependencyImportValuesSharedParent(t *testing.T) {
+	build := func() *chart.Chart {
+		frontend := &chart.Chart{
+			Metadata: &chart.Metadata{Name: "frontend", APIVersion: "v2", Version: "0.1.0"},
+			Values: map[string]any{
+				"env": map[string]any{"FRONTEND_PORT": "8080"},
+			},
+		}
+		backend := &chart.Chart{
+			Metadata: &chart.Metadata{Name: "backend", APIVersion: "v2", Version: "0.1.0"},
+			Values: map[string]any{
+				"env": map[string]any{"DB_PASSWORD_FILE": "/run/secrets/db"},
+			},
+		}
+		c := &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name: "parent", APIVersion: "v2", Version: "0.1.0",
+				Dependencies: []*chart.Dependency{
+					{Name: "frontend", Version: "0.1.0", ImportValues: []any{map[string]any{"child": "env", "parent": "env"}}},
+					{Name: "backend", Version: "0.1.0", ImportValues: []any{map[string]any{"child": "env", "parent": "env"}}},
+				},
+			},
+			Values: map[string]any{},
+		}
+		c.SetDependencies(frontend, backend)
+		return c
+	}
+
+	for _, merge := range []bool{true, false} {
+		c := build()
+		require.NoErrorf(t, processDependencyImportValues(c, merge), "processing import values dependencies (merge=%v)", merge)
+		cc := common.Values(c.Values)
+
+		// The parent receives the union of both imports.
+		env, err := cc.Table("env")
+		require.NoError(t, err)
+		assert.Contains(t, env, "FRONTEND_PORT")
+		assert.Contains(t, env, "DB_PASSWORD_FILE")
+
+		// Each subchart keeps only its own values: importing the second
+		// subchart into the shared parent must not leak its keys into the
+		// first subchart's own values.
+		frontendEnv, err := cc.Table("frontend.env")
+		require.NoError(t, err)
+		assert.Contains(t, frontendEnv, "FRONTEND_PORT")
+		assert.NotContains(t, frontendEnv, "DB_PASSWORD_FILE")
+
+		backendEnv, err := cc.Table("backend.env")
+		require.NoError(t, err)
+		assert.Contains(t, backendEnv, "DB_PASSWORD_FILE")
+		assert.NotContains(t, backendEnv, "FRONTEND_PORT")
+	}
+}
+
 func TestProcessDependencyImportValuesFromSharedDependencyToAliases(t *testing.T) {
 	c := loadChart(t, "testdata/chart-with-import-from-aliased-dependencies")
 
