@@ -180,18 +180,11 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		return false
 	}
 
-	isKnown := func(v string) string {
-		if slices.Contains(kvargs, v) {
-			return v
-		}
-		return ""
-	}
-
 	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
-		case "--debug":
+		switch a := args[i]; {
+		case a == "--debug":
 			known = append(known, a)
-		case isKnown(a):
+		case slices.Contains(kvargs, a):
 			known = append(known, a)
 			i++
 			if i < len(args) {
