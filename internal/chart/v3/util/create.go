@@ -200,7 +200,7 @@ httpRoute:
   - matches:
     - path:
         type: PathPrefix
-        value: /headers
+        value: /
   #   filters:
   #   - type: RequestHeaderModifier
   #     requestHeaderModifier:
