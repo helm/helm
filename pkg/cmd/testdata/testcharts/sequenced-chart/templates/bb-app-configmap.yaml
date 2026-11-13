@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  annotations:
+    helm.sh/resource-group: app
+    helm.sh/depends-on/resource-groups: '["databases"]'
+data:
+  db_host: localhost
