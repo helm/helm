@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
@@ -53,7 +52,7 @@ func Expand(dir string, r io.Reader) error {
 	}
 
 	// Reject chart names that are POSIX path dot-segments or dot-dot segments or contain path separators.
-	// A dot-segment name (e.g. ".") causes SecureJoin to resolve to the root
+	// A dot-segment name (e.g. ".") causes the chart path to resolve to the root
 	// directory and extraction then to write files directly into that extraction root
 	// instead of a per-chart subdirectory.
 	if chartName == "." || chartName == ".." {
@@ -63,36 +62,55 @@ func Expand(dir string, r io.Reader) error {
 		return fmt.Errorf("chart name %q must not contain path separators", chartName)
 	}
 
-	// Find the base directory
-	// The directory needs to be cleaned prior to passing to SecureJoin or the location may end up
-	// being wrong or returning an error. This was introduced in v0.4.0.
+	// An empty dir means the current directory.
 	dir = filepath.Clean(dir)
-	chartdir, err := securejoin.SecureJoin(dir, chartName)
+
+	// Every write below goes through an os.Root, so files can only be created
+	// inside the chart directory, even if dir already contains symlinks or is
+	// modified while the chart is being expanded.
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return err
 	}
+	defer root.Close()
+
+	if err := root.MkdirAll(chartName, 0o755); err != nil {
+		return err
+	}
+	chartRoot, err := root.OpenRoot(chartName)
+	if err != nil {
+		return err
+	}
+	defer chartRoot.Close()
 
 	// Defense-in-depth: the chart directory must be a subdirectory of dir,
 	// never dir itself.
-	if chartdir == dir {
+	rootInfo, err := root.Stat(".")
+	if err != nil {
+		return err
+	}
+	chartInfo, err := chartRoot.Stat(".")
+	if err != nil {
+		return err
+	}
+	if os.SameFile(rootInfo, chartInfo) {
 		return fmt.Errorf("chart name %q resolves to the extraction root", chartName)
 	}
 
 	// Copy all files verbatim. We don't parse these files because parsing can remove
 	// comments.
 	for _, file := range files {
-		outpath, err := securejoin.SecureJoin(chartdir, file.Name)
-		if err != nil {
-			return err
-		}
+		name := filepath.FromSlash(file.Name)
 
 		// Make sure the necessary subdirs get created.
-		basedir := filepath.Dir(outpath)
-		if err := os.MkdirAll(basedir, 0o755); err != nil {
+		if err := chartRoot.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 			return err
 		}
 
-		if err := os.WriteFile(outpath, file.Data, 0o644); err != nil {
+		if err := chartRoot.WriteFile(name, file.Data, 0o644); err != nil {
 			return err
 		}
 	}
