@@ -58,6 +58,7 @@ Environment variables:
 
 | Name                               | Description                                                                                                |
 |------------------------------------|------------------------------------------------------------------------------------------------------------|
+| $HELM_ALLOW_EXTERNAL_SCHEMA_REFS   | allow values.schema.json to resolve external $ref references (insecure, default false)                     |
 | $HELM_CACHE_HOME                   | set an alternative location for storing cached files.                                                      |
 | $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                                                |
 | $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                                         |
