@@ -49,6 +49,7 @@ import (
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
@@ -1270,4 +1271,66 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+func TestLocateChartWithVerification(t *testing.T) {
+	// Copy the signed chart and its provenance file from the downloader's
+	// fixtures, so the archive's path can be changed without touching them.
+	dir := t.TempDir()
+	archive := filepath.Join(dir, "signtest-0.1.0.tgz")
+	signed, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(archive, signed, 0o644))
+	prov, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(archive+".prov", prov, 0o644))
+	const keyring = "../downloader/testdata/helm-test-key.pub"
+
+	settings := cli.New()
+
+	t.Run("verified local archive returns the verified bytes", func(t *testing.T) {
+		c := &ChartPathOptions{Verify: true, Keyring: keyring}
+		lc, err := c.LocateChartWithVerification(archive, settings)
+		require.NoError(t, err)
+		assert.Equal(t, signed, lc.Data)
+		require.NotNil(t, lc.Verification)
+		assert.NotEmpty(t, lc.Verification.FileHash)
+
+		path, err := c.LocateChart(archive, settings)
+		require.NoError(t, err)
+		assert.Equal(t, path, lc.Path)
+	})
+
+	t.Run("unverified local archive returns no bytes", func(t *testing.T) {
+		c := &ChartPathOptions{}
+		lc, err := c.LocateChartWithVerification(archive, settings)
+		require.NoError(t, err)
+		assert.Nil(t, lc.Data)
+		assert.Nil(t, lc.Verification)
+		assert.Equal(t, archive, lc.Path)
+	})
+
+	t.Run("chart directory returns no bytes", func(t *testing.T) {
+		chartDir := filepath.Join(dir, "mychart")
+		require.NoError(t, os.MkdirAll(chartDir, 0o755))
+		c := &ChartPathOptions{}
+		lc, err := c.LocateChartWithVerification(chartDir, settings)
+		require.NoError(t, err)
+		assert.Nil(t, lc.Data)
+		assert.Equal(t, chartDir, lc.Path)
+	})
+
+	t.Run("failed verification returns the same error as LocateChart", func(t *testing.T) {
+		tampered := filepath.Join(t.TempDir(), "signtest-0.1.0.tgz")
+		require.NoError(t, os.WriteFile(tampered, []byte("not the signed archive"), 0o644))
+		require.NoError(t, os.WriteFile(tampered+".prov", prov, 0o644))
+
+		c := &ChartPathOptions{Verify: true, Keyring: keyring}
+		lc, err := c.LocateChartWithVerification(tampered, settings)
+		require.Error(t, err)
+		assert.Nil(t, lc)
+
+		_, wantErr := c.LocateChart(tampered, settings)
+		assert.EqualError(t, err, wantErr.Error())
+	})
 }
