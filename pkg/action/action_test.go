@@ -28,6 +28,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v4/internal/logging"
@@ -392,6 +394,21 @@ func (m *mockPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, 
 	}
 
 	return bytes.NewBufferString(content), nil
+}
+
+func TestAnnotateAndMergeJSON(t *testing.T) {
+	const filename = "templates/configmap.yaml"
+	const manifest = `{"apiVersion":"v1","kind":"ConfigMap","metadata":{"name":"test"},"data":{"key":"hello"}}`
+	merged, err := annotateAndMerge(map[string]string{filename: manifest})
+	require.NoError(t, err)
+
+	decoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+	obj := new(unstructured.Unstructured)
+	_, _, err = decoder.Decode([]byte(merged), nil, obj)
+	require.NoError(t, err)
+	assert.Equal(t, "test", obj.GetName())
+	assert.Equal(t, filename, obj.GetAnnotations()[filenameAnnotation])
+	assert.Equal(t, "hello", obj.Object["data"].(map[string]any)["key"])
 }
 
 func TestAnnotateAndMerge(t *testing.T) {
