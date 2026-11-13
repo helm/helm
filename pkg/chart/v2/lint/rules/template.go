@@ -193,6 +193,7 @@ func (t *templateLinter) Lint() {
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
 					t.linter.RunLinterRule(support.WarningSev, fileName, validateMetadataName(yamlStruct))
+					t.linter.RunLinterRule(support.WarningSev, fileName, validateContainerNames(yamlStruct))
 					t.linter.RunLinterRule(support.WarningSev, fileName, validateNoDeprecations(yamlStruct, t.kubeVersion))
 
 					t.linter.RunLinterRule(support.ErrorSev, fileName, validateMatchSelector(yamlStruct, renderedContent))
@@ -376,9 +377,98 @@ type k8sYamlStruct struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string
 	Metadata   k8sYamlMetadata
+	Spec       k8sYamlSpec `json:"spec"`
 }
 
 type k8sYamlMetadata struct {
 	Namespace string
 	Name      string
+}
+
+// k8sYamlSpec captures the pod specs embedded at the usual locations of the
+// built-in workload kinds.
+type k8sYamlSpec struct {
+	k8sYamlPodSpec
+	Template    *k8sYamlTemplate    `json:"template"`
+	JobTemplate *k8sYamlJobTemplate `json:"jobTemplate"`
+}
+
+type k8sYamlTemplate struct {
+	Spec k8sYamlPodSpec `json:"spec"`
+}
+
+type k8sYamlJobTemplate struct {
+	Spec k8sYamlJobSpec `json:"spec"`
+}
+
+type k8sYamlJobSpec struct {
+	Template k8sYamlTemplate `json:"template"`
+}
+
+type k8sYamlPodSpec struct {
+	Containers          []k8sYamlNamed `json:"containers"`
+	InitContainers      []k8sYamlNamed `json:"initContainers"`
+	EphemeralContainers []k8sYamlNamed `json:"ephemeralContainers"`
+	Volumes             []k8sYamlNamed `json:"volumes"`
+}
+
+type k8sYamlNamed struct {
+	Name string `json:"name"`
+}
+
+type k8sYamlPodSpecEntry struct {
+	path *field.Path
+	spec k8sYamlPodSpec
+}
+
+// validateContainerNames checks that container and volume names conform to
+// Kubernetes naming requirements (RFC 1123 DNS labels).
+//
+// See https://github.com/helm/helm/issues/10627
+func validateContainerNames(obj *k8sYamlStruct) error {
+	allErrs := field.ErrorList{}
+	for _, entry := range obj.podSpecs() {
+		for i, c := range entry.spec.Containers {
+			allErrs = append(allErrs, validateDNSLabel(entry.path.Child("containers").Index(i).Child("name"), c.Name)...)
+		}
+		for i, c := range entry.spec.InitContainers {
+			allErrs = append(allErrs, validateDNSLabel(entry.path.Child("initContainers").Index(i).Child("name"), c.Name)...)
+		}
+		for i, c := range entry.spec.EphemeralContainers {
+			allErrs = append(allErrs, validateDNSLabel(entry.path.Child("ephemeralContainers").Index(i).Child("name"), c.Name)...)
+		}
+		for i, v := range entry.spec.Volumes {
+			allErrs = append(allErrs, validateDNSLabel(entry.path.Child("volumes").Index(i).Child("name"), v.Name)...)
+		}
+	}
+	if len(allErrs) > 0 {
+		return fmt.Errorf("object %q has names that do not conform to Kubernetes naming requirements: %w", obj.Metadata.Name, allErrs.ToAggregate())
+	}
+	return nil
+}
+
+func validateDNSLabel(path *field.Path, name string) field.ErrorList {
+	var allErrs field.ErrorList
+	for _, msg := range validation.NameIsDNSLabel(name, false) {
+		allErrs = append(allErrs, field.Invalid(path, name, msg))
+	}
+	return allErrs
+}
+
+// podSpecs returns the pod specs embedded in the object for the workload kinds
+// that support them, together with the path at which each was found.
+func (obj *k8sYamlStruct) podSpecs() []k8sYamlPodSpecEntry {
+	switch strings.ToLower(obj.Kind) {
+	case "pod":
+		return []k8sYamlPodSpecEntry{{field.NewPath("spec"), obj.Spec.k8sYamlPodSpec}}
+	case "deployment", "replicaset", "statefulset", "daemonset", "job", "replicationcontroller":
+		if obj.Spec.Template != nil {
+			return []k8sYamlPodSpecEntry{{field.NewPath("spec").Child("template").Child("spec"), obj.Spec.Template.Spec}}
+		}
+	case "cronjob":
+		if obj.Spec.JobTemplate != nil {
+			return []k8sYamlPodSpecEntry{{field.NewPath("spec").Child("jobTemplate").Child("spec").Child("template").Child("spec"), obj.Spec.JobTemplate.Spec.Template.Spec}}
+		}
+	}
+	return nil
 }
