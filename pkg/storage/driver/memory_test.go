@@ -264,3 +264,25 @@ func TestMemoryDelete(t *testing.T) {
 		}
 	}
 }
+
+func TestMemoryGetAndDeleteReleaseNameContainingDotV(t *testing.T) {
+	// Release names may contain dots, so ".v" can appear inside the name
+	// as well as before the revision number.
+	ts := NewMemory()
+	key := "sh.helm.release.v1.infra.vault.v1"
+	require.NoError(t, ts.Create(key, releaseStub("infra.vault", 1, "default", common.StatusDeployed)))
+
+	rel, err := ts.Get(key)
+	require.NoError(t, err)
+	rls := convertReleaserToV1(t, rel)
+	assert.Equal(t, "infra.vault", rls.Name)
+	assert.Equal(t, 1, rls.Version)
+
+	rel, err = ts.Delete(key)
+	require.NoError(t, err)
+	rls = convertReleaserToV1(t, rel)
+	assert.Equal(t, "infra.vault", rls.Name)
+
+	_, err = ts.Get(key)
+	require.ErrorIs(t, err, ErrReleaseNotFound)
+}
