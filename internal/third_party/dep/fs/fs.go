@@ -132,6 +132,10 @@ func CopyDir(src, dst string) error {
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
 
+		if entry.Type()&os.ModeSocket != 0 {
+			continue
+		}
+
 		if entry.IsDir() {
 			if err = CopyDir(srcPath, dstPath); err != nil {
 				return fmt.Errorf("copying directory failed: %w", err)
