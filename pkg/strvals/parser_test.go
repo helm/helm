@@ -131,6 +131,11 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]any{"zero": "0"},
 			err:    false,
 		},
+		{
+			str:    "empty_list={}",
+			expect: map[string]any{"empty_list": []any{}},
+			err:    false,
+		},
 	}
 	tests := []struct {
 		str    string
@@ -288,6 +293,26 @@ func TestParseSet(t *testing.T) {
 			false,
 		},
 		{
+			str:    "name1={value1}",
+			expect: map[string]any{"name1": []string{"value1"}},
+		},
+		{
+			str:    "name1={value1,}",
+			expect: map[string]any{"name1": []string{"value1", ""}},
+		},
+		{
+			str:    "name1={}",
+			expect: map[string]any{"name1": []any{}},
+		},
+		{
+			str:    "name1={},name2=value2",
+			expect: map[string]any{"name1": []any{}, "name2": "value2"},
+		},
+		{
+			str:    "name1.name2={}",
+			expect: map[string]any{"name1": map[string]any{"name2": []any{}}},
+		},
+		{
 			str: "name1={1021,902",
 			err: true,
 		},
@@ -343,6 +368,10 @@ func TestParseSet(t *testing.T) {
 		{
 			str:    "noval[0]=",
 			expect: map[string]any{"noval": []any{""}},
+		},
+		{
+			str:    "list[0]={}",
+			expect: map[string]any{"list": []any{[]any{}}},
 		},
 		{
 			str:    "nested[0][0]=1",
@@ -665,6 +694,17 @@ func TestParseFile(t *testing.T) {
 	y2, err := yaml.Marshal(got)
 	require.NoError(t, err, "Error serializing parsed value")
 	assert.YAMLEq(t, string(y1), string(y2), input)
+}
+
+func TestParseFileEmptyList(t *testing.T) {
+	input := "name1={}"
+	rs2v := func(rs []rune) (any, error) {
+		return nil, fmt.Errorf("unexpected read of %q", string(rs))
+	}
+
+	got, err := ParseFile(input, rs2v)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{"name1": []any{}}, got, input)
 }
 
 func TestParseIntoFile(t *testing.T) {

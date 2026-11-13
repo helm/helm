@@ -485,6 +485,10 @@ func (t *parser) valList() ([]any, error) {
 			if r, _, e := t.sc.ReadRune(); e == nil && r != ',' {
 				t.sc.UnreadRune()
 			}
+			// {} is an empty list.
+			if len(list) == 0 && len(rs) == 0 {
+				return list, nil
+			}
 			v, e := t.reader(rs)
 			list = append(list, v)
 			return list, e
