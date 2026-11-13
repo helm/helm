@@ -107,7 +107,9 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
-	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
+	readers := append([]engine.StatusReader(nil), w.readers...)
+	readers = append(readers, helmStatusReaders.NewCustomPVCStatusReader(w.restMapper))
+	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, readers...)
 	return w.wait(ctx, resourceList, sw)
 }
 
@@ -122,7 +124,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	sw.StatusComputeWorkers = w.statusComputeWorkers
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
-	readers = append(readers, newCustomJobStatusReader)
+	readers = append(readers, newCustomJobStatusReader, helmStatusReaders.NewCustomPVCStatusReader(w.restMapper))
 	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
 	sw.StatusReader = customSR
 	return w.wait(ctx, resourceList, sw)
