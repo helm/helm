@@ -160,10 +160,11 @@ func (m *Manager) Update() error {
 		return err
 	}
 
-	// If no dependencies are found, we consider this a successful
-	// completion.
+	// If dependencies are absent and no lock file exists, leave manually
+	// vendored charts untouched. An existing lock must still be updated
+	// when all dependencies have been removed.
 	req := c.Metadata.Dependencies
-	if req == nil {
+	if req == nil && c.Lock == nil {
 		return nil
 	}
 
