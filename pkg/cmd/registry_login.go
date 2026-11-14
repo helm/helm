@@ -63,7 +63,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 		RunE: func(_ *cobra.Command, args []string) error {
 			hostname := args[0]
 
-			username, password, err := getUsernamePassword(o.username, o.password, o.passwordFromStdinOpt)
+			username, password, err := getUsernamePassword(cfg.Logger(), o.username, o.password, o.passwordFromStdinOpt)
 			if err != nil {
 				return err
 			}
@@ -91,7 +91,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 }
 
 // Adapted from https://github.com/oras-project/oras
-func getUsernamePassword(usernameOpt, passwordOpt string, passwordFromStdinOpt bool) (string, string, error) {
+func getUsernamePassword(logger *slog.Logger, usernameOpt, passwordOpt string, passwordFromStdinOpt bool) (string, string, error) {
 	var err error
 	username := usernameOpt
 	password := passwordOpt
@@ -128,7 +128,7 @@ func getUsernamePassword(usernameOpt, passwordOpt string, passwordFromStdinOpt b
 			}
 		}
 	default:
-		slog.Warn("using --password via the CLI is insecure. Use --password-stdin")
+		logger.Warn("using --password via the CLI is insecure. Use --password-stdin")
 	}
 
 	return username, password, nil
