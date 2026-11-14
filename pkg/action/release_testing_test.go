@@ -187,7 +187,7 @@ func TestGetContainerLogs_MultipleContainers(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	require.NoError(t, rt.getContainerLogs(&buf, client, "test-pod"))
+	require.NoError(t, rt.getContainerLogs(&buf, client, rt.Namespace, "test-pod"))
 	output := buf.String()
 	assert.Contains(t, output, "POD LOGS: test-pod (main)")
 	assert.Contains(t, output, "POD LOGS: test-pod (sidecar)")
@@ -211,7 +211,7 @@ func TestGetContainerLogs_WithInitContainers(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	require.NoError(t, rt.getContainerLogs(&buf, client, "test-pod"))
+	require.NoError(t, rt.getContainerLogs(&buf, client, rt.Namespace, "test-pod"))
 	output := buf.String()
 	// Init containers should appear before regular containers
 	assert.Contains(t, output, "POD LOGS: test-pod (init-setup)")
@@ -223,7 +223,7 @@ func TestGetContainerLogs_PodNotFound(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	assert.ErrorContains(t, rt.getContainerLogs(&buf, client, "nonexistent-pod"), "unable to get pod nonexistent-pod")
+	assert.ErrorContains(t, rt.getContainerLogs(&buf, client, rt.Namespace, "nonexistent-pod"), "unable to get pod nonexistent-pod")
 }
 
 func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
@@ -242,7 +242,7 @@ func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
 	rt := &ReleaseTesting{Namespace: "default"}
 
 	var buf bytes.Buffer
-	require.NoError(t, rt.getContainerLogs(&buf, client, "multi-test"))
+	require.NoError(t, rt.getContainerLogs(&buf, client, rt.Namespace, "multi-test"))
 	output := buf.String()
 	assert.Contains(t, output, "POD LOGS: multi-test (container-a)")
 	assert.Contains(t, output, "POD LOGS: multi-test (container-b)")
