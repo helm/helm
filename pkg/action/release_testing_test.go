@@ -27,7 +27,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v4/pkg/cli"
@@ -46,7 +45,7 @@ func TestNewReleaseTesting(t *testing.T) {
 
 func TestReleaseTestingRun_UnreachableKubeClient(t *testing.T) {
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.ConnectionError = errors.New("connection refused")
 	config.KubeClient = &failingKubeClient
 
@@ -174,10 +173,8 @@ func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
 
 func TestGetContainerLogs_MultipleContainers(t *testing.T) {
 	pod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "default",
-		},
+		Name:      "test-pod",
+		Namespace: "default",
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{Name: "main"},
@@ -198,10 +195,8 @@ func TestGetContainerLogs_MultipleContainers(t *testing.T) {
 
 func TestGetContainerLogs_WithInitContainers(t *testing.T) {
 	pod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "default",
-		},
+		Name:      "test-pod",
+		Namespace: "default",
 		Spec: v1.PodSpec{
 			InitContainers: []v1.Container{
 				{Name: "init-setup"},
@@ -233,10 +228,8 @@ func TestGetContainerLogs_PodNotFound(t *testing.T) {
 
 func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
 	pod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "multi-test",
-			Namespace: "default",
-		},
+		Name:      "multi-test",
+		Namespace: "default",
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{Name: "container-a"},

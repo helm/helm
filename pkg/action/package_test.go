@@ -17,9 +17,14 @@ limitations under the License.
 package action
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"errors"
+	"io"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
@@ -143,4 +148,61 @@ func TestRun(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "empty-0.1.0.tgz", filename)
 	require.NoError(t, os.Remove(filename))
+}
+
+// TestRunWithSourceDateEpochStampsLockGenerated verifies that packaging a chart
+// that has a Chart.lock stamps both the tar entry modtime and the marshaled
+// generated: field in Chart.lock to the given epoch.
+//
+// This guards against the normalization regression where a caller supplying a
+// local-timezone or sub-second time.Time would produce a non-reproducible
+// generated: value even when the same SOURCE_DATE_EPOCH is used on different
+// machines.
+func TestRunWithSourceDateEpochStampsLockGenerated(t *testing.T) {
+	// Use a non-local, non-UTC timezone and sub-second precision to confirm
+	// normalization: without UTC().Truncate(time.Second) the generated: field
+	// would contain a timezone offset or fractional seconds.
+	loc := time.FixedZone("UTC+3", 3*60*60)
+	rawEpoch := time.Unix(1700000000, 123456789).In(loc)
+	epoch := rawEpoch.UTC().Truncate(time.Second)
+
+	client := NewPackage()
+	client.SourceDateEpoch = &rawEpoch
+
+	filename, err := client.Run("testdata/charts/chart-with-lock", nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(filename) })
+
+	f, err := os.Open(filename)
+	require.NoError(t, err)
+	defer f.Close()
+
+	gr, err := gzip.NewReader(f)
+	require.NoError(t, err)
+	defer gr.Close()
+
+	const wantPath = "chart-with-lock/Chart.lock"
+	found := false
+	tr := tar.NewReader(gr)
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		require.NoError(t, err)
+		if hdr.Name != wantPath {
+			continue
+		}
+		found = true
+		require.True(t, epoch.Equal(hdr.ModTime),
+			"Chart.lock tar modtime: got %v, want %v", hdr.ModTime, epoch)
+
+		raw, err := io.ReadAll(tr)
+		require.NoError(t, err)
+		wantGenerated := epoch.Format(time.RFC3339)
+		require.Contains(t, string(raw), wantGenerated,
+			"Chart.lock generated: field should contain normalized UTC timestamp")
+		break
+	}
+	require.True(t, found, "expected archive to contain %q entry", wantPath)
 }

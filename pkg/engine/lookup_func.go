@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]any, error)
+type lookupFunc = func(apiversion, resource, namespace, name string) (map[string]any, error)
 
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
@@ -55,7 +55,7 @@ func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic
 }
 
 func newLookupFunction(ctx context.Context, clientProvider ClientProvider) lookupFunc {
-	return func(apiversion string, kind string, namespace string, name string) (map[string]any, error) {
+	return func(apiversion, kind, namespace, name string) (map[string]any, error) {
 		var client dynamic.ResourceInterface
 		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
 		if err != nil {
@@ -105,7 +105,7 @@ func newLookupFunction(ctx context.Context, clientProvider ClientProvider) looku
 }
 
 // getDynamicClientOnKind returns a dynamic client on an Unstructured type. This client can be further namespaced.
-func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
+func getDynamicClientOnKind(apiversion, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIResourceForGVK(gvk, config)
 	if err != nil {

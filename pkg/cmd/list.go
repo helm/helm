@@ -57,9 +57,8 @@ If no results are found, 'helm list' will exit 0, but with no output (or in
 the case of no '-q' flag, only headers).
 
 By default, up to 256 items may be returned. To limit this, use the '--max' flag.
-Setting '--max' to 0 will not return all results. Rather, it will return the
-server's default, which may be much higher than 256. Pairing the '--max'
-flag with the '--offset' flag allows you to page through results.
+Setting '--max' to 0 (or a negative value) will return all results. Pairing
+the '--max' flag with the '--offset' flag allows you to page through results.
 `
 
 func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -155,7 +154,7 @@ type releaseListWriter struct {
 	noColor   bool
 }
 
-func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders bool, noColor bool) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders, noColor bool) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {

@@ -104,7 +104,7 @@ func (o *createOptions) run(out io.Writer) error {
 		if !gates.ChartV3.IsEnabled() {
 			return gates.ChartV3.Error()
 		}
-		return o.createV3Chart(out)
+		return o.createV3Chart()
 	default:
 		return fmt.Errorf("unsupported chart API version: %s (supported: v2, v3)", o.chartAPIVersion)
 	}
@@ -136,7 +136,7 @@ func (o *createOptions) createV2Chart(out io.Writer) error {
 	return err
 }
 
-func (o *createOptions) createV3Chart(out io.Writer) error {
+func (o *createOptions) createV3Chart() error {
 	chartname := filepath.Base(o.name)
 	cfile := &chartv3.Metadata{
 		Name:        chartname,
@@ -157,7 +157,6 @@ func (o *createOptions) createV3Chart(out io.Writer) error {
 		return chartutilv3.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
 	}
 
-	chartutilv3.Stderr = out
 	_, err := chartutilv3.Create(chartname, filepath.Dir(o.name))
 	return err
 }

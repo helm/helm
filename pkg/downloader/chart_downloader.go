@@ -290,7 +290,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 				return pth, ver, err
 			}
 
-			body, err := g.Get(u.String() + ".prov")
+			body, err := g.Get(u.String()+".prov", c.Options...)
 			if err != nil {
 				if c.Verify == VerifyAlways {
 					return pth, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")
