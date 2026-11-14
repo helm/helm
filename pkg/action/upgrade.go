@@ -412,8 +412,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	rChan := make(chan resultMessage)
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan any)
-	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease, serverSideApply)
+	go u.releasingUpgrade(rChan, doneChan, upgradedRelease, current, target, originalRelease, serverSideApply)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 
 	select {
@@ -424,16 +423,31 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 }
 
-// Function used to lock the Mutex, this is important for the case when RollbackOnFailure is set.
-// In that case the upgrade will finish before the rollback is finished so it is necessary to wait for the rollback to finish.
-// The rollback will be trigger by the function failRelease
-func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Release, created kube.ResourceList, err error) {
+// reportToPerformUpgrade serializes completion and failure cleanup. Only the
+// first reporter may publish a result, and any rollback must finish before the
+// caller receives the error.
+func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, done chan any, rel *release.Release, created kube.ResourceList, err error) {
 	u.Lock.Lock()
+	defer u.Lock.Unlock()
+	u.reportToPerformUpgradeLocked(c, done, rel, created, err)
+}
+
+// reportToPerformUpgradeLocked requires u.Lock to be held.
+func (u *Upgrade) reportToPerformUpgradeLocked(c chan<- resultMessage, done chan any, rel *release.Release, created kube.ResourceList, err error) {
 	if err != nil {
+		// A worker may finish after cancellation. Its newly created resources
+		// must still be eligible for CleanupOnFail.
 		rel, err = u.failRelease(rel, created, err)
 	}
+	select {
+	case <-done:
+		return
+	default:
+	}
+	// Mark completion before returning the result to a caller that may
+	// immediately cancel its context.
+	close(done)
 	c <- resultMessage{r: rel, e: err}
-	u.Lock.Unlock()
 }
 
 // Setup listener for SIGINT and SIGTERM
@@ -442,8 +456,16 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan any, c chan<- res
 	case <-ctx.Done():
 		err := ctx.Err()
 
-		// when RollbackOnFailure is set, the ongoing release finish first and doesn't give time for the rollback happens.
-		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
+		u.Lock.Lock()
+		defer u.Lock.Unlock()
+		// Completion may have won while cancellation was waiting for the lock.
+		// Do not change a completed release or start a late rollback.
+		select {
+		case <-done:
+			return
+		default:
+		}
+		u.reportToPerformUpgradeLocked(c, done, upgradedRelease, kube.ResourceList{}, err)
 	case <-done:
 		return
 	}
@@ -453,12 +475,12 @@ func isReleaseApplyMethodClientSideApply(applyMethod string) bool {
 	return applyMethod == "" || applyMethod == string(release.ApplyMethodClientSideApply)
 }
 
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, done chan any, upgradedRelease *release.Release, current, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %w", err))
+			u.reportToPerformUpgrade(c, done, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %w", err))
 			return
 		}
 	} else {
@@ -474,7 +496,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
-		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+		u.reportToPerformUpgrade(c, done, upgradedRelease, results.Created, err)
 		return
 	}
 
@@ -486,19 +508,19 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
-		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+		u.reportToPerformUpgrade(c, done, upgradedRelease, results.Created, err)
 		return
 	}
 	if u.WaitForJobs {
 		if err := waiter.WaitWithJobs(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			u.reportToPerformUpgrade(c, done, upgradedRelease, results.Created, err)
 			return
 		}
 	} else {
 		if err := waiter.Wait(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			u.reportToPerformUpgrade(c, done, upgradedRelease, results.Created, err)
 			return
 		}
 	}
@@ -506,7 +528,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %w", err))
+			u.reportToPerformUpgrade(c, done, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %w", err))
 			return
 		}
 	}
@@ -520,7 +542,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	} else {
 		upgradedRelease.Info.Description = "Upgrade complete"
 	}
-	u.reportToPerformUpgrade(c, upgradedRelease, nil, nil)
+	u.reportToPerformUpgrade(c, done, upgradedRelease, nil, nil)
 }
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
