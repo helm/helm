@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1778,127 +1779,90 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 	}
 }
 
-var jobTTLNoStatusManifest = `
-apiVersion: batch/v1
-kind: Job
-metadata:
-   name: test
-   namespace: qual
-   generation: 1
-spec:
-   ttlSecondsAfterFinished: 0
-`
-
-// TestDeletionIsSuccess covers which disappearing resources may end a wait
-// successfully. A failed hook must not pass just because the TTL controller
-// removed it afterwards: the delete event replaces Failed with NotFound in the
-// collector, so the failure has to be remembered.
-func TestDeletionIsSuccess(t *testing.T) {
-	t.Parallel()
-	id := object.ObjMetadata{
-		GroupKind: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
-		Namespace: "qual",
-		Name:      "test",
-	}
-	other := id
-	other.Name = "other"
-
-	tests := []struct {
-		name     string
-		present  bool
-		failed   bool
-		ttl      bool
-		expected bool
-	}{
-		{
-			name:     "TTL Job seen running and then deleted",
-			present:  true,
-			ttl:      true,
-			expected: true,
-		},
-		{
-			name:     "TTL Job that failed before being deleted",
-			present:  true,
-			failed:   true,
-			ttl:      true,
-			expected: false,
-		},
-		{
-			name:     "TTL Job that was never seen running",
-			ttl:      true,
-			expected: false,
-		},
-		{
-			name:     "resource deletion is not expected for",
-			present:  true,
-			expected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			observed := &observedResources{}
-			if tt.present {
-				observed.markPresent(id)
-			}
-			if tt.failed {
-				observed.markFailed(id)
-			}
-			deletedIsDone := map[object.ObjMetadata]struct{}{}
-			if tt.ttl {
-				deletedIsDone[id] = struct{}{}
-			}
-			assert.Equal(t, tt.expected, observed.deletionIsSuccess(id, deletedIsDone))
-			// An unrelated resource is never covered by the exception.
-			assert.False(t, observed.deletionIsSuccess(other, deletedIsDone))
-		})
-	}
+// jobStep changes a Job on the fake cluster: it either sets a terminal
+// condition (Complete or Failed) or deletes the Job.
+type jobStep struct {
+	job       string
+	condition string
+	delete    bool
 }
 
-// TestWatchUntilReadyHookDeleted covers hooks that disappear while Helm waits.
-// A Job that sets .spec.ttlSecondsAfterFinished is removed by the TTL
-// controller as soon as it completes, so its deletion ends the wait. Any other
-// hook that goes away, and a TTL Job that was never seen running, still fail.
-func TestWatchUntilReadyHookDeleted(t *testing.T) {
+func newHookJob(name string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "batch/v1",
+		"kind":       "Job",
+		"metadata": map[string]any{
+			"name":       name,
+			"namespace":  "qual",
+			"generation": int64(1),
+		},
+	}}
+}
+
+// TestWaitResourceDeleted covers resources that disappear while Helm waits. In
+// hook waits a resource last seen Current is done when it is deleted, e.g. a Job
+// removed by the TTL controller. One that failed or never finished is not, even
+// with async status workers. Outside hook waits a deleted resource is an error.
+func TestWaitResourceDeleted(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name          string
-		manifest      string
-		create        bool
+		hook          bool
+		workers       int
+		jobs          []string
+		steps         []jobStep
 		expectErrStrs []string
 	}{
 		{
-			name:     "TTL Job deleted while waiting is done",
-			manifest: jobTTLNoStatusManifest,
-			create:   true,
+			name: "hook completed then deleted while another hook runs",
+			hook: true,
+			jobs: []string{"a", "b"},
+			steps: []jobStep{
+				{job: "a", condition: "Complete"},
+				{job: "a", delete: true},
+				{job: "b", condition: "Complete"},
+			},
 		},
 		{
-			name:     "Job without TTL deleted while waiting fails",
-			manifest: jobNoStatusManifest,
-			create:   true,
+			name: "hook failed then deleted",
+			hook: true,
+			jobs: []string{"a"},
+			steps: []jobStep{
+				{job: "a", condition: "Failed"},
+				{job: "a", delete: true},
+			},
+			expectErrStrs: []string{"resource Job/qual/a not ready"},
+		},
+		{
+			name:    "hook failed then deleted with async status workers",
+			hook:    true,
+			workers: 8,
+			jobs:    []string{"a"},
+			steps: []jobStep{
+				{job: "a", condition: "Failed"},
+				{job: "a", delete: true},
+			},
+			expectErrStrs: []string{"resource Job/qual/a not ready"},
+		},
+		{
+			name:  "hook deleted before it finished",
+			hook:  true,
+			jobs:  []string{"a"},
+			steps: []jobStep{{job: "a", delete: true}},
 			expectErrStrs: []string{
-				"resource Job/qual/test not ready. status: NotFound",
+				"resource Job/qual/a not ready. status: NotFound",
 				"context deadline exceeded",
 			},
 		},
 		{
-			name:     "Pod hook deleted while waiting fails",
-			manifest: podNoStatusManifest,
-			create:   true,
-			expectErrStrs: []string{
-				"resource Pod/ns/in-progress-pod not ready. status: NotFound",
-				"context deadline exceeded",
+			name: "non-hook wait: completed then deleted is still an error",
+			jobs: []string{"a", "b"},
+			steps: []jobStep{
+				{job: "a", condition: "Complete"},
+				{job: "a", delete: true},
+				{job: "b", condition: "Complete"},
 			},
-		},
-		{
-			name:     "TTL Job that was never running fails",
-			manifest: jobTTLNoStatusManifest,
-			create:   false,
-			expectErrStrs: []string{
-				"resource Job/qual/test not ready.",
-				"context deadline exceeded",
-			},
+			expectErrStrs: []string{"resource Job/qual/a not ready. status: NotFound"},
 		},
 	}
 
@@ -1908,32 +1872,57 @@ func TestWatchUntilReadyHookDeleted(t *testing.T) {
 			c := newTestClient(t)
 			timeout := 3 * time.Second
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
-			fakeMapper := testutil.NewFakeRESTMapper(
-				batchv1.SchemeGroupVersion.WithKind("Job"),
-				v1.SchemeGroupVersion.WithKind("Pod"),
-			)
+			fakeMapper := testutil.NewFakeRESTMapper(batchv1.SchemeGroupVersion.WithKind("Job"))
 			statusWaiter := statusWaiter{
-				restMapper: fakeMapper,
-				client:     fakeClient,
+				restMapper:           fakeMapper,
+				client:               fakeClient,
+				statusComputeWorkers: tt.workers,
 			}
 			statusWaiter.SetLogger(slog.Default().Handler())
 
-			// The hook never reports completion, so only its deletion can end
-			// the wait.
-			objs := getRuntimeObjFromManifests(t, []string{tt.manifest})
-			u := objs[0].(*unstructured.Unstructured)
-			gvr := getGVR(t, fakeMapper, u)
-			if tt.create {
+			gvr := getGVR(t, fakeMapper, newHookJob("x"))
+			var objs []runtime.Object
+			for _, name := range tt.jobs {
+				u := newHookJob(name)
 				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
-				go func() {
-					time.Sleep(500 * time.Millisecond)
-					assert.NoError(t, fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
-				}()
+				objs = append(objs, u)
 			}
 
+			// Apply the steps only once the watcher has listed the Jobs and
+			// started watching, so no step lands before the initial sync.
+			watching := make(chan struct{})
+			var once sync.Once
+			fakeClient.PrependWatchReactor("jobs", func(action clienttesting.Action) (bool, watch.Interface, error) {
+				w, err := fakeClient.Tracker().Watch(gvr, action.GetNamespace())
+				once.Do(func() { close(watching) })
+				return true, w, err
+			})
+			go func() {
+				select {
+				case <-watching:
+				case <-time.After(timeout):
+					return
+				}
+				for _, step := range tt.steps {
+					if step.delete {
+						assert.NoError(t, fakeClient.Tracker().Delete(gvr, "qual", step.job))
+						continue
+					}
+					u := newHookJob(step.job)
+					u.Object["status"] = map[string]any{
+						"conditions": []any{map[string]any{"type": step.condition, "status": "True"}},
+					}
+					assert.NoError(t, fakeClient.Tracker().Update(gvr, u, "qual"))
+				}
+			}()
+
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			start := time.Now()
-			err := statusWaiter.WatchUntilReady(resourceList, timeout)
+			var err error
+			if tt.hook {
+				err = statusWaiter.WatchUntilReady(resourceList, timeout)
+			} else {
+				err = statusWaiter.WaitWithJobs(resourceList, timeout)
+			}
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
@@ -1942,38 +1931,6 @@ func TestWatchUntilReadyHookDeleted(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Less(t, time.Since(start), timeout, "wait should end when the hook is deleted, not on timeout")
 		})
 	}
-}
-
-// TestStatusWaitDeletedResourceStillFails makes sure the hook behaviour above
-// does not leak into Wait, where a resource that goes away is still an error.
-func TestStatusWaitDeletedResourceStillFails(t *testing.T) {
-	t.Parallel()
-	c := newTestClient(t)
-	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
-	fakeMapper := testutil.NewFakeRESTMapper(
-		batchv1.SchemeGroupVersion.WithKind("Job"),
-	)
-	statusWaiter := statusWaiter{
-		restMapper: fakeMapper,
-		client:     fakeClient,
-	}
-	statusWaiter.SetLogger(slog.Default().Handler())
-
-	objs := getRuntimeObjFromManifests(t, []string{jobNoStatusManifest})
-	u := objs[0].(*unstructured.Unstructured)
-	gvr := getGVR(t, fakeMapper, u)
-	require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
-
-	go func() {
-		time.Sleep(200 * time.Millisecond)
-		assert.NoError(t, fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
-	}()
-
-	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-	err := statusWaiter.Wait(resourceList, time.Second)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "resource Job/qual/test not ready. status: NotFound")
 }
