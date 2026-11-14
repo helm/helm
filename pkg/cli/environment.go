@@ -26,6 +26,7 @@ package cli
 import (
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -288,6 +289,19 @@ func (s *EnvSettings) Namespace() string {
 // SetNamespace sets the namespace in the configuration
 func (s *EnvSettings) SetNamespace(namespace string) {
 	s.namespace = namespace
+}
+
+// PluginInstallDirectory returns the directory new plugins are installed into.
+//
+// PluginsDirectory may hold a list of directories separated by the OS specific
+// path list separator (as accepted by filepath.SplitList). All of them are
+// searched when loading plugins, but a new plugin has to be written to exactly
+// one of them, so the first (highest precedence) entry is used.
+func (s *EnvSettings) PluginInstallDirectory() string {
+	if dirs := filepath.SplitList(s.PluginsDirectory); len(dirs) > 0 {
+		return dirs[0]
+	}
+	return s.PluginsDirectory
 }
 
 // RESTClientGetter gets the kubeconfig from EnvSettings
