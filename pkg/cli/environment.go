@@ -219,7 +219,7 @@ func envCSV(name string) (ls []string) {
 	if trimmed != "" {
 		ls = strings.Split(trimmed, ",")
 	}
-	return
+	return ls
 }
 
 func envColorMode() string {

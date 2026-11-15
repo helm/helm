@@ -268,7 +268,7 @@ func runPullTests(t *testing.T, tests []struct {
 	wantErrorMsg string
 	expectFile   string
 	expectDir    bool
-}, outdir string, additionalFlags string,
+}, outdir, additionalFlags string,
 ) {
 	t.Helper()
 	for _, tt := range tests {

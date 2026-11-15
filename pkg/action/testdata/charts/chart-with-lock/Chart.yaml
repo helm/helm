@@ -1,0 +1,4 @@
+apiVersion: v2
+name: chart-with-lock
+version: 0.1.0
+description: Test chart with a Chart.lock, used to verify SourceDateEpoch stamping
