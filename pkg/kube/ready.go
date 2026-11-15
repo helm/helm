@@ -386,7 +386,7 @@ func (c *ReadyChecker) crdReady(crd apiextv1.CustomResourceDefinition) bool {
 func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// Verify the generation observed by the statefulSet controller matches the spec generation
 	if sts.Status.ObservedGeneration != sts.Generation {
-		slog.Debug("StatefulSet is not ready, observedGeneration doest not match spec generation", "namespace", sts.GetNamespace(), "name", sts.GetName(), "actualGeneration", sts.Status.ObservedGeneration, "expectedGeneration", sts.Generation)
+		slog.Debug("StatefulSet is not ready, observedGeneration does not match spec generation", "namespace", sts.GetNamespace(), "name", sts.GetName(), "actualGeneration", sts.Status.ObservedGeneration, "expectedGeneration", sts.Generation)
 		return false
 	}
 
@@ -440,7 +440,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 func (c *ReadyChecker) replicationControllerReady(rc *corev1.ReplicationController) bool {
 	// Verify the generation observed by the replicationController controller matches the spec generation
 	if rc.Status.ObservedGeneration != rc.Generation {
-		slog.Debug("ReplicationController is not ready, observedGeneration doest not match spec generation", "namespace", rc.GetNamespace(), "name", rc.GetName(), "actualGeneration", rc.Status.ObservedGeneration, "expectedGeneration", rc.Generation)
+		slog.Debug("ReplicationController is not ready, observedGeneration does not match spec generation", "namespace", rc.GetNamespace(), "name", rc.GetName(), "actualGeneration", rc.Status.ObservedGeneration, "expectedGeneration", rc.Generation)
 		return false
 	}
 	return true
@@ -449,7 +449,7 @@ func (c *ReadyChecker) replicationControllerReady(rc *corev1.ReplicationControll
 func (c *ReadyChecker) replicaSetReady(rs *appsv1.ReplicaSet) bool {
 	// Verify the generation observed by the replicaSet controller matches the spec generation
 	if rs.Status.ObservedGeneration != rs.Generation {
-		slog.Debug("ReplicaSet is not ready, observedGeneration doest not match spec generation", "namespace", rs.GetNamespace(), "name", rs.GetName(), "actualGeneration", rs.Status.ObservedGeneration, "expectedGeneration", rs.Generation)
+		slog.Debug("ReplicaSet is not ready, observedGeneration does not match spec generation", "namespace", rs.GetNamespace(), "name", rs.GetName(), "actualGeneration", rs.Status.ObservedGeneration, "expectedGeneration", rs.Generation)
 		return false
 	}
 	return true
