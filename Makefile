@@ -112,6 +112,15 @@ test-coverage:
 	@echo "==> Running unit tests with coverage: $(PKG) <=="
 	@ ./scripts/coverage.sh $(PKG)
 
+# End-to-end tests run a real helm binary against a real OCI registry, and
+# optionally a real Kubernetes cluster. They are behind the 'e2e' build tag and
+# require configuration; see test/e2e/README.md.
+.PHONY: test-e2e
+test-e2e:
+	@echo
+	@echo "==> Running end-to-end tests <=="
+	go test $(GOFLAGS) -tags e2e -count=1 -v ./test/e2e/...
+
 .PHONY: test-style
 test-style:
 	@EXPECTED_VERSION=$$(grep GOLANGCI_LINT_VERSION .github/env | cut -d= -f2); \

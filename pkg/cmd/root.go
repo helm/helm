@@ -82,7 +82,7 @@ Environment variables:
 | $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                                 |
 | $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)         |
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
-| $HELM_COLOR                        | set color output mode. Allowed values: never, always, auto (default: never)                                |
+| $HELM_COLOR                        | set color output mode. Allowed values: never, always, auto (default: auto)                                 |
 | $NO_COLOR                          | set to any non-empty value to disable all colored output (overrides $HELM_COLOR)                           |
 | $SOURCE_DATE_EPOCH                 | set a Unix timestamp for reproducible chart archives                                                       |
 
