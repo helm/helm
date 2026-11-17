@@ -117,7 +117,7 @@ func TestSortTieBreakers(t *testing.T) {
 	key := func(list []*rspb.Release) []string {
 		out := make([]string, 0, len(list))
 		for _, r := range list {
-			out = append(out, fmt.Sprintf("%s:%d", r.Name, r.Version))
+			out = append(out, fmt.Sprintf("%s:%d@%s", r.Name, r.Version, r.Namespace))
 		}
 		return out
 	}
@@ -133,8 +133,11 @@ func TestSortTieBreakers(t *testing.T) {
 		out = append(out, in[len(in)-1])
 		return append(out, in[:len(in)-1]...)
 	}
+	relIn := func(namespace, name string, version int, at time.Time) *rspb.Release {
+		return &rspb.Release{Name: name, Namespace: namespace, Version: version, Info: &rspb.Info{LastDeployed: at}}
+	}
 	rel := func(name string, version int, at time.Time) *rspb.Release {
-		return &rspb.Release{Name: name, Version: version, Info: &rspb.Info{LastDeployed: at}}
+		return relIn("", name, version, at)
 	}
 
 	tests := []struct {
@@ -148,40 +151,67 @@ func TestSortTieBreakers(t *testing.T) {
 			name:   "by name orders the revisions of one release",
 			sortFn: SortByName,
 			input:  []*rspb.Release{rel("x", 3, late), rel("a", 1, early), rel("x", 1, late), rel("x", 2, late)},
-			want:   []string{"a:1", "x:1", "x:2", "x:3"},
+			want:   []string{"a:1@", "x:1@", "x:2@", "x:3@"},
 		},
 		{
 			name:   "by revision orders releases that share a revision",
 			sortFn: SortByRevision,
 			input:  []*rspb.Release{rel("b", 1, late), rel("d", 2, late), rel("a", 1, early), rel("c", 1, late)},
-			want:   []string{"a:1", "b:1", "c:1", "d:2"},
+			want:   []string{"a:1@", "b:1@", "c:1@", "d:2@"},
 		},
 		{
 			name:   "by date breaks ties on name then revision",
 			sortFn: SortByDate,
 			input:  []*rspb.Release{rel("y", 3, late), rel("z", 1, early), rel("y", 1, late), rel("y", 2, late)},
-			want:   []string{"z:1", "y:1", "y:2", "y:3"},
+			want:   []string{"z:1@", "y:1@", "y:2@", "y:3@"},
+		},
+		{
+			// The same release name and revision can be installed in several
+			// namespaces, so name and revision alone do not order the list.
+			name:   "by name breaks ties that name and revision leave open",
+			sortFn: SortByName,
+			input:  []*rspb.Release{relIn("ns-b", "x", 1, late), relIn("ns-a", "x", 1, late), relIn("ns-a", "x", 2, late)},
+			want:   []string{"x:1@ns-a", "x:1@ns-b", "x:2@ns-a"},
+		},
+		{
+			name:   "by revision breaks ties that revision and name leave open",
+			sortFn: SortByRevision,
+			input:  []*rspb.Release{relIn("ns-b", "x", 1, late), relIn("ns-a", "x", 1, early), relIn("ns-a", "y", 1, late)},
+			want:   []string{"x:1@ns-a", "x:1@ns-b", "y:1@ns-a"},
+		},
+		{
+			name:   "by date breaks ties that date, name and revision leave open",
+			sortFn: SortByDate,
+			input:  []*rspb.Release{relIn("ns-b", "x", 1, late), relIn("ns-a", "x", 1, late), relIn("ns-a", "x", 2, early)},
+			want:   []string{"x:2@ns-a", "x:1@ns-a", "x:1@ns-b"},
 		},
 		{
 			name:    "reversed by name",
 			sortFn:  SortByName,
 			reverse: true,
 			input:   []*rspb.Release{rel("x", 3, late), rel("a", 1, early), rel("x", 1, late), rel("x", 2, late)},
-			want:    []string{"x:3", "x:2", "x:1", "a:1"},
+			want:    []string{"x:3@", "x:2@", "x:1@", "a:1@"},
 		},
 		{
 			name:    "reversed by revision",
 			sortFn:  SortByRevision,
 			reverse: true,
 			input:   []*rspb.Release{rel("b", 1, late), rel("d", 2, late), rel("a", 1, early), rel("c", 1, late)},
-			want:    []string{"d:2", "c:1", "b:1", "a:1"},
+			want:    []string{"d:2@", "c:1@", "b:1@", "a:1@"},
 		},
 		{
 			name:    "reversed by date",
 			sortFn:  SortByDate,
 			reverse: true,
 			input:   []*rspb.Release{rel("y", 3, late), rel("z", 1, early), rel("y", 1, late), rel("y", 2, late)},
-			want:    []string{"y:3", "y:2", "y:1", "z:1"},
+			want:    []string{"y:3@", "y:2@", "y:1@", "z:1@"},
+		},
+		{
+			name:    "reversed by name keeps the namespace tie-break",
+			sortFn:  SortByName,
+			reverse: true,
+			input:   []*rspb.Release{relIn("ns-b", "x", 1, late), relIn("ns-a", "x", 1, late)},
+			want:    []string{"x:1@ns-b", "x:1@ns-a"},
 		},
 	}
 

@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 func TestListStates(t *testing.T) {
@@ -177,6 +178,50 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	list, err = lister.Run()
 	req.NoError(err)
 	is.Len(list, 2)
+}
+
+// The same release name and revision can exist in more than one namespace.
+// Such releases used to compare equal under every sorter, so the pages of an
+// --all-namespaces list depended on the order the storage driver returned the
+// releases in and could repeat one release while skipping another.
+func TestList_AllNamespacesPagingIsStable(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	cfg := actionConfigFixture(t)
+	mem := driver.NewMemory()
+	cfg.Releases = storage.Init(mem)
+
+	lister := NewList(cfg)
+	for _, namespace := range []string{"ns-a", "ns-b"} {
+		rel := namedReleaseStub("x", common.StatusDeployed)
+		rel.Namespace = namespace
+		rel.Version = 1
+		req.NoError(cfg.Releases.Create(rel))
+	}
+	// An empty driver namespace lists releases in all namespaces.
+	mem.SetNamespace("")
+
+	lister.Limit = 1
+	var want []string
+	for run := 0; run < 20; run++ {
+		var pages []string
+		for offset := 0; offset < 2; offset++ {
+			lister.Offset = offset
+			res, err := lister.Run()
+			req.NoError(err)
+			list, err := releaseListToV1List(res)
+			req.NoError(err)
+			req.Len(list, 1, "page %d of run %d", offset, run)
+			pages = append(pages, list[0].Namespace+"/"+list[0].Name)
+		}
+		is.Equal([]string{"ns-a/x", "ns-b/x"}, pages)
+		if want == nil {
+			want = pages
+			continue
+		}
+		is.Equal(want, pages, "pages changed between runs")
+	}
 }
 
 func TestList_StateMask(t *testing.T) {
