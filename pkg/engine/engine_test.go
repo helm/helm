@@ -711,6 +711,42 @@ func TestRenderBuiltinValues(t *testing.T) {
 	}
 }
 
+func TestRenderMustGlob(t *testing.T) {
+	modTime := time.Now()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "moby", APIVersion: chart.APIVersionV2},
+		Templates: []*common.File{
+			{Name: "templates/config", ModTime: modTime, Data: []byte(`{{ (.Files.MustGlob "ship/*").AsConfig }}`)},
+			{Name: "templates/secrets", ModTime: modTime, Data: []byte(`{{ (.Files.MustGlob "ship/*").AsSecrets }}`)},
+			{Name: "templates/nomatch", ModTime: modTime, Data: []byte(`{{ len (.Files.MustGlob "missing/*") }}`)},
+		},
+		Files: []*common.File{
+			{Name: "ship/captain.txt", ModTime: modTime, Data: []byte("The Captain")},
+			{Name: "ship/stowaway.txt", ModTime: modTime, Data: []byte("Legatt")},
+			{Name: "story/author.txt", ModTime: modTime, Data: []byte("Joseph Conrad")},
+		},
+	}
+
+	out, err := Render(c, common.Values{})
+	require.NoError(t, err)
+	wantConfig := "captain.txt: The Captain" + "\n" + "stowaway.txt: Legatt"
+	require.Equal(t, wantConfig, out["moby/templates/config"])
+	require.Contains(t, out["moby/templates/secrets"], "captain.txt:")
+	require.Contains(t, out["moby/templates/secrets"], "stowaway.txt:")
+	require.Equal(t, "0", out["moby/templates/nomatch"])
+
+	bad := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "moby", APIVersion: chart.APIVersionV2},
+		Templates: []*common.File{
+			{Name: "templates/bad", ModTime: modTime, Data: []byte(`{{ (.Files.MustGlob "ship/[").AsConfig }}`)},
+		},
+		Files: c.Files,
+	}
+	_, err = Render(bad, common.Values{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, `invalid glob pattern "ship/[":`)
+}
+
 func TestAlterFuncMap_include(t *testing.T) {
 	modTime := time.Now()
 	c := &chart.Chart{
