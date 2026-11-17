@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"sigs.k8s.io/yaml"
@@ -184,46 +185,104 @@ func atomicWriteRepoFileNew(filename string, data []byte, perm os.FileMode) erro
 // follows, matching the limit Linux applies to path resolution.
 const maxRepoFileSymlinkHops = 40
 
-// resolveRepoFileWritePath returns an absolute write path, following a symlink
-// destination to its final target. When the chain ends in a missing target,
-// every link is followed to that target so it can be created while all links
-// are kept. A final target that exists but is not a regular file is an error.
+// resolveRepoFileWritePath returns an absolute write path, following symlinks
+// the way the kernel does for LoadFile. When the path ends in a missing
+// target, every link in front of it is followed to that target so it can be
+// created while all links are kept. A final target that exists but is not a
+// regular file is an error.
+//
+// Components are resolved one at a time rather than cleaning the path first:
+// for "alias/../repositories.yaml" with alias -> actual/sub, the kernel reads
+// the parent of the link's target (actual/repositories.yaml), while a lexical
+// clean lands beside alias and would write a file LoadFile never reads.
 func resolveRepoFileWritePath(path string) (string, error) {
-	abs, err := filepath.Abs(path)
+	abs := path
+	if !filepath.IsAbs(abs) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		// filepath.Abs would clean the path, collapsing ".." before the link in
+		// front of it is resolved.
+		abs = wd + string(filepath.Separator) + abs
+	}
+
+	volume, pending := splitRepoFilePath(abs)
+	cur := volume + string(filepath.Separator)
+	hops := 0
+
+	for len(pending) > 0 {
+		comp := pending[0]
+		pending = pending[1:]
+
+		switch comp {
+		case "", ".":
+			continue
+		case "..":
+			// cur holds no unresolved links, so its parent is the real one.
+			if parent := filepath.Dir(cur); parent != cur {
+				cur = parent
+			}
+			continue
+		}
+
+		next := filepath.Join(cur, comp)
+		fi, err := os.Lstat(next)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Nothing under a missing directory can be a link, so the rest
+				// of the path is kept as it is.
+				return filepath.Join(append([]string{next}, pending...)...), nil
+			}
+			return "", err
+		}
+
+		if fi.Mode()&os.ModeSymlink == 0 {
+			cur = next
+			continue
+		}
+
+		hops++
+		if hops > maxRepoFileSymlinkHops {
+			return "", fmt.Errorf("%s: too many levels of symbolic links", abs)
+		}
+		link, err := os.Readlink(next)
+		if err != nil {
+			return "", err
+		}
+		if filepath.IsAbs(link) {
+			var linkPending []string
+			volume, linkPending = splitRepoFilePath(link)
+			pending = append(linkPending, pending...)
+			cur = volume + string(filepath.Separator)
+			continue
+		}
+		pending = append(splitComponents(link), pending...)
+	}
+
+	fi, err := os.Lstat(cur)
 	if err != nil {
 		return "", err
 	}
-
-	cur := abs
-	for hops := 0; ; hops++ {
-		fi, err := os.Lstat(cur)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return cur, nil
-			}
-			return "", err
-		}
-		switch mode := fi.Mode(); {
-		case mode.IsRegular():
-			return cur, nil
-		case mode&os.ModeSymlink == 0:
-			return "", fmt.Errorf("repository destination %q is not a regular file (mode %s)", cur, mode)
-		}
-		if hops >= maxRepoFileSymlinkHops {
-			return "", fmt.Errorf("%s: too many levels of symbolic links", abs)
-		}
-
-		link, err := os.Readlink(cur)
-		if err != nil {
-			return "", err
-		}
-		if !filepath.IsAbs(link) {
-			dir := filepath.Dir(cur)
-			if resolved, err := filepath.EvalSymlinks(dir); err == nil {
-				dir = resolved
-			}
-			link = filepath.Join(dir, link)
-		}
-		cur = filepath.Clean(link)
+	if !fi.Mode().IsRegular() {
+		return "", fmt.Errorf("repository destination %q is not a regular file (mode %s)", cur, fi.Mode())
 	}
+	return cur, nil
+}
+
+// splitRepoFilePath splits an absolute path into its volume and the components
+// below it.
+func splitRepoFilePath(path string) (string, []string) {
+	volume := filepath.VolumeName(path)
+	return volume, splitComponents(strings.TrimPrefix(path, volume))
+}
+
+// splitComponents splits a path fragment into its components, dropping the
+// leading separator of an absolute path.
+func splitComponents(path string) []string {
+	path = strings.TrimPrefix(path, string(filepath.Separator))
+	if path == "" {
+		return nil
+	}
+	return strings.Split(path, string(filepath.Separator))
 }

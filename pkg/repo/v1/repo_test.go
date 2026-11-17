@@ -327,6 +327,9 @@ func TestWriteFileUpdatesSymlinkTarget(t *testing.T) {
 	old := NewFile()
 	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
 	require.NoError(t, old.WriteFile(target, 0o640))
+	// Set the mode explicitly: a new file is created with perm filtered by the
+	// umask, so the assertion below must not depend on the caller's umask.
+	require.NoError(t, os.Chmod(target, 0o640))
 	require.NoError(t, os.Symlink(target, link))
 
 	fresh := NewFile()
@@ -350,6 +353,47 @@ func TestWriteFileUpdatesSymlinkTarget(t *testing.T) {
 	}
 }
 
+func TestWriteFileResolvesPathTheKernelResolves(t *testing.T) {
+	dir := t.TempDir()
+	actual := filepath.Join(dir, "actual")
+	require.NoError(t, os.MkdirAll(filepath.Join(actual, "sub"), 0o755))
+	require.NoError(t, os.Symlink(filepath.Join(actual, "sub"), filepath.Join(dir, "alias")))
+
+	old := NewFile()
+	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+
+	// A ".." behind a link component climbs out of the link's target, not out
+	// of the directory holding the link, so this is actual/repositories.yaml.
+	// The literal path is used because filepath.Join would clean the ".." away.
+	viaParent := dir + "/alias/../repositories.yaml"
+	require.NoError(t, old.WriteFile(viaParent, 0o600))
+
+	fresh := NewFile()
+	fresh.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	fresh.Add(&Entry{Name: "incubator", URL: "https://example.com/incubator"})
+	require.NoError(t, fresh.WriteFile(viaParent, 0o600))
+
+	repos, err := LoadFile(viaParent)
+	require.NoError(t, err)
+	assert.True(t, repos.Has("incubator"), "the file LoadFile reads must be the one written")
+
+	_, err = os.Lstat(filepath.Join(dir, "repositories.yaml"))
+	assert.True(t, os.IsNotExist(err), "nothing may be written beside the link")
+
+	// A link payload that climbs out of its own directory is followed too.
+	linkInSub := filepath.Join(actual, "sub", "repositories.yaml")
+	require.NoError(t, os.Symlink(filepath.Join("..", "..", "shared.yaml"), linkInSub))
+	require.NoError(t, fresh.WriteFile(linkInSub, 0o600))
+
+	repos, err = LoadFile(filepath.Join(dir, "shared.yaml"))
+	require.NoError(t, err)
+	assert.True(t, repos.Has("incubator"), "the link payload must be resolved")
+
+	fi, err := os.Lstat(linkInSub)
+	require.NoError(t, err)
+	assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "the link must be kept")
+}
+
 func TestWriteFilePreservesExistingPermissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows does not implement POSIX permission bits")
@@ -361,9 +405,12 @@ func TestWriteFilePreservesExistingPermissions(t *testing.T) {
 	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
 	require.NoError(t, old.WriteFile(path, 0o640))
 
+	// The umask filters the perm used when creating the file, so set the mode
+	// being preserved explicitly instead of assuming the write produced it.
+	require.NoError(t, os.Chmod(path, 0o640))
 	info, err := os.Stat(path)
 	require.NoError(t, err)
-	require.Equalf(t, os.FileMode(0o640), info.Mode().Perm(), "expected the first write to honor 0o640")
+	require.Equalf(t, os.FileMode(0o640), info.Mode().Perm(), "fixture must start at 0o640")
 
 	fresh := NewFile()
 	fresh.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
