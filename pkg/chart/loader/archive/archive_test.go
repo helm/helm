@@ -108,17 +108,17 @@ func TestLoadArchiveFilesAtMaxDecompressedSize(t *testing.T) {
 		budget  int64
 		wantErr bool
 	}{
-		{"one byte over the chart size", int64(len(content)) + 1, false},
+		{"budget one byte over the chart size", int64(len(content)) + 1, false},
 		// A chart that exactly fills the budget is at the limit, not over it,
 		// and BudgetedReader accepts it for directory loads.
-		{"exactly the chart size", int64(len(content)), false},
-		{"one byte under the chart size", int64(len(content)) - 1, true},
+		{"budget equal to the chart size", int64(len(content)), false},
+		{"budget one byte under the chart size", int64(len(content)) - 1, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			MaxDecompressedChartSize = tc.budget
 			files, err := LoadArchiveFiles(archiveOf(t))
 			if tc.wantErr {
-				require.Error(t, err)
+				require.ErrorContains(t, err, "decompressed chart is larger than the maximum size")
 				return
 			}
 			require.NoError(t, err)
