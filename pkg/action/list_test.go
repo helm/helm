@@ -204,9 +204,9 @@ func TestList_AllNamespacesPagingIsStable(t *testing.T) {
 
 	lister.Limit = 1
 	var want []string
-	for run := 0; run < 20; run++ {
+	for run := range 20 {
 		var pages []string
-		for offset := 0; offset < 2; offset++ {
+		for offset := range 2 {
 			lister.Offset = offset
 			res, err := lister.Run()
 			req.NoError(err)
