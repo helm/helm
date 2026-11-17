@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/require"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -74,10 +75,7 @@ func tsFixtureMemory(t *testing.T) *Memory {
 
 	mem := NewMemory()
 	for _, tt := range hs {
-		err := mem.Create(testKey(tt.Name, tt.Version), tt)
-		if err != nil {
-			t.Fatalf("Test setup failed to create: %s\n", err)
-		}
+		require.NoError(t, mem.Create(testKey(tt.Name, tt.Version), tt), "Test setup failed to create")
 	}
 	return mem
 }
@@ -108,9 +106,7 @@ func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Releas
 		objkey := testKey(rls.Name, rls.Version)
 
 		cfgmap, err := newConfigMapsObject(objkey, rls, nil)
-		if err != nil {
-			t.Fatalf("Failed to create configmap: %s", err)
-		}
+		require.NoError(t, err, "Failed to create configmap")
 		mock.objects[objkey] = cfgmap
 	}
 }
@@ -196,9 +192,7 @@ func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) 
 		objkey := testKey(rls.Name, rls.Version)
 
 		secret, err := newSecretsObject(objkey, rls, nil)
-		if err != nil {
-			t.Fatalf("Failed to create secret: %s", err)
-		}
+		require.NoError(t, err, "Failed to create secret")
 		mock.objects[objkey] = secret
 	}
 }
@@ -262,9 +256,7 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
 	t.Helper()
 	sqlDB, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("error when opening stub database connection: %v", err)
-	}
+	require.NoError(t, err, "error when opening stub database connection")
 
 	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
 	return &SQL{

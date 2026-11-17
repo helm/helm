@@ -18,13 +18,16 @@ package registry
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"mime"
+	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
@@ -52,29 +55,41 @@ type LoggingTransport struct {
 
 // NewTransport creates and returns a new instance of LoggingTransport
 func NewTransport(debug bool) *retry.Transport {
-	type cloner[T any] interface {
-		Clone() T
-	}
-
-	// try to copy (clone) the http.DefaultTransport so any mutations we
-	// perform on it (e.g. TLS config) are not reflected globally
-	// follow https://github.com/golang/go/issues/39299 for a more elegant
-	// solution in the future
-	transport := http.DefaultTransport
-	if t, ok := transport.(cloner[*http.Transport]); ok {
-		transport = t.Clone()
-	} else if t, ok := transport.(cloner[http.RoundTripper]); ok {
-		// this branch will not be used with go 1.20, it was added
-		// optimistically to try to clone if the http.DefaultTransport
-		// implementation changes, still the Clone method in that case
-		// might not return http.RoundTripper...
-		transport = t.Clone()
-	}
+	transport := defaultTransport()
 	if debug {
 		transport = &LoggingTransport{RoundTripper: transport}
 	}
 
 	return retry.NewTransport(transport)
+}
+
+// defaultTransport returns the transport a registry client starts from. It is
+// always a value Helm owns, because TLS settings are applied to it afterwards
+// (see ensureTLSConfig) and must not be applied to the shared
+// http.DefaultTransport.
+func defaultTransport() http.RoundTripper {
+	if t, ok := http.DefaultTransport.(*http.Transport); ok {
+		return t.Clone()
+	}
+
+	// http.DefaultTransport is a variable of interface type, so an imported package
+	// can replace it with a RoundTripper that cannot be cloned and cannot carry a
+	// TLS configuration. Use the standard library defaults rather than handing out
+	// that replacement, which would make every TLS option fail to apply.
+	slog.Warn("http.DefaultTransport is not an *http.Transport, using the default transport settings instead",
+		"transport", fmt.Sprintf("%T", http.DefaultTransport))
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 }
 
 // RoundTrip calls base round trip while keeping track of the current request.
@@ -83,11 +98,12 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 
 	slog.Debug(req.Method, "id", id, "url", req.URL, "header", logHeader(req.Header))
 	resp, err = t.RoundTripper.RoundTrip(req)
-	if err != nil {
+	switch {
+	case err != nil:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "error", err)
-	} else if resp != nil {
+	case resp != nil:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "status", resp.Status, "header", logHeader(resp.Header), "body", logResponseBody(resp))
-	} else {
+	default:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "response", "nil")
 	}
 
@@ -137,12 +153,12 @@ func logResponseBody(resp *http.Response) string {
 		Closer: body,
 	}
 	// read the body up to limit+1 to check if the body exceeds the limit
-	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && err != io.EOF {
+	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
 
 	readBody := buf.String()
-	if len(readBody) == 0 {
+	if readBody == "" {
 		return "   Response body is empty"
 	}
 	if containsCredentials(readBody) {

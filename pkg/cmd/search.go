@@ -29,7 +29,6 @@ Use search subcommands to search different locations for charts.
 `
 
 func newSearchCmd(out io.Writer) *cobra.Command {
-
 	cmd := &cobra.Command{
 		Use:   "search [keyword]",
 		Short: "search for a keyword in charts",

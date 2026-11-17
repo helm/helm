@@ -33,7 +33,7 @@ This command downloads a values file for a given release.
 `
 
 type valuesWriter struct {
-	vals      map[string]interface{}
+	vals      map[string]any
 	allValues bool
 }
 
@@ -69,7 +69,6 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

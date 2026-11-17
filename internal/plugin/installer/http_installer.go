@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v4/internal/plugin/installer"
+package installer
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -92,10 +93,10 @@ func (i *HTTPInstaller) Install() error {
 	}
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
 	tarballPath := helmpath.DataPath("plugins", filename)
-	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(tarballPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}
-	if err := os.WriteFile(tarballPath, i.pluginData, 0644); err != nil {
+	if err := os.WriteFile(tarballPath, i.pluginData, 0o644); err != nil {
 		return fmt.Errorf("failed to save tarball: %w", err)
 	}
 
@@ -111,7 +112,7 @@ func (i *HTTPInstaller) Install() error {
 	// Save prov file if we have the data
 	if i.provData != nil {
 		provPath := tarballPath + ".prov"
-		if err := os.WriteFile(provPath, i.provData, 0644); err != nil {
+		if err := os.WriteFile(provPath, i.provData, 0o644); err != nil {
 			slog.Debug("failed to save provenance file", "error", err)
 		}
 	}
@@ -143,7 +144,7 @@ func (i *HTTPInstaller) Install() error {
 // Update updates a local repository
 // Not implemented for now since tarball most likely will be packaged by version
 func (i *HTTPInstaller) Update() error {
-	return fmt.Errorf("method Update() not implemented for HttpInstaller")
+	return errors.New("method Update() not implemented for HttpInstaller")
 }
 
 // Path is overridden because we want to join on the plugin name not the file name
@@ -163,7 +164,7 @@ func (i *HTTPInstaller) SupportsVerification() bool {
 // GetVerificationData returns cached plugin and provenance data for verification
 func (i *HTTPInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
 	if !i.SupportsVerification() {
-		return nil, nil, "", fmt.Errorf("verification not supported for this source")
+		return nil, nil, "", errors.New("verification not supported for this source")
 	}
 
 	// Download plugin data once and cache it

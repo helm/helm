@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"context"
@@ -171,7 +171,7 @@ func (secrets *Secrets) Create(key string, rel release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("createdAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	// create a new secret to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
@@ -202,7 +202,7 @@ func (secrets *Secrets) Update(key string, rel release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("modifiedAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	// create a new secret object to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
@@ -277,11 +277,9 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 	// This would potentially be a breaking change
 	// and should only happen between major versions.
 	return &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   key,
-			Labels: lbs.toMap(),
-		},
-		Type: "helm.sh/release.v1",
-		Data: map[string][]byte{"release": []byte(s)},
+		Name:   key,
+		Labels: lbs.toMap(),
+		Type:   "helm.sh/release.v1",
+		Data:   map[string][]byte{"release": []byte(s)},
 	}, nil
 }

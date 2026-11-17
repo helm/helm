@@ -19,6 +19,7 @@ package rules
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,8 +29,8 @@ import (
 	"slices"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/validate/content"
 	"k8s.io/apimachinery/pkg/api/validation"
-	apipath "k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -104,7 +105,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	}
 	var e engine.Engine
 	e.LintMode = true
-	renderedContentMap, err := e.Render(chart, valuesToRender)
+	renderedContentMap, err := e.RenderWithContext(context.Background(), chart, valuesToRender)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, fpath, err)
 
@@ -292,7 +293,7 @@ func validateMetadataNameFunc(obj *k8sYamlStruct) validation.ValidateNameFunc {
 	case "role", "clusterrole", "rolebinding", "clusterrolebinding":
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/rbac/validation/validation.go#L32-L34
 		return func(name string, _ bool) []string {
-			return apipath.IsValidPathSegmentName(name)
+			return content.IsPathSegmentName(name)
 		}
 	default:
 		return validation.NameIsDNSSubdomain

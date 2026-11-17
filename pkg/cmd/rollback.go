@@ -21,6 +21,7 @@ import (
 	"io"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -40,6 +41,7 @@ To see revision numbers, run 'helm history RELEASE'.
 
 func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewRollback(cfg)
+	client.WaitOptions = append(client.WaitOptions, defaultCLIWaitOptions()...)
 
 	cmd := &cobra.Command{
 		Use:   "rollback <RELEASE> [REVISION]",
@@ -61,9 +63,14 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])
 				if err != nil {
-					return fmt.Errorf("could not convert revision to a number: %v", err)
+					return fmt.Errorf("could not convert revision to a number: %w", err)
 				}
 				client.Version = ver
+			}
+
+			// Validate description length
+			if descLen := utf8.RuneCountInString(client.Description); descLen > action.MaxDescriptionLength {
+				return fmt.Errorf("description must be %d characters or less, got %d", action.MaxDescriptionLength, descLen)
 			}
 
 			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
@@ -76,12 +83,13 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintf(out, "Rollback was a success! Happy Helming!\n")
+			fmt.Fprint(out, "Rollback was a success! Happy Helming!\n")
 			return nil
 		},
 	}
 
 	f := cmd.Flags()
+	f.StringVar(&client.Description, "description", "", fmt.Sprintf("add a custom description for the rollback (max %d characters)", action.MaxDescriptionLength))
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
 	f.MarkDeprecated("force", "use --force-replace instead")

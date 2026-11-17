@@ -18,6 +18,7 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -48,7 +49,7 @@ type PluginPullResult struct {
 }
 
 // PullPlugin downloads a plugin from an OCI registry using artifact type
-func (c *Client) PullPlugin(ref string, pluginName string, options ...PluginPullOption) (*PluginPullResult, error) {
+func (c *Client) PullPlugin(ref, pluginName string, options ...PluginPullOption) (*PluginPullResult, error) {
 	operation := &pluginPullOperation{
 		pluginName: pluginName,
 	}
@@ -190,7 +191,7 @@ func GetPluginName(source string) (string, error) {
 	// e.g., "ghcr.io/user/plugin-name:v1.0.0" -> Repository: "user/plugin-name"
 	repository := ref.Repository
 	if repository == "" {
-		return "", fmt.Errorf("invalid OCI reference: missing repository")
+		return "", errors.New("invalid OCI reference: missing repository")
 	}
 
 	// Get the last part of the repository path as the plugin name

@@ -112,6 +112,9 @@ func (md *Metadata) Validate() error {
 		return ValidationError("chart.metadata.name is required")
 	}
 
+	if md.Name == "." || md.Name == ".." {
+		return ValidationErrorf("chart.metadata.name %q is not allowed", md.Name)
+	}
 	if md.Name != filepath.Base(md.Name) {
 		return ValidationErrorf("chart.metadata.name %q is invalid", md.Name)
 	}

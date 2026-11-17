@@ -18,10 +18,16 @@ package registry
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 var errMockRead = errors.New("mock read error")
@@ -30,6 +36,24 @@ type errorReader struct{}
 
 func (e *errorReader) Read(_ []byte) (n int, err error) {
 	return 0, errMockRead
+}
+
+// nonClonableTransport stands in for a RoundTripper an imported package replaced
+// http.DefaultTransport with: DefaultTransport is a variable of interface type, so
+// it does not always hold an *http.Transport.
+type nonClonableTransport struct{}
+
+func (*nonClonableTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("never called")
+}
+
+// baseTransport unwraps the transport NewTransport built the retry transport from.
+func baseTransport(t *testing.T, transport *retry.Transport) http.RoundTripper {
+	t.Helper()
+	if logged, ok := transport.Base.(*LoggingTransport); ok {
+		return logged.RoundTripper
+	}
+	return transport.Base
 }
 
 func Test_isPrintableContentType(t *testing.T) {
@@ -127,9 +151,7 @@ func Test_isPrintableContentType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isPrintableContentType(tt.contentType); got != tt.want {
-				t.Errorf("isPrintableContentType() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, isPrintableContentType(tt.contentType))
 		})
 	}
 }
@@ -292,21 +314,13 @@ func Test_logResponseBody(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := logResponseBody(tt.resp); got != tt.want {
-				t.Errorf("logResponseBody() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, logResponseBody(tt.resp))
 			// validate the response body
 			if tt.resp.Body != nil {
 				readBytes, err := io.ReadAll(tt.resp.Body)
-				if err != nil {
-					t.Errorf("failed to read body after logResponseBody(), err= %v", err)
-				}
-				if !bytes.Equal(readBytes, tt.wantData) {
-					t.Errorf("resp.Body after logResponseBody() = %v, want %v", readBytes, tt.wantData)
-				}
-				if closeErr := tt.resp.Body.Close(); closeErr != nil {
-					t.Errorf("failed to close body after logResponseBody(), err= %v", closeErr)
-				}
+				require.NoError(t, err, "failed to read body after logResponseBody()")
+				assert.True(t, bytes.Equal(tt.wantData, readBytes), "resp.Body after logResponseBody()")
+				assert.NoError(t, tt.resp.Body.Close(), "failed to close body after logResponseBody()")
 			}
 		})
 	}
@@ -331,12 +345,8 @@ func Test_logResponseBody_error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := logResponseBody(tt.resp); got != tt.want {
-				t.Errorf("logResponseBody() = %v, want %v", got, tt.want)
-			}
-			if closeErr := tt.resp.Body.Close(); closeErr != nil {
-				t.Errorf("failed to close body after logResponseBody(), err= %v", closeErr)
-			}
+			assert.Equal(t, tt.want, logResponseBody(tt.resp))
+			assert.NoError(t, tt.resp.Body.Close(), "failed to close body after logResponseBody()")
 		})
 	}
 }
@@ -391,8 +401,50 @@ func Test_containsCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := containsCredentials(tt.body); got != tt.want {
-				t.Errorf("containsCredentials() = %v, want %v", got, tt.want)
+			assert.Equal(t, tt.want, containsCredentials(tt.body))
+		})
+	}
+}
+
+func Test_NewTransport(t *testing.T) {
+	defer func(orig http.RoundTripper) { http.DefaultTransport = orig }(http.DefaultTransport)
+
+	tests := []struct {
+		name      string
+		debug     bool
+		installed http.RoundTripper
+	}{
+		{name: "clonable default transport", installed: &http.Transport{}},
+		{name: "replaced default transport", installed: &nonClonableTransport{}},
+		{name: "clonable default transport, debug", debug: true, installed: &http.Transport{}},
+		{name: "replaced default transport, debug", debug: true, installed: &nonClonableTransport{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			http.DefaultTransport = tt.installed
+
+			transport := NewTransport(tt.debug)
+			base := baseTransport(t, transport)
+
+			if tt.debug {
+				_, ok := transport.Base.(*LoggingTransport)
+				require.True(t, ok, "expected the transport to be wrapped for debug output, got %T", transport.Base)
+			}
+
+			assert.NotSame(t, tt.installed, base, "the process-wide default transport must not be handed out")
+
+			httpTransport, ok := base.(*http.Transport)
+			require.True(t, ok, "TLS settings can only be applied to an *http.Transport, got %T", base)
+
+			conf := &tls.Config{InsecureSkipVerify: true}
+			_, err := ensureTLSConfig(&auth.Client{Client: &http.Client{Transport: transport}}, conf)
+			require.NoError(t, err, "TLS settings should be applicable to a Helm registry transport")
+			assert.Same(t, conf, httpTransport.TLSClientConfig)
+
+			if shared, ok := tt.installed.(*http.Transport); ok {
+				assert.NotSame(t, conf, shared.TLSClientConfig,
+					"configuring Helm's transport must not reach the process-wide default transport")
 			}
 		})
 	}

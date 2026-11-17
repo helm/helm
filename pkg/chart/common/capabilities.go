@@ -47,7 +47,6 @@ var (
 			panic(fmt.Sprintf("failed to create default capabilities: %v", err))
 		}
 		return caps
-
 	}()
 )
 
@@ -88,7 +87,9 @@ func (kv *KubeVersion) String() string {
 
 // GitVersion returns the full Kubernetes version string.
 //
-// Deprecated: use KubeVersion.Version.
+// Deprecated: Use KubeVersion.Version.
+//
+//go:fix inline
 func (kv *KubeVersion) GitVersion() string { return kv.Version }
 
 // ParseKubeVersion parses kubernetes version from string
@@ -167,14 +168,13 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 }
 
 func newCapabilities(kubeVersionMajor, kubeVersionMinor uint64) (*Capabilities, error) {
-
 	version := fmt.Sprintf("v%d.%d.0", kubeVersionMajor, kubeVersionMinor)
 	return &Capabilities{
 		KubeVersion: KubeVersion{
 			Version:           version,
 			normalizedVersion: version,
-			Major:             fmt.Sprintf("%d", kubeVersionMajor),
-			Minor:             fmt.Sprintf("%d", kubeVersionMinor),
+			Major:             strconv.FormatUint(kubeVersionMajor, 10),
+			Minor:             strconv.FormatUint(kubeVersionMinor, 10),
 		},
 		APIVersions: DefaultVersionSet,
 		HelmVersion: helmversion.Get(),

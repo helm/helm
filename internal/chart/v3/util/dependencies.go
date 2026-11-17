@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
@@ -42,10 +43,9 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 	}
 	for _, r := range reqs {
 		for c := range strings.SplitSeq(strings.TrimSpace(r.Condition), ",") {
-			if len(c) > 0 {
+			if c != "" {
 				// retrieve value
 				vv, err := cvals.PathValue(cpath + c)
-				var errNoValue common.ErrNoValue
 				if err == nil {
 					// if not bool, warn
 					if bv, ok := vv.(bool); ok {
@@ -53,7 +53,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 						break
 					}
 					slog.Warn("returned non-bool value", "path", c, "chart", r.Name)
-				} else if errors.As(err, &errNoValue) {
+				} else if _, ok := errors.AsType[common.ErrNoValue](err); ok {
 					// this is a real error
 					slog.Warn("the method PathValue returned error", slog.Any("error", err))
 				}
@@ -242,8 +242,8 @@ func set(path []string, data map[string]any) map[string]any {
 		return nil
 	}
 	cur := data
-	for i := len(path) - 1; i >= 0; i-- {
-		cur = map[string]any{path[i]: cur}
+	for _, v := range slices.Backward(path) {
+		cur = map[string]any{v: cur}
 	}
 	return cur
 }

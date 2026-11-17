@@ -37,7 +37,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
@@ -68,7 +67,7 @@ import (
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
 
-const defaultDirectoryPermission = 0755
+const defaultDirectoryPermission = 0o755
 
 // Install performs an installation operation.
 type Install struct {
@@ -130,6 +129,10 @@ type Install struct {
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
 	PostRenderer  postrenderer.PostRenderer
+	// PostRenderStrategy controls how hooks and regular templates are passed
+	// to the configured post-renderer. See PostRenderStrategy for the
+	// available modes. Defaults to PostRenderStrategyCombined.
+	PostRenderStrategy PostRenderStrategy
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock           sync.Mutex
 	goroutineCount atomic.Int32
@@ -158,9 +161,10 @@ type ChartPathOptions struct {
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
-		cfg:             cfg,
-		ServerSideApply: true, // Must always match the CLI default.
-		DryRunStrategy:  DryRunNone,
+		cfg:                cfg,
+		ServerSideApply:    true, // Must always match the CLI default.
+		DryRunStrategy:     DryRunNone,
+		PostRenderStrategy: PostRenderStrategyCombined,
 	}
 	in.registryClient = cfg.RegistryClient
 
@@ -216,10 +220,21 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	if len(totalItems) > 0 {
 		var waiter kube.Waiter
 		var err error
+		// CRD establishment must always be awaited, regardless of the wait
+		// strategy configured for the release. HookOnlyStrategy's Wait is a
+		// no-op by design so that it can skip waiting for general chart
+		// resources, but skipping it here too lets Helm start creating
+		// custom resources before their CRDs are recognized by the API
+		// server. Use StatusWatcherStrategy for this check instead so CRDs
+		// are still waited for, matching Helm 3's unconditional behavior.
+		crdWaitStrategy := i.WaitStrategy
+		if crdWaitStrategy == kube.HookOnlyStrategy {
+			crdWaitStrategy = kube.StatusWatcherStrategy
+		}
 		if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
-			waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+			waiter, err = c.GetWaiterWithOptions(crdWaitStrategy, i.WaitOptions...)
 		} else {
-			waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+			waiter, err = i.cfg.KubeClient.GetWaiter(crdWaitStrategy)
 		}
 		if err != nil {
 			return fmt.Errorf("unable to get waiter: %w", err)
@@ -370,14 +385,14 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(ctx, chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret, i.PostRenderStrategy)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
 	}
 	// Check error from render
 	if err != nil {
-		rel.SetStatus(rcommon.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
+		rel.SetStatus(rcommon.StatusFailed, "failed to render resource: "+err.Error())
 		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
 	}
@@ -422,15 +437,11 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 	if i.CreateNamespace {
 		ns := &v1.Namespace{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "Namespace",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: i.Namespace,
-				Labels: map[string]string{
-					"name": i.Namespace,
-				},
+			APIVersion: "v1",
+			Kind:       "Namespace",
+			Name:       i.Namespace,
+			Labels: map[string]string{
+				"name": i.Namespace,
 			},
 		}
 		buf, err := yaml.Marshal(ns)
@@ -471,7 +482,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	return rel, err
 }
 
-func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, toBeAdopted, resources kube.ResourceList) (*release.Release, error) {
 	type Msg struct {
 		r *release.Release
 		e error
@@ -498,7 +509,7 @@ func (i *Install) getGoroutineCount() int32 {
 	return i.goroutineCount.Load()
 }
 
-func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+func (i *Install) performInstall(rel *release.Release, toBeAdopted, resources kube.ResourceList) (*release.Release, error) {
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
@@ -553,7 +564,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		}
 	}
 
-	if len(i.Description) > 0 {
+	if i.Description != "" {
 		rel.SetStatus(rcommon.StatusDeployed, i.Description)
 	} else {
 		rel.SetStatus(rcommon.StatusDeployed, "Install complete")
@@ -712,8 +723,8 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // write the <data> to <output-dir>/<name>. <appendData> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, appendData bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+func writeToFile(outputDir, name, data string, appendData bool) error {
+	outfileName := outputDir + string(filepath.Separator) + name
 
 	err := ensureDirectoryForFile(outfileName)
 	if err != nil {
@@ -728,7 +739,6 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 	defer f.Close()
 
 	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
-
 	if err != nil {
 		return err
 	}
@@ -739,7 +749,7 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 	if appendData {
-		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o600)
 	}
 	return os.Create(filename)
 }
@@ -971,7 +981,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 	}
 
-	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil {
+	if err := os.MkdirAll(settings.RepositoryCache, 0o755); err != nil {
 		return "", err
 	}
 

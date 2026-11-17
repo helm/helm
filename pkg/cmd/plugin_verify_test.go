@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/test/ensure"
@@ -35,13 +37,7 @@ func TestPluginVerifyCmd_NoArgs(t *testing.T) {
 	cmd := newPluginVerifyCmd(out)
 	cmd.SetArgs([]string{})
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Error("expected error when no arguments provided")
-	}
-	if !strings.Contains(err.Error(), "requires 1 argument") {
-		t.Errorf("expected 'requires 1 argument' error, got: %v", err)
-	}
+	assert.ErrorContains(t, cmd.Execute(), "requires 1 argument", "expected 'requires 1 argument' error")
 }
 
 func TestPluginVerifyCmd_TooManyArgs(t *testing.T) {
@@ -51,13 +47,7 @@ func TestPluginVerifyCmd_TooManyArgs(t *testing.T) {
 	cmd := newPluginVerifyCmd(out)
 	cmd.SetArgs([]string{"plugin1", "plugin2"})
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Error("expected error when too many arguments provided")
-	}
-	if !strings.Contains(err.Error(), "requires 1 argument") {
-		t.Errorf("expected 'requires 1 argument' error, got: %v", err)
-	}
+	assert.ErrorContains(t, cmd.Execute(), "requires 1 argument", "expected 'requires 1 argument' error")
 }
 
 func TestPluginVerifyCmd_NonexistentFile(t *testing.T) {
@@ -67,10 +57,7 @@ func TestPluginVerifyCmd_NonexistentFile(t *testing.T) {
 	cmd := newPluginVerifyCmd(out)
 	cmd.SetArgs([]string{"/nonexistent/plugin.tgz"})
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Error("expected error when plugin file doesn't exist")
-	}
+	assert.Error(t, cmd.Execute(), "expected error when plugin file doesn't exist")
 }
 
 func TestPluginVerifyCmd_MissingProvenance(t *testing.T) {
@@ -84,13 +71,7 @@ func TestPluginVerifyCmd_MissingProvenance(t *testing.T) {
 	cmd := newPluginVerifyCmd(out)
 	cmd.SetArgs([]string{pluginTgz})
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Error("expected error when .prov file is missing")
-	}
-	if !strings.Contains(err.Error(), "could not find provenance file") {
-		t.Errorf("expected 'could not find provenance file' error, got: %v", err)
-	}
+	assert.ErrorContains(t, cmd.Execute(), "could not find provenance file", "expected 'could not find provenance file' error")
 }
 
 func TestPluginVerifyCmd_InvalidProvenance(t *testing.T) {
@@ -102,19 +83,14 @@ func TestPluginVerifyCmd_InvalidProvenance(t *testing.T) {
 
 	// Create invalid .prov file
 	provFile := pluginTgz + ".prov"
-	if err := os.WriteFile(provFile, []byte("invalid provenance"), 0644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(provFile, []byte("invalid provenance"), 0o644))
 	defer os.Remove(provFile)
 
 	out := &bytes.Buffer{}
 	cmd := newPluginVerifyCmd(out)
 	cmd.SetArgs([]string{pluginTgz})
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Error("expected error when .prov file is invalid")
-	}
+	assert.Error(t, cmd.Execute(), "expected error when .prov file is invalid")
 }
 
 func TestPluginVerifyCmd_DirectoryNotSupported(t *testing.T) {
@@ -127,13 +103,7 @@ func TestPluginVerifyCmd_DirectoryNotSupported(t *testing.T) {
 	cmd := newPluginVerifyCmd(out)
 	cmd.SetArgs([]string{pluginDir})
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Error("expected error when verifying directory")
-	}
-	if !strings.Contains(err.Error(), "directory verification not supported") {
-		t.Errorf("expected 'directory verification not supported' error, got: %v", err)
-	}
+	assert.ErrorContains(t, cmd.Execute(), "directory verification not supported", "expected 'directory verification not supported' error")
 }
 
 func TestPluginVerifyCmd_KeyringFlag(t *testing.T) {
@@ -157,10 +127,7 @@ func TestPluginVerifyCmd_KeyringFlag(t *testing.T) {
 	cmd.SetArgs([]string{"--keyring", keyring, pluginTgz})
 
 	// Should fail with keyring error but command parsing should work
-	err := cmd.Execute()
-	if err == nil {
-		t.Error("expected error with empty keyring")
-	}
+	assert.Error(t, cmd.Execute(), "expected error with empty keyring")
 	// The important thing is that the keyring flag was parsed and used
 }
 
@@ -178,14 +145,10 @@ func createTestPluginDir(t *testing.T) string {
 	// Create temporary directory with plugin structure
 	tmpDir := t.TempDir()
 	pluginDir := filepath.Join(tmpDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
-		t.Fatalf("Failed to create plugin directory: %v", err)
-	}
+	require.NoErrorf(t, os.MkdirAll(pluginDir, 0o755), "Failed to create plugin directory")
 
 	// Use the same plugin YAML as other cmd tests
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
-		t.Fatalf("Failed to create plugin.yaml: %v", err)
-	}
+	require.NoErrorf(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644), "Failed to create plugin.yaml")
 
 	return pluginDir
 }
@@ -199,14 +162,10 @@ func createTestPluginTarball(t *testing.T) string {
 	tmpDir := filepath.Dir(pluginDir)
 	tgzPath := filepath.Join(tmpDir, "test-plugin-1.0.0.tgz")
 	tarFile, err := os.Create(tgzPath)
-	if err != nil {
-		t.Fatalf("Failed to create tarball file: %v", err)
-	}
+	require.NoError(t, err, "Failed to create tarball file")
 	defer tarFile.Close()
 
-	if err := plugin.CreatePluginTarball(pluginDir, "test-plugin", tarFile); err != nil {
-		t.Fatalf("Failed to create tarball: %v", err)
-	}
+	require.NoErrorf(t, plugin.CreatePluginTarball(pluginDir, "test-plugin", tarFile), "Failed to create tarball")
 
 	return tgzPath
 }
@@ -218,9 +177,7 @@ func createProvFile(t *testing.T, provFile, pluginTgz, hash string) {
 	if hash == "" {
 		// Calculate actual hash of the tarball
 		data, err := os.ReadFile(pluginTgz)
-		if err != nil {
-			t.Fatalf("Failed to read tarball for hashing: %v", err)
-		}
+		require.NoError(t, err, "Failed to read tarball for hashing")
 		hashSum := sha256.Sum256(data)
 		hashStr = fmt.Sprintf("sha256:%x", hashSum)
 	} else {
@@ -243,9 +200,7 @@ Version: GnuPG v1
 iQEcBAEBCAAGBQJktest...
 -----END PGP SIGNATURE-----
 `, hashStr)
-	if err := os.WriteFile(provFile, []byte(provContent), 0644); err != nil {
-		t.Fatalf("Failed to create provenance file: %v", err)
-	}
+	require.NoErrorf(t, os.WriteFile(provFile, []byte(provContent), 0o644), "Failed to create provenance file")
 }
 
 func createTestKeyring(t *testing.T) string {
@@ -256,9 +211,7 @@ func createTestKeyring(t *testing.T) string {
 	keyringPath := filepath.Join(tmpDir, "pubring.gpg")
 
 	// Create empty keyring for testing
-	if err := os.WriteFile(keyringPath, []byte{}, 0644); err != nil {
-		t.Fatalf("Failed to create test keyring: %v", err)
-	}
+	require.NoErrorf(t, os.WriteFile(keyringPath, []byte{}, 0o644), "Failed to create test keyring")
 
 	return keyringPath
 }

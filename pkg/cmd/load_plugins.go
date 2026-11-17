@@ -220,9 +220,7 @@ type pluginCommand struct {
 // and add the dynamic completion hook to call the optional plugin.complete
 func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin) {
 	// Parse the yaml file providing the plugin's sub-commands and flags
-	cmds, err := loadFile(strings.Join(
-		[]string{plug.Dir(), pluginStaticCompletionFile}, string(filepath.Separator)))
-
+	cmds, err := loadFile(plug.Dir() + string(filepath.Separator) + pluginStaticCompletionFile)
 	if err != nil {
 		// The file could be missing or invalid.  No static completion for this plugin.
 		slog.Debug("plugin completion file loading", slog.String("error", err.Error()))
@@ -243,7 +241,7 @@ func addPluginCommands(plug plugin.Plugin, baseCmd *cobra.Command, cmds *pluginC
 		return
 	}
 
-	if len(cmds.Name) == 0 {
+	if cmds.Name == "" {
 		slog.Debug("sub-command name field missing", slog.String("commandPath", baseCmd.CommandPath()))
 		return
 	}
@@ -333,7 +331,6 @@ func loadFile(path string) (*pluginCommand, error) {
 // to obtain the dynamic completion choices.  It must pass all the flags and sub-commands
 // specified in the command-line to the plugin.complete executable (except helm's global flags)
 func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-
 	subprocessPlug, ok := plug.(*plugin.SubprocessPluginRuntime)
 	if !ok {
 		// Completion only supported for subprocess plugins (TODO: fix this)
@@ -352,7 +349,7 @@ func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, to
 	}
 
 	// We will call the dynamic completion script of the plugin
-	main := strings.Join([]string{plug.Dir(), pluginDynamicCompletionExecutable}, string(filepath.Separator))
+	main := plug.Dir() + string(filepath.Separator) + pluginDynamicCompletionExecutable
 
 	// We must include all sub-commands passed on the command-line.
 	// To do that, we pass-in the entire CommandPath, except the first two elements
@@ -382,7 +379,7 @@ func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, to
 	var completions []string
 	for comp := range strings.SplitSeq(buf.String(), "\n") {
 		// Remove any empty lines
-		if len(comp) > 0 {
+		if comp != "" {
 			completions = append(completions, comp)
 		}
 	}

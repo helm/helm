@@ -29,6 +29,7 @@ import (
 const completionDesc = `
 Generate autocompletion scripts for Helm for the specified shell.
 `
+
 const bashCompDesc = `
 Generate the autocompletion script for Helm for the bash shell.
 
@@ -193,7 +194,7 @@ compdef _helm %[1]s
 	}
 
 	// Cobra doesn't source zsh completion file, explicitly doing it here
-	fmt.Fprintf(out, "compdef _helm helm")
+	fmt.Fprint(out, "compdef _helm helm")
 
 	return err
 }

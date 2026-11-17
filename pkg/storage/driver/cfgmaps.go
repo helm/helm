@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v4/pkg/storage/driver"
+package driver
 
 import (
 	"context"
@@ -171,7 +171,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rac.Labels())
-	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("createdAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	rel, err := releaserToV1Release(rls)
 	if err != nil {
@@ -209,7 +209,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rel release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("modifiedAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
@@ -237,7 +237,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls release.Releaser, err error) 
 		return nil, err
 	}
 	// delete the release
-	if err = cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{}); err != nil {
+	if err := cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{}); err != nil {
 		return rls, err
 	}
 	return rls, nil
@@ -279,10 +279,8 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 
 	// create and return configmap object
 	return &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   key,
-			Labels: lbs.toMap(),
-		},
-		Data: map[string]string{"release": s},
+		Name:   key,
+		Labels: lbs.toMap(),
+		Data:   map[string]string{"release": s},
 	}, nil
 }

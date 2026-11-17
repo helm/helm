@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 )
@@ -59,7 +60,7 @@ func TestCRDs(t *testing.T) {
 
 	is := assert.New(t)
 	crds := chrt.CRDs()
-	is.Equal(2, len(crds))
+	is.Len(crds, 2)
 	is.Equal("crds/foo.yaml", crds[0].Name)
 	is.Equal("crds/foo/bar/baz.yaml", crds[1].Name)
 }
@@ -76,15 +77,12 @@ func TestSaveChartNoRawData(t *testing.T) {
 	}
 
 	is := assert.New(t)
+	req := require.New(t)
 	data, err := json.Marshal(chrt)
-	if err != nil {
-		t.Fatal(err)
-	}
+	req.NoError(err)
 
 	res := &Chart{}
-	if err := json.Unmarshal(data, res); err != nil {
-		t.Fatal(err)
-	}
+	req.NoError(json.Unmarshal(data, res))
 
 	is.Equal([]*common.File(nil), res.Raw)
 }
@@ -104,7 +102,7 @@ func TestMetadata(t *testing.T) {
 
 	is.Equal("foo.yaml", chrt.Name())
 	is.Equal("1.0.0", chrt.AppVersion())
-	is.Equal(nil, chrt.Validate())
+	is.NoError(chrt.Validate())
 }
 
 func TestIsRoot(t *testing.T) {
@@ -124,8 +122,8 @@ func TestIsRoot(t *testing.T) {
 
 	is := assert.New(t)
 
-	is.Equal(false, chrt1.IsRoot())
-	is.Equal(true, chrt2.IsRoot())
+	is.False(chrt1.IsRoot())
+	is.True(chrt2.IsRoot())
 }
 
 func TestChartPath(t *testing.T) {

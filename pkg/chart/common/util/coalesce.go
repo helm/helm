@@ -257,6 +257,12 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					// If the key is a child chart, coalesce tables with Merge set to true
 					merge := childChartMergeTrue(c, key, merge)
 
+					// When coalescing, clean nils from chart defaults before merging
+					// so they don't leak into the result.
+					if !merge {
+						cleanNilValues(src)
+					}
+
 					// Because v has higher precedence than nv, dest values override src
 					// values.
 					coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key), merge)
@@ -264,6 +270,16 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 			}
 		} else {
 			// If the key is not in v, copy it from nv.
+			// When coalescing, skip chart default nils and clean nils from
+			// nested maps so they don't shadow globals or produce %!s(<nil>).
+			if !merge {
+				if val == nil {
+					continue
+				}
+				if sub, ok := val.(map[string]any); ok {
+					cleanNilValues(sub)
+				}
+			}
 			v[key] = val
 		}
 	}
@@ -326,25 +342,38 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 	// values.
 	for key, val := range src {
 		fullkey := concatPrefix(prefix, key)
-		if dv, ok := dst[key]; ok && !merge && dv == nil && srcOriginalNonNil[key] {
+		dv, ok := dst[key]
+		switch {
+		case ok && !merge && dv == nil && srcOriginalNonNil[key]:
 			// When coalescing (not merging), if dst has nil and src has a non-nil
 			// value, the user is nullifying a chart default - remove the key.
 			// But if src also has nil (or key not in src), preserve the nil
 			delete(dst, key)
-		} else if !ok {
-			// key not in user values, preserve src value (including nil)
+		case !ok:
 			dst[key] = val
-		} else if istable(val) {
+		case istable(val):
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]any), val.(map[string]any), fullkey, merge)
 			} else {
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
-		} else if istable(dv) && val != nil {
+		case istable(dv) && val != nil:
 			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
 		}
 	}
 	return dst
+}
+
+// cleanNilValues recursively removes nil entries in-place from a map so that chart
+// default nils don't leak into the coalesced result.
+func cleanNilValues(m map[string]any) {
+	for key, val := range m {
+		if val == nil {
+			delete(m, key)
+		} else if sub, ok := val.(map[string]any); ok {
+			cleanNilValues(sub)
+		}
+	}
 }
 
 // istable is a special-purpose function to see if the present thing matches the definition of a YAML table.

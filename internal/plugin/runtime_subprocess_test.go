@@ -16,7 +16,6 @@ limitations under the License.
 package plugin
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,7 +41,7 @@ func mockSubprocessCLIPluginErrorExit(t *testing.T, pluginName string, exitCode 
 
 	md := Metadata{
 		Name:       pluginName,
-		Version:    "v0.1.2",
+		Version:    "0.1.2",
 		Type:       "cli/v1",
 		APIVersion: "v1",
 		Runtime:    "subprocess",
@@ -78,8 +77,7 @@ func TestSubprocessPluginRuntime(t *testing.T) {
 
 	require.Error(t, err)
 	ieerr := &InvokeExecError{}
-	ok := errors.As(err, &ieerr)
-	require.True(t, ok, "expected InvokeExecError, got %T", err)
+	require.ErrorAs(t, err, &ieerr, "expected InvokeExecError")
 	assert.Equal(t, 56, ieerr.ExitCode)
 
 	assert.Nil(t, output)

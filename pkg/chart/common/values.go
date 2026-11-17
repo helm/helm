@@ -29,7 +29,7 @@ import (
 const GlobalKey = "global"
 
 // Values represents a collection of chart values.
-type Values map[string]interface{}
+type Values map[string]any
 
 // YAML encodes the Values into a YAML string.
 func (v Values) YAML() (string, error) {
@@ -64,9 +64,9 @@ func (v Values) Table(name string) (Values, error) {
 // AsMap is a utility function for converting Values to a map[string]interface{}.
 //
 // It protects against nil map panics.
-func (v Values) AsMap() map[string]interface{} {
+func (v Values) AsMap() map[string]any {
 	if len(v) == 0 {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 	return v
 }
@@ -86,7 +86,7 @@ func tableLookup(v Values, simple string) (Values, error) {
 	if !ok {
 		return v, ErrNoTable{simple}
 	}
-	if vv, ok := v2.(map[string]interface{}); ok {
+	if vv, ok := v2.(map[string]any); ok {
 		return vv, nil
 	}
 
@@ -113,7 +113,7 @@ func ReadValues(data []byte) (vals Values, err error) {
 func ReadValuesFile(filename string) (Values, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		return map[string]interface{}{}, err
+		return map[string]any{}, err
 	}
 	return ReadValues(data)
 }
@@ -129,8 +129,8 @@ type ReleaseOptions struct {
 }
 
 // istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
-func istable(v interface{}) bool {
-	_, ok := v.(map[string]interface{})
+func istable(v any) bool {
+	_, ok := v.(map[string]any)
 	return ok
 }
 
@@ -141,14 +141,14 @@ func istable(v interface{}) bool {
 //	chapter:
 //	  one:
 //	    title: "Loomings"
-func (v Values) PathValue(path string) (interface{}, error) {
+func (v Values) PathValue(path string) (any, error) {
 	if path == "" {
 		return nil, errors.New("YAML path cannot be empty")
 	}
 	return v.pathValue(parsePath(path))
 }
 
-func (v Values) pathValue(path []string) (interface{}, error) {
+func (v Values) pathValue(path []string) (any, error) {
 	if len(path) == 1 {
 		// if exists must be root key not table
 		if _, ok := v[path[0]]; ok && !istable(v[path[0]]) {

@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v4/pkg/kube"
+package kube
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -107,7 +108,8 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 		slog.String("resource", resource.Name),
 		slog.Any("error", err),
 	)
-	if ev, ok := err.(*apierrors.StatusError); ok {
+	ev := &apierrors.StatusError{}
+	if errors.As(err, &ev) {
 		statusCode := ev.Status().Code
 		retryable := hw.isRetryableHTTPStatusCode(statusCode)
 		slog.Debug(
@@ -244,7 +246,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 
 	// Use a selector on the name of the resource. This should be unique for the
 	// given version and kind
-	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
+	selector, err := fields.ParseSelector("metadata.name=" + info.Name)
 	if err != nil {
 		return err
 	}

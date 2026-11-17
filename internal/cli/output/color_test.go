@@ -20,11 +20,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v4/pkg/release/common"
 )
 
 func TestColorizeStatus(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		status     common.Status
@@ -94,20 +95,17 @@ func TestColorizeStatus(t *testing.T) {
 
 			// In test environment, term.IsTerminal will be false, so we won't get color
 			// unless we're testing the logic without terminal detection
-			if hasColor && !tt.wantColor {
-				t.Errorf("ColorizeStatus() returned color when none expected: %q", result)
+			if hasColor {
+				assert.True(t, tt.wantColor, "ColorizeStatus() returned color when none expected: %q", result)
 			}
 
 			// Always check the status text is present
-			if !strings.Contains(result, tt.status.String()) {
-				t.Errorf("ColorizeStatus() = %q, want to contain %q", result, tt.status.String())
-			}
+			assert.Contains(t, result, tt.status.String())
 		})
 	}
 }
 
 func TestColorizeHeader(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		header     string
@@ -141,15 +139,12 @@ func TestColorizeHeader(t *testing.T) {
 			result := ColorizeHeader(tt.header, tt.noColor)
 
 			// Always check the header text is present
-			if !strings.Contains(result, tt.header) {
-				t.Errorf("ColorizeHeader() = %q, want to contain %q", result, tt.header)
-			}
+			assert.Contains(t, result, tt.header)
 		})
 	}
 }
 
 func TestColorizeNamespace(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		namespace  string
@@ -183,9 +178,7 @@ func TestColorizeNamespace(t *testing.T) {
 			result := ColorizeNamespace(tt.namespace, tt.noColor)
 
 			// Always check the namespace text is present
-			if !strings.Contains(result, tt.namespace) {
-				t.Errorf("ColorizeNamespace() = %q, want to contain %q", result, tt.namespace)
-			}
+			assert.Contains(t, result, tt.namespace)
 		})
 	}
 }

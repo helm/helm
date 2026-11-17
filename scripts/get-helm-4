@@ -114,12 +114,15 @@ verifySupported() {
 checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
     # Get tag from release URL
-    local latest_release_url="https://get.helm.sh/helm4-latest-version"
+    # Cache behavior is provider-specific, so this mitigation is best effort.
+    # The current CDN does not revalidate on the request no-cache directive,
+    # so use a unique query while retaining no-cache for compliant intermediaries.
+    local latest_release_url="https://get.helm.sh/helm4-latest-version?ts=$(date +%s)"
     local latest_release_response=""
     if [ "${HAS_CURL}" == "true" ]; then
-      latest_release_response=$( curl -L --silent --show-error --fail "$latest_release_url" 2>&1 || true )
+      latest_release_response=$( curl -L --silent --show-error --fail --header "Cache-Control: no-cache" "$latest_release_url" 2>&1 || true )
     elif [ "${HAS_WGET}" == "true" ]; then
-      latest_release_response=$( wget "$latest_release_url" -q -O - 2>&1 || true )
+      latest_release_response=$( wget "$latest_release_url" --header="Cache-Control: no-cache" -q -O - 2>&1 || true )
     fi
     TAG=$( echo "$latest_release_response" | grep '^v[0-9]' )
     if [ "x$TAG" == "x" ]; then

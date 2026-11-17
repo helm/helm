@@ -99,7 +99,6 @@ type RuntimeExtismV1 struct {
 var _ Runtime = (*RuntimeExtismV1)(nil)
 
 func (r *RuntimeExtismV1) CreatePlugin(pluginDir string, metadata *Metadata) (Plugin, error) {
-
 	rc, ok := metadata.RuntimeConfig.(*RuntimeConfigExtismV1)
 	if !ok {
 		return nil, fmt.Errorf("invalid extism/v1 plugin runtime config type: %T", metadata.RuntimeConfig)
@@ -139,7 +138,6 @@ func (p *ExtismV1PluginRuntime) Dir() string {
 }
 
 func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Output, error) {
-
 	var tmpDir string
 	if p.rc.FileSystem.CreateTempDir {
 		tmpDirInner, err := os.MkdirTemp(os.TempDir(), "helm-plugin-*")
@@ -214,7 +212,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 	return output, nil
 }
 
-func buildManifest(pluginDir string, tmpDir string, rc *RuntimeConfigExtismV1) (extism.Manifest, error) {
+func buildManifest(pluginDir, tmpDir string, rc *RuntimeConfigExtismV1) (extism.Manifest, error) {
 	wasmFile := filepath.Join(pluginDir, ExtismV1WasmBinaryFilename)
 
 	allowedHosts := rc.AllowedHosts
@@ -278,7 +276,7 @@ func buildPluginConfig(input *Input, r *RuntimeExtismV1) extism.PluginConfig {
 }
 
 func buildHostFunctions(hostFunctions map[string]extism.HostFunction, rc *RuntimeConfigExtismV1) ([]extism.HostFunction, error) {
-	result := make([]extism.HostFunction, len(rc.HostFunctions))
+	result := make([]extism.HostFunction, 0, len(rc.HostFunctions))
 	for _, fnName := range rc.HostFunctions {
 		fn, ok := hostFunctions[fnName]
 		if !ok {

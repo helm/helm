@@ -50,15 +50,16 @@ func TestNewPostRenderPluginWithOneArgsRun(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	s := cli.New()
 	s.PluginsDirectory = "testdata/plugins"
 	name := "postrenderer-v1"
 
 	renderer, err := NewPostRendererPlugin(s, name, "ARG1")
-	require.NoError(t, err)
+	req.NoError(err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(output.String(), "ARG1")
 }
 
@@ -68,14 +69,15 @@ func TestNewPostRenderPluginWithTwoArgsRun(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	s := cli.New()
 	s.PluginsDirectory = "testdata/plugins"
 	name := "postrenderer-v1"
 
 	renderer, err := NewPostRendererPlugin(s, name, "ARG1", "ARG2")
-	require.NoError(t, err)
+	req.NoError(err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(output.String(), "ARG1 ARG2")
 }

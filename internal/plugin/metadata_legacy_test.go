@@ -26,6 +26,10 @@ func TestMetadataLegacyValidate(t *testing.T) {
 		"valid metadata": {
 			Name: "myplugin",
 		},
+		"valid metadata (empty version)": {
+			Name:    "myplugin",
+			Version: "",
+		},
 		"valid with command": {
 			Name:    "myplugin",
 			Command: "echo hello",
@@ -58,6 +62,13 @@ func TestMetadataLegacyValidate(t *testing.T) {
 					Command:   "echo download",
 				},
 			},
+		},
+		"valid with version": {
+			Name:    "myplugin",
+			Version: "1.0.0",
+		},
+		"valid with empty version": {
+			Name: "myplugin",
 		},
 	}
 
@@ -115,6 +126,14 @@ func TestMetadataLegacyValidate(t *testing.T) {
 					Command:   "echo download",
 				},
 			},
+		},
+		"path traversal version": {
+			Name:    "myplugin",
+			Version: "../../../../tmp/evil",
+		},
+		"invalid version": {
+			Name:    "myplugin",
+			Version: "not-a-version",
 		},
 	}
 

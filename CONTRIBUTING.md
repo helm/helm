@@ -1,7 +1,7 @@
 # Contributing Guidelines
 
 The Helm project accepts contributions via GitHub pull requests. This document outlines the process
-to help get your contribution accepted.
+to help you get your contribution accepted.
 
 ## Reporting a Security Issue
 
@@ -15,7 +15,7 @@ chance to try to fix the issue before it is exploited in the wild.
 
 Helm v4 development takes place on the `main` branch while Helm v3 is on the `dev-v3` branch.
 
-Helm v3 will continue to receive bug fixes and updates for new Kubernetes releases until July 8th 2026. Security enhancement will still be applied until November 11th 2026. See the blog <https://helm.sh/blog/helm-4-released#helm-v3-support> for more details.
+Helm v3 will continue to receive bug fixes and updates for new Kubernetes releases until July 8th 2026. Security enhancements will still be applied until November 11th 2026. See the blog <https://helm.sh/blog/helm-4-released#helm-v3-support> for more details.
 
 Bugs should first be fixed on Helm v4 and then backported to Helm v3. Helm v3 (and the `dev-v3` branch) is no longer accepting new features.
 
@@ -110,9 +110,9 @@ Whether you are a user or contributor, official support channels include:
   - User: [#helm-users](https://kubernetes.slack.com/messages/C0NH30761/details/)
   - Contributor: [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG/)
 
-Before opening a new issue or submitting a new pull request, it's helpful to search the project -
-it's likely that another user has already reported the issue you're facing, or it's a known issue
-that we're already aware of. It is also worth asking on the Slack channels.
+Before opening a new issue or submitting a new pull request, it helps to search the project first.
+Another user may have already reported the issue you are facing, or it may already be a known issue.
+It is also worth asking on the Slack channels.
 
 ## Milestones
 
@@ -137,7 +137,7 @@ are removed or substantially modified (unless we need to fix a security issue).
 
 We also remain committed to not changing publicly accessible Go library definitions inside of the `pkg/` directory of our source code in a non-backwards-compatible way.
 
-For more details on Helm’s minor and patch release backwards-compatibility rules, please read [HIP-0004](https://github.com/helm/community/blob/main/hips/hip-0004.md)
+For more details on Helm’s minor and patch release backwards-compatibility rules, please read [HIP-0004](https://github.com/helm/community/blob/main/hips/hip-0004.md).
 
 For a quick summary of our backward compatibility guidelines for releases between 3.0 and 4.0:
 
@@ -162,9 +162,9 @@ There are 5 types of issues (each with their own corresponding [label](#labels))
   for future reference. Generally these are questions that are too complex or large to store in the
   Slack channel or have particular interest to the community as a whole. Depending on the
   discussion, these can turn into `feature` or `bug` issues.
-- `proposal`: Used for items (like this one) that propose a new ideas or functionality that require
+- `proposal`: Used for items (like this one) that propose new ideas or functionality that require
   a larger community discussion. This allows for feedback from others in the community before a
-  feature is actually  developed. This is not needed for small additions. Final word on whether
+  feature is actually developed. This is not needed for small additions. Final word on whether
   a feature needs a proposal is up to the core maintainers. All issues that are proposals should
   both have a label and an issue title of "Proposal: [the rest of the title]." A proposal can become
   a `feature` and does not require a milestone.

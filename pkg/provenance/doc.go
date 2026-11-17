@@ -25,7 +25,7 @@ A provenance file is clear-signed. This provides cryptographic verification that
 a particular block of information (metadata, archive file, images) have not
 been tampered with or altered. To learn more, read the GnuPG documentation on
 clear signatures:
-https://www.gnupg.org/gph/en/manual/x135.html
+https://www.gnupg.org/gph/en/manual.html
 
 The cryptography used by Helm should be compatible with OpenGPG. For example,
 you should be able to verify a signature by importing the desired public key
@@ -35,4 +35,4 @@ and using `gpg --verify`, `keybase pgp verify`, or similar:
 	gpg: Signature made Mon Jul 25 17:23:44 2016 MDT using RSA key ID 1FC18762
 	gpg: Good signature from "Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>" [ultimate]
 */
-package provenance // import "helm.sh/helm/v4/pkg/provenance"
+package provenance

@@ -49,7 +49,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	if fi, err := os.Stat(outdir); err == nil && !fi.IsDir() {
 		return fmt.Errorf("file %s already exists and is not a directory", outdir)
 	}
-	if err := os.MkdirAll(outdir, 0755); err != nil {
+	if err := os.MkdirAll(outdir, 0o755); err != nil {
 		return err
 	}
 
@@ -114,12 +114,11 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 	filename = filepath.Join(outDir, filename)
 	dir := filepath.Dir(filename)
 	if stat, err := os.Stat(dir); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			if err2 := os.MkdirAll(dir, 0755); err2 != nil {
-				return "", err2
-			}
-		} else {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return "", fmt.Errorf("stat %s: %w", dir, err)
+		}
+		if err2 := os.MkdirAll(dir, 0o755); err2 != nil {
+			return "", err2
 		}
 	} else if !stat.IsDir() {
 		return "", fmt.Errorf("is not a directory: %s", dir)
@@ -230,7 +229,7 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 	// TODO: Do we need to create dummy parent directory names if none exist?
 	h := &tar.Header{
 		Name:    filepath.ToSlash(name),
-		Mode:    0644,
+		Mode:    0o644,
 		Size:    int64(len(body)),
 		ModTime: modTime,
 	}

@@ -1,6 +1,7 @@
 ---
 apiVersion: v1
 name: fullenv
+version: 0.1.0
 type: cli/v1
 runtime: subprocess
 config:

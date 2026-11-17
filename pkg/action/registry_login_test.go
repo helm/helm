@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewRegistryLogin(t *testing.T) {
@@ -37,7 +38,7 @@ func TestWithCertFile(t *testing.T) {
 	certFile := "testdata/cert.pem"
 	opt := WithCertFile(certFile)
 
-	assert.Nil(t, opt(client))
+	require.NoError(t, opt(client))
 	assert.Equal(t, certFile, client.certFile)
 }
 
@@ -47,8 +48,8 @@ func TestWithInsecure(t *testing.T) {
 
 	opt := WithInsecure(true)
 
-	assert.Nil(t, opt(client))
-	assert.Equal(t, true, client.insecure)
+	require.NoError(t, opt(client))
+	assert.True(t, client.insecure)
 }
 
 func TestWithKeyFile(t *testing.T) {
@@ -58,7 +59,7 @@ func TestWithKeyFile(t *testing.T) {
 	keyFile := "testdata/key.pem"
 	opt := WithKeyFile(keyFile)
 
-	assert.Nil(t, opt(client))
+	require.NoError(t, opt(client))
 	assert.Equal(t, keyFile, client.keyFile)
 }
 
@@ -69,7 +70,7 @@ func TestWithCAFile(t *testing.T) {
 	caFile := "testdata/ca.pem"
 	opt := WithCAFile(caFile)
 
-	assert.Nil(t, opt(client))
+	require.NoError(t, opt(client))
 	assert.Equal(t, caFile, client.caFile)
 }
 
@@ -79,6 +80,6 @@ func TestWithPlainHTTPLogin(t *testing.T) {
 
 	opt := WithPlainHTTPLogin(true)
 
-	assert.Nil(t, opt(client))
-	assert.Equal(t, true, client.plainHTTP)
+	require.NoError(t, opt(client))
+	assert.True(t, client.plainHTTP)
 }

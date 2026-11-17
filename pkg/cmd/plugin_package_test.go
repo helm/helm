@@ -19,8 +19,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Common plugin.yaml content for v1 format tests
@@ -43,14 +45,10 @@ func TestPluginPackageWithoutSigning(t *testing.T) {
 	// Create a test plugin directory
 	tempDir := t.TempDir()
 	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 
 	// Create a plugin.yaml file
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644))
 
 	// Create package options with sign=false
 	o := &pluginPackageOptions{
@@ -61,47 +59,34 @@ func TestPluginPackageWithoutSigning(t *testing.T) {
 
 	// Run the package command
 	out := &bytes.Buffer{}
-	err := o.run(out)
 
 	// Should succeed without error
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
+	require.NoError(t, o.run(out))
 
 	// Check that tarball was created with plugin name and version
 	tarballPath := filepath.Join(tempDir, "test-plugin-1.0.0.tgz")
-	if _, err := os.Stat(tarballPath); os.IsNotExist(err) {
-		t.Error("tarball should exist when sign=false")
-	}
+	_, err := os.Stat(tarballPath)
+	assert.False(t, os.IsNotExist(err), "tarball should exist when sign=false")
 
 	// Check that no .prov file was created
 	provPath := tarballPath + ".prov"
-	if _, err := os.Stat(provPath); !os.IsNotExist(err) {
-		t.Error("provenance file should not exist when sign=false")
-	}
+	_, err = os.Stat(provPath)
+	assert.True(t, os.IsNotExist(err), "provenance file should not exist when sign=false")
 
 	// Output should contain warning about skipping signing
 	output := out.String()
-	if !strings.Contains(output, "WARNING: Skipping plugin signing") {
-		t.Error("should print warning when signing is skipped")
-	}
-	if !strings.Contains(output, "Successfully packaged") {
-		t.Error("should print success message")
-	}
+	assert.Contains(t, output, "WARNING: Skipping plugin signing", "should print warning when signing is skipped")
+	assert.Contains(t, output, "Successfully packaged", "should print success message")
 }
 
 func TestPluginPackageDefaultRequiresSigning(t *testing.T) {
 	// Create a test plugin directory
 	tempDir := t.TempDir()
 	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 
 	// Create a plugin.yaml file
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644))
 
 	// Create package options with default sign=true and invalid keyring
 	o := &pluginPackageOptions{
@@ -113,32 +98,24 @@ func TestPluginPackageDefaultRequiresSigning(t *testing.T) {
 
 	// Run the package command
 	out := &bytes.Buffer{}
-	err := o.run(out)
 
 	// Should fail because signing is required by default
-	if err == nil {
-		t.Error("expected error when signing fails with default settings")
-	}
+	require.Error(t, o.run(out), "expected error when signing fails with default settings")
 
 	// Check that no tarball was created
 	tarballPath := filepath.Join(tempDir, "test-plugin.tgz")
-	if _, err := os.Stat(tarballPath); !os.IsNotExist(err) {
-		t.Error("tarball should not exist when signing fails")
-	}
+	_, err := os.Stat(tarballPath)
+	assert.True(t, os.IsNotExist(err), "tarball should not exist when signing fails")
 }
 
 func TestPluginPackageSigningFailure(t *testing.T) {
 	// Create a test plugin directory
 	tempDir := t.TempDir()
 	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 
 	// Create a plugin.yaml file
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644))
 
 	// Create package options with sign flag but invalid keyring
 	o := &pluginPackageOptions{
@@ -150,21 +127,15 @@ func TestPluginPackageSigningFailure(t *testing.T) {
 
 	// Run the package command
 	out := &bytes.Buffer{}
-	err := o.run(out)
 
 	// Should get an error
-	if err == nil {
-		t.Error("expected error when signing fails, got nil")
-	}
+	require.Error(t, o.run(out), "expected error when signing fails, got nil")
 
 	// Check that no tarball was created
 	tarballPath := filepath.Join(tempDir, "test-plugin.tgz")
-	if _, err := os.Stat(tarballPath); !os.IsNotExist(err) {
-		t.Error("tarball should not exist when signing fails")
-	}
+	_, err := os.Stat(tarballPath)
+	assert.True(t, os.IsNotExist(err), "tarball should not exist when signing fails")
 
 	// Output should not contain success message
-	if bytes.Contains(out.Bytes(), []byte("Successfully packaged")) {
-		t.Error("should not print success message when signing fails")
-	}
+	assert.False(t, bytes.Contains(out.Bytes(), []byte("Successfully packaged")), "should not print success message when signing fails")
 }

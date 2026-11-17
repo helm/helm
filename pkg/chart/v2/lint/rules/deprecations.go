@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v4/pkg/chart/v2/lint/rules"
+package rules
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ import (
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-// deprecatedAPIError indicates than an API is deprecated in Kubernetes
+// deprecatedAPIError indicates that an API is deprecated in Kubernetes
 type deprecatedAPIError struct {
 	Deprecated string
 	Message    string

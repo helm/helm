@@ -18,13 +18,13 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"os/exec"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCliPluginExitCode(t *testing.T) {
@@ -46,7 +46,7 @@ func TestCliPluginExitCode(t *testing.T) {
 		// So that the second run is able to run main() and this first run can verify the exit status returned by that.
 		//
 		// This technique originates from https://talks.golang.org/2014/testing.slide#23.
-		cmd := exec.Command(os.Args[0], "-test.run=TestCliPluginExitCode")
+		cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=TestCliPluginExitCode")
 		cmd.Env = append(
 			os.Environ(),
 			"RUN_MAIN_FOR_TESTING=1",
@@ -62,20 +62,13 @@ func TestCliPluginExitCode(t *testing.T) {
 		err := cmd.Run()
 
 		exiterr := &exec.ExitError{}
-		ok := errors.As(err, &exiterr)
-		if !ok {
-			t.Fatalf("Unexpected error type returned by os.Exit: %T", err)
-		}
+		require.ErrorAs(t, err, &exiterr)
 
 		assert.Empty(t, stdout.String())
 
-		expectedStderr := "Error: plugin \"exitwith\" exited with error\n"
-		if stderr.String() != expectedStderr {
-			t.Errorf("Expected %q written to stderr: Got %q", expectedStderr, stderr.String())
-		}
+		expectedStderr := "level=WARN msg=\"failed to load plugin (ignoring)\" plugin_yaml=../../pkg/cmd/testdata/helmhome/helm/plugins/noversion/plugin.yaml error=\"failed to load plugin \\\"../../pkg/cmd/testdata/helmhome/helm/plugins/noversion\\\": plugin `version` is required\"\nError: plugin \"exitwith\" exited with error\n"
+		assert.Equal(t, expectedStderr, stderr.String())
 
-		if exiterr.ExitCode() != 43 {
-			t.Errorf("Expected exit code 43: Got %d", exiterr.ExitCode())
-		}
+		assert.Equal(t, 43, exiterr.ExitCode())
 	}
 }

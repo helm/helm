@@ -123,7 +123,6 @@ func (i *Index) Search(term string, threshold int, regexp bool) ([]*Result, erro
 
 // calcScore calculates a score for a match.
 func (i *Index) calcScore(index int, matchline string) int {
-
 	// This is currently tied to the fact that sep is a single char.
 	splits := []int{}
 	s := rune(sep[0])
