@@ -314,7 +314,7 @@ while [[ $# -gt 0 ]]; do
        shift
        if [[ $# -ne 0 ]]; then
            export DESIRED_VERSION="${1}"
-           if [[ "$1" != "v"* ]]; then
+           if [[ "$1" != "v"* && "$1" != "canary" ]]; then
                echo "Expected version arg ('${DESIRED_VERSION}') to begin with 'v', fixing..."
                export DESIRED_VERSION="v${1}"
            fi
