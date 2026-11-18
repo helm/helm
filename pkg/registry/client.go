@@ -357,11 +357,17 @@ func (c *Client) newRegistry(ref string) (*remote.Registry, error) {
 			}
 		}
 	}
-	// Apply per-host TLS certificates from certs.d.
+	// Apply per-host TLS certificates from certs.d, as Configs.RegistryProperties
+	// does for pull and push: look them up by the host the client connects to
+	// (registry-1.docker.io for docker.io) and report a lookup failure rather
+	// than connecting without them.
 	if len(c.configs.CertsDirPaths) > 0 {
-		if certs, err := remoteconfig.LoadCertsDirFromPaths(host, c.configs.CertsDirPaths); err == nil && certs != nil {
-			certs.ApplyToTransport(&props.Transport)
+		certHost := props.Reference.Host()
+		certs, err := remoteconfig.LoadCertsDirFromPaths(certHost, c.configs.CertsDirPaths)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load certs for %s: %w", certHost, err)
 		}
+		certs.ApplyToTransport(&props.Transport)
 	}
 	c.applyOverrides(props)
 	return c.builder.NewRegistry(props)

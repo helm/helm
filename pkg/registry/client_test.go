@@ -541,6 +541,53 @@ func TestLogin_PathScopedBlockedRegistry(t *testing.T) {
 	require.ErrorIs(t, err, remoteconfig.ErrRegistryBlocked)
 }
 
+// Verifies that login reads certs.d the way pull and push do: by the host the
+// client connects to, and failing rather than skipping certificates it could
+// not look up. An unparsable CA file shows which directory was read, because
+// the builder loads it when the registry is created.
+func TestNewRegistry_CertsDir(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		certDir string // certs.d subdirectory holding an unparsable ca.crt
+		host    string
+		wantErr string
+	}{
+		{"lookup failure is returned", "bad[host", "bad[host", "failed to load certs for bad[host"},
+		{"docker.io reads the registry-1.docker.io directory", "registry-1.docker.io", "docker.io", "failed to parse CA certificate"},
+		{"docker.io does not read the docker.io directory", "docker.io", "docker.io", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			certsDir := t.TempDir()
+			if tt.certDir != "" {
+				hostDir := filepath.Join(certsDir, tt.certDir)
+				require.NoError(t, os.MkdirAll(hostDir, 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(hostDir, "ca.crt"), []byte("not a certificate"), 0o600))
+			}
+
+			c, err := NewClient(
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+				ClientOptContainersConfig(true),
+				withRegistriesConfigPath(filepath.Join(t.TempDir(), "registries.conf")),
+			)
+			require.NoError(t, err)
+			c.configs.CertsDirPaths = []string{certsDir}
+
+			_, err = c.newRegistry(tt.host)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestNewClient_DisableCache(t *testing.T) {
 	t.Parallel()
 
