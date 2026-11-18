@@ -70,6 +70,7 @@ Environment variables:
 | $HELM_PLUGINS                      | set the path to the plugins directory                                                                      |
 | $HELM_REGISTRY_CONFIG              | set the path to the registry config file.                                                                  |
 | $HELM_REPOSITORY_CACHE             | set the path to the repository cache directory                                                             |
+| $HELM_CONTENT_CACHE                | set the path to the content cache directory (e.g. charts)                                                  |
 | $HELM_REPOSITORY_CONFIG            | set the path to the repositories file.                                                                     |
 | $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")                                |
 | $HELM_KUBEAPISERVER                | set the Kubernetes API Server Endpoint for authentication                                                  |
