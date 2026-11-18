@@ -311,66 +311,91 @@ func newPolicyEvaluator(configs *remoteconfig.Configs, signatureVerification boo
 	return configs.PolicyEvaluator(opts...)
 }
 
-// newRegistry creates a configured remote.Registry for the given reference (used by Login).
+// loginPlaceholderRepository is appended to a registry host to look up its
+// registries.conf and certs.d settings, because Configs.RegistryProperties only
+// accepts a reference that names a repository.
+const loginPlaceholderRepository = "helm-registry-login"
+
+// newRegistry creates a configured remote.Registry for Login.
 //
-// ref is a registry host optionally followed by a repository path; the path is
-// only used to match path-scoped registries.conf rules.
+// ref is a registry host optionally followed by a namespace path. The
+// registries.conf Location rewrite is applied to the full input, since a rule
+// may be scoped to a path (e.g. "alias.example/team"), so the returned
+// registry's Reference names the canonical registry and namespace the
+// credential is verified against and stored under.
 func (c *Client) newRegistry(ref string) (*remote.Registry, error) {
 	if c.configErr != nil {
 		return nil, c.configErr
 	}
-	host, _, _ := strings.Cut(ref, "/")
 	if c.customHTTPClient {
 		// Legacy path: use c.authorizer directly. registryAuthorizer is not
 		// used here because remote.Login only accepts an *auth.Client.
+		target := ref
+		if rc := c.configs.RegistriesConfig; rc != nil {
+			target = rc.RewriteReference(ref)
+		}
+		host, namespace, _ := strings.Cut(target, "/")
 		reg, err := remote.NewRegistry(host)
 		if err != nil {
 			return nil, err
 		}
+		reg.Reference.Repository = namespace
 		reg.PlainHTTP = c.plainHTTP
 		reg.Client = c.authorizer
 		return reg, nil
 	}
-	// Config-driven path: construct properties for a host-only reference
-	// (no repository path) and apply CLI overrides + certs.d.
-	// Configs.RegistryProperties cannot be used because it requires a
-	// repository, so the host's registries.conf entry is applied here.
-	props := properties.NewRegistryFromReference(properties.Reference{Registry: host})
+	// Config-driven path: resolve the settings the way pull and push do, from
+	// registries.conf (aliases, blocking, rewrites, insecure, token flow,
+	// blocked realm prefixes) and certs.d, then apply CLI overrides.
+	props, err := c.loginProperties(ref)
+	if err != nil {
+		return nil, err
+	}
+	c.applyOverrides(props)
+	reg, err := c.builder.NewRegistry(props)
+	if err != nil {
+		return nil, err
+	}
+	// The builder keeps only the registry name; restore the namespace so
+	// remote.Login stores a namespaced credential.
+	reg.Reference.Repository = props.Reference.Repository
+	return reg, nil
+}
+
+// loginProperties resolves the registry properties for a login target through
+// Configs.RegistryProperties. A host-only target is resolved with a
+// placeholder repository, which is then removed from the result.
+//
+// Source, which records the pre-rewrite location so a repository can re-root
+// references naming it, is cleared: a login has no references to re-root.
+func (c *Client) loginProperties(ref string) (*properties.Registry, error) {
+	if strings.Contains(ref, "/") {
+		props, err := c.configs.RegistryProperties(ref)
+		if err != nil {
+			return nil, err
+		}
+		props.Source = properties.Reference{}
+		return props, nil
+	}
+	probe := ref + "/" + loginPlaceholderRepository
 	if rc := c.configs.RegistriesConfig; rc != nil {
 		if rc.IsBlocked(ref) {
 			return nil, fmt.Errorf("%w: %s", remoteconfig.ErrRegistryBlocked, ref)
 		}
-		if reg := rc.FindRegistry(ref); reg != nil {
-			if reg.Insecure {
-				props.Transport.Insecure = true
-			}
-			switch reg.TokenFlow {
-			case "":
-				// leave as TokenFlowDefault
-			case "oauth2":
-				props.Attributes.TokenFlow = properties.TokenFlowOAuth2
-			case "distribution":
-				props.Attributes.TokenFlow = properties.TokenFlowDistribution
-			default:
-				return nil, fmt.Errorf("invalid token-flow %q for registry %q: must be %q or %q",
-					reg.TokenFlow, reg.Prefix, "oauth2", "distribution")
-			}
+		// The placeholder must select the same registries.conf entry as the
+		// host itself, or a path-scoped rule would apply to a host login.
+		if rc.FindRegistry(probe) != rc.FindRegistry(ref) {
+			return nil, fmt.Errorf("registries.conf has a rule for %q, which Helm uses to look up the settings for %q", probe, ref)
 		}
 	}
-	// Apply per-host TLS certificates from certs.d, as Configs.RegistryProperties
-	// does for pull and push: look them up by the host the client connects to
-	// (registry-1.docker.io for docker.io) and report a lookup failure rather
-	// than connecting without them.
-	if len(c.configs.CertsDirPaths) > 0 {
-		certHost := props.Reference.Host()
-		certs, err := remoteconfig.LoadCertsDirFromPaths(certHost, c.configs.CertsDirPaths)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load certs for %s: %w", certHost, err)
-		}
-		certs.ApplyToTransport(&props.Transport)
+	props, err := c.configs.RegistryProperties(probe)
+	if err != nil {
+		return nil, err
 	}
-	c.applyOverrides(props)
-	return c.builder.NewRegistry(props)
+	namespace := strings.TrimSuffix(props.Reference.Repository, loginPlaceholderRepository)
+	props.Reference.Repository = strings.TrimSuffix(namespace, "/")
+	props.Source = properties.Reference{}
+	return props, nil
 }
 
 // Generic returns a GenericClient for low-level OCI operations
@@ -558,31 +583,18 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return op.err
 	}
 
-	// Apply the registries.conf Location rewrite to the full input, since a
-	// rule may be scoped to a repository path (e.g. "alias.example/team").
-	target := host
-	if c.configs != nil && c.configs.RegistriesConfig != nil {
-		target = c.configs.RegistriesConfig.RewriteReference(host)
-	}
-
-	// Separate the canonical registry hostname from any namespace path.
-	// e.g., "localhost:8000/myrepo" → canonicalHost="localhost:8000", namespacePath="myrepo"
-	canonicalHost, namespacePath, _ := strings.Cut(target, "/")
-
-	// We use the original (alias) reference for newRegistry so its transport
-	// settings (Insecure, certs.d, token-flow, blocked) are preserved, then
-	// redirect the authentication endpoint and credential key to the
-	// canonical host.
 	reg, err := c.newRegistry(host)
 	if err != nil {
 		return err
 	}
-	reg.Reference.Registry = canonicalHost
-	// remote.Login stores the credential under "host/namespace" when a
-	// repository path is set, after validating the path and rejecting
-	// registries such as Docker Hub that cannot use path-scoped credentials.
-	reg.Reference.Repository = namespacePath
+	target := reg.Reference.Registry
+	if reg.Reference.Repository != "" {
+		target += "/" + reg.Reference.Repository
+	}
 
+	// remote.Login stores the credential under "host/namespace" when a
+	// namespace is set, after validating the path and rejecting registries
+	// such as Docker Hub that cannot use path-scoped credentials.
 	cred := credentials.Credential{Username: c.username, Password: c.password}
 	if err := remote.Login(context.Background(), c.credentialsStore, reg, cred); err != nil {
 		return fmt.Errorf("authenticating to %q: %w", target, err)

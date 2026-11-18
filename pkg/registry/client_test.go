@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -456,6 +457,83 @@ func TestNewRegistry_TokenFlow(t *testing.T) {
 	}
 }
 
+// Verifies that login resolves registries.conf through oras-go, as pull and
+// push do, so settings that Helm does not parse itself (such as blocked realm
+// prefixes) apply, and that host-only logins drop the placeholder repository.
+func TestLoginProperties(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		conf        string
+		ref         string
+		wantRef     properties.Reference
+		wantBlocked []netip.Prefix
+		wantErr     string
+	}{
+		{
+			name:        "blocked realm prefixes apply",
+			conf:        "[[registry]]\nprefix = \"realm.example.test\"\nblocked-realm-prefixes = [\"10.0.0.0/8\"]\n",
+			ref:         "realm.example.test",
+			wantRef:     properties.Reference{Registry: "realm.example.test"},
+			wantBlocked: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")},
+		},
+		{
+			name:    "host rewrite",
+			conf:    "[[registry]]\nprefix = \"alias.example.test\"\nlocation = \"canonical.example.test\"\n",
+			ref:     "alias.example.test",
+			wantRef: properties.Reference{Registry: "canonical.example.test"},
+		},
+		{
+			name:    "host rewrite to a namespace",
+			conf:    "[[registry]]\nprefix = \"alias.example.test\"\nlocation = \"canonical.example.test/team\"\n",
+			ref:     "alias.example.test",
+			wantRef: properties.Reference{Registry: "canonical.example.test", Repository: "team"},
+		},
+		{
+			name:    "namespaced login through a host rewrite",
+			conf:    "[[registry]]\nprefix = \"alias.example.test\"\nlocation = \"canonical.example.test\"\n",
+			ref:     "alias.example.test/team",
+			wantRef: properties.Reference{Registry: "canonical.example.test", Repository: "team"},
+		},
+		{
+			name:    "rule for the placeholder repository is rejected",
+			conf:    "[[registry]]\nprefix = \"conflict.example.test/" + loginPlaceholderRepository + "\"\ninsecure = true\n",
+			ref:     "conflict.example.test",
+			wantErr: "which Helm uses to look up the settings",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c, err := NewClient(
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+				ClientOptContainersConfig(true),
+				withRegistriesConfigPath(writeRegistriesConf(t, tt.conf)),
+			)
+			require.NoError(t, err)
+
+			props, err := c.loginProperties(tt.ref)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.wantRef, props.Reference)
+			require.Equal(t, properties.Reference{}, props.Source)
+			if tt.wantBlocked != nil {
+				require.Equal(t, tt.wantBlocked, props.Attributes.BlockedRealmPrefixes)
+			}
+
+			reg, err := c.newRegistry(tt.ref)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantRef, reg.Reference)
+		})
+	}
+}
+
 func TestNewPolicyEvaluator_SignatureVerification(t *testing.T) {
 	t.Parallel()
 
@@ -646,7 +724,7 @@ func TestNewRegistry_CertsDir(t *testing.T) {
 		host    string
 		wantErr string
 	}{
-		{"lookup failure is returned", "bad[host", "bad[host", "failed to load certs for bad[host"},
+		{"invalid host is rejected", "bad[host", "bad[host", "invalid registry"},
 		{"docker.io reads the registry-1.docker.io directory", "registry-1.docker.io", "docker.io", "failed to parse CA certificate"},
 		{"docker.io does not read the docker.io directory", "docker.io", "docker.io", ""},
 	}
