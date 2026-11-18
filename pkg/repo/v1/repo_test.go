@@ -422,6 +422,23 @@ func TestWriteFilePreservesExistingPermissions(t *testing.T) {
 	assert.Equalf(t, os.FileMode(0o640), info.Mode().Perm(), "existing file mode must be preserved")
 }
 
+func TestSplitComponents(t *testing.T) {
+	assert.Equal(t, []string{"config", "repositories.yaml"}, splitComponents("/config/repositories.yaml"))
+	assert.Equal(t, []string{"..", "shared.yaml"}, splitComponents("../shared.yaml"))
+	assert.Nil(t, splitComponents("/"))
+
+	if runtime.GOOS == "windows" {
+		// Windows accepts both separators, and a link payload written with
+		// either one has to split the same way.
+		assert.Equal(t, []string{"config", "repositories.yaml"}, splitComponents(`\config\repositories.yaml`))
+		assert.Equal(t, []string{"..", "shared.yaml"}, splitComponents(`..\shared.yaml`))
+		return
+	}
+
+	// Elsewhere a backslash is an ordinary character in a file name.
+	assert.Equal(t, []string{`config\repositories.yaml`}, splitComponents(`/config\repositories.yaml`))
+}
+
 func TestRepoNotExists(t *testing.T) {
 	_, err := LoadFile("/this/path/does/not/exist.yaml")
 	require.Error(t, err, "expected err to be non-nil when path does not exist")

@@ -278,11 +278,14 @@ func splitRepoFilePath(path string) (string, []string) {
 }
 
 // splitComponents splits a path fragment into its components, dropping the
-// leading separator of an absolute path.
+// leading separator of an absolute path. Windows accepts both "/" and "\\" as
+// separators, so a link payload written with either one has to split: split on
+// only the platform separator and "alias/../repositories.yaml" stays a single
+// component, which resolves against the wrong directory.
 func splitComponents(path string) []string {
-	path = strings.TrimPrefix(path, string(filepath.Separator))
+	path = strings.TrimPrefix(filepath.ToSlash(path), "/")
 	if path == "" {
 		return nil
 	}
-	return strings.Split(path, string(filepath.Separator))
+	return strings.Split(path, "/")
 }
