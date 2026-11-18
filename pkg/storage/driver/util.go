@@ -19,10 +19,17 @@ package driver
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"slices"
+
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/pager"
 
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -30,6 +37,12 @@ import (
 var b64 = base64.StdEncoding
 
 var magicGzip = []byte{0x1f, 0x8b, 0x08}
+
+// listPageSize is the maximum number of objects requested from the API server
+// per List call by the Secrets and ConfigMaps drivers. Fetching every release
+// record in one unpaginated request can run into the API server's request
+// timeout when a namespace holds many (or large) release records.
+var listPageSize int64 = 500
 
 var systemLabels = []string{"name", "owner", "status", "version", "createdAt", "modifiedAt"}
 
@@ -118,4 +131,29 @@ func ContainsSystemLabels(lbs map[string]string) bool {
 
 func GetSystemLabels() []string {
 	return systemLabels
+}
+
+// listAllPaged lists every object matching opts using paginated requests and
+// calls fn for each item. If the continue token expires between pages, it
+// falls back to a single full list, like client-go's pager does.
+func listAllPaged[T runtime.Object](ctx context.Context, opts metav1.ListOptions, pageFn pager.ListPageFunc, fn func(T)) (int, error) {
+	p := pager.New(pageFn)
+	p.PageSize = listPageSize
+
+	obj, _, err := p.List(ctx, opts)
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	err = meta.EachListItem(obj, func(o runtime.Object) error {
+		item, ok := o.(T)
+		if !ok {
+			return fmt.Errorf("unexpected list item type %T", o)
+		}
+		count++
+		fn(item)
+		return nil
+	})
+	return count, err
 }

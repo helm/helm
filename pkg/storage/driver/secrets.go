@@ -28,6 +28,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kblabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
@@ -91,23 +92,18 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
-	list, err := secrets.impl.List(context.Background(), opts)
-	if err != nil {
-		return nil, fmt.Errorf("list: failed to list: %w", err)
-	}
-
 	var results []release.Releaser
 
 	// iterate over the secrets object list
 	// and decode each release
-	for _, item := range list.Items {
+	_, err := listAllPaged(context.Background(), opts, secrets.listPage, func(item *v1.Secret) {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
 			secrets.Logger().Debug(
 				"list failed to decode release", slog.String("key", item.Name),
 				slog.Any("error", err),
 			)
-			continue
+			return
 		}
 
 		rls.Labels = item.Labels
@@ -115,6 +111,9 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 		if filter(rls) {
 			results = append(results, rls)
 		}
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list: failed to list: %w", err)
 	}
 	return results, nil
 }
@@ -132,17 +131,8 @@ func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, err
 
 	opts := metav1.ListOptions{LabelSelector: ls.AsSelector().String()}
 
-	list, err := secrets.impl.List(context.Background(), opts)
-	if err != nil {
-		return nil, fmt.Errorf("query: failed to query with labels: %w", err)
-	}
-
-	if len(list.Items) == 0 {
-		return nil, ErrReleaseNotFound
-	}
-
 	var results []release.Releaser
-	for _, item := range list.Items {
+	count, err := listAllPaged(context.Background(), opts, secrets.listPage, func(item *v1.Secret) {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
 			secrets.Logger().Debug(
@@ -150,12 +140,24 @@ func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, err
 				slog.String("key", item.Name),
 				slog.Any("error", err),
 			)
-			continue
+			return
 		}
 		rls.Labels = item.Labels
 		results = append(results, rls)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query: failed to query with labels: %w", err)
+	}
+
+	if count == 0 {
+		return nil, ErrReleaseNotFound
 	}
 	return results, nil
+}
+
+// listPage fetches a single page of secrets for the list pager.
+func (secrets *Secrets) listPage(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+	return secrets.impl.List(ctx, opts)
 }
 
 // Create creates a new Secret holding the release. If the
