@@ -137,7 +137,7 @@ func TestStorageList(t *testing.T) {
 		require.NoError(t, storage.Create(rls6), "Storing release 'rls6'")
 	}
 
-	var listTests = []struct {
+	listTests := []struct {
 		Description string
 		NumExpected int
 		ListFunc    func() ([]release.Releaser, error)
@@ -263,24 +263,31 @@ type MaxHistoryMockDriver struct {
 func NewMaxHistoryMockDriver(d driver.Driver) *MaxHistoryMockDriver {
 	return &MaxHistoryMockDriver{Driver: d}
 }
+
 func (d *MaxHistoryMockDriver) Create(key string, rls release.Releaser) error {
 	return d.Driver.Create(key, rls)
 }
+
 func (d *MaxHistoryMockDriver) Update(key string, rls release.Releaser) error {
 	return d.Driver.Update(key, rls)
 }
+
 func (d *MaxHistoryMockDriver) Delete(_ string) (release.Releaser, error) {
 	return nil, errMaxHistoryMockDriverSomethingHappened
 }
+
 func (d *MaxHistoryMockDriver) Get(key string) (release.Releaser, error) {
 	return d.Driver.Get(key)
 }
+
 func (d *MaxHistoryMockDriver) List(filter func(release.Releaser) bool) ([]release.Releaser, error) {
 	return d.Driver.List(filter)
 }
+
 func (d *MaxHistoryMockDriver) Query(labels map[string]string) ([]release.Releaser, error) {
 	return d.Driver.Query(labels)
 }
+
 func (d *MaxHistoryMockDriver) Name() string {
 	return d.Driver.Name()
 }

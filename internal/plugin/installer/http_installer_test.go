@@ -173,7 +173,7 @@ func TestExtract(t *testing.T) {
 	// Write a tarball to a buffer for us to extract
 	var tarbuf bytes.Buffer
 	tw := tar.NewWriter(&tarbuf)
-	var files = []struct {
+	files := []struct {
 		Name, Body string
 		Mode       int64
 	}{
@@ -293,7 +293,7 @@ func TestExtractWithNestedDirectories(t *testing.T) {
 	// Write a tarball with nested directory structure
 	var tarbuf bytes.Buffer
 	tw := tar.NewWriter(&tarbuf)
-	var files = []struct {
+	files := []struct {
 		Name     string
 		Body     string
 		Mode     int64

@@ -159,7 +159,7 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 	)
 	defer ts.Stop()
 
-	var invalidURL = ts.URL() + "55"
+	invalidURL := ts.URL() + "55"
 	r1, err := repo.NewChartRepository(&repo.Entry{
 		Name: "charts",
 		URL:  invalidURL,

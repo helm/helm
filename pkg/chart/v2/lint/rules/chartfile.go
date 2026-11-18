@@ -161,7 +161,6 @@ func validateChartVersion(cf *chart.Metadata) error {
 
 func validateChartVersionStrictSemVerV2(cf *chart.Metadata) error {
 	_, err := semver.StrictNewVersion(cf.Version)
-
 	if err != nil {
 		return fmt.Errorf("version '%s' is not a valid SemVerV2", cf.Version)
 	}

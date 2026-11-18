@@ -152,7 +152,6 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 		sort.Strings(formatNames)
 		return formatNames, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -269,7 +268,7 @@ func (p *postRendererArgsSlice) GetSlice() []string {
 	return p.options.args
 }
 
-func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirective) {
+func compVersionFlag(chartRef, _ string) ([]string, cobra.ShellCompDirective) {
 	chartInfo := strings.Split(chartRef, "/")
 	if len(chartInfo) != 2 {
 		return nil, cobra.ShellCompDirectiveNoFileComp

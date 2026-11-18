@@ -126,7 +126,7 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	var currentUID = os.Getuid()
+	currentUID := os.Getuid()
 
 	if currentUID == 0 {
 		// Skipping if root, because all files are accessible
@@ -155,7 +155,7 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	var currentUID = os.Getuid()
+	currentUID := os.Getuid()
 
 	if currentUID == 0 {
 		// Skipping if root, because all files are accessible
@@ -217,7 +217,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	var currentUID = os.Getuid()
+	currentUID := os.Getuid()
 
 	if currentUID == 0 {
 		// Skipping if root, because all files are accessible
@@ -319,7 +319,7 @@ func TestCopyFileFail(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	var currentUID = os.Getuid()
+	currentUID := os.Getuid()
 
 	if currentUID == 0 {
 		// Skipping if root, because all files are accessible
@@ -389,7 +389,7 @@ func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
 }
 
 func TestIsDir(t *testing.T) {
-	var currentUID = os.Getuid()
+	currentUID := os.Getuid()
 
 	if currentUID == 0 {
 		// Skipping if root, because all files are accessible
@@ -441,7 +441,7 @@ func TestIsDir(t *testing.T) {
 }
 
 func TestIsSymlink(t *testing.T) {
-	var currentUID = os.Getuid()
+	currentUID := os.Getuid()
 
 	if currentUID == 0 {
 		// Skipping if root, because all files are accessible

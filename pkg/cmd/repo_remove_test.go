@@ -76,7 +76,7 @@ func TestRepoRemove(t *testing.T) {
 	assert.Falsef(t, f.Has(testRepoName), "%s was not successfully removed from repositories list", testRepoName)
 
 	// Test removal of multiple repos in one go
-	var testRepoNames = []string{"foo", "bar", "baz"}
+	testRepoNames := []string{"foo", "bar", "baz"}
 	cacheFiles := make(map[string][]string, len(testRepoNames))
 
 	// Add test repos
@@ -119,7 +119,7 @@ func TestRepoRemove(t *testing.T) {
 	}
 }
 
-func createCacheFiles(rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
+func createCacheFiles(rootDir, repoName string) (cacheIndexFile, cacheChartsFile string) {
 	cacheIndexFile = filepath.Join(rootDir, helmpath.CacheIndexFile(repoName))
 	mf, _ := os.Create(cacheIndexFile)
 	mf.Close()
@@ -131,7 +131,7 @@ func createCacheFiles(rootDir string, repoName string) (cacheIndexFile string, c
 	return cacheIndexFile, cacheChartsFile
 }
 
-func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string, repoName string) {
+func testCacheFiles(t *testing.T, cacheIndexFile, cacheChartsFile, repoName string) {
 	t.Helper()
 	_, err := os.Stat(cacheIndexFile)
 	require.Errorf(t, err, "Error cache index file was not removed for repository %s", repoName)
@@ -151,7 +151,7 @@ func TestRepoRemoveCompletion(t *testing.T) {
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 	repoCache := filepath.Join(rootDir, "cache")
 
-	var testRepoNames = []string{"foo", "bar", "baz"}
+	testRepoNames := []string{"foo", "bar", "baz"}
 
 	// Add test repos
 	for _, repoName := range testRepoNames {

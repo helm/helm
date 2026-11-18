@@ -28,8 +28,10 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-var k8sNativeScheme *runtime.Scheme
-var k8sNativeSchemeOnce sync.Once
+var (
+	k8sNativeScheme     *runtime.Scheme
+	k8sNativeSchemeOnce sync.Once
+)
 
 // AsVersioned converts the given info into a runtime.Object with the correct
 // group and version set
@@ -41,7 +43,7 @@ func AsVersioned(info *resource.Info) runtime.Object {
 // RESTMapping. If no mapping is provided, the default schema versioner is used
 func convertWithMapper(obj runtime.Object, mapping *meta.RESTMapping) runtime.Object {
 	s := kubernetesNativeScheme()
-	var gv = runtime.GroupVersioner(schema.GroupVersions(s.PrioritizedVersionsAllGroups()))
+	gv := runtime.GroupVersioner(schema.GroupVersions(s.PrioritizedVersionsAllGroups()))
 	if mapping != nil {
 		gv = mapping.GroupVersionKind.GroupVersion()
 	}

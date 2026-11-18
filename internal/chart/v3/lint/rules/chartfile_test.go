@@ -44,8 +44,10 @@ var (
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )
 
-var badChart, _ = chartutil.LoadChartfile(badChartFilePath)
-var badChartName, _ = chartutil.LoadChartfile(badChartNamePath)
+var (
+	badChart, _     = chartutil.LoadChartfile(badChartFilePath)
+	badChartName, _ = chartutil.LoadChartfile(badChartNamePath)
+)
 
 // Validation functions Test
 func TestValidateChartYamlNotDirectory(t *testing.T) {
@@ -68,7 +70,7 @@ func TestValidateChartName(t *testing.T) {
 }
 
 func TestValidateChartVersion(t *testing.T) {
-	var failTest = []struct {
+	failTest := []struct {
 		Version  string
 		ErrorMsg string
 	}{
@@ -80,7 +82,7 @@ func TestValidateChartVersion(t *testing.T) {
 		{"1", "'1' is not a valid SemVerV2"},
 	}
 
-	var successTest = []string{"0.0.1", "0.0.1+build", "0.0.1-beta"}
+	successTest := []string{"0.0.1", "0.0.1+build", "0.0.1-beta"}
 
 	for i, test := range failTest {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -96,7 +98,7 @@ func TestValidateChartVersion(t *testing.T) {
 }
 
 func TestValidateChartMaintainer(t *testing.T) {
-	var failTest = []struct {
+	failTest := []struct {
 		Name     string
 		Email    string
 		ErrorMsg string
@@ -106,7 +108,7 @@ func TestValidateChartMaintainer(t *testing.T) {
 		{"John Snow", "wrongFormatEmail.com", "invalid email"},
 	}
 
-	var successTest = []struct {
+	successTest := []struct {
 		Name  string
 		Email string
 	}{
@@ -134,8 +136,8 @@ func TestValidateChartMaintainer(t *testing.T) {
 }
 
 func TestValidateChartSources(t *testing.T) {
-	var failTest = []string{"", "RiverRun", "john@winterfell", "riverrun.io"}
-	var successTest = []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish"}
+	failTest := []string{"", "RiverRun", "john@winterfell", "riverrun.io"}
+	successTest := []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish"}
 	for _, test := range failTest {
 		t.Run(test, func(t *testing.T) {
 			badChart.Sources = []string{test}
@@ -166,8 +168,8 @@ func TestValidateChartIconPresence(t *testing.T) {
 }
 
 func TestValidateChartIconURL(t *testing.T) {
-	var failTest = []string{"RiverRun", "john@winterfell", "riverrun.io"}
-	var successTest = []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish.png"}
+	failTest := []string{"RiverRun", "john@winterfell", "riverrun.io"}
+	successTest := []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish.png"}
 	for _, test := range failTest {
 		t.Run(test, func(t *testing.T) {
 			badChart.Icon = test

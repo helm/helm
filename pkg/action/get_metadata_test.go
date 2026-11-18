@@ -435,7 +435,7 @@ func TestGetMetadata_Run_DifferentStatuses(t *testing.T) {
 
 func TestGetMetadata_Run_UnreachableKubeClient(t *testing.T) {
 	cfg := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.ConnectionError = errors.New("connection refused")
 	cfg.KubeClient = &failingKubeClient
 
@@ -546,7 +546,7 @@ func TestMetadata_FormattedDepNames(t *testing.T) {
 }
 
 func convertDeps(deps []*chart.Dependency) []ci.Dependency {
-	var newDeps = make([]ci.Dependency, len(deps))
+	newDeps := make([]ci.Dependency, len(deps))
 	for i, c := range deps {
 		newDeps[i] = c
 	}

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var cases = []struct {
@@ -64,6 +65,52 @@ func TestFileGlob(t *testing.T) {
 
 	as.Len(matched, 2, "Should be two files in glob story/**")
 	as.Equal("Joseph Conrad", matched.Get("story/author.txt"))
+}
+
+func TestFileGlobInvalidPattern(t *testing.T) {
+	f := getTestFiles()
+
+	// Glob stays tolerant: an invalid pattern falls back to matching every file.
+	matched := f.Glob("story/[")
+	require.Len(t, matched, len(f))
+
+	// MustGlob reports the invalid pattern instead of widening the match.
+	mustMatched, err := f.MustGlob("story/[")
+	require.Error(t, err)
+	require.Nil(t, mustMatched)
+	require.ErrorContains(t, err, `invalid glob pattern "story/[":`)
+}
+
+func TestFileMustGlobValidPattern(t *testing.T) {
+	f := getTestFiles()
+
+	matched, err := f.MustGlob("story/**")
+	require.NoError(t, err)
+	require.Len(t, matched, 2)
+	require.Equal(t, "Joseph Conrad", matched.Get("story/author.txt"))
+	require.Equal(t, "The Secret Sharer", matched.Get("story/name.txt"))
+}
+
+func TestFileMustGlobNoMatches(t *testing.T) {
+	f := getTestFiles()
+
+	matched, err := f.MustGlob("missing/**")
+	require.NoError(t, err)
+	require.Empty(t, matched)
+	require.Equal(t, "{}", matched.AsConfig())
+	require.Equal(t, "{}", matched.AsSecrets())
+}
+
+func TestFileMustGlobAsConfigAndSecrets(t *testing.T) {
+	f := getTestFiles()
+
+	matched, err := f.MustGlob("ship/**")
+	require.NoError(t, err)
+	require.Equal(t, "captain.txt: The Captain\nstowaway.txt: Legatt", matched.AsConfig())
+
+	secrets := matched.AsSecrets()
+	require.Contains(t, secrets, "captain.txt:")
+	require.Contains(t, secrets, "stowaway.txt:")
 }
 
 func TestToConfig(t *testing.T) {

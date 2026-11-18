@@ -59,6 +59,7 @@ func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 	is.Nil(res)
 	is.NoError(err)
 }
+
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -169,7 +170,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
 	t.Helper()
 	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.ConnectionError = errors.New("connection refused")
 	config.KubeClient = &failingKubeClient
 

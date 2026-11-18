@@ -76,11 +76,8 @@ func newPodWithStatus(name string, status v1.PodStatus, namespace string) v1.Pod
 		ns = namespace
 	}
 	return v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-			SelfLink:  "/api/v1/namespaces/default/pods/" + name,
-		},
+		Name:      name,
+		Namespace: ns,
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{
 				Name:  "app:v4",
@@ -2260,7 +2257,8 @@ metadata:
 }
 
 func createManifest(t *testing.T, manifest string,
-	fakeMapper meta.RESTMapper, fakeClient *dynamicfake.FakeDynamicClient) {
+	fakeMapper meta.RESTMapper, fakeClient *dynamicfake.FakeDynamicClient,
+) {
 	t.Helper()
 
 	m := make(map[string]any)

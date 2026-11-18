@@ -97,7 +97,6 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		}
 		return compVersionFlag(args[0], toComplete)
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

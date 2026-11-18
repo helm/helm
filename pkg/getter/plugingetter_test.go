@@ -17,7 +17,6 @@ package getter
 
 import (
 	"context"
-
 	"testing"
 	"time"
 

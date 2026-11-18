@@ -221,7 +221,6 @@ type pluginCommand struct {
 func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin) {
 	// Parse the yaml file providing the plugin's sub-commands and flags
 	cmds, err := loadFile(plug.Dir() + string(filepath.Separator) + pluginStaticCompletionFile)
-
 	if err != nil {
 		// The file could be missing or invalid.  No static completion for this plugin.
 		slog.Debug("plugin completion file loading", slog.String("error", err.Error()))

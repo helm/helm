@@ -32,7 +32,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
@@ -231,7 +230,7 @@ type (
 // Returns true if the host contains a path component (i.e., contains a '/').
 func warnIfHostHasPath(host string) bool {
 	if strings.Contains(host, "/") {
-		registryHost := strings.Split(host, "/")[0]
+		registryHost, _, _ := strings.Cut(host, "/")
 		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
 		return true
 	}
@@ -266,7 +265,6 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	c.authorizer.ForceAttemptOAuth2 = false
 
 	key := credentials.ServerAddressFromRegistry(host)
-	key = credentials.ServerAddressFromHostname(key)
 	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
 		return err
 	}
@@ -276,7 +274,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
-func LoginOptBasicAuth(username string, password string) LoginOption {
+func LoginOptBasicAuth(username, password string) LoginOption {
 	return func(o *loginOperation) {
 		o.client.username = username
 		o.client.password = password
@@ -322,6 +320,11 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 		transport.TLSClientConfig = &tls.Config{}
 	}
 
+	// Idle connections were established under the previous TLS configuration.
+	// Drop them so the settings being applied here take effect on the next
+	// request instead of being bypassed by a pooled connection.
+	transport.CloseIdleConnections()
+
 	return transport.TLSClientConfig, nil
 }
 
@@ -329,7 +332,6 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(o *loginOperation) {
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
-
 		if err != nil {
 			panic(err)
 		}
@@ -909,12 +911,13 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 // tagManifest prepares and tags a manifest in memory storage
 func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
-	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
+	ociAnnotations map[string]string, parsedRef reference,
+) (ocispec.Descriptor, error) {
 	manifest := ocispec.Manifest{
-		Versioned:   specs.Versioned{SchemaVersion: 2},
-		Config:      configDescriptor,
-		Layers:      layers,
-		Annotations: ociAnnotations,
+		SchemaVersion: 2,
+		Config:        configDescriptor,
+		Layers:        layers,
+		Annotations:   ociAnnotations,
 	}
 
 	manifestData, err := json.Marshal(manifest)

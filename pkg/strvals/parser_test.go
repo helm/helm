@@ -439,7 +439,8 @@ func TestParseInto(t *testing.T) {
 					"inner2": "value2",
 					"inner3": "value3",
 					"inner4": 4,
-				}},
+				},
+			},
 			err: false,
 		},
 		{

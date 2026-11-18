@@ -424,7 +424,6 @@ func TestIndexAdd(t *testing.T) {
 		baseURL  string
 		digest   string
 	}{
-
 		{&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"},
 		{&chart.Metadata{APIVersion: "v2", Name: "alpine", Version: "0.1.0"}, "/home/charts/alpine-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"},
 		{&chart.Metadata{APIVersion: "v2", Name: "deis", Version: "0.1.0"}, "/home/charts/deis-0.1.0.tgz", "http://example.com/charts/", "sha256:1234567890"},
@@ -536,6 +535,7 @@ entries:
       home: https://github.com/something/else
       digest: "sha256:1234567890abcdef"
 `
+
 var indexWithDuplicatesInLastChartDeps = `
 apiVersion: v1
 entries:

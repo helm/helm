@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -59,7 +60,6 @@ func TestDependencyBuildCmd(t *testing.T) {
 
 	cmd := fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s --plain-http", filepath.Join(rootDir, chartname), repoFile, rootDir)
 	_, out, err := executeActionCommand(cmd)
-
 	// In the first pass, we basically want the same results as an update.
 	if err != nil {
 		t.Logf("Output: %s", out)
@@ -105,7 +105,6 @@ func TestDependencyBuildCmd(t *testing.T) {
 
 	skipRefreshCmd := fmt.Sprintf("dependency build '%s' --skip-refresh --repository-config %s --repository-cache %s --plain-http", filepath.Join(rootDir, chartname), repoFile, rootDir)
 	_, out, err = executeActionCommand(skipRefreshCmd)
-
 	// In this pass, we check --skip-refresh option becomes effective.
 	if err != nil {
 		t.Logf("Output: %s", out)
@@ -136,10 +135,74 @@ func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
 
 	cmd := fmt.Sprintf("dependency build '%s'", chartName)
 	_, out, err := executeActionCommand(cmd)
-
 	// Want to make sure the build can verify Helm v2 hash
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
+}
+
+func TestDefaultKeyring(t *testing.T) {
+	touch := func(t *testing.T, path string) {
+		t.Helper()
+		require.NoError(t, os.WriteFile(path, []byte("test"), 0o644))
+	}
+
+	tests := []struct {
+		name  string
+		files []string
+		want  string
+	}{
+		{"legacy keyring only", []string{"pubring.gpg"}, "pubring.gpg"},
+		{"keybox only", []string{"pubring.kbx"}, "pubring.kbx"},
+		{"legacy keyring preferred over keybox", []string{"pubring.gpg", "pubring.kbx"}, "pubring.gpg"},
+		{"neither present falls back to legacy path", nil, "pubring.gpg"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("GNUPGHOME", dir)
+			for _, f := range tt.files {
+				touch(t, filepath.Join(dir, f))
+			}
+			assert.Equal(t, filepath.Join(dir, tt.want), defaultKeyring())
+		})
+	}
+
+	t.Run("stat error other than not-exist keeps the legacy path", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("directory permissions are not enforced on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses directory permissions")
+		}
+
+		parent := t.TempDir()
+		dir := filepath.Join(parent, ".gnupg")
+		require.NoError(t, os.MkdirAll(dir, 0o700))
+		touch(t, filepath.Join(dir, "pubring.kbx"))
+		t.Setenv("GNUPGHOME", dir)
+
+		// Make the directory unsearchable so stat on both keyrings fails
+		// with a permission error rather than "not exist".
+		require.NoError(t, os.Chmod(dir, 0o000))
+		t.Cleanup(func() { require.NoError(t, os.Chmod(dir, 0o700)) })
+
+		assert.Equal(t, filepath.Join(dir, "pubring.gpg"), defaultKeyring())
+	})
+
+	t.Run("no GNUPGHOME falls back to the home directory", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv("GNUPGHOME", home) // register restoration before unsetting
+		require.NoError(t, os.Unsetenv("GNUPGHOME"))
+
+		gnupgDir := filepath.Join(home, ".gnupg")
+		require.NoError(t, os.MkdirAll(gnupgDir, 0o700))
+
+		assert.Equal(t, filepath.Join(gnupgDir, "pubring.gpg"), defaultKeyring())
+
+		touch(t, filepath.Join(gnupgDir, "pubring.kbx"))
+		assert.Equal(t, filepath.Join(gnupgDir, "pubring.kbx"), defaultKeyring())
+	})
 }
