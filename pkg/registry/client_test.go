@@ -583,7 +583,7 @@ func TestLogin_TLSOptionErrors(t *testing.T) {
 		{
 			name:       "TLS files with an unsupported transport",
 			clientOpts: []ClientOption{ClientOptHTTPClient(&http.Client{Transport: unsupportedTransport{}})},
-			loginOpts:  []LoginOption{LoginOptTLSClientConfig("", "", badCA)},
+			loginOpts:  []LoginOption{LoginOptTLSClientConfig(tlsCert, tlsKey, tlsCA)},
 			wantErr:    "unable to access TLS client configuration",
 		},
 		{
@@ -600,6 +600,11 @@ func TestLogin_TLSOptionErrors(t *testing.T) {
 			},
 			wantErr: "reading CA file",
 		},
+		{
+			name:      "valid client certificate with an unparsable CA file",
+			loginOpts: []LoginOption{LoginOptTLSClientConfig(tlsCert, tlsKey, badCA)},
+			wantErr:   "unable to parse CA file",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -614,6 +619,16 @@ func TestLogin_TLSOptionErrors(t *testing.T) {
 
 			loginOpts := append([]LoginOption{LoginOptBasicAuth("u", "p")}, tt.loginOpts...)
 			require.ErrorContains(t, c.Login("registry.example.test", loginOpts...), tt.wantErr)
+
+			// A failed option leaves the client as it was, so later
+			// operations do not pick up settings that could not be applied.
+			require.Empty(t, c.certFile)
+			require.Empty(t, c.keyFile)
+			require.Empty(t, c.caFile)
+			if tlsConfig, err := ensureTLSConfig(c.authorizer, nil); err == nil {
+				require.Empty(t, tlsConfig.Certificates)
+				require.Nil(t, tlsConfig.RootCAs)
+			}
 		})
 	}
 }

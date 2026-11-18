@@ -674,39 +674,45 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 		if (certFile == "" || keyFile == "") && caFile == "" {
 			return
 		}
-		// Set file path fields for the config-driven path.
-		if certFile != "" && keyFile != "" {
-			o.client.certFile = certFile
-			o.client.keyFile = keyFile
-		}
-		if caFile != "" {
-			o.client.caFile = caFile
-		}
-		// Also update the authorizer transport for the legacy path (customHTTPClient=true).
-		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
-		if err != nil {
-			o.fail(err)
-			return
-		}
-		if certFile != "" && keyFile != "" {
-			authCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-			if err != nil {
+		// Load and check every file before changing the client, so a failed
+		// Login does not leave settings behind that break later operations.
+		hasCert := certFile != "" && keyFile != ""
+		var authCert tls.Certificate
+		if hasCert {
+			var err error
+			if authCert, err = tls.LoadX509KeyPair(certFile, keyFile); err != nil {
 				o.fail(fmt.Errorf("loading client certificate %q and key %q: %w", certFile, keyFile, err))
 				return
 			}
-			tlsConfig.Certificates = []tls.Certificate{authCert}
 		}
+		var certPool *x509.CertPool
 		if caFile != "" {
-			certPool := x509.NewCertPool()
 			ca, err := os.ReadFile(caFile)
 			if err != nil {
 				o.fail(fmt.Errorf("reading CA file: %w", err))
 				return
 			}
+			certPool = x509.NewCertPool()
 			if !certPool.AppendCertsFromPEM(ca) {
 				o.fail(fmt.Errorf("unable to parse CA file: %q", caFile))
 				return
 			}
+		}
+		// The authorizer transport is used by the legacy path (customHTTPClient=true).
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
+		if err != nil {
+			o.fail(err)
+			return
+		}
+
+		// The file paths are used by the config-driven path.
+		if hasCert {
+			o.client.certFile = certFile
+			o.client.keyFile = keyFile
+			tlsConfig.Certificates = []tls.Certificate{authCert}
+		}
+		if certPool != nil {
+			o.client.caFile = caFile
 			tlsConfig.RootCAs = certPool
 		}
 	}
