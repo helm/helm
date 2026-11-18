@@ -416,8 +416,7 @@ func ClientOptWriter(out io.Writer) ClientOption {
 // the implementation.
 //
 // Deprecated: use ClientOptHTTPClient, ClientOptBasicAuth or
-// ClientOptCredentialsFile to configure authorization, or
-// ClientOptRegistryAuthorizer to replace the client used for registry requests.
+// ClientOptCredentialsFile to configure authorization.
 func ClientOptAuthorizer(authorizer authv2.Client) ClientOption {
 	return func(client *Client) {
 		client.authorizer = authClientFromV2(authorizer)
