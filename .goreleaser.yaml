@@ -58,10 +58,53 @@ builds:
     no_unique_dist_dir: true
     binary: "{{ .Os }}-{{ .Arch }}/helm"
     ldflags:
-      - "{{ .Env.LDFLAGS }}"
+      - -w -s
+      - -extldflags "-static"
+      - -X helm.sh/helm/v4/internal/version.version={{ .Tag }}
+      - -X helm.sh/helm/v4/internal/version.metadata=
+      - -X helm.sh/helm/v4/internal/version.gitCommit={{ .FullCommit }}
+      - -X helm.sh/helm/v4/internal/version.gitTreeState=clean
     flags:
       - -trimpath
     dir: .
+
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}.src"
+
+archives:
+  - formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: "helm-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+    wrap_in_directory: true
+    files:
+      - LICENSE
+      - README.md
+    builds_info:
+      mtime: "{{ .CommitTimestamp }}"
+
+sboms:
+  - artifacts: archive
+  - id: source
+    artifacts: source
+
+checksum:
+  name_template: "checksums.txt"
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
 
 snapshot:
   version_template: "{{ if index .Env \"GORELEASER_CURRENT_TAG\" }}{{ .Env.GORELEASER_CURRENT_TAG }}{{ else }}{{ incpatch .Version }}-next{{ end }}"
