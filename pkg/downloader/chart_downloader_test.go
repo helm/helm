@@ -16,12 +16,16 @@ limitations under the License.
 package downloader
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -479,6 +483,113 @@ func TestDownloadToCachePassesOptionsToProvenance(t *testing.T) {
 	digest := sha256.Sum256(chartData)
 	_, err = c.Cache.Get(digest, CacheProv)
 	require.NoError(t, err, "provenance file should be in cache")
+}
+
+func TestProvenanceDownloadUsesCompression(t *testing.T) {
+	chartData, err := os.ReadFile("testdata/signtest-0.1.0.tgz")
+	require.NoError(t, err)
+	provData, err := os.ReadFile("testdata/signtest-0.1.0.tgz.prov")
+	require.NoError(t, err)
+
+	var gzippedProv bytes.Buffer
+	gz := gzip.NewWriter(&gzippedProv)
+	_, err = gz.Write(provData)
+	require.NoError(t, err)
+	require.NoError(t, gz.Close())
+
+	var mu sync.Mutex
+	var chartAccept, provAccept string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/signtest-0.1.0.tgz":
+			mu.Lock()
+			chartAccept = r.Header.Get("Accept-Encoding")
+			mu.Unlock()
+			_, _ = w.Write(chartData)
+		case "/signtest-0.1.0.tgz.prov":
+			acceptEncoding := r.Header.Get("Accept-Encoding")
+			mu.Lock()
+			provAccept = acceptEncoding
+			mu.Unlock()
+			if strings.Contains(acceptEncoding, "gzip") {
+				w.Header().Set("Content-Encoding", "gzip")
+				_, _ = w.Write(gzippedProv.Bytes())
+				return
+			}
+			_, _ = w.Write(provData)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	for _, tt := range []struct {
+		name     string
+		download func(t *testing.T, c *ChartDownloader) ([]byte, []byte)
+	}{
+		{
+			name: "DownloadTo",
+			download: func(t *testing.T, c *ChartDownloader) ([]byte, []byte) {
+				dest := t.TempDir()
+				destfile, _, err := c.DownloadTo(srv.URL+"/signtest-0.1.0.tgz", "", dest)
+				require.NoError(t, err)
+				chart, err := os.ReadFile(destfile)
+				require.NoError(t, err)
+				prov, err := os.ReadFile(destfile + ".prov")
+				require.NoError(t, err)
+				return chart, prov
+			},
+		},
+		{
+			name: "DownloadToCache",
+			download: func(t *testing.T, c *ChartDownloader) ([]byte, []byte) {
+				pth, _, err := c.DownloadToCache(srv.URL+"/signtest-0.1.0.tgz", "")
+				require.NoError(t, err)
+				chart, err := os.ReadFile(pth)
+				require.NoError(t, err)
+				digest := sha256.Sum256(chartData)
+				ppth, err := c.Cache.Get(digest, CacheProv)
+				require.NoError(t, err)
+				prov, err := os.ReadFile(ppth)
+				require.NoError(t, err)
+				return chart, prov
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			mu.Lock()
+			chartAccept, provAccept = "", ""
+			mu.Unlock()
+
+			contentCache := t.TempDir()
+			c := ChartDownloader{
+				Out:              os.Stderr,
+				Verify:           VerifyLater,
+				RepositoryConfig: repoConfig,
+				RepositoryCache:  repoCache,
+				Getters: getter.All(&cli.EnvSettings{
+					RepositoryConfig: repoConfig,
+					RepositoryCache:  repoCache,
+					ContentCache:     contentCache,
+				}),
+				Options: []getter.Option{
+					getter.WithBasicAuth("username", "password"),
+				},
+				ContentCache: contentCache,
+			}
+
+			chart, prov := tt.download(t, &c)
+
+			assert.Equal(t, chartData, chart, "chart archive must be stored unmodified")
+			assert.Equal(t, provData, prov, "gzipped provenance response must be transparently decompressed")
+
+			mu.Lock()
+			defer mu.Unlock()
+			assert.NotContains(t, chartAccept, "gzip", "chart archive download must not request compression")
+			assert.Contains(t, provAccept, "gzip", "provenance download must request compression")
+		})
+	}
 }
 
 func TestStripDigestAlgorithm(t *testing.T) {
