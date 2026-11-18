@@ -592,6 +592,14 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	return nil
 }
 
+// fail records an error from a LoginOption, which Login returns before
+// contacting the registry. The first error is kept.
+func (o *loginOperation) fail(err error) {
+	if o.err == nil {
+		o.err = err
+	}
+}
+
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
 func LoginOptBasicAuth(username, password string) LoginOption {
 	return func(o *loginOperation) {
@@ -653,7 +661,7 @@ func LoginOptInsecure(insecure bool) LoginOption {
 		// Also update the authorizer transport for the legacy path (customHTTPClient=true).
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
 		if err != nil {
-			o.err = err
+			o.fail(err)
 			return
 		}
 		tlsConfig.InsecureSkipVerify = insecure
@@ -677,12 +685,14 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 		// Also update the authorizer transport for the legacy path (customHTTPClient=true).
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
 		if err != nil {
-			panic(err)
+			o.fail(err)
+			return
 		}
 		if certFile != "" && keyFile != "" {
 			authCert, err := tls.LoadX509KeyPair(certFile, keyFile)
 			if err != nil {
-				panic(err)
+				o.fail(fmt.Errorf("loading client certificate %q and key %q: %w", certFile, keyFile, err))
+				return
 			}
 			tlsConfig.Certificates = []tls.Certificate{authCert}
 		}
@@ -690,10 +700,12 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 			certPool := x509.NewCertPool()
 			ca, err := os.ReadFile(caFile)
 			if err != nil {
-				panic(err)
+				o.fail(fmt.Errorf("reading CA file: %w", err))
+				return
 			}
 			if !certPool.AppendCertsFromPEM(ca) {
-				panic(fmt.Errorf("unable to parse CA file: %q", caFile))
+				o.fail(fmt.Errorf("unable to parse CA file: %q", caFile))
+				return
 			}
 			tlsConfig.RootCAs = certPool
 		}
@@ -707,9 +719,9 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 // switches the client to the legacy path, which uses the authorizer's transport.
 func LoginOptTLSClientConfigFromConfig(conf *tls.Config) LoginOption {
 	return func(o *loginOperation) {
-		_, err := ensureTLSConfig(o.client.authorizer, conf)
-		if err != nil {
-			panic(err)
+		if _, err := ensureTLSConfig(o.client.authorizer, conf); err != nil {
+			o.fail(err)
+			return
 		}
 		o.client.customHTTPClient = true
 	}

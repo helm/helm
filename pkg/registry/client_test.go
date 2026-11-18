@@ -18,7 +18,9 @@ package registry
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -539,6 +541,81 @@ func TestLogin_PathScopedBlockedRegistry(t *testing.T) {
 
 	err = c.Login("blocked.example.test/team", LoginOptBasicAuth("u", "p"))
 	require.ErrorIs(t, err, remoteconfig.ErrRegistryBlocked)
+}
+
+type unsupportedTransport struct{}
+
+func (unsupportedTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("unexpected request")
+}
+
+// Verifies that a LoginOption that cannot apply its TLS settings makes Login
+// return an error, rather than panic, before any request is made.
+func TestLogin_TLSOptionErrors(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	badCA := filepath.Join(dir, "ca.crt")
+	require.NoError(t, os.WriteFile(badCA, []byte("not a certificate"), 0o600))
+	missing := filepath.Join(dir, "missing")
+
+	tests := []struct {
+		name       string
+		clientOpts []ClientOption
+		loginOpts  []LoginOption
+		wantErr    string
+	}{
+		{
+			name:      "missing client certificate",
+			loginOpts: []LoginOption{LoginOptTLSClientConfig(missing+".crt", missing+".key", "")},
+			wantErr:   "loading client certificate",
+		},
+		{
+			name:      "missing CA file",
+			loginOpts: []LoginOption{LoginOptTLSClientConfig("", "", missing)},
+			wantErr:   "reading CA file",
+		},
+		{
+			name:      "unparsable CA file",
+			loginOpts: []LoginOption{LoginOptTLSClientConfig("", "", badCA)},
+			wantErr:   "unable to parse CA file",
+		},
+		{
+			name:       "TLS files with an unsupported transport",
+			clientOpts: []ClientOption{ClientOptHTTPClient(&http.Client{Transport: unsupportedTransport{}})},
+			loginOpts:  []LoginOption{LoginOptTLSClientConfig("", "", badCA)},
+			wantErr:    "unable to access TLS client configuration",
+		},
+		{
+			name:       "TLS config with an unsupported transport",
+			clientOpts: []ClientOption{ClientOptHTTPClient(&http.Client{Transport: unsupportedTransport{}})},
+			loginOpts:  []LoginOption{LoginOptTLSClientConfigFromConfig(&tls.Config{})},
+			wantErr:    "unable to access TLS client configuration",
+		},
+		{
+			name: "first error is kept",
+			loginOpts: []LoginOption{
+				LoginOptTLSClientConfig("", "", missing),
+				LoginOptTLSClientConfig("", "", badCA),
+			},
+			wantErr: "reading CA file",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := append([]ClientOption{
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+			}, tt.clientOpts...)
+			c, err := NewClient(opts...)
+			require.NoError(t, err)
+
+			loginOpts := append([]LoginOption{LoginOptBasicAuth("u", "p")}, tt.loginOpts...)
+			require.ErrorContains(t, c.Login("registry.example.test", loginOpts...), tt.wantErr)
+		})
+	}
 }
 
 // Verifies that login reads certs.d the way pull and push do: by the host the
