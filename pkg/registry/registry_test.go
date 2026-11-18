@@ -185,9 +185,24 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 
 	suite.FakeRegistryHost = initFakeRegistryTestServer()
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
+	registryAddr := config.HTTP.Addr
+	// Release the reserved port so the registry can bind to it.
+	_ = ln.Close()
 	go func() {
 		_ = suite.dockerRegistry.ListenAndServe()
 	}()
+
+	// Wait until the registry is accepting connections, otherwise the first
+	// client request can race ahead of ListenAndServe and fail with a
+	// connection error.
+	suite.Require().Eventually(func() bool {
+		conn, err := net.DialTimeout("tcp", registryAddr, 100*time.Millisecond)
+		if err != nil {
+			return false
+		}
+		_ = conn.Close()
+		return true
+	}, 10*time.Second, 10*time.Millisecond, "test registry did not start listening")
 }
 
 func teardown(suite *TestRegistry) {
