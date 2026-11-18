@@ -700,9 +700,9 @@ func TestLogin_TLSOptionErrors(t *testing.T) {
 
 			// A failed option leaves the client as it was, so later
 			// operations do not pick up settings that could not be applied.
-			require.Empty(t, c.certFile)
-			require.Empty(t, c.keyFile)
-			require.Empty(t, c.caFile)
+			require.Empty(t, c.tls.certFile)
+			require.Empty(t, c.tls.keyFile)
+			require.Empty(t, c.tls.caFile)
 			if tlsConfig, err := ensureTLSConfig(c.authorizer, nil); err == nil {
 				require.Empty(t, tlsConfig.Certificates)
 				require.Nil(t, tlsConfig.RootCAs)
@@ -746,7 +746,7 @@ func TestNewRegistry_CertsDir(t *testing.T) {
 				withRegistriesConfigPath(filepath.Join(t.TempDir(), "registries.conf")),
 			)
 			require.NoError(t, err)
-			c.configs.CertsDirPaths = []string{certsDir}
+			c.containers.configs.CertsDirPaths = []string{certsDir}
 
 			_, err = c.newRegistry(tt.host)
 			if tt.wantErr == "" {
@@ -824,11 +824,11 @@ func TestNewClient_ContainersConfigDisabled(t *testing.T) {
 		withPolicyConfigPath(policyPath),
 	)
 	require.NoError(t, err)
-	require.NoError(t, c.configErr, "config files must not be read when disabled")
-	require.Nil(t, c.configs.RegistriesConfig)
-	require.Nil(t, c.configs.PolicyConfig)
-	require.Empty(t, c.configs.CertsDirPaths)
-	require.Nil(t, c.policyEvaluator, "policy must not be enforced when disabled")
+	require.NoError(t, c.containers.loadErr, "config files must not be read when disabled")
+	require.Nil(t, c.containers.configs.RegistriesConfig)
+	require.Nil(t, c.containers.configs.PolicyConfig)
+	require.Empty(t, c.containers.configs.CertsDirPaths)
+	require.Nil(t, c.containers.policyEvaluator, "policy must not be enforced when disabled")
 }
 
 func TestNewClient_PolicyEnforcement(t *testing.T) {
@@ -858,7 +858,7 @@ func TestNewClient_PolicyEnforcement(t *testing.T) {
 			c, err := NewClient(options...)
 			require.NoError(t, err)
 
-			require.Equal(t, tt.wantEvaluator, c.policyEvaluator != nil)
+			require.Equal(t, tt.wantEvaluator, c.containers.policyEvaluator != nil)
 			require.Equal(t, tt.wantEvaluator, c.builder.PolicyEvaluator != nil)
 		})
 	}
@@ -893,6 +893,6 @@ func TestClientOptTLSClientConfig_CertWithoutKey(t *testing.T) {
 		ClientOptTLSClientConfig("client.crt", "", ""),
 	)
 	require.NoError(t, err)
-	require.Empty(t, c.certFile)
-	require.Empty(t, c.keyFile)
+	require.Empty(t, c.tls.certFile)
+	require.Empty(t, c.tls.keyFile)
 }

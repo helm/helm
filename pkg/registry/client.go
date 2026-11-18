@@ -79,29 +79,47 @@ type (
 		credentialsStore   credentials.Store
 		httpClient         *http.Client
 		plainHTTP          bool
-		// v3 config-driven fields
-		// containersConfig enables loading the container ecosystem config
-		// stack; Docker config.json credentials are used either way.
-		containersConfig      bool
-		configs               *remoteconfig.Configs
-		builder               *remote.ClientBuilder
-		policyEvaluator       *policy.Evaluator
+		// containers holds the container ecosystem config stack and the
+		// settings that control how it is loaded and enforced.
+		containers containersConfig
+		// tls holds TLS settings from client and login options, applied on
+		// top of registries.conf and certs.d.
+		tls              tlsOverrides
+		builder          *remote.ClientBuilder
+		customHTTPClient bool // true when ClientOptHTTPClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
+	}
+
+	// containersConfig holds the container ecosystem config stack: Docker
+	// config.json, containers auth.json, registries.conf, certs.d, policy.json
+	// and registries.d.
+	containersConfig struct {
+		// enabled loads the config stack; Docker config.json credentials are
+		// used either way.
+		enabled               bool
 		policyEnforcement     bool
 		signatureVerification bool
-		// configErr is the error from loading the config stack, returned by
-		// registry operations so that NewClient itself does not fail.
-		configErr error
 		// registriesConfigPath overrides the registries.conf path; empty means
 		// the container ecosystem default search locations are used. Test-only.
 		registriesConfigPath string
 		// policyConfigPath overrides the containers-policy.json path; empty
 		// means the default search locations are used. Test-only.
 		policyConfigPath string
-		insecure         bool
-		certFile         string
-		keyFile          string
-		caFile           string
-		customHTTPClient bool // true when ClientOptHTTPClient, ClientOptAuthorizer or LoginOptTLSClientConfigFromConfig was used
+
+		// configs is the loaded config stack; it is empty when the stack is
+		// disabled or failed to load.
+		configs         *remoteconfig.Configs
+		policyEvaluator *policy.Evaluator
+		// loadErr is the error from loading the config stack, returned by
+		// registry operations so that NewClient itself does not fail.
+		loadErr error
+	}
+
+	// tlsOverrides holds TLS settings from client and login options.
+	tlsOverrides struct {
+		insecure bool
+		certFile string
+		keyFile  string
+		caFile   string
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -143,7 +161,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	// fallback for Helm's own credentials, as it was with oras-go v2.
 	configs := &remoteconfig.Configs{}
 	var credStore credentials.Store = helmStore
-	if !client.containersConfig {
+	if !client.containers.enabled {
 		if dockerStore, err := credentials.NewStoreFromDocker(storeOptions); err == nil {
 			credStore = credentials.NewStoreWithFallbacks(helmStore, dockerStore)
 		}
@@ -155,27 +173,27 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		// (empty means default search); all other config files always resolve to
 		// their default locations.
 		loaderOpts := remoteconfig.LoadConfigsOptions{
-			RegistriesConfigPath: client.registriesConfigPath,
-			PolicyConfigPath:     client.policyConfigPath,
+			RegistriesConfigPath: client.containers.registriesConfigPath,
+			PolicyConfigPath:     client.containers.policyConfigPath,
 		}
 		// A config file that exists but cannot be parsed must not break commands
 		// that never contact a registry, so the error is kept and returned by the
 		// first registry operation instead.
 		loaded, err := remoteconfig.LoadConfigsWithOptions(loaderOpts)
 		if err != nil {
-			client.configErr = fmt.Errorf("failed to load registry configurations: %w", err)
+			client.containers.loadErr = fmt.Errorf("failed to load registry configurations: %w", err)
 		} else {
 			configs = loaded
 		}
 
 		// policy.json is written for container images, so it is only enforced on
 		// charts when the caller opts in.
-		if (client.policyEnforcement || client.signatureVerification) && configs.PolicyConfig != nil {
-			evaluator, err := newPolicyEvaluator(configs, client.signatureVerification)
+		if (client.containers.policyEnforcement || client.containers.signatureVerification) && configs.PolicyConfig != nil {
+			evaluator, err := newPolicyEvaluator(configs, client.containers.signatureVerification)
 			if err != nil {
 				return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
 			}
-			client.policyEvaluator = evaluator
+			client.containers.policyEvaluator = evaluator
 		}
 
 		// Build the combined credential store for read operations:
@@ -185,7 +203,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 			credStore = credentials.NewStoreWithFallbacks(helmStore, configStore)
 		}
 	}
-	client.configs = configs
+	client.containers.configs = configs
 
 	// Build the ClientBuilder used by the config-driven repository creation path.
 	var logger *slog.Logger
@@ -202,7 +220,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	builder.BaseTransport = defaultTransport()
 	builder.UserAgent = version.GetUserAgent()
 	builder.Logger = logger
-	builder.PolicyEvaluator = client.policyEvaluator
+	builder.PolicyEvaluator = client.containers.policyEvaluator
 	if !client.enableCache {
 		// A nil factory makes the builder allocate a cache, so return a nil
 		// cache instead, which auth.Client treats as no caching.
@@ -240,15 +258,15 @@ func (c *Client) applyOverrides(props *properties.Registry) {
 	if c.plainHTTP {
 		props.Transport.PlainHTTP = true
 	}
-	if c.insecure {
+	if c.tls.insecure {
 		props.Transport.Insecure = true
 	}
-	if c.certFile != "" && c.keyFile != "" {
-		props.Transport.Cert = c.certFile
-		props.Transport.Key = c.keyFile
+	if c.tls.certFile != "" && c.tls.keyFile != "" {
+		props.Transport.Cert = c.tls.certFile
+		props.Transport.Key = c.tls.keyFile
 	}
-	if c.caFile != "" {
-		props.Transport.CACerts = append(props.Transport.CACerts, c.caFile)
+	if c.tls.caFile != "" {
+		props.Transport.CACerts = append(props.Transport.CACerts, c.tls.caFile)
 	}
 	if c.username != "" && c.password != "" {
 		props.Credential = credentials.Credential{Username: c.username, Password: c.password}
@@ -262,8 +280,8 @@ func (c *Client) applyOverrides(props *properties.Registry) {
 // used: registry properties are resolved from registries.conf and certs.d, CLI
 // overrides are applied, and the repository is built via ClientBuilder.NewRepository.
 func (c *Client) newRepository(ref string) (*remote.Repository, error) {
-	if c.configErr != nil {
-		return nil, c.configErr
+	if c.containers.loadErr != nil {
+		return nil, c.containers.loadErr
 	}
 	if c.customHTTPClient {
 		// Legacy path: use c.authorizer directly (preserves custom TLS transport).
@@ -283,11 +301,11 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		} else {
 			repo.Registry.Client = c.authorizer
 		}
-		repo.Registry.Policy = c.policyEvaluator
+		repo.Registry.Policy = c.containers.policyEvaluator
 		return repo, nil
 	}
 	// Config-driven path: resolve properties from registries.conf, certs.d, etc.
-	props, err := c.configs.RegistryProperties(ref)
+	props, err := c.containers.configs.RegistryProperties(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -324,14 +342,14 @@ const loginPlaceholderRepository = "helm-registry-login"
 // registry's Reference names the canonical registry and namespace the
 // credential is verified against and stored under.
 func (c *Client) newRegistry(ref string) (*remote.Registry, error) {
-	if c.configErr != nil {
-		return nil, c.configErr
+	if c.containers.loadErr != nil {
+		return nil, c.containers.loadErr
 	}
 	if c.customHTTPClient {
 		// Legacy path: use c.authorizer directly. registryAuthorizer is not
 		// used here because remote.Login only accepts an *auth.Client.
 		target := ref
-		if rc := c.configs.RegistriesConfig; rc != nil {
+		if rc := c.containers.configs.RegistriesConfig; rc != nil {
 			target = rc.RewriteReference(ref)
 		}
 		host, namespace, _ := strings.Cut(target, "/")
@@ -370,7 +388,7 @@ func (c *Client) newRegistry(ref string) (*remote.Registry, error) {
 // references naming it, is cleared: a login has no references to re-root.
 func (c *Client) loginProperties(ref string) (*properties.Registry, error) {
 	if strings.Contains(ref, "/") {
-		props, err := c.configs.RegistryProperties(ref)
+		props, err := c.containers.configs.RegistryProperties(ref)
 		if err != nil {
 			return nil, err
 		}
@@ -378,7 +396,7 @@ func (c *Client) loginProperties(ref string) (*properties.Registry, error) {
 		return props, nil
 	}
 	probe := ref + "/" + loginPlaceholderRepository
-	if rc := c.configs.RegistriesConfig; rc != nil {
+	if rc := c.containers.configs.RegistriesConfig; rc != nil {
 		if rc.IsBlocked(ref) {
 			return nil, fmt.Errorf("%w: %s", remoteconfig.ErrRegistryBlocked, ref)
 		}
@@ -388,7 +406,7 @@ func (c *Client) loginProperties(ref string) (*properties.Registry, error) {
 			return nil, fmt.Errorf("registries.conf has a rule for %q, which Helm uses to look up the settings for %q", probe, ref)
 		}
 	}
-	props, err := c.configs.RegistryProperties(probe)
+	props, err := c.containers.configs.RegistryProperties(probe)
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +516,7 @@ func ClientOptPlainHTTP() ClientOption {
 // signature verification have no effect unless it is enabled.
 func ClientOptContainersConfig(enabled bool) ClientOption {
 	return func(c *Client) {
-		c.containersConfig = enabled
+		c.containers.enabled = enabled
 	}
 }
 
@@ -509,7 +527,7 @@ func ClientOptContainersConfig(enabled bool) ClientOption {
 // charts unless signature verification is also enabled.
 func ClientOptPolicyEnforcement(enabled bool) ClientOption {
 	return func(c *Client) {
-		c.policyEnforcement = enabled
+		c.containers.policyEnforcement = enabled
 	}
 }
 
@@ -518,7 +536,7 @@ func ClientOptPolicyEnforcement(enabled bool) ClientOption {
 // Enabling it also enforces the containers-policy.json trust policy.
 func ClientOptSignatureVerification(enabled bool) ClientOption {
 	return func(c *Client) {
-		c.signatureVerification = enabled
+		c.containers.signatureVerification = enabled
 	}
 }
 
@@ -530,10 +548,10 @@ func ClientOptSignatureVerification(enabled bool) ClientOption {
 func ClientOptTLSClientConfig(certFile, keyFile, caFile string) ClientOption {
 	return func(c *Client) {
 		if certFile != "" && keyFile != "" {
-			c.certFile = certFile
-			c.keyFile = keyFile
+			c.tls.certFile = certFile
+			c.tls.keyFile = keyFile
 		}
-		c.caFile = caFile
+		c.tls.caFile = caFile
 	}
 }
 
@@ -541,7 +559,7 @@ func ClientOptTLSClientConfig(certFile, keyFile, caFile string) ClientOption {
 // of the registry's TLS certificate.
 func ClientOptInsecureSkipVerifyTLS(insecure bool) ClientOption {
 	return func(c *Client) {
-		c.insecure = insecure
+		c.tls.insecure = insecure
 	}
 }
 
@@ -550,7 +568,7 @@ func ClientOptInsecureSkipVerifyTLS(insecure bool) ClientOption {
 // container ecosystem default search locations.
 func withRegistriesConfigPath(path string) ClientOption {
 	return func(c *Client) {
-		c.registriesConfigPath = path
+		c.containers.registriesConfigPath = path
 	}
 }
 
@@ -558,7 +576,7 @@ func withRegistriesConfigPath(path string) ClientOption {
 // withRegistriesConfigPath, it exists only for hermetic tests.
 func withPolicyConfigPath(path string) ClientOption {
 	return func(c *Client) {
-		c.policyConfigPath = path
+		c.containers.policyConfigPath = path
 	}
 }
 
@@ -669,7 +687,7 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 // LoginOptInsecure returns a function that sets the insecure setting on login
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(o *loginOperation) {
-		o.client.insecure = insecure
+		o.client.tls.insecure = insecure
 		// Also update the authorizer transport for the legacy path (customHTTPClient=true).
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
 		if err != nil {
@@ -719,12 +737,12 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 
 		// The file paths are used by the config-driven path.
 		if hasCert {
-			o.client.certFile = certFile
-			o.client.keyFile = keyFile
+			o.client.tls.certFile = certFile
+			o.client.tls.keyFile = keyFile
 			tlsConfig.Certificates = []tls.Certificate{authCert}
 		}
 		if certPool != nil {
-			o.client.caFile = caFile
+			o.client.tls.caFile = caFile
 			tlsConfig.RootCAs = certPool
 		}
 	}
@@ -758,14 +776,14 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 	for _, opt := range opts {
 		opt(operation)
 	}
-	if c.configErr != nil {
-		return c.configErr
+	if c.containers.loadErr != nil {
+		return c.containers.loadErr
 	}
 
 	// Apply the registries.conf Location rewrite to the full input, matching
 	// Login, since a rule may be scoped to a repository path.
-	if c.configs != nil && c.configs.RegistriesConfig != nil {
-		host = c.configs.RegistriesConfig.RewriteReference(host)
+	if c.containers.configs != nil && c.containers.configs.RegistriesConfig != nil {
+		host = c.containers.configs.RegistriesConfig.RewriteReference(host)
 	}
 
 	// remote.Logout removes the namespaced key for a "host/namespace" input,
