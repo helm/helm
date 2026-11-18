@@ -173,6 +173,49 @@ func TestLogin_NamespacedAuth(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &parsed))
 	require.Contains(t, parsed.Auths, namespacedHost, "credential should be stored under namespaced key")
 	require.NotContains(t, parsed.Auths, registryHost, "credential should not be stored under hostname-only key")
+
+	// Logout removes the namespaced key.
+	require.NoError(t, c.Logout(namespacedHost))
+	data, err = os.ReadFile(credFile)
+	require.NoError(t, err)
+	parsed.Auths = nil
+	require.NoError(t, json.Unmarshal(data, &parsed))
+	require.NotContains(t, parsed.Auths, namespacedHost, "logout should remove the namespaced key")
+}
+
+// Verifies that a namespaced login is rejected, and nothing is stored, when the
+// credential could never be found again: Docker Hub only reads credentials
+// under its server address, and an invalid path is never looked up.
+func TestLogin_NamespacedAuthRejected(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		host string
+	}{
+		{"docker hub", "docker.io/myorg"},
+		{"invalid repository path", "registry.example.test/Invalid_Path"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			credFile := filepath.Join(t.TempDir(), "config.json")
+			require.NoError(t, os.WriteFile(credFile, []byte(`{"auths":{"_sentinel_":{}}}`), 0o600))
+			c, err := NewClient(
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(credFile),
+			)
+			require.NoError(t, err)
+
+			require.Error(t, c.Login(tt.host, LoginOptBasicAuth("u", "p")))
+			require.Error(t, c.Logout(tt.host))
+
+			data, err := os.ReadFile(credFile)
+			require.NoError(t, err)
+			require.JSONEq(t, `{"auths":{"_sentinel_":{}}}`, string(data))
+		})
+	}
 }
 
 func TestClientBuilder_CredentialLookup(t *testing.T) {

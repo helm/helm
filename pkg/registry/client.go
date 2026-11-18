@@ -543,13 +543,6 @@ type (
 	}
 )
 
-// noopStore is a credentials.Putter that performs no persistence. It is used
-// during namespaced login to verify credentials with a registry ping without
-// causing remote.Login to store credentials under the hostname-only key.
-type noopStore struct{}
-
-func (noopStore) Put(_ context.Context, _ string, _ credentials.Credential) error { return nil }
-
 // Login authenticates the client with a remote OCI registry using the provided host and options.
 func (c *Client) Login(host string, options ...LoginOption) error {
 	op := &loginOperation{host: host, client: c}
@@ -569,7 +562,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 
 	// Separate the canonical registry hostname from any namespace path.
 	// e.g., "localhost:8000/myrepo" → canonicalHost="localhost:8000", namespacePath="myrepo"
-	canonicalHost, namespacePath, hasNamespace := strings.Cut(target, "/")
+	canonicalHost, namespacePath, _ := strings.Cut(target, "/")
 
 	// We use the original (alias) reference for newRegistry so its transport
 	// settings (Insecure, certs.d, token-flow, blocked) are preserved, then
@@ -580,25 +573,14 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return err
 	}
 	reg.Reference.Registry = canonicalHost
+	// remote.Login stores the credential under "host/namespace" when a
+	// repository path is set, after validating the path and rejecting
+	// registries such as Docker Hub that cannot use path-scoped credentials.
+	reg.Reference.Repository = namespacePath
 
 	cred := credentials.Credential{Username: c.username, Password: c.password}
-	ctx := context.Background()
-
-	if !hasNamespace {
-		// Standard hostname-only login: verify and store under the hostname.
-		if err := remote.Login(ctx, c.credentialsStore, reg, cred); err != nil {
-			return fmt.Errorf("authenticating to %q: %w", canonicalHost, err)
-		}
-	} else {
-		// Namespaced login: verify the credential against the hostname,
-		// then store under the namespaced key only.
-		if err := remote.Login(ctx, noopStore{}, reg, cred); err != nil {
-			return fmt.Errorf("authenticating to %q: %w", canonicalHost, err)
-		}
-		namespacedKey := canonicalHost + "/" + namespacePath
-		if err := c.credentialsStore.Put(ctx, namespacedKey, cred); err != nil {
-			return fmt.Errorf("storing credentials for %q: %w", namespacedKey, err)
-		}
+	if err := remote.Login(context.Background(), c.credentialsStore, reg, cred); err != nil {
+		return fmt.Errorf("authenticating to %q: %w", target, err)
 	}
 
 	_, _ = fmt.Fprintln(c.out, "Login Succeeded")
@@ -751,15 +733,12 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 		host = c.configs.RegistriesConfig.RewriteReference(host)
 	}
 
-	ctx := context.Background()
-	if registryHost, _, hasNamespace := strings.Cut(host, "/"); !hasNamespace {
-		if err := remote.Logout(ctx, c.credentialsStore, properties.Resource{Registry: registryHost}); err != nil {
-			return err
-		}
-	} else if err := c.credentialsStore.Delete(ctx, host); err != nil {
-		// Namespaced credentials are stored under the full "host/namespace"
-		// key by Login, so remove that exact key.
-		return fmt.Errorf("failed to delete the credential for %s: %w", host, err)
+	// remote.Logout removes the namespaced key for a "host/namespace" input,
+	// matching where Login stored it.
+	registryHost, namespacePath, _ := strings.Cut(host, "/")
+	resource := properties.Resource{Registry: registryHost, Path: namespacePath}
+	if err := remote.Logout(context.Background(), c.credentialsStore, resource); err != nil {
+		return err
 	}
 	_, _ = fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
 	return nil
