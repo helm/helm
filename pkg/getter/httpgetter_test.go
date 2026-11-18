@@ -16,6 +16,8 @@ limitations under the License.
 package getter
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -218,6 +220,95 @@ func TestDownload(t *testing.T) {
 	require.NoError(t, err)
 	_, err = httpgetter.Get(u.String())
 	require.NoError(t, err)
+}
+
+func TestHTTPGetterAcceptCompression(t *testing.T) {
+	expect := "hello compressed world"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept-Encoding") != "gzip" {
+			fmt.Fprint(w, expect)
+			return
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		gzipWriter := gzip.NewWriter(w)
+		if _, err := gzipWriter.Write([]byte(expect)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := gzipWriter.Close(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	tests := []struct {
+		name               string
+		options            []Option
+		wantAcceptEncoding string
+		wantBody           string
+	}{
+		{
+			name:     "compression disabled by default",
+			wantBody: expect,
+		},
+		{
+			name:               "compression enabled decompresses gzipped response",
+			options:            []Option{WithAcceptCompression(true)},
+			wantAcceptEncoding: "gzip",
+			wantBody:           expect,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := append([]Option{WithURL(srv.URL)}, tt.options...)
+			g, err := NewHTTPGetter(options...)
+			require.NoError(t, err)
+
+			got, err := g.Get(srv.URL)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantBody, got.String())
+		})
+	}
+}
+
+func TestHTTPGetterGzipResponseWithoutAcceptCompression(t *testing.T) {
+	gzipPayload := func() []byte {
+		var buf bytes.Buffer
+		w := gzip.NewWriter(&buf)
+		_, err := w.Write([]byte("compressed content"))
+		require.NoError(t, err)
+		require.NoError(t, w.Close())
+		return buf.Bytes()
+	}()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Write(gzipPayload)
+	}))
+	defer srv.Close()
+
+	g, err := NewHTTPGetter(WithURL(srv.URL))
+	require.NoError(t, err)
+
+	got, err := g.Get(srv.URL)
+	require.NoError(t, err)
+	assert.Equal(t, gzipPayload, got.Bytes(), "Expected response to be passed through unchanged when compression is not accepted")
+}
+
+func TestHTTPGetterGzipReaderErrorIncludesURL(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		fmt.Fprint(w, "not actually gzipped")
+	}))
+	defer srv.Close()
+
+	g, err := NewHTTPGetter(WithURL(srv.URL), WithAcceptCompression(true))
+	require.NoError(t, err)
+
+	_, err = g.Get(srv.URL)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), srv.URL)
 }
 
 func TestDownloadTLS(t *testing.T) {

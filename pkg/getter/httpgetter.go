@@ -57,12 +57,10 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 
-	isRepositoryIndexRequest := isRepositoryIndexRequestURL(href)
-
 	if opts.acceptHeader != "" {
 		req.Header.Set("Accept", opts.acceptHeader)
 	}
-	if isRepositoryIndexRequest {
+	if opts.acceptCompression {
 		req.Header.Set("Accept-Encoding", "gzip")
 	}
 
@@ -108,10 +106,10 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 	}
 
 	reader := io.Reader(resp.Body)
-	if isRepositoryIndexRequest && isGzipEncoded(resp.Header) {
+	if opts.acceptCompression && isGzipEncoded(resp.Header) {
 		gzipReader, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read gzipped response from %s: %w", href, err)
 		}
 		defer gzipReader.Close()
 		reader = gzipReader
@@ -120,15 +118,6 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 	buf := bytes.NewBuffer(nil)
 	_, err = io.Copy(buf, reader)
 	return buf, err
-}
-
-func isRepositoryIndexRequestURL(href string) bool {
-	u, err := url.Parse(href)
-	if err != nil {
-		return false
-	}
-
-	return u.Path == "index.yaml" || strings.HasSuffix(u.Path, "/index.yaml")
 }
 
 func isGzipEncoded(header http.Header) bool {
