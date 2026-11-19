@@ -122,7 +122,7 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 
 func isGzipEncoded(header http.Header) bool {
 	for _, value := range header.Values("Content-Encoding") {
-		for _, encoding := range strings.Split(value, ",") {
+		for encoding := range strings.SplitSeq(value, ",") {
 			if strings.EqualFold(strings.TrimSpace(encoding), "gzip") {
 				return true
 			}

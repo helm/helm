@@ -130,14 +130,15 @@ func TestDownloadIndexFileWithGzipContentEncoding(t *testing.T) {
 	require.NoError(t, err)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "gzip", r.Header.Get("Accept-Encoding"))
+		assert.Equal(t, "gzip", r.Header.Get("Accept-Encoding"))
 
 		w.Header().Set("Content-Encoding", "gzip")
 		gzipWriter := gzip.NewWriter(w)
 
-		_, err := gzipWriter.Write(fileBytes)
-		require.NoError(t, err)
-		require.NoError(t, gzipWriter.Close())
+		if _, err := gzipWriter.Write(fileBytes); !assert.NoError(t, err) {
+			return
+		}
+		assert.NoError(t, gzipWriter.Close())
 	})
 
 	srv, err := startLocalServerForTests(handler)

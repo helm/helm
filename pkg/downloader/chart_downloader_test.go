@@ -531,6 +531,7 @@ func TestProvenanceDownloadUsesCompression(t *testing.T) {
 		{
 			name: "DownloadTo",
 			download: func(t *testing.T, c *ChartDownloader) ([]byte, []byte) {
+				t.Helper()
 				dest := t.TempDir()
 				destfile, _, err := c.DownloadTo(srv.URL+"/signtest-0.1.0.tgz", "", dest)
 				require.NoError(t, err)
@@ -544,6 +545,7 @@ func TestProvenanceDownloadUsesCompression(t *testing.T) {
 		{
 			name: "DownloadToCache",
 			download: func(t *testing.T, c *ChartDownloader) ([]byte, []byte) {
+				t.Helper()
 				pth, _, err := c.DownloadToCache(srv.URL+"/signtest-0.1.0.tgz", "")
 				require.NoError(t, err)
 				chart, err := os.ReadFile(pth)
