@@ -385,16 +385,16 @@ func TestReleaseInfoUnmarshalJSON(t *testing.T) {
 			err := json.Unmarshal([]byte(tt.input), &info)
 			if tt.wantErr {
 				assert.Error(t, err)
-				return
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected.Revision, info.Revision)
+				assert.Equal(t, tt.expected.Updated.Unix(), info.Updated.Unix())
+				assert.Equal(t, tt.expected.Status, info.Status)
+				assert.Equal(t, tt.expected.Chart, info.Chart)
+				assert.Equal(t, tt.expected.AppVersion, info.AppVersion)
+				assert.Equal(t, tt.expected.RollbackRevision, info.RollbackRevision)
+				assert.Equal(t, tt.expected.Description, info.Description)
 			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected.Revision, info.Revision)
-			assert.Equal(t, tt.expected.Updated.Unix(), info.Updated.Unix())
-			assert.Equal(t, tt.expected.Status, info.Status)
-			assert.Equal(t, tt.expected.Chart, info.Chart)
-			assert.Equal(t, tt.expected.AppVersion, info.AppVersion)
-			assert.Equal(t, tt.expected.RollbackRevision, info.RollbackRevision)
-			assert.Equal(t, tt.expected.Description, info.Description)
 		})
 	}
 }
@@ -415,9 +415,7 @@ func TestReleaseInfoRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	var decoded releaseInfo
-	err = json.Unmarshal(data, &decoded)
-	require.NoError(t, err)
-
+	require.NoError(t, json.Unmarshal(data, &decoded))
 	assert.Equal(t, original.Revision, decoded.Revision)
 	assert.Equal(t, original.Updated.Unix(), decoded.Updated.Unix())
 	assert.Equal(t, original.Status, decoded.Status)
@@ -433,11 +431,10 @@ func TestReleaseInfoEmptyStringRoundTrip(t *testing.T) {
 	input := `{"revision":1,"updated":"","status":"deployed","chart":"mychart-1.0.0","app_version":"1.0.0","description":"Test"}`
 
 	var info releaseInfo
-	err := json.Unmarshal([]byte(input), &info)
-	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal([]byte(input), &info))
 
 	// Verify time field is zero value
-	assert.True(t, info.Updated.IsZero())
+	assert.Zero(t, info.Updated)
 	assert.Equal(t, 1, info.Revision)
 	assert.Equal(t, "deployed", info.Status)
 
@@ -446,8 +443,7 @@ func TestReleaseInfoEmptyStringRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	var result map[string]any
-	err = json.Unmarshal(data, &result)
-	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &result))
 
 	// Zero time value should be omitted
 	assert.NotContains(t, result, "updated")

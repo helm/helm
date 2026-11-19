@@ -21,6 +21,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadArchiveFiles(t *testing.T) {
@@ -34,9 +36,7 @@ func TestLoadArchiveFiles(t *testing.T) {
 			generate: func(_ *tar.Writer) {},
 			check: func(t *testing.T, _ []*BufferedFile, err error) {
 				t.Helper()
-				if err.Error() != "no files in chart archive" {
-					t.Fatalf(`expected "no files in chart archive", got [%#v]`, err)
-				}
+				require.EqualError(t, err, "no files in chart archive")
 			},
 		},
 		{
@@ -44,32 +44,21 @@ func TestLoadArchiveFiles(t *testing.T) {
 			generate: func(w *tar.Writer) {
 				// simulate the presence of a `pax_global_header` file like you would get when
 				// processing a GitHub release archive.
-				err := w.WriteHeader(&tar.Header{
+				require.NoError(t, w.WriteHeader(&tar.Header{
 					Typeflag: tar.TypeXGlobalHeader,
 					Name:     "pax_global_header",
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				// we need to have at least one file, otherwise we'll get the "no files in chart archive" error
-				err = w.WriteHeader(&tar.Header{
+				require.NoError(t, w.WriteHeader(&tar.Header{
 					Typeflag: tar.TypeReg,
 					Name:     "dir/empty",
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				}))
 			},
 			check: func(t *testing.T, files []*BufferedFile, err error) {
 				t.Helper()
-				if err != nil {
-					t.Fatalf(`got unwanted error [%#v] for tar file with pax_global_header content`, err)
-				}
-
-				if len(files) != 1 {
-					t.Fatalf(`expected to get one file but got [%v]`, files)
-				}
+				require.NoErrorf(t, err, `got unwanted error for tar file with pax_global_header content`)
+				require.Lenf(t, files, 1, `expected to get one file but got [%v]`, files)
 			},
 		},
 	}

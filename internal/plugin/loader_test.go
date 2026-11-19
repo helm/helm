@@ -194,13 +194,9 @@ func TestDetectDuplicates(t *testing.T) {
 		mockSubprocessCLIPlugin(t, "foo"),
 		mockSubprocessCLIPlugin(t, "bar"),
 	}
-	if err := detectDuplicates(plugs); err != nil {
-		t.Error("no duplicates in the first set")
-	}
+	require.NoError(t, detectDuplicates(plugs), "no duplicates in the first set")
 	plugs = append(plugs, mockSubprocessCLIPlugin(t, "foo"))
-	if err := detectDuplicates(plugs); err == nil {
-		t.Error("duplicates in the second set")
-	}
+	assert.Error(t, detectDuplicates(plugs), "duplicates in the second set")
 }
 
 func TestLoadAllDir_Empty(t *testing.T) {

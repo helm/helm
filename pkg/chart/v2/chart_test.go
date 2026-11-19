@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 )
@@ -76,15 +77,12 @@ func TestSaveChartNoRawData(t *testing.T) {
 	}
 
 	is := assert.New(t)
+	req := require.New(t)
 	data, err := json.Marshal(chrt)
-	if err != nil {
-		t.Fatal(err)
-	}
+	req.NoError(err)
 
 	res := &Chart{}
-	if err := json.Unmarshal(data, res); err != nil {
-		t.Fatal(err)
-	}
+	req.NoError(json.Unmarshal(data, res))
 
 	is.Equal([]*common.File(nil), res.Raw)
 }

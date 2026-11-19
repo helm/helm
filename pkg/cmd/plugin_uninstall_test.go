@@ -21,6 +21,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
@@ -39,9 +42,7 @@ func TestPluginUninstallCleansUpVersionedFiles(t *testing.T) {
 
 	// Create plugin directory
 	pluginDir := filepath.Join(pluginsDir, pluginName)
-	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 
 	// Create plugin.yaml
 	pluginYAML := `name: test-plugin
@@ -49,31 +50,21 @@ version: 1.2.3
 description: Test plugin
 command: $HELM_PLUGIN_DIR/test-plugin
 `
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0o644))
 
 	// Create versioned tarball and provenance files
 	tarballFile := filepath.Join(pluginsDir, "test-plugin-1.2.3.tgz")
 	provFile := filepath.Join(pluginsDir, "test-plugin-1.2.3.tgz.prov")
 	otherVersionTarball := filepath.Join(pluginsDir, "test-plugin-2.0.0.tgz")
 
-	if err := os.WriteFile(tarballFile, []byte("fake tarball"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(provFile, []byte("fake provenance"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(tarballFile, []byte("fake tarball"), 0o644))
+	require.NoError(t, os.WriteFile(provFile, []byte("fake provenance"), 0o644))
 	// Create another version that should NOT be removed
-	if err := os.WriteFile(otherVersionTarball, []byte("other version"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(otherVersionTarball, []byte("other version"), 0o644))
 
 	// Load the plugin
 	p, err := plugin.LoadDir(pluginDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a test uninstall function that uses our test settings
 	testUninstallPlugin := func(plugin plugin.Plugin) error {
@@ -112,35 +103,26 @@ command: $HELM_PLUGIN_DIR/test-plugin
 	}
 
 	// Verify files exist before uninstall
-	if _, err := os.Stat(tarballFile); os.IsNotExist(err) {
-		t.Fatal("tarball file should exist before uninstall")
-	}
-	if _, err := os.Stat(provFile); os.IsNotExist(err) {
-		t.Fatal("provenance file should exist before uninstall")
-	}
-	if _, err := os.Stat(otherVersionTarball); os.IsNotExist(err) {
-		t.Fatal("other version tarball should exist before uninstall")
-	}
+	_, err = os.Stat(tarballFile)
+	require.False(t, os.IsNotExist(err), "tarball file should exist before uninstall")
+	_, err = os.Stat(provFile)
+	require.False(t, os.IsNotExist(err), "provenance file should exist before uninstall")
+	_, err = os.Stat(otherVersionTarball)
+	require.False(t, os.IsNotExist(err), "other version tarball should exist before uninstall")
 
 	// Uninstall the plugin
-	if err := testUninstallPlugin(p); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, testUninstallPlugin(p))
 
 	// Verify plugin directory is removed
-	if _, err := os.Stat(pluginDir); !os.IsNotExist(err) {
-		t.Error("plugin directory should be removed")
-	}
+	_, err = os.Stat(pluginDir)
+	assert.True(t, os.IsNotExist(err), "plugin directory should be removed")
 
 	// Verify only exact version files are removed
-	if _, err := os.Stat(tarballFile); !os.IsNotExist(err) {
-		t.Error("versioned tarball file should be removed")
-	}
-	if _, err := os.Stat(provFile); !os.IsNotExist(err) {
-		t.Error("versioned provenance file should be removed")
-	}
+	_, err = os.Stat(tarballFile)
+	assert.True(t, os.IsNotExist(err), "versioned tarball file should be removed")
+	_, err = os.Stat(provFile)
+	assert.True(t, os.IsNotExist(err), "versioned provenance file should be removed")
 	// Verify other version files are NOT removed
-	if _, err := os.Stat(otherVersionTarball); os.IsNotExist(err) {
-		t.Error("other version tarball should NOT be removed")
-	}
+	_, err = os.Stat(otherVersionTarball)
+	assert.False(t, os.IsNotExist(err), "other version tarball should NOT be removed")
 }

@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 )
@@ -33,7 +34,7 @@ func TestInvalidCrdsDir(t *testing.T) {
 	Crds(&linter)
 	res := linter.Messages
 
-	assert.Len(t, res, 1)
+	require.Len(t, res, 1)
 	assert.ErrorContains(t, res[0].Err, "not a directory")
 }
 

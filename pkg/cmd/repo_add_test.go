@@ -17,16 +17,16 @@ limitations under the License.
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -50,9 +50,7 @@ func TestRepoAddCmd(t *testing.T) {
 	defer srv2.Stop()
 
 	tmpdir := filepath.Join(t.TempDir(), "path-component.yaml", "data")
-	if err := os.MkdirAll(tmpdir, 0o777); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(tmpdir, 0o777))
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
 
 	tests := []cmdTestCase{
@@ -101,37 +99,24 @@ func TestRepoAdd(t *testing.T) {
 	}
 	t.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
-	if err := o.run(io.Discard); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, o.run(io.Discard))
 
 	f, err := repo.LoadFile(repoFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if !f.Has(testRepoName) {
-		t.Errorf("%s was not successfully inserted into %s", testRepoName, repoFile)
-	}
+	assert.Truef(t, f.Has(testRepoName), "%s was not successfully inserted into %s", testRepoName, repoFile)
 
 	idx := filepath.Join(helmpath.CachePath("repository"), helmpath.CacheIndexFile(testRepoName))
-	if _, err := os.Stat(idx); errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("Error cache index file was not created for repository %s", testRepoName)
-	}
+	_, err = os.Stat(idx)
+	require.NotErrorIsf(t, err, fs.ErrNotExist, "Error cache index file was not created for repository %s", testRepoName)
 	idx = filepath.Join(helmpath.CachePath("repository"), helmpath.CacheChartsFile(testRepoName))
-	if _, err := os.Stat(idx); errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("Error cache charts file was not created for repository %s", testRepoName)
-	}
+	_, err = os.Stat(idx)
+	require.NotErrorIsf(t, err, fs.ErrNotExist, "Error cache charts file was not created for repository %s", testRepoName)
 
 	o.forceUpdate = true
 
-	if err := o.run(io.Discard); err != nil {
-		t.Errorf("Repository was not updated: %s", err)
-	}
-
-	if err := o.run(io.Discard); err != nil {
-		t.Error("Duplicate repository name was added")
-	}
+	require.NoError(t, o.run(io.Discard), "Repository was not updated")
+	assert.NoError(t, o.run(io.Discard), "Duplicate repository name was added")
 }
 
 func TestRepoAddCheckLegalName(t *testing.T) {
@@ -156,14 +141,7 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 	t.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
 	wantErrorMsg := fmt.Sprintf("repository name (%s) contains '/', please specify a different name without '/'", testRepoName)
-
-	if err := o.run(io.Discard); err != nil {
-		if wantErrorMsg != err.Error() {
-			t.Fatalf("Actual error %s, not equal to expected error %s", err, wantErrorMsg)
-		}
-	} else {
-		t.Fatal("expect reported an error.")
-	}
+	require.EqualError(t, o.run(io.Discard), wantErrorMsg)
 }
 
 func TestRepoAddConcurrentGoRoutines(t *testing.T) {
@@ -209,29 +187,21 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 				forceUpdate: false,
 				repoFile:    repoFile,
 			}
-			if err := o.run(io.Discard); err != nil {
-				t.Error(err)
-			}
+			assert.NoError(t, o.run(io.Discard))
 		}(fmt.Sprintf("%s-%d", testName, i))
 	}
 	wg.Wait()
 
 	b, err := os.ReadFile(repoFile)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	var f repo.File
-	if err := yaml.Unmarshal(b, &f); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, yaml.Unmarshal(b, &f))
 
 	var name string
 	for i := range 3 {
 		name = fmt.Sprintf("%s-%d", testName, i)
-		if !f.Has(name) {
-			t.Errorf("%s was not successfully inserted into %s: %s", name, repoFile, f.Repositories[0])
-		}
+		assert.Truef(t, f.Has(name), "%s was not successfully inserted into %s: %s", name, repoFile, f.Repositories[0])
 	}
 }
 
@@ -252,9 +222,7 @@ func TestRepoAddWithPasswordFromStdin(t *testing.T) {
 	defer resetEnv()()
 
 	in, err := os.Open("testdata/password")
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
+	require.NoError(t, err)
 
 	tmpdir := t.TempDir()
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
@@ -266,11 +234,7 @@ func TestRepoAddWithPasswordFromStdin(t *testing.T) {
 	cmd := fmt.Sprintf("repo add %s %s --repository-config %s --repository-cache %s --username %s --password-stdin", testName, srv.URL(), repoFile, tmpdir, username)
 	var result string
 	_, result, err = executeActionCommandStdinC(store, in, cmd)
-	if err != nil {
-		t.Errorf("unexpected error, got '%v'", err)
-	}
 
-	if !strings.Contains(result, fmt.Sprintf("%q has been added to your repositories", testName)) {
-		t.Errorf("Repo was not successfully added. Output: %s", result)
-	}
+	require.NoError(t, err)
+	assert.Contains(t, result, fmt.Sprintf("%q has been added to your repositories", testName), "Repo was not successfully added. Output: %s", result)
 }

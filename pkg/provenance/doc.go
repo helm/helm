@@ -25,7 +25,7 @@ A provenance file is clear-signed. This provides cryptographic verification that
 a particular block of information (metadata, archive file, images) have not
 been tampered with or altered. To learn more, read the GnuPG documentation on
 clear signatures:
-https://www.gnupg.org/gph/en/manual/x135.html
+https://www.gnupg.org/gph/en/manual.html
 
 The cryptography used by Helm should be compatible with OpenGPG. For example,
 you should be able to verify a signature by importing the desired public key

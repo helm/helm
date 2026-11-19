@@ -15,6 +15,8 @@ package installer
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPath(t *testing.T) {
@@ -38,8 +40,6 @@ func TestPath(t *testing.T) {
 		t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
 		baseIns := newBase(tt.source)
 		baseInsPath := baseIns.Path()
-		if baseInsPath != tt.expectPath {
-			t.Errorf("expected name %s, got %s", tt.expectPath, baseInsPath)
-		}
+		assert.Equal(t, tt.expectPath, baseInsPath, "expected name %s, got %s", tt.expectPath, baseInsPath)
 	}
 }

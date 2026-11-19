@@ -37,9 +37,17 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
   - # Keep dev-v3 GitHub Actions up to date, while Helm v3 is within support
     package-ecosystem: "github-actions"
     target-branch: "dev-v3"
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

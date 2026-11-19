@@ -38,7 +38,7 @@ func TestError(t *testing.T) {
 	os.Unsetenv(name)
 	g := Gate(name)
 
-	assert.Equal(t, "this feature has been marked as experimental and is not enabled by default. Please set HELM_EXPERIMENTAL_FEATURE=1 in your environment to use this feature", g.Error().Error())
+	assert.EqualError(t, g.Error(), "this feature has been marked as experimental and is not enabled by default. Please set HELM_EXPERIMENTAL_FEATURE=1 in your environment to use this feature")
 }
 
 func TestString(t *testing.T) {

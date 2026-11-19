@@ -64,12 +64,9 @@ command: "$HELM_PLUGIN_DIR/bin/%s"
 		Size:     int64(len(pluginYAML)),
 		Typeflag: tar.TypeReg,
 	}
-	if err := tarWriter.WriteHeader(header); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tarWriter.Write([]byte(pluginYAML)); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tarWriter.WriteHeader(header))
+	_, err := tarWriter.Write([]byte(pluginYAML))
+	require.NoError(t, err)
 
 	// Add bin directory
 	dirHeader := &tar.Header{
@@ -77,9 +74,7 @@ command: "$HELM_PLUGIN_DIR/bin/%s"
 		Mode:     0o755,
 		Typeflag: tar.TypeDir,
 	}
-	if err := tarWriter.WriteHeader(dirHeader); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tarWriter.WriteHeader(dirHeader))
 
 	// Add executable
 	execContent := fmt.Sprintf("#!/bin/sh\necho '%s test plugin'", pluginName)
@@ -89,12 +84,9 @@ command: "$HELM_PLUGIN_DIR/bin/%s"
 		Size:     int64(len(execContent)),
 		Typeflag: tar.TypeReg,
 	}
-	if err := tarWriter.WriteHeader(execHeader); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tarWriter.Write([]byte(execContent)); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tarWriter.WriteHeader(execHeader))
+	_, err = tarWriter.Write([]byte(execContent))
+	require.NoError(t, err)
 
 	tarWriter.Close()
 	gzWriter.Close()
@@ -135,9 +127,7 @@ func mockOCIRegistryWithArtifactType(t *testing.T, pluginName string) (*httptest
 	}
 
 	manifestData, err := json.Marshal(manifest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	manifestDigest := fmt.Sprintf("sha256:%x", sha256Sum(manifestData))
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -175,9 +165,7 @@ func mockOCIRegistryWithArtifactType(t *testing.T, pluginName string) (*httptest
 
 	// Parse server URL to get host:port format for OCI reference
 	serverURL, err := url.Parse(server.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	registryHost := serverURL.Host
 
 	return server, registryHost
@@ -240,42 +228,20 @@ func TestNewOCIInstaller(t *testing.T) {
 			installer, err := NewOCIInstaller(tt.source)
 
 			if tt.expectError {
-				if err == nil {
-					t.Error("expected error but got none")
-				}
-				return
-			}
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				return
-			}
+				// Check all fields thoroughly
+				assert.Equal(t, tt.expectName, installer.PluginName, "expected plugin name %s, got %s", tt.expectName, installer.PluginName)
+				assert.Equal(t, tt.source, installer.Source, "expected source %s, got %s", tt.source, installer.Source)
+				assert.NotEmpty(t, installer.CacheDir, "expected non-empty cache directory")
+				assert.Contains(t, installer.CacheDir, "plugins", "expected cache directory to contain 'plugins', got %s", installer.CacheDir)
+				assert.NotNil(t, installer.settings, "expected settings to be initialized")
 
-			// Check all fields thoroughly
-			if installer.PluginName != tt.expectName {
-				t.Errorf("expected plugin name %s, got %s", tt.expectName, installer.PluginName)
-			}
-
-			if installer.Source != tt.source {
-				t.Errorf("expected source %s, got %s", tt.source, installer.Source)
-			}
-
-			if installer.CacheDir == "" {
-				t.Error("expected non-empty cache directory")
-			}
-
-			if !strings.Contains(installer.CacheDir, "plugins") {
-				t.Errorf("expected cache directory to contain 'plugins', got %s", installer.CacheDir)
-			}
-
-			if installer.settings == nil {
-				t.Error("expected settings to be initialized")
-			}
-
-			// Check that Path() method works
-			expectedPath := helmpath.DataPath("plugins", tt.expectName)
-			if installer.Path() != expectedPath {
-				t.Errorf("expected path %s, got %s", expectedPath, installer.Path())
+				// Check that Path() method works
+				expectedPath := helmpath.DataPath("plugins", tt.expectName)
+				assert.Equal(t, expectedPath, installer.Path(), "expected path %s, got %s", expectedPath, installer.Path())
 			}
 		})
 	}
@@ -311,9 +277,7 @@ func TestOCIInstaller_Path(t *testing.T) {
 			}
 
 			path := installer.Path()
-			if path != tt.expectPath {
-				t.Errorf("expected path %s, got %s", tt.expectPath, path)
-			}
+			assert.Equal(t, tt.expectPath, path, "expected path %s, got %s", tt.expectPath, path)
 		})
 	}
 }
@@ -331,39 +295,30 @@ func TestOCIInstaller_Install(t *testing.T) {
 
 	// Test with plain HTTP (since test server uses HTTP)
 	installer, err := NewOCIInstaller(source, getter.WithPlainHTTP(true))
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// The OCI installer uses helmpath.DataPath, which is isolated by ensure.HelmHome(t)
 	actualPath := installer.Path()
 	t.Logf("Installer will use path: %s", actualPath)
 
 	// Install the plugin
-	if err := Install(installer); err != nil {
-		t.Fatalf("Expected installation to succeed, got error: %v", err)
-	}
+	require.NoErrorf(t, Install(installer), "Expected installation to succeed")
 
 	// Verify plugin was installed to the correct location
-	if !isPlugin(actualPath) {
-		t.Errorf("Expected plugin directory %s to contain plugin.yaml", actualPath)
-	}
+	assert.Truef(t, isPlugin(actualPath), "Expected plugin directory %s to contain plugin.yaml", actualPath)
 
 	// Debug: list what was actually created
-	if entries, err := os.ReadDir(actualPath); err != nil {
-		t.Fatalf("Could not read plugin directory %s: %v", actualPath, err)
-	} else {
-		t.Logf("Plugin directory %s contains:", actualPath)
-		for _, entry := range entries {
-			t.Logf("  - %s", entry.Name())
-		}
+	entries, err := os.ReadDir(actualPath)
+	require.NoError(t, err, "Could not read plugin directory %s", actualPath)
+	t.Logf("Plugin directory %s contains:", actualPath)
+	for _, entry := range entries {
+		t.Logf("  - %s", entry.Name())
 	}
 
 	// Verify the plugin.yaml file exists and is valid
 	pluginFile := filepath.Join(actualPath, "plugin.yaml")
-	if _, err := os.Stat(pluginFile); err != nil {
-		t.Errorf("Expected plugin.yaml to exist, got error: %v", err)
-	}
+	_, err = os.Stat(pluginFile)
+	assert.NoErrorf(t, err, "Expected plugin.yaml to exist")
 }
 
 func TestOCIInstaller_Install_WithGetterOptions(t *testing.T) {
@@ -404,11 +359,9 @@ func TestOCIInstaller_Install_WithGetterOptions(t *testing.T) {
 			source := fmt.Sprintf("oci://%s/%s:latest", registryHost, tc.pluginName)
 
 			installer, err := NewOCIInstaller(source, tc.options...)
-			if err != nil {
-				if !tc.wantErr {
-					t.Fatalf("Expected no error creating installer, got %v", err)
-				}
-				return
+
+			if !tc.wantErr {
+				require.NoError(t, err, "Expected no error creating installer")
 			}
 
 			// The installer now uses our isolated test directory
@@ -419,7 +372,7 @@ func TestOCIInstaller_Install_WithGetterOptions(t *testing.T) {
 			if tc.wantErr {
 				require.Error(t, err, "Expected installation to fail, but it succeeded")
 			} else {
-				require.NoError(t, err, "Expected installation to succeed, got error: %v", err)
+				require.NoError(t, err, "Expected installation to succeed")
 				// Verify plugin was installed to the actual path
 				assert.True(t, isPlugin(actualPath), "Expected plugin directory %s to contain plugin.yaml", actualPath)
 			}
@@ -437,27 +390,16 @@ func TestOCIInstaller_Install_AlreadyExists(t *testing.T) {
 
 	source := fmt.Sprintf("oci://%s/%s:latest", registryHost, pluginName)
 	installer, err := NewOCIInstaller(source, getter.WithPlainHTTP(true))
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// First install should succeed
-	if err := Install(installer); err != nil {
-		t.Fatalf("Expected first installation to succeed, got error: %v", err)
-	}
+	require.NoErrorf(t, Install(installer), "Expected first installation to succeed")
 
 	// Verify plugin was installed
-	if !isPlugin(installer.Path()) {
-		t.Errorf("Expected plugin directory %s to contain plugin.yaml", installer.Path())
-	}
+	assert.Truef(t, isPlugin(installer.Path()), "Expected plugin directory %s to contain plugin.yaml", installer.Path())
 
 	// Second install should fail with "plugin already exists"
-	err = Install(installer)
-	if err == nil {
-		t.Error("Expected error when installing plugin that already exists")
-	} else if !strings.Contains(err.Error(), "plugin already exists") {
-		t.Errorf("Expected 'plugin already exists' error, got: %v", err)
-	}
+	assert.ErrorContains(t, Install(installer), "plugin already exists")
 }
 
 func TestOCIInstaller_Update(t *testing.T) {
@@ -470,38 +412,23 @@ func TestOCIInstaller_Update(t *testing.T) {
 
 	source := fmt.Sprintf("oci://%s/%s:latest", registryHost, pluginName)
 	installer, err := NewOCIInstaller(source, getter.WithPlainHTTP(true))
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Test update when plugin does not exist - should fail
-	err = Update(installer)
-	if err == nil {
-		t.Error("Expected error when updating plugin that does not exist")
-	} else if !strings.Contains(err.Error(), "plugin does not exist") {
-		t.Errorf("Expected 'plugin does not exist' error, got: %v", err)
-	}
+	require.ErrorContains(t, Update(installer), "plugin does not exist")
 
 	// Install plugin first
-	if err := Install(installer); err != nil {
-		t.Fatalf("Expected installation to succeed, got error: %v", err)
-	}
+	require.NoErrorf(t, Install(installer), "Expected installation to succeed")
 
 	// Verify plugin was installed
-	if !isPlugin(installer.Path()) {
-		t.Errorf("Expected plugin directory %s to contain plugin.yaml", installer.Path())
-	}
+	assert.Truef(t, isPlugin(installer.Path()), "Expected plugin directory %s to contain plugin.yaml", installer.Path())
 
 	// Test update when plugin exists - should succeed
 	// For OCI, Update() removes old version and reinstalls
-	if err := Update(installer); err != nil {
-		t.Errorf("Expected update to succeed, got error: %v", err)
-	}
+	require.NoErrorf(t, Update(installer), "Expected update to succeed")
 
 	// Verify plugin is still installed after update
-	if !isPlugin(installer.Path()) {
-		t.Errorf("Expected plugin directory %s to contain plugin.yaml after update", installer.Path())
-	}
+	assert.Truef(t, isPlugin(installer.Path()), "Expected plugin directory %s to contain plugin.yaml after update", installer.Path())
 }
 
 func TestOCIInstaller_Install_ComponentExtraction(t *testing.T) {
@@ -513,35 +440,26 @@ func TestOCIInstaller_Install_ComponentExtraction(t *testing.T) {
 	pluginData := createTestPluginTarGz(t, pluginName)
 
 	// Test extraction
-	err := extractTarGz(bytes.NewReader(pluginData), tempDir)
-	if err != nil {
-		t.Fatalf("Failed to extract plugin: %v", err)
-	}
+	require.NoError(t, extractTarGz(bytes.NewReader(pluginData), tempDir), "Failed to extract plugin")
 
 	// Verify plugin.yaml exists
 	pluginYAMLPath := filepath.Join(tempDir, "plugin.yaml")
-	if _, err := os.Stat(pluginYAMLPath); os.IsNotExist(err) {
-		t.Error("plugin.yaml not found after extraction")
-	}
+	_, err := os.Stat(pluginYAMLPath)
+	assert.False(t, os.IsNotExist(err), "plugin.yaml not found after extraction")
 
 	// Verify bin directory exists
 	binPath := filepath.Join(tempDir, "bin")
-	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Error("bin directory not found after extraction")
-	}
+	_, err = os.Stat(binPath)
+	assert.False(t, os.IsNotExist(err), "bin directory not found after extraction")
 
 	// Verify executable exists and has correct permissions
 	execPath := filepath.Join(tempDir, "bin", pluginName)
-	if info, err := os.Stat(execPath); err != nil {
-		t.Errorf("executable not found: %v", err)
-	} else if info.Mode()&0o111 == 0 {
-		t.Error("file is not executable")
-	}
+	info, err := os.Stat(execPath)
+	require.NoError(t, err, "executable not found")
+	assert.NotEqual(t, 0, info.Mode()&0o111, "file is not executable")
 
 	// Verify this would be recognized as a plugin
-	if !isPlugin(tempDir) {
-		t.Error("extracted directory is not a valid plugin")
-	}
+	assert.True(t, isPlugin(tempDir), "extracted directory is not a valid plugin")
 }
 
 func TestExtractTarGz(t *testing.T) {
@@ -561,13 +479,10 @@ func TestExtractTarGz(t *testing.T) {
 		Typeflag: tar.TypeReg,
 	}
 
-	if err := tarWriter.WriteHeader(header); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tarWriter.WriteHeader(header))
 
-	if _, err := tarWriter.Write([]byte(testContent)); err != nil {
-		t.Fatal(err)
-	}
+	_, err := tarWriter.Write([]byte(testContent))
+	require.NoError(t, err)
 
 	// Add a test directory
 	dirHeader := &tar.Header{
@@ -576,35 +491,25 @@ func TestExtractTarGz(t *testing.T) {
 		Typeflag: tar.TypeDir,
 	}
 
-	if err := tarWriter.WriteHeader(dirHeader); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tarWriter.WriteHeader(dirHeader))
 
 	tarWriter.Close()
 	gzWriter.Close()
 
 	// Test extraction
-	err := extractTarGz(bytes.NewReader(buf.Bytes()), tempDir)
-	if err != nil {
-		t.Errorf("extractTarGz failed: %v", err)
-	}
+	require.NoError(t, extractTarGz(bytes.NewReader(buf.Bytes()), tempDir), "extractTarGz failed")
 
 	// Verify extracted file
 	extractedFile := filepath.Join(tempDir, "test-file.txt")
 	content, err := os.ReadFile(extractedFile)
-	if err != nil {
-		t.Errorf("failed to read extracted file: %v", err)
-	}
+	require.NoError(t, err, "failed to read extracted file")
 
-	if string(content) != testContent {
-		t.Errorf("expected content %s, got %s", testContent, string(content))
-	}
+	assert.Equal(t, testContent, string(content), "expected content %s, got %s", testContent, string(content))
 
 	// Verify extracted directory
 	extractedDir := filepath.Join(tempDir, "test-dir")
-	if _, err := os.Stat(extractedDir); os.IsNotExist(err) {
-		t.Errorf("extracted directory does not exist: %s", extractedDir)
-	}
+	_, err = os.Stat(extractedDir)
+	assert.Falsef(t, os.IsNotExist(err), "extracted directory does not exist: %s", extractedDir)
 }
 
 func TestExtractTarGz_InvalidGzip(t *testing.T) {
@@ -612,10 +517,7 @@ func TestExtractTarGz_InvalidGzip(t *testing.T) {
 
 	// Test with invalid gzip data
 	invalidGzipData := []byte("not gzip data")
-	err := extractTarGz(bytes.NewReader(invalidGzipData), tempDir)
-	if err == nil {
-		t.Error("expected error for invalid gzip data")
-	}
+	assert.Error(t, extractTarGz(bytes.NewReader(invalidGzipData), tempDir), "expected error for invalid gzip data")
 }
 
 func TestExtractTar_UnknownFileType(t *testing.T) {
@@ -634,13 +536,10 @@ func TestExtractTar_UnknownFileType(t *testing.T) {
 		Typeflag: tar.TypeReg,
 	}
 
-	if err := tarWriter.WriteHeader(header); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tarWriter.WriteHeader(header))
 
-	if _, err := tarWriter.Write([]byte(testContent)); err != nil {
-		t.Fatal(err)
-	}
+	_, err := tarWriter.Write([]byte(testContent))
+	require.NoError(t, err)
 
 	// Test unknown file type
 	unknownHeader := &tar.Header{
@@ -649,21 +548,12 @@ func TestExtractTar_UnknownFileType(t *testing.T) {
 		Typeflag: tar.TypeSymlink, // Use a type that's not handled
 	}
 
-	if err := tarWriter.WriteHeader(unknownHeader); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tarWriter.WriteHeader(unknownHeader))
 
 	tarWriter.Close()
 
 	// Test extraction - should fail due to unknown type
-	err := extractTar(bytes.NewReader(buf.Bytes()), tempDir)
-	if err == nil {
-		t.Error("expected error for unknown tar file type")
-	}
-
-	if !strings.Contains(err.Error(), "unknown type") {
-		t.Errorf("expected 'unknown type' error, got: %v", err)
-	}
+	assert.ErrorContains(t, extractTar(bytes.NewReader(buf.Bytes()), tempDir), "unknown type")
 }
 
 func TestExtractTar_SuccessfulExtraction(t *testing.T) {
@@ -686,32 +576,22 @@ func TestExtractTar_SuccessfulExtraction(t *testing.T) {
 		Typeflag: tar.TypeReg,
 	}
 
-	if err := tarWriter.WriteHeader(header); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tarWriter.WriteHeader(header))
 
-	if _, err := tarWriter.Write([]byte(testContent)); err != nil {
-		t.Fatal(err)
-	}
+	_, err := tarWriter.Write([]byte(testContent))
+	require.NoError(t, err)
 
 	tarWriter.Close()
 
 	// Test extraction
-	err := extractTar(bytes.NewReader(buf.Bytes()), tempDir)
-	if err != nil {
-		t.Errorf("extractTar failed: %v", err)
-	}
+	require.NoError(t, extractTar(bytes.NewReader(buf.Bytes()), tempDir), "extractTar failed")
 
 	// Verify the regular file was extracted
 	extractedFile := filepath.Join(tempDir, "test-file.txt")
 	content, err := os.ReadFile(extractedFile)
-	if err != nil {
-		t.Errorf("failed to read extracted file: %v", err)
-	}
+	require.NoError(t, err, "failed to read extracted file")
 
-	if string(content) != testContent {
-		t.Errorf("expected content %s, got %s", testContent, string(content))
-	}
+	assert.Equal(t, testContent, string(content), "expected content %s, got %s", testContent, string(content))
 }
 
 func TestOCIInstaller_Install_PlainHTTPOption(t *testing.T) {
@@ -720,41 +600,25 @@ func TestOCIInstaller_Install_PlainHTTPOption(t *testing.T) {
 
 	// Test with PlainHTTP=false (default)
 	installer1, err := NewOCIInstaller(source)
-	if err != nil {
-		t.Fatalf("failed to create installer: %v", err)
-	}
-	if installer1.getter == nil {
-		t.Error("getter should be initialized")
-	}
+	require.NoError(t, err, "failed to create installer")
+	assert.NotNil(t, installer1.getter, "getter should be initialized")
 
 	// Test with PlainHTTP=true
 	installer2, err := NewOCIInstaller(source, getter.WithPlainHTTP(true))
-	if err != nil {
-		t.Fatalf("failed to create installer with PlainHTTP=true: %v", err)
-	}
-	if installer2.getter == nil {
-		t.Error("getter should be initialized with PlainHTTP=true")
-	}
+	require.NoError(t, err, "failed to create installer with PlainHTTP=true")
+	assert.NotNil(t, installer2.getter, "getter should be initialized with PlainHTTP=true")
 
 	// Both installers should have the same basic properties
-	if installer1.PluginName != installer2.PluginName {
-		t.Error("plugin names should match")
-	}
-	if installer1.Source != installer2.Source {
-		t.Error("sources should match")
-	}
+	assert.Equal(t, installer2.PluginName, installer1.PluginName, "plugin names should match")
+	assert.Equal(t, installer2.Source, installer1.Source, "sources should match")
 
 	// Test with multiple options
 	installer3, err := NewOCIInstaller(source,
 		getter.WithPlainHTTP(true),
 		getter.WithBasicAuth("user", "pass"),
 	)
-	if err != nil {
-		t.Fatalf("failed to create installer with multiple options: %v", err)
-	}
-	if installer3.getter == nil {
-		t.Error("getter should be initialized with multiple options")
-	}
+	require.NoError(t, err, "failed to create installer with multiple options")
+	assert.NotNil(t, installer3.getter, "getter should be initialized with multiple options")
 }
 
 func TestOCIInstaller_Install_ValidationErrors(t *testing.T) {
@@ -789,12 +653,8 @@ func TestOCIInstaller_Install_ValidationErrors(t *testing.T) {
 			// Test the gzip validation logic that's used in the Install method
 			if len(tt.layerData) < 2 || tt.layerData[0] != 0x1f || tt.layerData[1] != 0x8b {
 				// This matches the validation in the Install method
-				if !tt.expectError {
-					t.Error("expected valid gzip data")
-				}
-				if !strings.Contains(tt.errorMsg, "is not a gzip compressed archive") {
-					t.Error("expected error message to contain 'is not a gzip compressed archive'")
-				}
+				assert.True(t, tt.expectError, "expected valid gzip data")
+				assert.Contains(t, tt.errorMsg, "is not a gzip compressed archive")
 			}
 		})
 	}

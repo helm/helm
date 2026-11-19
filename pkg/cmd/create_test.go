@@ -22,6 +22,9 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chartv3 "helm.sh/helm/v4/internal/chart/v3"
 	chartutilv3 "helm.sh/helm/v4/internal/chart/v3/util"
 	"helm.sh/helm/v4/internal/gates"
@@ -39,38 +42,25 @@ func TestCreateCmd(t *testing.T) {
 	cname := "testchart"
 
 	// Run a create
-	if _, _, err := executeActionCommand("create " + cname); err != nil {
-		t.Fatalf("Failed to run create: %s", err)
-	}
+	_, _, err := executeActionCommand("create " + cname)
+	require.NoErrorf(t, err, "Failed to run create")
 
 	// Test that the chart is there
-	if fi, err := os.Stat(cname); err != nil {
-		t.Fatalf("no chart directory: %s", err)
-	} else if !fi.IsDir() {
-		t.Fatal("chart is not directory")
-	}
+	fi, err := os.Stat(cname)
+	require.NoErrorf(t, err, "no chart directory")
+	require.Truef(t, fi.IsDir(), "chart is not directory")
 
 	c, err := chartloader.LoadDir(cname)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	acc, err := chart.NewAccessor(c)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if acc.Name() != cname {
-		t.Errorf("Expected %q name, got %q", cname, acc.Name())
-	}
+	assert.Equal(t, cname, acc.Name(), "Expected %q name, got %q", cname, acc.Name())
 	metadata := acc.MetadataAsMap()
 	apiVersion, ok := metadata["APIVersion"].(string)
-	if !ok {
-		t.Fatal("APIVersion not found in metadata")
-	}
-	if apiVersion != chartv2.APIVersionV2 {
-		t.Errorf("Wrong API version: %q", apiVersion)
-	}
+	require.True(t, ok, "APIVersion not found in metadata")
+	assert.Equal(t, chartv2.APIVersionV2, apiVersion, "Wrong API version: %q", apiVersion)
 }
 
 func TestCreateStarterCmd(t *testing.T) {
@@ -123,15 +113,11 @@ func TestCreateStarterCmd(t *testing.T) {
 			} else {
 				dest, err = chartutil.Create("starterchart", starterchart)
 			}
-			if err != nil {
-				t.Fatalf("Could not create chart: %s", err)
-			}
+			require.NoError(t, err, "Could not create chart")
 			t.Logf("Created %s", dest)
 
 			tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-			if err := os.WriteFile(tplpath, []byte("test"), 0o644); err != nil {
-				t.Fatalf("Could not write template: %s", err)
-			}
+			require.NoErrorf(t, os.WriteFile(tplpath, []byte("test"), 0o644), "Could not write template")
 
 			// Build the command
 			starterArg := "starterchart"
@@ -147,51 +133,36 @@ func TestCreateStarterCmd(t *testing.T) {
 			cmd += " " + cname
 
 			// Run create
-			if _, _, err := executeActionCommand(cmd); err != nil {
-				t.Fatalf("Failed to run create: %s", err)
-			}
+			_, _, err = executeActionCommand(cmd)
+			require.NoErrorf(t, err, "Failed to run create")
 
 			// Test that the chart is there
-			if fi, err := os.Stat(cname); err != nil {
-				t.Fatalf("no chart directory: %s", err)
-			} else if !fi.IsDir() {
-				t.Fatal("chart is not directory")
-			}
+			fi, err := os.Stat(cname)
+			require.NoErrorf(t, err, "no chart directory")
+			require.Truef(t, fi.IsDir(), "chart is not directory")
 
 			// Load and verify the chart
 			c, err := chartloader.LoadDir(cname)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			acc, err := chart.NewAccessor(c)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			chartName := acc.Name()
 			metadata := acc.MetadataAsMap()
 			apiVersion, ok := metadata["APIVersion"].(string)
-			if !ok {
-				t.Fatal("APIVersion not found in metadata")
-			}
+			require.True(t, ok, "APIVersion not found in metadata")
 			var templates []string
 			for _, tpl := range acc.Templates() {
 				templates = append(templates, tpl.Name)
 			}
 
-			if chartName != cname {
-				t.Errorf("Expected %q name, got %q", cname, chartName)
-			}
-			if apiVersion != tt.expectedVersion {
-				t.Errorf("Wrong API version: expected %q, got %q", tt.expectedVersion, apiVersion)
-			}
+			assert.Equal(t, cname, chartName, "Expected %q name, got %q", cname, chartName)
+			assert.Equal(t, tt.expectedVersion, apiVersion, "Wrong API version: expected %q, got %q", tt.expectedVersion, apiVersion)
 
 			// Verify custom template exists
 			found := slices.Contains(templates, "templates/foo.tpl")
-			if !found {
-				t.Error("Did not find foo.tpl")
-			}
+			assert.True(t, found, "Did not find foo.tpl")
 		})
 	}
 }
@@ -207,38 +178,25 @@ func TestCreateCmdChartAPIVersionV2(t *testing.T) {
 	cname := "testchart"
 
 	// Run a create with explicit v2
-	if _, _, err := executeActionCommand("create --chart-api-version=v2 " + cname); err != nil {
-		t.Fatalf("Failed to run create: %s", err)
-	}
+	_, _, err := executeActionCommand("create --chart-api-version=v2 " + cname)
+	require.NoErrorf(t, err, "Failed to run create")
 
 	// Test that the chart is there
-	if fi, err := os.Stat(cname); err != nil {
-		t.Fatalf("no chart directory: %s", err)
-	} else if !fi.IsDir() {
-		t.Fatal("chart is not directory")
-	}
+	fi, err := os.Stat(cname)
+	require.NoErrorf(t, err, "no chart directory")
+	require.Truef(t, fi.IsDir(), "chart is not directory")
 
 	c, err := chartloader.LoadDir(cname)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	acc, err := chart.NewAccessor(c)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if acc.Name() != cname {
-		t.Errorf("Expected %q name, got %q", cname, acc.Name())
-	}
+	assert.Equal(t, cname, acc.Name(), "Expected %q name, got %q", cname, acc.Name())
 	metadata := acc.MetadataAsMap()
 	apiVersion, ok := metadata["APIVersion"].(string)
-	if !ok {
-		t.Fatal("APIVersion not found in metadata")
-	}
-	if apiVersion != chartv2.APIVersionV2 {
-		t.Errorf("Wrong API version: expected %q, got %q", chartv2.APIVersionV2, apiVersion)
-	}
+	require.True(t, ok, "APIVersion not found in metadata")
+	assert.Equal(t, chartv2.APIVersionV2, apiVersion, "Wrong API version: expected %q, got %q", chartv2.APIVersionV2, apiVersion)
 }
 
 func TestCreateCmdChartAPIVersionV3(t *testing.T) {
@@ -248,38 +206,25 @@ func TestCreateCmdChartAPIVersionV3(t *testing.T) {
 	cname := "testchart"
 
 	// Run a create with v3
-	if _, _, err := executeActionCommand("create --chart-api-version=v3 " + cname); err != nil {
-		t.Fatalf("Failed to run create: %s", err)
-	}
+	_, _, err := executeActionCommand("create --chart-api-version=v3 " + cname)
+	require.NoErrorf(t, err, "Failed to run create")
 
 	// Test that the chart is there
-	if fi, err := os.Stat(cname); err != nil {
-		t.Fatalf("no chart directory: %s", err)
-	} else if !fi.IsDir() {
-		t.Fatal("chart is not directory")
-	}
+	fi, err := os.Stat(cname)
+	require.NoErrorf(t, err, "no chart directory")
+	require.Truef(t, fi.IsDir(), "chart is not directory")
 
 	c, err := chartloader.LoadDir(cname)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	acc, err := chart.NewAccessor(c)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if acc.Name() != cname {
-		t.Errorf("Expected %q name, got %q", cname, acc.Name())
-	}
+	assert.Equal(t, cname, acc.Name(), "Expected %q name, got %q", cname, acc.Name())
 	metadata := acc.MetadataAsMap()
 	apiVersion, ok := metadata["APIVersion"].(string)
-	if !ok {
-		t.Fatal("APIVersion not found in metadata")
-	}
-	if apiVersion != chartv3.APIVersionV3 {
-		t.Errorf("Wrong API version: expected %q, got %q", chartv3.APIVersionV3, apiVersion)
-	}
+	require.True(t, ok, "APIVersion not found in metadata")
+	assert.Equal(t, chartv3.APIVersionV3, apiVersion, "Wrong API version: expected %q, got %q", chartv3.APIVersionV3, apiVersion)
 }
 
 func TestCreateCmdInvalidChartAPIVersion(t *testing.T) {
@@ -289,12 +234,8 @@ func TestCreateCmdInvalidChartAPIVersion(t *testing.T) {
 
 	// Run a create with invalid version
 	_, _, err := executeActionCommand("create --chart-api-version=v1 " + cname)
-	if err == nil {
-		t.Fatal("Expected error for invalid API version, got nil")
-	}
+	require.Error(t, err, "Expected error for invalid API version, got nil")
 
 	expectedErr := "unsupported chart API version: v1 (supported: v2, v3)"
-	if err.Error() != expectedErr {
-		t.Errorf("Expected error %q, got %q", expectedErr, err.Error())
-	}
+	assert.EqualError(t, err, expectedErr, "Expected error %q, got %q", expectedErr, err.Error())
 }

@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"testing"
 	"text/template"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadValues(t *testing.T) {
@@ -46,29 +49,21 @@ water:
 `
 
 	data, err := ReadValues([]byte(doc))
-	if err != nil {
-		t.Fatalf("Error parsing bytes: %s", err)
-	}
+	require.NoErrorf(t, err, "Error parsing bytes")
 	matchValues(t, data)
 
 	tests := []string{`poet: "Coleridge"`, "# Just a comment", ""}
 
 	for _, tt := range tests {
 		data, err = ReadValues([]byte(tt))
-		if err != nil {
-			t.Fatalf("Error parsing bytes (%s): %s", tt, err)
-		}
-		if data == nil {
-			t.Errorf(`YAML string "%s" gave a nil map`, tt)
-		}
+		require.NoErrorf(t, err, "Error parsing bytes (%s)", tt)
+		require.NotNilf(t, data, `YAML string "%s" gave a nil map`, tt)
 	}
 }
 
 func TestReadValuesFile(t *testing.T) {
 	data, err := ReadValuesFile("./testdata/coleridge.yaml")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	require.NoErrorf(t, err, "Error reading YAML file")
 	matchValues(t, data)
 }
 
@@ -108,56 +103,40 @@ chapter:
     title: "The Spouter Inn"
 `
 	d, err := ReadValues([]byte(doc))
-	if err != nil {
-		t.Fatalf("Failed to parse the White Whale: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to parse the White Whale")
 
-	if _, err := d.Table("title"); err == nil {
-		t.Fatal("Title is not a table.")
-	}
+	_, err = d.Table("title")
+	require.Error(t, err, "Title is not a table.")
 
-	if _, err := d.Table("chapter"); err != nil {
-		t.Fatalf("Failed to get the chapter table: %s\n%v", err, d)
-	}
+	_, err = d.Table("chapter")
+	require.NoErrorf(t, err, "Failed to get the chapter table: %v", d)
 
-	if v, err := d.Table("chapter.one"); err != nil {
-		t.Errorf("Failed to get chapter.one: %s", err)
-	} else if v["title"] != "Loomings" {
-		t.Errorf("Unexpected title: %s", v["title"])
-	}
+	v, err := d.Table("chapter.one")
+	require.NoErrorf(t, err, "Failed to get chapter.one")
+	assert.Equalf(t, "Loomings", v["title"], "Unexpected title: %s", v["title"])
 
-	if _, err := d.Table("chapter.three"); err != nil {
-		t.Errorf("Chapter three is missing: %s\n%v", err, d)
-	}
+	_, err = d.Table("chapter.three")
+	require.NoErrorf(t, err, "Chapter three is missing: %v", d)
 
-	if _, err := d.Table("chapter.OneHundredThirtySix"); err == nil {
-		t.Error("I think you mean 'Epilogue'")
-	}
+	_, err = d.Table("chapter.OneHundredThirtySix")
+	assert.Error(t, err, "I think you mean 'Epilogue'")
 }
 
 func matchValues(t *testing.T, data map[string]any) {
 	t.Helper()
-	if data["poet"] != "Coleridge" {
-		t.Errorf("Unexpected poet: %s", data["poet"])
-	}
+	assert.Equalf(t, "Coleridge", data["poet"], "Unexpected poet: %s", data["poet"])
 
-	if o, err := ttpl("{{len .stanza}}", data); err != nil {
-		t.Errorf("len stanza: %s", err)
-	} else if o != "6" {
-		t.Errorf("Expected 6, got %s", o)
-	}
+	o, err := ttpl("{{len .stanza}}", data)
+	require.NoErrorf(t, err, "len stanza")
+	assert.Equalf(t, "6", o, "Expected 6, got %s", o)
 
-	if o, err := ttpl("{{.mariner.shot}}", data); err != nil {
-		t.Errorf(".mariner.shot: %s", err)
-	} else if o != "ALBATROSS" {
-		t.Error("Expected that mariner shot ALBATROSS")
-	}
+	o, err = ttpl("{{.mariner.shot}}", data)
+	require.NoErrorf(t, err, ".mariner.shot")
+	assert.Equal(t, "ALBATROSS", o, "Expected that mariner shot ALBATROSS")
 
-	if o, err := ttpl("{{.water.water.where}}", data); err != nil {
-		t.Errorf(".water.water.where: %s", err)
-	} else if o != "everywhere" {
-		t.Error("Expected water water everywhere")
-	}
+	o, err = ttpl("{{.water.water.where}}", data)
+	require.NoErrorf(t, err, ".water.water.where")
+	assert.Equal(t, "everywhere", o, "Expected water water everywhere")
 }
 
 func ttpl(tpl string, v map[string]any) (string, error) {
@@ -179,27 +158,18 @@ chapter:
     title: "The Spouter Inn"
 `
 	d, err := ReadValues([]byte(doc))
-	if err != nil {
-		t.Fatalf("Failed to parse the White Whale: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to parse the White Whale")
 
-	if v, err := d.PathValue("chapter.one.title"); err != nil {
-		t.Errorf("Got error instead of title: %s\n%v", err, d)
-	} else if v != "Loomings" {
-		t.Errorf("No error but got wrong value for title: %s\n%v", err, d)
-	}
-	if _, err := d.PathValue("chapter.one.doesnotexist"); err == nil {
-		t.Errorf("Non-existent key should return error: %s\n%v", err, d)
-	}
-	if _, err := d.PathValue("chapter.doesnotexist.one"); err == nil {
-		t.Errorf("Non-existent key in middle of path should return error: %s\n%v", err, d)
-	}
-	if _, err := d.PathValue(""); err == nil {
-		t.Error("Asking for the value from an empty path should yield an error")
-	}
-	if v, err := d.PathValue("title"); err == nil {
-		if v != "Moby Dick" {
-			t.Error("Failed to return values for root key title")
-		}
-	}
+	v, err := d.PathValue("chapter.one.title")
+	require.NoErrorf(t, err, "Got error instead of title: %v", d)
+	assert.Equalf(t, "Loomings", v, "No error but got wrong value for title: %v", d)
+	_, err = d.PathValue("chapter.one.doesnotexist")
+	require.Errorf(t, err, "Non-existent key should return error: %v", d)
+	_, err = d.PathValue("chapter.doesnotexist.one")
+	require.Errorf(t, err, "Non-existent key in middle of path should return error: %v", d)
+	_, err = d.PathValue("")
+	require.Error(t, err, "Asking for the value from an empty path should yield an error")
+	v, err = d.PathValue("title")
+	require.NoErrorf(t, err, "Failed to get title: %v", d)
+	assert.Equalf(t, "Moby Dick", v, "Failed to return values for root key title: got %s\n%v", v, d)
 }

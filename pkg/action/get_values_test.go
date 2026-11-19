@@ -170,7 +170,7 @@ func TestGetValues_Run_EmptyValues(t *testing.T) {
 
 func TestGetValues_Run_UnreachableKubeClient(t *testing.T) {
 	cfg := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient := kubefake.FailingKubeClient{Out: io.Discard, DummyResources: nil}
 	failingKubeClient.ConnectionError = errors.New("connection refused")
 	cfg.KubeClient = &failingKubeClient
 

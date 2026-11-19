@@ -141,12 +141,11 @@ func TestRetryingRoundTripper_RoundTrip(t *testing.T) {
 
 			if tt.expectedErr != "" {
 				require.ErrorContains(t, err, tt.expectedErr)
-				return
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedCode, resp.StatusCode)
+				assert.Equal(t, tt.expectedCalls, fakeRT.calls)
 			}
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.expectedCode, resp.StatusCode)
-			assert.Equal(t, tt.expectedCalls, fakeRT.calls)
 		})
 	}
 }

@@ -197,9 +197,8 @@ func TestDebugCheckHandler_Handle(t *testing.T) {
 		}
 
 		record := slog.NewRecord(time.Now(), slog.LevelInfo, "test message", 0)
-		err := handler.Handle(t.Context(), record)
 
-		require.NoError(t, err)
+		require.NoError(t, handler.Handle(t.Context(), record))
 		assert.Contains(t, buf.String(), "test message")
 	})
 
@@ -214,9 +213,8 @@ func TestDebugCheckHandler_Handle(t *testing.T) {
 		type testKey string
 		ctx := context.WithValue(t.Context(), testKey("test"), "value")
 		record := slog.NewRecord(time.Now(), slog.LevelInfo, "context test", 0)
-		err := handler.Handle(ctx, record)
 
-		require.NoError(t, err)
+		require.NoError(t, handler.Handle(ctx, record))
 		assert.Contains(t, buf.String(), "context test")
 	})
 }
