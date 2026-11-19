@@ -403,7 +403,7 @@ func newRegistryClient(
 	out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool, username, password string,
 ) (*registry.Client, error) {
 	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSVerify {
-		registryClient, err := newRegistryClientWithTLS(out, certFile, keyFile, caFile, insecureSkipTLSVerify, username, password)
+		registryClient, err := newRegistryClientWithTLS(out, certFile, keyFile, caFile, insecureSkipTLSVerify, plainHTTP, username, password)
 		if err != nil {
 			return nil, err
 		}
@@ -438,7 +438,7 @@ func newDefaultRegistryClient(out io.Writer, plainHTTP bool, username, password 
 }
 
 func newRegistryClientWithTLS(
-	out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSVerify bool, username, password string,
+	out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool, username, password string,
 ) (*registry.Client, error) {
 	// Validate the TLS files up front so a bad flag fails before any request.
 	if _, err := tlsutil.NewTLSConfig(
@@ -461,6 +461,9 @@ func newRegistryClientWithTLS(
 		registry.ClientOptBasicAuth(username, password),
 	}
 	opts = append(opts, containersConfigOptions()...)
+	if plainHTTP {
+		opts = append(opts, registry.ClientOptPlainHTTP())
+	}
 	registryClient, err := registry.NewClient(opts...)
 	if err != nil {
 		return nil, err
