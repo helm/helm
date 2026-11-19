@@ -19,7 +19,6 @@ package util
 import (
 	"fmt"
 	"log"
-	"maps"
 
 	"helm.sh/helm/v4/internal/copystructure"
 	chart "helm.sh/helm/v4/pkg/chart"
@@ -122,9 +121,10 @@ func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]any, prefi
 			dvmap := dv.(map[string]any)
 			subPrefix := concatPrefix(prefix, ch.Name())
 			// Get globals out of dest and merge them into dvmap.
-			coalesceGlobals(printf, dvmap, dest, subPrefix, merge)
+			if err := coalesceGlobals(printf, dvmap, dest, subPrefix, merge); err != nil {
+				return dest, err
+			}
 			// Now coalesce the rest of the values.
-			var err error
 			dest[sub.Name()], err = coalesce(printf, subchart, dvmap, subPrefix, merge)
 			if err != nil {
 				return dest, err
@@ -135,23 +135,21 @@ func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]any, prefi
 }
 
 // coalesceGlobals copies the globals out of src and merges them into dest.
-//
-// For convenience, returns dest.
-func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ bool) {
+func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ bool) error {
 	var dg, sg map[string]any
 
 	if destglob, ok := dest[common.GlobalKey]; !ok {
 		dg = make(map[string]any)
 	} else if dg, ok = destglob.(map[string]any); !ok {
 		printf("warning: skipping globals because destination %s is not a table.", common.GlobalKey)
-		return
+		return nil
 	}
 
 	if srcglob, ok := src[common.GlobalKey]; !ok {
 		sg = make(map[string]any)
 	} else if sg, ok = srcglob.(map[string]any); !ok {
 		printf("warning: skipping globals because source %s is not a table.", common.GlobalKey)
-		return
+		return nil
 	}
 
 	// EXPERIMENTAL: In the past, we have disallowed globals to test tables. This
@@ -160,7 +158,20 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 	// tables in globals.
 	for key, val := range sg {
 		if istable(val) {
-			vv := copyMap(val.(map[string]any))
+			valCopy, err := copystructure.Copy(val)
+			if err != nil {
+				fullPath := concatPrefix(prefix, key)
+				return fmt.Errorf("copying globals for %s: %w", fullPath, err)
+			}
+			vv, ok := valCopy.(map[string]any)
+			if !ok {
+				printf("warning: unable to convert globals copy to Helm values type")
+				continue
+			}
+			// Ensure vv is a non-nil map so that merges into it are not lost.
+			if vv == nil {
+				vv = make(map[string]any)
+			}
 			if destv, ok := dg[key]; !ok {
 				// Here there is no merge. We're just adding.
 				dg[key] = vv
@@ -187,12 +198,7 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 		}
 	}
 	dest[common.GlobalKey] = dg
-}
-
-func copyMap(src map[string]any) map[string]any {
-	m := make(map[string]any, len(src))
-	maps.Copy(m, src)
-	return m
+	return nil
 }
 
 // coalesceValues builds up a values map for a particular chart.
