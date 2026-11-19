@@ -309,10 +309,39 @@ func TestSqlUpdate(t *testing.T) {
 		sqlReleaseTableNamespaceColumn,
 	)
 
+	mock.ExpectBegin()
 	mock.
 		ExpectExec(regexp.QuoteMeta(query)).
 		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	insertLabelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(insertLabelsQuery)).
+			WithArgs(key, namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+	}
+	mock.ExpectCommit()
 
 	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
 	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
