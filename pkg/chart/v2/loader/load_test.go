@@ -90,6 +90,36 @@ func TestLoadDirWithSymlink(t *testing.T) {
 	verifyDependenciesLock(t, c)
 }
 
+func TestLoadDirWithBrokenSymlink(t *testing.T) {
+	tests := []struct {
+		name       string
+		helmignore string
+		wantErr    bool
+	}{
+		{"not ignored", "", true},
+		{"ignored by .helmignore", "bar\n", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "Chart.yaml"), []byte("apiVersion: v2\nname: test\nversion: 0.1.0\n"), 0o644))
+			require.NoError(t, os.WriteFile(filepath.Join(dir, ".helmignore"), []byte(tt.helmignore), 0o644))
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "templates"), 0o755))
+			require.NoError(t, os.Symlink("foo", filepath.Join(dir, "templates", "bar")))
+
+			c, err := LoadDir(dir)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "error evaluating symlink")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "test", c.Name())
+			assert.Empty(t, c.Templates)
+		})
+	}
+}
+
 func TestBomTestData(t *testing.T) {
 	testFiles := []string{"frobnitz_with_bom/.helmignore", "frobnitz_with_bom/templates/template.tpl", "frobnitz_with_bom/Chart.yaml"}
 	for _, file := range testFiles {
