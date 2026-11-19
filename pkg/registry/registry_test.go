@@ -195,8 +195,9 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	// Wait until the registry is accepting connections, otherwise the first
 	// client request can race ahead of ListenAndServe and fail with a
 	// connection error.
+	dialer := &net.Dialer{Timeout: 100 * time.Millisecond}
 	suite.Require().Eventually(func() bool {
-		conn, err := net.DialTimeout("tcp", registryAddr, 100*time.Millisecond)
+		conn, err := dialer.DialContext(suite.T().Context(), "tcp", registryAddr)
 		if err != nil {
 			return false
 		}
