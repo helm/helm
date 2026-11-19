@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -165,10 +167,8 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		typePrinter, _ := printFlags.ToPrinter("")
 		printer := &get.TablePrinter{Delegate: typePrinter}
 
-		var keys []string
-		for key := range rel.Info.Resources {
-			keys = append(keys, key)
-		}
+		// Map iteration order is random; sort the resource kinds so the output is stable.
+		keys := slices.Sorted(maps.Keys(rel.Info.Resources))
 
 		for _, t := range keys {
 			_, _ = fmt.Fprintf(buf, "==> %s\n", t)
