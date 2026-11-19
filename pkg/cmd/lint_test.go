@@ -99,6 +99,29 @@ func TestLintCmdRequiresArgs(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestLintCmdWithOutputFormat(t *testing.T) {
+	tests := []cmdTestCase{{
+		name:      "lint failing chart with --output json",
+		cmd:       "lint --output json testdata/testcharts/chart-with-bad-subcharts",
+		golden:    "output/lint-output-json.txt",
+		wantError: true,
+	}, {
+		name:   "lint good chart with --output json",
+		cmd:    "lint --output json testdata/testcharts/alpine",
+		golden: "output/lint-output-json-good.txt",
+	}, {
+		name:   "lint chart with warning with --output yaml",
+		cmd:    "lint --output yaml testdata/testcharts/chart-with-only-crds",
+		golden: "output/lint-output-yaml.txt",
+	}, {
+		name:      "lint two charts with --output json",
+		cmd:       "lint --output json testdata/testcharts/alpine testdata/testcharts/chart-with-bad-subcharts",
+		golden:    "output/lint-output-json-multiple.txt",
+		wantError: true,
+	}}
+	runTestCmd(t, tests)
+}
+
 func TestLintFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "lint", true)
 	checkFileCompletion(t, "lint mypath", true) // Multiple paths can be given

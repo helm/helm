@@ -1,0 +1,15 @@
+charts_failed: 0
+charts_linted: 1
+results:
+- chart: testdata/testcharts/chart-with-only-crds
+  failed: false
+  messages:
+  - message: icon is recommended
+    path: Chart.yaml
+    severity: INFO
+  - message: file does not exist
+    path: values.yaml
+    severity: INFO
+  - message: directory does not exist
+    path: templates/
+    severity: WARNING

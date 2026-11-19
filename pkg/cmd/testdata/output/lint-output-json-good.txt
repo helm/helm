@@ -1,0 +1,1 @@
+{"charts_linted":1,"charts_failed":0,"results":[{"chart":"testdata/testcharts/alpine","failed":false,"messages":[{"severity":"INFO","path":"Chart.yaml","message":"icon is recommended"}]}]}
