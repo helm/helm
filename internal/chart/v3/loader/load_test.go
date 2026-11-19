@@ -289,6 +289,36 @@ icon: https://example.com/64x64.png
 	assert.Empty(t, text.String(), "Expected no message to Stderr, got %s", text.String())
 }
 
+func TestLoadFilesSubchartOrderIsDeterministic(t *testing.T) {
+	modTime := time.Now()
+	files := []*archive.BufferedFile{
+		{
+			Name:    "Chart.yaml",
+			ModTime: modTime,
+			Data:    []byte("apiVersion: v3\nname: frobnitz\nversion: \"1.2.3\"\n"),
+		},
+	}
+	for _, name := range []string{"delta", "bravo", "echo", "alpine", "charlie"} {
+		files = append(files, &archive.BufferedFile{
+			Name:    "charts/" + name + "/Chart.yaml",
+			ModTime: modTime,
+			Data:    []byte("apiVersion: v3\nname: " + name + "\nversion: \"0.1.0\"\n"),
+		})
+	}
+	want := []string{"alpine", "bravo", "charlie", "delta", "echo"}
+
+	for i := range 20 {
+		c, err := LoadFiles(files)
+		require.NoError(t, err, "Expected good files to be loaded")
+
+		got := make([]string, 0, len(c.Dependencies()))
+		for _, dep := range c.Dependencies() {
+			got = append(got, dep.Name())
+		}
+		require.Equal(t, want, got, "subchart order must not depend on map iteration order (load %d)", i)
+	}
+}
+
 // Packaging the chart on a Windows machine will produce an
 // archive that has \\ as delimiters. Test that we support these archives
 func TestLoadFileBackslash(t *testing.T) {
