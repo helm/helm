@@ -92,6 +92,27 @@ func TestCreateFrom(t *testing.T) {
 	}
 }
 
+// TestCreateFrom_DotName makes sure a starter cannot scaffold into the
+// destination directory or its parent through a "." or ".." chart name.
+func TestCreateFrom_DotName(t *testing.T) {
+	srcdir := "./testdata/frobnitz/charts/mariner"
+	for _, name := range []string{".", ".."} {
+		t.Run(name, func(t *testing.T) {
+			tdir := t.TempDir()
+			dest := filepath.Join(tdir, "dest")
+			require.NoError(t, os.Mkdir(dest, 0o755))
+
+			cf := &chart.Metadata{APIVersion: chart.APIVersionV2, Name: name, Version: "0.1.0"}
+			require.Error(t, CreateFrom(cf, dest, srcdir))
+
+			for _, dir := range []string{tdir, dest} {
+				_, err := os.Stat(filepath.Join(dir, ChartfileName))
+				assert.ErrorIs(t, err, os.ErrNotExist, "Chart.yaml was written to %s", dir)
+			}
+		})
+	}
+}
+
 // TestCreate_Overwrite is a regression test for making sure that files are overwritten.
 func TestCreate_Overwrite(t *testing.T) {
 	tdir := t.TempDir()
@@ -122,6 +143,8 @@ func TestValidateChartName(t *testing.T) {
 		"":                              false,
 		"abcdefghijklmnopqrstuvwxyz-_.": true,
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": true,
+		".":                             false,
+		"..":                            false,
 		"$hello":                        false,
 		"Hellô":                         false,
 		"he%%o":                         false,
