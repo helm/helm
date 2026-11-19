@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 )
 
 var nonExistingValuesFilePath = filepath.FromSlash("/fake/dir/values.yaml")
@@ -156,4 +157,63 @@ func createTestingSchema(t *testing.T, dir string) string {
 	schemafile := filepath.Join(dir, "values.schema.json")
 	require.NoErrorf(t, os.WriteFile(schemafile, []byte(testSchema), 0o700), "Failed to write schema to tmpdir")
 	return schemafile
+}
+
+func TestValidateValuesFileDuplicateKeys(t *testing.T) {
+	tests := []struct {
+		name    string
+		yaml    string
+		wantErr string
+	}{
+		{
+			name: "no duplicates",
+			yaml: "a: 1\nb:\n  c: 2\n  d: 3\n",
+		},
+		{
+			name: "same key in different mappings",
+			yaml: "a:\n  name: x\nb:\n  name: y\n",
+		},
+		{
+			name: "empty file",
+			yaml: "",
+		},
+		{
+			name:    "duplicate top-level key",
+			yaml:    "replicas: 1\nimage: nginx\nreplicas: 3\n",
+			wantErr: `line 3: mapping key "replicas" already defined at line 1`,
+		},
+		{
+			name:    "duplicate nested key",
+			yaml:    "image:\n  tag: a\n  repository: r\n  tag: b\n",
+			wantErr: `line 4: mapping key "tag" already defined at line 2`,
+		},
+		{
+			name: "malformed yaml is left to the well-formedness rule",
+			yaml: "a: [1, 2\nb: 3\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpdir := ensure.TempFile(t, "values.yaml", []byte(tt.yaml))
+			err := validateValuesFileDuplicateKeys(filepath.Join(tmpdir, "values.yaml"))
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestValuesWithOverridesReportsDuplicateKeysAsWarning(t *testing.T) {
+	chartDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(chartDir, "values.yaml"), []byte("a: 1\na: 2\n"), 0o644))
+
+	linter := support.Linter{ChartDir: chartDir}
+	ValuesWithOverrides(&linter, map[string]any{}, false)
+
+	require.Len(t, linter.Messages, 1)
+	assert.Equal(t, support.WarningSev, linter.Messages[0].Severity)
+	assert.Contains(t, linter.Messages[0].Error(), "duplicate keys")
 }
