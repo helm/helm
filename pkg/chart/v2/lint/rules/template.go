@@ -120,11 +120,13 @@ func (t *templateLinter) Lint() {
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
 	if err := chartutil.ProcessDependencies(chart, t.values); err != nil {
+		t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 		return
 	}
 
 	cvals, err := util.CoalesceValues(chart, t.values)
 	if err != nil {
+		t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 		return
 	}
 
