@@ -105,7 +105,7 @@ type Waiter interface {
 //
 // TODO Helm v5: Remove InterfaceWaitOptions and integrate its method(s) into the Interface.
 type InterfaceWaitOptions interface {
-	// GetWaiter gets the Kube.Waiter with options.
+	// GetWaiterWithOptions gets the Kube.Waiter with the given wait options.
 	GetWaiterWithOptions(ws WaitStrategy, opts ...WaitOption) (Waiter, error)
 }
 

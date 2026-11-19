@@ -101,7 +101,7 @@ func (s *SQL) Name() string {
 	return SQLDriverName
 }
 
-// Check if all migrations al
+// Check if all migrations already applied
 func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 	// make map (set) of ids for fast search
 	migrationsIDs := make(map[string]struct{})

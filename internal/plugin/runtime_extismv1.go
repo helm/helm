@@ -75,7 +75,7 @@ type RuntimeConfigExtismV1 struct {
 	// The timeout in milliseconds for the plugin to execute
 	Timeout uint64 `yaml:"timeout,omitempty"`
 
-	// HostFunction names exposed in Helm the plugin may access
+	// HostFunctions is the list of host function names exposed in Helm that the plugin may access
 	// see: https://extism.org/docs/concepts/host-functions/
 	HostFunctions []string `yaml:"hostFunctions,omitempty"`
 
