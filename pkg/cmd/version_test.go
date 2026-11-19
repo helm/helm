@@ -16,7 +16,13 @@ limitations under the License.
 package cmd
 
 import (
+	"runtime/debug"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v4/internal/version"
 )
 
 func TestVersion(t *testing.T) {
@@ -38,4 +44,17 @@ func TestVersion(t *testing.T) {
 
 func TestVersionFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "version", false)
+}
+
+// TestVersionReportsKubeClient ensures the helm binary keeps client-go linked so
+// `helm version` still reports KubeClientVersion. clientgo.go no longer forces
+// the dependency, so guard the CLI's own linkage here (this test binary mirrors
+// it) to catch a future change that unlinks client-go from the command surface.
+func TestVersionReportsKubeClient(t *testing.T) {
+	if _, ok := debug.ReadBuildInfo(); !ok {
+		t.Skip("build info unavailable (Go < 1.27)")
+	}
+	v, err := version.K8sIOClientGoModVersion()
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(v, "v"), "expected client-go version, got %q", v)
 }

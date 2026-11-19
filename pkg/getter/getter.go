@@ -23,7 +23,6 @@ import (
 	"slices"
 	"time"
 
-	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/registry"
 )
 
@@ -221,12 +220,23 @@ func Getters(extraOpts ...Option) Providers {
 	}
 }
 
+// EnvProvider supplies the Helm environment used to discover getter plugins.
+// *cli.EnvSettings satisfies it. Accepting an interface here keeps pkg/getter
+// free of a dependency on pkg/cli, which would otherwise pull the Kubernetes
+// client-go, cli-runtime and kustomize trees into every binary that links a
+// getter.
+type EnvProvider interface {
+	// EnvVars returns the Helm environment variables, including HELM_PLUGINS,
+	// which locates the plugin directory scanned for getter plugins.
+	EnvVars() map[string]string
+}
+
 // All finds all of the registered getters as a list of Provider instances.
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
-func All(settings *cli.EnvSettings, opts ...Option) Providers {
+func All(env EnvProvider, opts ...Option) Providers {
 	result := Getters(opts...)
-	pluginDownloaders, _ := collectGetterPlugins(settings)
+	pluginDownloaders, _ := collectGetterPlugins(env)
 	result = append(result, pluginDownloaders...)
 	return result
 }
