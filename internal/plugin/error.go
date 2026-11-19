@@ -15,15 +15,21 @@ limitations under the License.
 
 package plugin
 
+import "strconv"
+
 // InvokeExecError is returned when a plugin invocation returns a non-zero status/exit code
 // - subprocess plugin: child process exit code
 // - extism plugin: wasm function return code
 type InvokeExecError struct {
-	ExitCode int   // Exit code from plugin code execution
-	Err      error // Underlying error
+	ExitCode int    // Exit code from plugin code execution
+	Err      error  // Underlying error
+	Stderr   []byte // Captured stderr output
 }
 
 // Error implements the error interface
 func (e *InvokeExecError) Error() string {
+	if len(e.Stderr) > 0 {
+		return e.Err.Error() + ": " + strconv.Quote(string(e.Stderr))
+	}
 	return e.Err.Error()
 }
