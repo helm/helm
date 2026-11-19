@@ -519,3 +519,72 @@ func TestMerge(t *testing.T) {
 	}
 	assert.Equal(t, expected, dict["dst"])
 }
+
+func TestHtpasswd(t *testing.T) {
+	// bcrypt hashes are salted, so only the format can be asserted.
+	tests := []struct {
+		name   string
+		tpl    string
+		expect string
+	}{
+		{
+			name:   "defaults to bcrypt",
+			tpl:    `{{ htpasswd "myUser" "myPassword" }}`,
+			expect: `^myUser:\$2a\$10\$[./A-Za-z0-9]{53}$`,
+		},
+		{
+			name:   "accepts bcrypt algorithm",
+			tpl:    `{{ htpasswd "myUser" "myPassword" "bcrypt" }}`,
+			expect: `^myUser:\$2a\$10\$[./A-Za-z0-9]{53}$`,
+		},
+		{
+			name:   "accepts sha algorithm",
+			tpl:    `{{ htpasswd "testuser" "password" "sha" }}`,
+			expect: `testuser:{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=`,
+		},
+		{
+			name:   "algorithm is case-insensitive",
+			tpl:    `{{ htpasswd "testuser" "password" "SHA" }}`,
+			expect: `testuser:{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			require.NoError(t, template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, nil), tt.tpl)
+			assert.Regexp(t, tt.expect, b.String(), tt.tpl)
+		})
+	}
+
+	errTests := []struct {
+		name     string
+		tpl      string
+		errMatch string
+	}{
+		{
+			name:     "unsupported algorithm",
+			tpl:      `{{ htpasswd "myUser" "myPassword" "md5" }}`,
+			errMatch: `unsupported algorithm "md5": want "bcrypt" or "sha"`,
+		},
+		{
+			name:     "too many args",
+			tpl:      `{{ htpasswd "myUser" "myPassword" "sha" "extra" }}`,
+			errMatch: `wrong number of args: want 2 or 3 got 4`,
+		},
+		{
+			name:     "username must not contain a colon",
+			tpl:      `{{ htpasswd "my:User" "myPassword" }}`,
+			errMatch: `invalid username "my:User"`,
+		},
+	}
+
+	for _, tt := range errTests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, nil)
+			require.Error(t, err, tt.tpl)
+			assert.Contains(t, err.Error(), tt.errMatch, tt.tpl)
+		})
+	}
+}

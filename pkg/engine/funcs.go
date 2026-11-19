@@ -18,6 +18,8 @@ package engine
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +33,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
@@ -82,6 +85,10 @@ func funcMap() template.FuncMap {
 		"durationWeeks":        durationWeeks,
 		"durationRoundTo":      durationRoundTo,
 		"durationTruncateTo":   durationTruncateTo,
+
+		// Override the sprig "htpasswd" function to support an optional
+		// hash algorithm argument ("bcrypt", the default, or "sha").
+		"htpasswd": htpasswd,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -525,4 +532,39 @@ func durationTruncateTo(v, m any) time.Duration {
 		return d
 	}
 	return d.Truncate(mul)
+}
+
+// htpasswd returns an entry for a basic-auth credentials file, as produced by
+// the Apache htpasswd tool.
+//
+// It overrides the sprig function of the same name, which only supports bcrypt,
+// to accept an optional third argument selecting the hash algorithm:
+// "bcrypt" (the default) or "sha" (the SHA1 "{SHA}" format). Algorithm names
+// are case-insensitive.
+func htpasswd(username, password string, algorithm ...string) (string, error) {
+	if len(algorithm) > 1 {
+		return "", fmt.Errorf("htpasswd: wrong number of args: want 2 or 3 got %d", len(algorithm)+2)
+	}
+	if strings.Contains(username, ":") {
+		return "", fmt.Errorf("htpasswd: invalid username %q: must not contain \":\"", username)
+	}
+
+	hashAlgorithm := "bcrypt"
+	if len(algorithm) == 1 {
+		hashAlgorithm = algorithm[0]
+	}
+
+	switch strings.ToLower(hashAlgorithm) {
+	case "bcrypt":
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return "", fmt.Errorf("htpasswd: failed to encrypt string with bcrypt: %w", err)
+		}
+		return fmt.Sprintf("%s:%s", username, hash), nil
+	case "sha":
+		sum := sha1.Sum([]byte(password))
+		return fmt.Sprintf("%s:{SHA}%s", username, base64.StdEncoding.EncodeToString(sum[:])), nil
+	default:
+		return "", fmt.Errorf("htpasswd: unsupported algorithm %q: want \"bcrypt\" or \"sha\"", hashAlgorithm)
+	}
 }
