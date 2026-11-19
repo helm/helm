@@ -18,10 +18,13 @@ package fileutil
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -110,4 +113,45 @@ func TestPlatformAtomicWriteFile_OverwritesExisting(t *testing.T) {
 	require.NoError(t, err, "failed reading result")
 
 	require.Equal(t, "second", string(contents))
+}
+
+// TestAtomicWriteFile_ReadErrorLeavesNoTempFile verifies that a failure while
+// copying the content does not leave the temporary file behind and does not
+// touch an existing destination file.
+func TestAtomicWriteFile_ReadErrorLeavesNoTempFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "existing")
+	require.NoError(t, os.WriteFile(path, []byte("original"), 0o644))
+
+	reader := io.MultiReader(strings.NewReader("partial"), iotest.ErrReader(errors.New("read failed")))
+	require.Error(t, AtomicWriteFile(path, reader, 0o644))
+
+	contents, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "original", string(contents))
+	assertOnlyEntries(t, dir, "existing")
+}
+
+// TestAtomicWriteFile_RenameErrorLeavesNoTempFile verifies that a failure of
+// the final rename does not leave the temporary file behind.
+func TestAtomicWriteFile_RenameErrorLeavesNoTempFile(t *testing.T) {
+	dir := t.TempDir()
+	// A non-empty directory at the destination makes the final rename fail.
+	dest := filepath.Join(dir, "dest")
+	require.NoError(t, os.MkdirAll(filepath.Join(dest, "child"), 0o755))
+
+	require.Error(t, AtomicWriteFile(dest, strings.NewReader("content"), 0o644))
+	assertOnlyEntries(t, dir, "dest")
+}
+
+// assertOnlyEntries fails the test unless dir contains exactly the given names.
+func assertOnlyEntries(t *testing.T, dir string, names ...string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	got := make([]string, 0, len(entries))
+	for _, e := range entries {
+		got = append(got, e.Name())
+	}
+	assert.ElementsMatch(t, names, got, "unexpected files left in %s", dir)
 }

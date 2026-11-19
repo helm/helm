@@ -26,23 +26,31 @@ import (
 
 // AtomicWriteFile atomically (as atomic as os.Rename allows) writes a file to a
 // disk.
-func AtomicWriteFile(filename string, reader io.Reader, mode os.FileMode) error {
+func AtomicWriteFile(filename string, reader io.Reader, mode os.FileMode) (err error) {
 	tempFile, err := os.CreateTemp(filepath.Split(filename))
 	if err != nil {
 		return err
 	}
 	tempName := tempFile.Name()
 
-	if _, err := io.Copy(tempFile, reader); err != nil {
+	// If anything below fails, remove the temporary file so that a failed write
+	// does not leave stray files next to the destination.
+	defer func() {
+		if err != nil {
+			os.Remove(tempName)
+		}
+	}()
+
+	if _, err = io.Copy(tempFile, reader); err != nil {
 		tempFile.Close() // return value is ignored as we are already on error path
 		return err
 	}
 
-	if err := tempFile.Close(); err != nil {
+	if err = tempFile.Close(); err != nil {
 		return err
 	}
 
-	if err := os.Chmod(tempName, mode); err != nil {
+	if err = os.Chmod(tempName, mode); err != nil {
 		return err
 	}
 
