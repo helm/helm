@@ -308,14 +308,233 @@ func TestSqlUpdate(t *testing.T) {
 		sqlReleaseTableKeyColumn,
 		sqlReleaseTableNamespaceColumn,
 	)
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	insertLabelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
 
+	mock.ExpectBegin()
 	mock.
 		ExpectExec(regexp.QuoteMeta(query)).
 		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(insertLabelsQuery)).
+			WithArgs(key, namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	mock.ExpectCommit()
 
 	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
 	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+}
+
+// TestSqlUpdateSyncsAddedLabel is a regression test for helm/helm#32394 (item 6): Update
+// rewrote body/name/version/status but never touched custom_labels_v1, so a label added after
+// the initial Create was silently dropped on every subsequent Update. Update now reconciles
+// custom_labels_v1 by clearing existing rows for the release and re-inserting its current labels.
+func TestSqlUpdateSyncsAddedLabel(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+	rel.Labels["environment"] = "prod" // label added since the release was created
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	body, _ := encodeRelease(rel)
+
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4, %s = $5, %s = $6 WHERE %s = $7 AND %s = $8",
+		sqlReleaseTableName,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableModifiedAtColumn,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	insertLabelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(query)).
+		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(insertLabelsQuery)).
+			WithArgs(key, namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	mock.ExpectCommit()
+
+	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met - the newly added label was not written")
+}
+
+// TestSqlUpdateSyncsChangedLabelValue is a regression test for helm/helm#32394 (item 6): a
+// label's value changed on Update must be reflected in custom_labels_v1, not left at its
+// stale, originally-created value.
+func TestSqlUpdateSyncsChangedLabelValue(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+	rel.Labels["key1"] = "val1-updated" // value changed since the release was created
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	body, _ := encodeRelease(rel)
+
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4, %s = $5, %s = $6 WHERE %s = $7 AND %s = $8",
+		sqlReleaseTableName,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableModifiedAtColumn,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	insertLabelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(query)).
+		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(insertLabelsQuery)).
+			WithArgs(key, namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	mock.ExpectCommit()
+
+	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met - the changed label value was not written")
+}
+
+// TestSqlUpdateRemovesDroppedLabel is a regression test for helm/helm#32394 (item 6): a label
+// removed on Update must be deleted from custom_labels_v1, not left orphaned from the release's
+// original Create.
+func TestSqlUpdateRemovesDroppedLabel(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
+	delete(rel.Labels, "key2") // label removed since the release was created
+
+	sqlDriver, mock := newTestFixtureSQL(t)
+	body, _ := encodeRelease(rel)
+
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4, %s = $5, %s = $6 WHERE %s = $7 AND %s = $8",
+		sqlReleaseTableName,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableModifiedAtColumn,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	insertLabelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(regexp.QuoteMeta(query)).
+		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	// Only key1 should be re-inserted - key2 was removed and must not be written back.
+	mock.
+		ExpectExec(regexp.QuoteMeta(insertLabelsQuery)).
+		WithArgs(key, namespace, "key1", "val1").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
+	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met - dropped label key2 should not have been re-inserted, and the DELETE should have cleared it")
 }
 
 func TestSqlQuery(t *testing.T) {
