@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -31,8 +32,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -420,6 +423,43 @@ foo:
 				},
 			},
 		},
+		"It should load integers as json.Number": {
+			data: []byte(`
+key: 13
+`),
+			expctedValues: map[string]any{
+				"key": json.Number("13"),
+			},
+		},
+		"It should load floats as json.Number": {
+			data: []byte(`
+pi: 3.14
+`),
+			expctedValues: map[string]any{
+				"pi": json.Number("3.14"),
+			},
+		},
+		"It should keep integers larger than float64 mantissa as json.Number": {
+			data: []byte(`
+key: 9007199254740993
+`),
+			expctedValues: map[string]any{
+				"key": json.Number("9007199254740993"),
+			},
+		},
+		"It should load nested numbers as json.Number": {
+			data: []byte(`
+global:
+  key: 13
+  ratio: 1.5
+`),
+			expctedValues: map[string]any{
+				"global": map[string]any{
+					"key":   json.Number("13"),
+					"ratio": json.Number("1.5"),
+				},
+			},
+		},
 	}
 	for testName, testCase := range testCases {
 		t.Run(testName, func(tt *testing.T) {
@@ -428,6 +468,33 @@ foo:
 			assert.Equalf(tt, testCase.expctedValues, values, "Expected values: %v, got %v", testCase.expctedValues, values)
 		})
 	}
+}
+
+func TestLoadValuesNumberEncoding(t *testing.T) {
+	values, err := LoadValues(bytes.NewReader([]byte(`
+global:
+  key: 13
+  large: 9007199254740993
+  pi: 3.14
+`)))
+	require.NoError(t, err)
+
+	yamlOut, err := yaml.Marshal(values)
+	require.NoError(t, err)
+	assert.Contains(t, string(yamlOut), "key: 13")
+	assert.Contains(t, string(yamlOut), "large: 9007199254740993")
+	assert.Contains(t, string(yamlOut), "pi: 3.14")
+	assert.NotContains(t, string(yamlOut), "13.0")
+	assert.NotContains(t, string(yamlOut), "1.048576e+")
+
+	var tomlBuf bytes.Buffer
+	require.NoError(t, toml.NewEncoder(&tomlBuf).Encode(values))
+	tomlOut := tomlBuf.String()
+	assert.Contains(t, tomlOut, "key = 13")
+	assert.Contains(t, tomlOut, "large = 9007199254740993")
+	assert.Contains(t, tomlOut, "pi = 3.14")
+	assert.NotContains(t, tomlOut, "13.0")
+	assert.NotContains(t, tomlOut, "key = \"13\"")
 }
 
 func TestLoadValuesEOFBoundary(t *testing.T) {
