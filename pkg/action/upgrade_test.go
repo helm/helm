@@ -408,6 +408,86 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	req.ErrorContains(err, "progress")
 }
 
+func TestUpgradeRelease_ForcePending(t *testing.T) {
+	// stuck is the status an abruptly terminated Helm process leaves behind. Both
+	// variants must be recoverable: pending-upgrade has a deployed revision to fall
+	// back on, pending-install (revision 1) has none.
+	for _, tc := range []struct {
+		name         string
+		stuck        common.Status
+		withDeployed bool
+		// want is the status the rescued revision ends up with. Without a deployed
+		// revision the stuck one becomes the release being upgraded, so the normal
+		// upgrade flow supersedes it after we mark it failed.
+		want common.Status
+	}{
+		{"pending upgrade over a deployed revision", common.StatusPendingUpgrade, true, common.StatusFailed},
+		{"pending install with no deployed revision", common.StatusPendingInstall, false, common.StatusSuperseded},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := require.New(t)
+
+			upAction := upgradeAction(t)
+			upAction.ForcePending = true
+			name := "come-fail-away"
+
+			stuckVersion := 1
+			if tc.withDeployed {
+				deployed := releaseStub()
+				deployed.Name = name
+				deployed.Info.Status = common.StatusDeployed
+				req.NoError(upAction.cfg.Releases.Create(deployed))
+				stuckVersion = 2
+			}
+
+			stuck := releaseStub()
+			stuck.Name = name
+			stuck.Info.Status = tc.stuck
+			stuck.Version = stuckVersion
+			req.NoError(upAction.cfg.Releases.Create(stuck))
+
+			resi, err := upAction.Run(name, buildChart(), map[string]any{})
+			req.NoError(err)
+			res, err := releaserToV1Release(resi)
+			req.NoError(err)
+			req.Equal(stuckVersion+1, res.Version)
+
+			// The stuck revision must no longer be pending, with the status it was
+			// rescued from preserved in the description for `helm history`.
+			previousi, err := upAction.cfg.Releases.Get(name, stuckVersion)
+			req.NoError(err)
+			previous, err := releaserToV1Release(previousi)
+			req.NoError(err)
+			req.Equal(tc.want, previous.Info.Status)
+			req.Contains(previous.Info.Description, "--force-pending")
+			req.Contains(previous.Info.Description, string(tc.stuck))
+		})
+	}
+}
+
+func TestUpgradeRelease_ForcePendingDryRun(t *testing.T) {
+	// A dry run must never write the pending revision back to storage.
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	upAction.ForcePending = true
+	upAction.DryRunStrategy = DryRunClient
+
+	stuck := releaseStub()
+	stuck.Name = "come-fail-away"
+	stuck.Info.Status = common.StatusPendingUpgrade
+	req.NoError(upAction.cfg.Releases.Create(stuck))
+
+	_, err := upAction.Run(stuck.Name, buildChart(), map[string]any{})
+	req.NoError(err)
+
+	storedi, err := upAction.cfg.Releases.Get(stuck.Name, stuck.Version)
+	req.NoError(err)
+	stored, err := releaserToV1Release(storedi)
+	req.NoError(err)
+	req.Equal(common.StatusPendingUpgrade, stored.Info.Status)
+}
+
 func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
