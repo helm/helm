@@ -16,7 +16,7 @@ limitations under the License.
 package v2
 
 import (
-	"path/filepath"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -166,7 +166,7 @@ func (ch *Chart) CRDObjects() []CRD {
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
 		if strings.HasPrefix(f.Name, "crds/") && hasManifestExtension(f.Name) {
-			mycrd := CRD{Name: f.Name, Filename: filepath.Join(ch.ChartFullPath(), f.Name), File: f}
+			mycrd := CRD{Name: f.Name, Filename: path.Join(ch.ChartFullPath(), f.Name), File: f}
 			crds = append(crds, mycrd)
 		}
 	}
@@ -216,6 +216,6 @@ func (ch *Chart) StampModTimes(t time.Time) {
 }
 
 func hasManifestExtension(fname string) bool {
-	ext := filepath.Ext(fname)
+	ext := path.Ext(fname)
 	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml") || strings.EqualFold(ext, ".json")
 }
