@@ -28,8 +28,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-
-	securejoin "github.com/cyphar/filepath-securejoin"
 )
 
 // TarGzExtractor extracts gzip compressed tar archives
@@ -71,25 +69,26 @@ func NewExtractor(source string) (Extractor, error) {
 	return nil, fmt.Errorf("no extractor implemented yet for %s", source)
 }
 
-// cleanJoin resolves dest as a subpath of root.
+// cleanPath validates dest, a path read from an archive, and returns it as a
+// clean relative path using / as the separator.
 //
 // This function runs several security checks on the path, generating an error if
 // the supplied `dest` looks suspicious or would result in dubious behavior on the
 // filesystem.
 //
-// cleanJoin assumes that any attempt by `dest` to break out of the CWD is an attempt
-// to be malicious. (If you don't care about this, use the securejoin-filepath library.)
-// It will emit an error if it detects paths that _look_ malicious, operating on the
-// assumption that we don't actually want to do anything with files that already
-// appear to be nefarious.
+// cleanPath assumes that any attempt by `dest` to break out of the CWD is an attempt
+// to be malicious. It will emit an error if it detects paths that _look_ malicious,
+// operating on the assumption that we don't actually want to do anything with files
+// that already appear to be nefarious.
 //
 //   - The character `:` is considered illegal because it is a separator on UNIX and a
 //     drive designator on Windows.
 //   - The path component `..` is considered suspicious, and therefore illegal
 //   - The character \ (backslash) is treated as a path separator and is converted to /.
 //   - Beginning a path with a path separator is illegal
-//   - Rudimentary symlink protections are offered by SecureJoin.
-func cleanJoin(root, dest string) (string, error) {
+//
+// Symlinks are not handled here: extractTar opens every path through an os.Root.
+func cleanPath(dest string) (string, error) {
 	// On Windows, this is a drive separator. On UNIX-like, this is the path list separator.
 	// In neither case do we want to trust a TAR that contains these.
 	if strings.Contains(dest, ":") {
@@ -111,16 +110,7 @@ func cleanJoin(root, dest string) (string, error) {
 		return "", errors.New("path is absolute, which is illegal")
 	}
 
-	// SecureJoin will do some cleaning, as well as some rudimentary checking of symlinks.
-	// The directory needs to be cleaned prior to passing to SecureJoin or the location may end up
-	// being wrong or returning an error. This was introduced in v0.4.0.
-	root = filepath.Clean(root)
-	newpath, err := securejoin.SecureJoin(root, dest)
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.ToSlash(newpath), nil
+	return path.Clean(dest), nil
 }
 
 // Extract extracts compressed archives
@@ -132,11 +122,25 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 		return err
 	}
 
+	return extractTar(uncompressedStream, targetDir)
+}
+
+// extractTar extracts a tar archive into targetDir, creating it if needed.
+//
+// Every file and directory is created through an os.Root opened on targetDir,
+// so an entry can never write outside of it, even when targetDir already
+// contains symlinks or is modified while the archive is being extracted.
+func extractTar(r io.Reader, targetDir string) error {
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return err
 	}
+	root, err := os.OpenRoot(targetDir)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
 
-	tarReader := tar.NewReader(uncompressedStream)
+	tarReader := tar.NewReader(r)
 	for {
 		header, err := tarReader.Next()
 		if errors.Is(err, io.EOF) {
@@ -146,22 +150,23 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 			return err
 		}
 
-		path, err := cleanJoin(targetDir, header.Name)
+		name, err := cleanPath(header.Name)
 		if err != nil {
 			return err
 		}
+		name = filepath.FromSlash(name)
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(path, 0o755); err != nil {
+			if err := root.MkdirAll(name, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
 			// Ensure parent directory exists
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			if err := root.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 				return err
 			}
-			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			outFile, err := root.OpenFile(name, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode).Perm())
 			if err != nil {
 				return err
 			}
