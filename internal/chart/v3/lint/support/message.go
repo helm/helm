@@ -49,8 +49,18 @@ type Message struct {
 	Err      error
 }
 
+// SeverityName returns the string representation of a severity level,
+// e.g. for use in structured output. Out-of-range levels are reported
+// as UNKNOWN.
+func SeverityName(severity int) string {
+	if severity < 0 || severity >= len(sev) {
+		return sev[UnknownSev]
+	}
+	return sev[severity]
+}
+
 func (m Message) Error() string {
-	return fmt.Sprintf("[%s] %s: %s", sev[m.Severity], m.Path, m.Err.Error())
+	return fmt.Sprintf("[%s] %s: %s", SeverityName(m.Severity), m.Path, m.Err.Error())
 }
 
 // NewMessage creates a new Message struct
