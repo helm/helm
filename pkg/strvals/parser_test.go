@@ -257,6 +257,10 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]any{"name1": map[string]any{"name2": ""}},
 		},
 		{
+			str: "name1.=",
+			err: true,
+		},
+		{
 			str: "name1.=name2",
 			err: true,
 		},
@@ -301,6 +305,22 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]any{
 				"list": []any{
 					map[string]any{"foo": "bar"},
+				},
+			},
+		},
+		{
+			str: "list[0].foo=",
+			expect: map[string]any{
+				"list": []any{
+					map[string]any{"foo": ""},
+				},
+			},
+		},
+		{
+			str: "list[0].a.b=",
+			expect: map[string]any{
+				"list": []any{
+					map[string]any{"a": map[string]any{"b": ""}},
 				},
 			},
 		},

@@ -244,7 +244,7 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 				return nil
 			case errors.Is(e, io.EOF):
 				set(data, string(k), "")
-				return e
+				return nil
 			case errors.Is(e, ErrNotList):
 				rs, e := t.val()
 				if e != nil && !errors.Is(e, io.EOF) {
