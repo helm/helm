@@ -84,7 +84,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 		slog.Debug("chart name", "chart-name", chrt.Name())
 		err := ValidateAgainstSingleSchema(values, chrt.Schema())
 		if err != nil {
-			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
+			fmt.Fprintf(&sb, "%s:\n", chrt.ChartFullPath())
 			sb.WriteString(err.Error())
 		}
 	}
@@ -105,7 +105,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 		subchartValues, ok := raw.(map[string]any)
 		if !ok {
 			fmt.Fprintf(&sb, "%s:\ninvalid type for values: expected object (map), got %T\n",
-				sub.Name(), raw)
+				sub.ChartFullPath(), raw)
 			continue
 		}
 
