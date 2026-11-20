@@ -17,22 +17,51 @@ limitations under the License.
 package action
 
 import (
+	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/registry"
 )
 
+func TestShowRunLoadsEachChart(t *testing.T) {
+	const archiveName = "compressedchart-0.1.0.tgz"
+	archive := filepath.Join(t.TempDir(), archiveName)
+	data, err := os.ReadFile(filepath.Join("testdata", "charts", archiveName))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(archive, data, 0o600))
+
+	client := NewShow(ShowChart, actionConfigFixture(t))
+	for _, tc := range []struct{ path, name string }{
+		{"testdata/charts/decompressedchart", "decompressedchart"},
+		{archive, "compressedchart"},
+	} {
+		out, err := client.Run(tc.path)
+		require.NoError(t, err)
+		var metadata chart.Metadata
+		require.NoError(t, yaml.Unmarshal([]byte(out), &metadata))
+		assert.Equal(t, tc.name, metadata.Name)
+	}
+
+	require.NoError(t, os.Remove(archive))
+	out, err := client.Run(archive)
+	require.ErrorIs(t, err, fs.ErrNotExist)
+	assert.Empty(t, out)
+}
+
 func TestShow(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowAll, config)
 	modTime := time.Now()
-	client.chart = &chart.Chart{
+	chrt := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*common.File{
 			{Name: "README.md", ModTime: modTime, Data: []byte("README\n")},
@@ -47,7 +76,7 @@ func TestShow(t *testing.T) {
 		Values: map[string]any{},
 	}
 
-	output, err := client.Run("")
+	output, err := client.renderChart(chrt)
 	require.NoError(t, err)
 
 	expect := `name: alpine
@@ -74,11 +103,10 @@ baz
 func TestShowNoValues(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowAll, config)
-	client.chart = new(chart.Chart)
 
 	// Regression tests for missing values. See issue #1024.
 	client.OutputFormat = ShowValues
-	output, err := client.Run("")
+	output, err := client.renderChart(new(chart.Chart))
 	require.NoError(t, err)
 
 	assert.Empty(t, output, "expected empty values buffer, got %s", output)
@@ -88,8 +116,7 @@ func TestShowValuesByJsonPathFormat(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowValues, config)
 	client.JSONPathTemplate = "{$.nestedKey.simpleKey}"
-	client.chart = buildChart(withSampleValues())
-	output, err := client.Run("")
+	output, err := client.renderChart(buildChart(withSampleValues()))
 	require.NoError(t, err)
 	expect := "simpleValue"
 	assert.Equal(t, expect, output, "Expected\n%q\nGot\n%q\n", expect, output)
@@ -99,7 +126,7 @@ func TestShowCRDs(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowCRDs, config)
 	modTime := time.Now()
-	client.chart = &chart.Chart{
+	chrt := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*common.File{
 			{Name: "crds/ignoreme.txt", ModTime: modTime, Data: []byte("error")},
@@ -109,7 +136,7 @@ func TestShowCRDs(t *testing.T) {
 		},
 	}
 
-	output, err := client.Run("")
+	output, err := client.renderChart(chrt)
 	require.NoError(t, err)
 
 	expect := `---
@@ -129,7 +156,7 @@ func TestShowNoReadme(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowAll, config)
 	modTime := time.Now()
-	client.chart = &chart.Chart{
+	chrt := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*common.File{
 			{Name: "crds/ignoreme.txt", ModTime: modTime, Data: []byte("error")},
@@ -138,7 +165,7 @@ func TestShowNoReadme(t *testing.T) {
 		},
 	}
 
-	output, err := client.Run("")
+	output, err := client.renderChart(chrt)
 	require.NoError(t, err)
 
 	expect := `name: alpine
