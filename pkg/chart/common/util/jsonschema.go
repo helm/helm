@@ -146,6 +146,9 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	}
 
 	compiler := jsonschema.NewCompiler()
+	// Draft 2019-09 and later treat "format" as an annotation by default;
+	// assert it so behavior matches draft-07 and earlier.
+	compiler.AssertFormat()
 	compiler.UseLoader(loader)
 	err = compiler.AddResource("file:///values.schema.json", schema)
 	if err != nil {
