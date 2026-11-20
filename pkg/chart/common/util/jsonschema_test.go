@@ -63,6 +63,48 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	assert.EqualError(t, ValidateAgainstSingleSchema(values, schema), expectedErrString)
 }
 
+func TestValidateAgainstSingleSchemaFormat(t *testing.T) {
+	// "format" must be enforced regardless of the draft the schema declares.
+	// Draft 2019-09 and later treat it as an annotation unless assertion is enabled.
+	drafts := []string{
+		"http://json-schema.org/draft-07/schema#",
+		"https://json-schema.org/draft/2019-09/schema",
+		"https://json-schema.org/draft/2020-12/schema",
+	}
+	for _, draft := range drafts {
+		t.Run(draft, func(t *testing.T) {
+			schema := []byte(`{
+  "$schema": "` + draft + `",
+  "type": "object",
+  "properties": {
+    "email": {"type": "string", "format": "email"},
+    "ipv4": {"type": "string", "format": "ipv4"},
+    "ipv6": {"type": "string", "format": "ipv6"}
+  }
+}`)
+
+			valid := common.Values{
+				"email": "user@example.com",
+				"ipv4":  "192.168.1.1",
+				"ipv6":  "2001:db8::1",
+			}
+			assert.NoError(t, ValidateAgainstSingleSchema(valid, schema))
+
+			invalid := common.Values{
+				"email": "not-an-email",
+				"ipv4":  "not-an-ip",
+				"ipv6":  "2001:db8::1:::",
+			}
+			err := ValidateAgainstSingleSchema(invalid, schema)
+			if assert.Error(t, err) {
+				for _, format := range []string{"email", "ipv4", "ipv6"} {
+					assert.Contains(t, err.Error(), "is not valid "+format)
+				}
+			}
+		})
+	}
+}
+
 const subchartSchema = `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Values",
