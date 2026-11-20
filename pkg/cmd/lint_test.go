@@ -17,8 +17,17 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v4/pkg/action"
 )
 
 func TestLintCmdWithSubchartsFlag(t *testing.T) {
@@ -120,6 +129,60 @@ func TestLintCmdWithOutputFormat(t *testing.T) {
 		wantError: true,
 	}}
 	runTestCmd(t, tests)
+}
+
+func TestLintCmdStructuredStreams(t *testing.T) {
+	for _, format := range []string{"json", "yaml"} {
+		t.Run(format, func(t *testing.T) {
+			defer resetEnv()()
+			missing := filepath.Join(t.TempDir(), "missing-chart")
+			args := []string{"lint", "-o", format, "--quiet", "testdata/testcharts/alpine", missing}
+			var stdout, stderr bytes.Buffer
+			root, err := newRootCmdWithConfig(action.NewConfiguration(), &stdout, args, SetupLogging)
+			require.NoError(t, err)
+			root.SetOut(&stdout)
+			root.SetErr(&stderr)
+			root.SetArgs(args)
+			require.EqualError(t, root.Execute(), "2 chart(s) linted, 1 chart(s) failed")
+			require.Contains(t, stderr.String(), "2 chart(s) linted, 1 chart(s) failed")
+
+			data := stdout.Bytes()
+			if format == "yaml" {
+				data, err = yaml.YAMLToJSONStrict(data)
+				require.NoError(t, err)
+			}
+			var report struct {
+				ChartsLinted int `json:"charts_linted"`
+				ChartsFailed int `json:"charts_failed"`
+				Results      []struct {
+					Chart    string
+					Failed   bool
+					Messages []map[string]string
+				}
+			}
+			require.NoError(t, json.Unmarshal(data, &report))
+			require.Equal(t, 2, report.ChartsLinted)
+			require.Equal(t, 1, report.ChartsFailed)
+			require.Len(t, report.Results, 1)
+			result := report.Results[0]
+			require.Equal(t, missing, result.Chart)
+			require.True(t, result.Failed)
+			require.Len(t, result.Messages, 1)
+			finding := result.Messages[0]
+			require.Equal(t, "ERROR", finding["severity"])
+			require.Contains(t, finding["message"], "Chart.yaml")
+			require.NotContains(t, finding, "path")
+		})
+	}
+}
+
+func TestLintCmdTableWriteError(t *testing.T) {
+	defer resetEnv()()
+	reader, writer := io.Pipe()
+	require.NoError(t, reader.Close())
+	t.Cleanup(func() { _ = writer.Close() })
+	cmd := newLintCmd(writer)
+	require.ErrorIs(t, cmd.RunE(cmd, []string{"testdata/testcharts/alpine"}), io.ErrClosedPipe)
 }
 
 func TestLintFileCompletion(t *testing.T) {
