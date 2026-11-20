@@ -17,14 +17,19 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -117,4 +122,49 @@ func TestPostRendererFlagSetOnce(t *testing.T) {
 
 	// Set the plugin name again to a different value is not ok
 	require.Error(t, str.Set("cat"))
+}
+
+func TestWaitValueLogsToInjectedLogger(t *testing.T) {
+	tests := []struct {
+		value   string
+		want    kube.WaitStrategy
+		wantLog string
+	}{
+		{value: "true", want: kube.StatusWatcherStrategy, wantLog: "--wait=true is deprecated"},
+		{value: "false", want: kube.HookOnlyStrategy, wantLog: "--wait=false is deprecated"},
+		{value: "legacy", want: kube.LegacyStrategy},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			var logBuf bytes.Buffer
+			var ws kube.WaitStrategy
+			v := newWaitValue(kube.HookOnlyStrategy, &ws, slog.New(slog.NewTextHandler(&logBuf, nil)))
+			assert.Equal(t, kube.HookOnlyStrategy, ws)
+
+			require.NoError(t, v.Set(tt.value))
+			assert.Equal(t, tt.want, ws)
+			assert.Equal(t, string(tt.want), v.String())
+			if tt.wantLog == "" {
+				assert.Empty(t, logBuf.String())
+			} else {
+				assert.Contains(t, logBuf.String(), tt.wantLog)
+			}
+		})
+	}
+}
+
+func TestAddWaitFlagLogsToDefaultLogger(t *testing.T) {
+	origDefault := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(origDefault) })
+	var logBuf bytes.Buffer
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
+
+	cmd := &cobra.Command{Use: "test"}
+	var ws kube.WaitStrategy
+	AddWaitFlag(cmd, &ws)
+	require.NoError(t, cmd.Flags().Set("wait", "true"))
+
+	assert.Equal(t, kube.StatusWatcherStrategy, ws)
+	assert.Contains(t, logBuf.String(), "--wait=true is deprecated")
 }

@@ -57,10 +57,11 @@ type searchHubOptions struct {
 	outputFormat   output.Format
 	listRepoURL    bool
 	failOnNoResult bool
+	logger         *slog.Logger
 }
 
-func newSearchHubCmd(out io.Writer) *cobra.Command {
-	o := &searchHubOptions{}
+func newSearchHubCmd(logger *slog.Logger, out io.Writer) *cobra.Command {
+	o := &searchHubOptions{logger: logger}
 
 	cmd := &cobra.Command{
 		Use:   "hub [KEYWORD]",
@@ -91,7 +92,7 @@ func (o *searchHubOptions) run(ctx context.Context, out io.Writer, args []string
 	q := strings.Join(args, " ")
 	results, err := c.SearchWithContext(ctx, q)
 	if err != nil {
-		slog.Debug("search failed", slog.Any("error", err))
+		o.logger.Debug("search failed", slog.Any("error", err))
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 

@@ -42,13 +42,13 @@ func addDryRunFlag(cmd *cobra.Command) {
 
 // Determine the `action.DryRunStrategy` given -dry-run=<value>` flag (or absence of)
 // Legacy usage of the flag: boolean values, and `--dry-run` (without value) are supported, and log warnings emitted
-func cmdGetDryRunFlagStrategy(cmd *cobra.Command, isTemplate bool) (action.DryRunStrategy, error) {
+func cmdGetDryRunFlagStrategy(logger *slog.Logger, cmd *cobra.Command, isTemplate bool) (action.DryRunStrategy, error) {
 	f := cmd.Flag("dry-run")
 	v := f.Value.String()
 
 	switch v {
 	case f.NoOptDefVal:
-		slog.Warn(`--dry-run is deprecated and should be replaced with '--dry-run=client'`)
+		logger.Warn(`--dry-run is deprecated and should be replaced with '--dry-run=client'`)
 		return action.DryRunClient, nil
 	case string(action.DryRunClient):
 		return action.DryRunClient, nil
@@ -76,7 +76,7 @@ func cmdGetDryRunFlagStrategy(cmd *cobra.Command, isTemplate bool) (action.DryRu
 	if b {
 		result = action.DryRunClient
 	}
-	slog.Warn(fmt.Sprintf(`boolean '--dry-run=%v' flag is deprecated and must be replaced with '--dry-run=%s'`, v, result))
+	logger.Warn(fmt.Sprintf(`boolean '--dry-run=%v' flag is deprecated and must be replaced with '--dry-run=%s'`, v, result))
 
 	return result, nil
 }
