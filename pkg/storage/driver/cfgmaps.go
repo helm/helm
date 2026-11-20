@@ -28,6 +28,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kblabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
@@ -96,21 +97,15 @@ func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.R
 	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
-	list, err := cfgmaps.impl.List(context.Background(), opts)
-	if err != nil {
-		cfgmaps.Logger().Debug("failed to list releases", slog.Any("error", err))
-		return nil, err
-	}
-
 	var results []release.Releaser
 
 	// iterate over the configmaps object list
 	// and decode each release
-	for _, item := range list.Items {
+	_, err := listAllPaged(context.Background(), opts, cfgmaps.listPage, func(item *v1.ConfigMap) {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
 			cfgmaps.Logger().Debug("failed to decode release", slog.Any("item", item), slog.Any("error", err))
-			continue
+			return
 		}
 
 		rls.Labels = item.Labels
@@ -118,6 +113,10 @@ func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.R
 		if filter(rls) {
 			results = append(results, rls)
 		}
+	})
+	if err != nil {
+		cfgmaps.Logger().Debug("failed to list releases", slog.Any("error", err))
+		return nil, err
 	}
 	return results, nil
 }
@@ -135,27 +134,30 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]release.Releaser, 
 
 	opts := metav1.ListOptions{LabelSelector: ls.AsSelector().String()}
 
-	list, err := cfgmaps.impl.List(context.Background(), opts)
+	var results []release.Releaser
+	count, err := listAllPaged(context.Background(), opts, cfgmaps.listPage, func(item *v1.ConfigMap) {
+		rls, err := decodeRelease(item.Data["release"])
+		if err != nil {
+			cfgmaps.Logger().Debug("failed to decode release", slog.Any("error", err))
+			return
+		}
+		rls.Labels = item.Labels
+		results = append(results, rls)
+	})
 	if err != nil {
 		cfgmaps.Logger().Debug("failed to query with labels", slog.Any("error", err))
 		return nil, err
 	}
 
-	if len(list.Items) == 0 {
+	if count == 0 {
 		return nil, ErrReleaseNotFound
 	}
-
-	var results []release.Releaser
-	for _, item := range list.Items {
-		rls, err := decodeRelease(item.Data["release"])
-		if err != nil {
-			cfgmaps.Logger().Debug("failed to decode release", slog.Any("error", err))
-			continue
-		}
-		rls.Labels = item.Labels
-		results = append(results, rls)
-	}
 	return results, nil
+}
+
+// listPage fetches a single page of configmaps for the list pager.
+func (cfgmaps *ConfigMaps) listPage(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+	return cfgmaps.impl.List(ctx, opts)
 }
 
 // Create creates a new ConfigMap holding the release. If the
