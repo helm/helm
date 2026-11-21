@@ -39,6 +39,21 @@ func TestValidate(t *testing.T) {
 			ValidationError("chart.metadata.apiVersion is required"),
 		},
 		{
+			"chart with unknown apiVersion",
+			&Metadata{Name: "test", APIVersion: "v100", Version: "1.0"},
+			ValidationError("chart.metadata.apiVersion \"v100\" is not valid. The value must be either \"v1\" or \"v2\""),
+		},
+		{
+			"chart with v3 apiVersion",
+			&Metadata{Name: "test", APIVersion: "v3", Version: "1.0"},
+			ValidationError("chart.metadata.apiVersion \"v3\" is not valid. The value must be either \"v1\" or \"v2\""),
+		},
+		{
+			"chart with v1 apiVersion",
+			&Metadata{Name: "test", APIVersion: "v1", Version: "1.0"},
+			nil,
+		},
+		{
 			"chart without name",
 			&Metadata{APIVersion: "v2", Version: "1.0"},
 			ValidationError("chart.metadata.name is required"),
