@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release/common"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func rollbackAction(t *testing.T) *Rollback {
@@ -359,4 +360,94 @@ func TestRollback_DescriptionMultiByteCharacters(t *testing.T) {
 	req.NoError(err)
 
 	is.Equal(strings.Repeat("é", MaxDescriptionLength), newRelease.Info.Description)
+}
+
+func TestRollback_FailureMarksNewRevisionFailed(t *testing.T) {
+	hookManifest := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rollback-hook
+  namespace: spaced
+data:
+  foo: bar
+`
+	tests := []struct {
+		name      string
+		hook      release.HookEvent
+		configure func(*kubefake.FailingKubeClient)
+		wantErr   string
+	}{
+		{
+			name:      "pre-rollback hook fails",
+			hook:      release.HookPreRollback,
+			configure: func(f *kubefake.FailingKubeClient) { f.WatchUntilReadyError = errors.New("hook failed") },
+			wantErr:   "pre-rollback hooks failed",
+		},
+		{
+			name:      "post-rollback hook fails",
+			hook:      release.HookPostRollback,
+			configure: func(f *kubefake.FailingKubeClient) { f.WatchUntilReadyError = errors.New("hook failed") },
+			wantErr:   "post-rollback hooks failed",
+		},
+		{
+			name:      "current manifest cannot be built",
+			configure: func(f *kubefake.FailingKubeClient) { f.BuildError = errors.New("no matches for kind") },
+			wantErr:   "unable to build kubernetes objects from current release manifest",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := actionConfigFixture(t)
+
+			rel1 := releaseStub()
+			rel1.Name = "rollback-failure"
+			rel1.Version = 1
+			rel1.Info.Status = common.StatusSuperseded
+			rel1.ApplyMethod = "csa"
+			if tt.hook != "" {
+				rel1.Hooks = []*release.Hook{{
+					Name:     "rollback-hook",
+					Kind:     "ConfigMap",
+					Path:     "templates/hook.yaml",
+					Manifest: hookManifest,
+					Events:   []release.HookEvent{tt.hook},
+				}}
+			}
+			require.NoError(t, config.Releases.Create(rel1))
+
+			rel2 := releaseStub()
+			rel2.Name = "rollback-failure"
+			rel2.Version = 2
+			rel2.Info.Status = common.StatusDeployed
+			rel2.ApplyMethod = "csa"
+			require.NoError(t, config.Releases.Create(rel2))
+
+			tt.configure(config.KubeClient.(*kubefake.FailingKubeClient))
+
+			client := NewRollback(config)
+			client.Version = 1
+			client.ServerSideApply = "auto"
+
+			runErr := client.Run("rollback-failure")
+			require.Error(t, runErr)
+
+			reli, err := config.Releases.Get("rollback-failure", 3)
+			require.NoError(t, err)
+			rel, err := releaserToV1Release(reli)
+			require.NoError(t, err)
+
+			assert.Equal(t, common.StatusFailed, rel.Info.Status)
+			assert.Contains(t, rel.Info.Description, tt.wantErr)
+			assert.ErrorContains(t, runErr, tt.wantErr)
+
+			// The revision that was running before the rollback is untouched,
+			// so later operations still have a deployed release to work from.
+			reli, err = config.Releases.Get("rollback-failure", 2)
+			require.NoError(t, err)
+			current, err := releaserToV1Release(reli)
+			require.NoError(t, err)
+			assert.Equal(t, common.StatusDeployed, current.Info.Status)
+		})
+	}
 }
