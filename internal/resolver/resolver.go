@@ -173,7 +173,17 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		}
 		// The versions are already sorted and hence the first one to satisfy the constraint is used
 		for _, ver := range vs {
-			v, err := semver.NewVersion(ver.Version)
+			// OCI tags are the original registry strings, so a tag stored
+			// under the underscore convention from #10166 (1.1.17_meta) is
+			// not valid semver as written. Parse its plus form; the locked
+			// version records that form, and the pull path converts it
+			// back to the underscore tag. The underscore convention is
+			// OCI-only, so classic repo index versions are parsed as written.
+			tagVersion := ver.Version
+			if registry.IsOCI(d.Repository) {
+				tagVersion = strings.ReplaceAll(tagVersion, "_", "+")
+			}
+			v, err := semver.NewVersion(tagVersion)
 			// OCI does not need URLs
 			if err != nil || (!registry.IsOCI(d.Repository) && len(ver.URLs) == 0) {
 				// Not a legit entry.

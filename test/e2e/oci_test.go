@@ -38,6 +38,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli"
 )
 
@@ -418,5 +420,67 @@ func deleteNamespace(t *testing.T, namespace string) {
 	})
 	if err != nil {
 		t.Errorf("waiting for namespace %s to be deleted: %v", namespace, err)
+	}
+}
+
+// TestOCIRegistryDependencyUpdateWithMetaTag is regression coverage for #32582: a
+// chart pushed under a version with build metadata (1.1.17+meta) is stored
+// under the tag 1.1.17_meta, and a parent chart depending on it from an OCI
+// repository with a ~1.1.17 constraint must resolve it on dependency update.
+// It also covers the pull path, which resolves the tag through
+// ValidateReference and GetTagMatchingVersionOrConstraint.
+//
+// Skipped in single-repository mode: there the shared repository already
+// holds other fixtures, so the tight constraint cannot isolate this chart.
+func TestOCIRegistryDependencyUpdateWithMetaTag(t *testing.T) {
+	h := newHarness(t)
+	if h.singleRepo != "" {
+		t.Skip("single-repository mode shares one repository across fixtures")
+	}
+	h.mustLogin(t)
+
+	repo := h.repo()
+
+	// Repackage test-0.1.0.tgz at 1.1.17+meta, the way the harness
+	// repackages fixtures in single-repository mode. Pushing it stores the
+	// artifact under the tag 1.1.17_meta.
+	c, err := loader.Load(chart(t, "test-0.1.0.tgz"))
+	if err != nil {
+		t.Fatalf("loading chart test-0.1.0.tgz: %v", err)
+	}
+	c.Metadata.Name = "test"
+	c.Metadata.Version = "1.1.17+meta"
+	repackaged, err := chartutil.Save(c, t.TempDir())
+	if err != nil {
+		t.Fatalf("repackaging chart at 1.1.17+meta: %v", err)
+	}
+	h.mustHelm(t, "push", repackaged, "oci://"+repo)
+
+	// A parent chart depending on the repackaged chart from the OCI
+	// repository. The tight constraint keeps the shared test repository's
+	// 0.1.0 chart out of the resolution.
+	parentDir := t.TempDir()
+	chartYAML := "apiVersion: v2\nname: parent\nversion: 0.1.0\ndependencies:\n" +
+		"  - name: test\n    version: \"~1.1.17\"\n    repository: \"oci://" + repo + "\"\n"
+	if err := os.WriteFile(filepath.Join(parentDir, "Chart.yaml"), []byte(chartYAML), 0o644); err != nil {
+		t.Fatalf("writing parent Chart.yaml: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(parentDir, "templates"), 0o755); err != nil {
+		t.Fatalf("creating parent templates directory: %v", err)
+	}
+
+	h.mustHelm(t, "dependency", "update", parentDir)
+
+	downloaded := filepath.Join(parentDir, "charts", "test-1.1.17+meta.tgz")
+	if _, err := os.Stat(downloaded); err != nil {
+		t.Fatalf("expected dependency update to download %s: %v", downloaded, err)
+	}
+
+	// The pull path resolves the same tag through ValidateReference and
+	// GetTagMatchingVersionOrConstraint.
+	pullDir := t.TempDir()
+	h.mustHelm(t, "pull", "oci://"+repo+"/test", "--version", "~1.1.17", "--destination", pullDir)
+	if _, err := os.Stat(filepath.Join(pullDir, "test-1.1.17+meta.tgz")); err != nil {
+		t.Fatalf("expected pull to download test-1.1.17+meta.tgz: %v", err)
 	}
 }
