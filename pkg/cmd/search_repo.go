@@ -180,7 +180,12 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 	// Load the repositories.yaml
 	rf, err := repo.LoadFile(o.repoFile)
-	if isNotExist(err) || len(rf.Repositories) == 0 {
+	switch {
+	case isNotExist(err):
+		return nil, errors.New("no repositories configured")
+	case err != nil:
+		return nil, fmt.Errorf("failed loading file: %s: %w", o.repoFile, err)
+	case len(rf.Repositories) == 0:
 		return nil, errors.New("no repositories configured")
 	}
 
