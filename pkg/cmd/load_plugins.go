@@ -59,20 +59,27 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 	}
 
 	dirs := filepath.SplitList(settings.PluginsDirectory)
-	descriptor := plugin.Descriptor{
-		Type: "cli/v1",
-	}
-	found, err := plugin.FindPlugins(dirs, descriptor)
+	found, err := plugin.FindPlugins(dirs, plugin.Descriptor{})
 	if err != nil {
 		slog.Error("failed to load plugins", slog.String("error", err.Error()))
 		return
 	}
+	// cli/v1 plugins go first, so a legacy plugin with downloaders never takes the name of one
+	slices.SortStableFunc(found, func(a, b plugin.Plugin) int {
+		return strings.Compare(a.Metadata().Type, b.Metadata().Type)
+	})
 
 	// Now we create commands for all of these.
+plugins:
 	for _, plug := range found {
+		cliConfig, ok := plug.Metadata().CLIConfig()
+		if !ok {
+			continue
+		}
+
 		var use, short, long string
 		var ignoreFlags bool
-		if cliConfig, ok := plug.Metadata().Config.(*schema.ConfigCLIV1); ok {
+		if cliConfig != nil {
 			use = cliConfig.Usage
 			short = cliConfig.ShortHelp
 			long = cliConfig.LongHelp
@@ -136,6 +143,10 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 		for _, cmd := range baseCmd.Commands() {
 			if cmd.Name() == c.Name() {
+				if plug.Metadata().Type != "cli/v1" {
+					slog.Debug("legacy plugin command not added: name conflicts", slog.String("name", c.Name()))
+					continue plugins
+				}
 				slog.Error("failed to load plugins: name conflicts", slog.String("name", c.Name()))
 				return
 			}
@@ -339,7 +350,7 @@ func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, to
 	}
 
 	var ignoreFlags bool
-	if cliConfig, ok := subprocessPlug.Metadata().Config.(*schema.ConfigCLIV1); ok {
+	if cliConfig, _ := subprocessPlug.Metadata().CLIConfig(); cliConfig != nil {
 		ignoreFlags = cliConfig.IgnoreFlags
 	}
 

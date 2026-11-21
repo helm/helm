@@ -110,6 +110,29 @@ func TestLoadDir(t *testing.T) {
 			apiVersion: "v1",
 			expect:     makeMetadata("v1"),
 		},
+		"legacy with downloaders": {
+			dirname:    "testdata/plugdir/good/downloader",
+			apiVersion: "legacy",
+			expect: Metadata{
+				APIVersion: "legacy",
+				Name:       "downloader",
+				Version:    "1.2.3",
+				Type:       "getter/v1",
+				Runtime:    "subprocess",
+				Config: &schema.ConfigGetterV1{
+					Protocols: []string{"myprotocol", "myprotocols"},
+				},
+				RuntimeConfig: &RuntimeConfigSubprocess{
+					PlatformCommand: []PlatformCommand{{Command: "echo Hello"}},
+					ProtocolCommands: []SubprocessProtocolCommand{{
+						Protocols:       []string{"myprotocol", "myprotocols"},
+						PlatformCommand: []PlatformCommand{{Command: "echo Download"}},
+					}},
+					expandHookArgs: true,
+				},
+				legacyCLIConfig: &schema.ConfigCLIV1{ShortHelp: "usage", LongHelp: "download something"},
+			},
+		},
 	}
 
 	for name, tc := range testCases {
