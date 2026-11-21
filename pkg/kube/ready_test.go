@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1087,13 +1088,24 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 }
 
 func Test_ReadyChecker_volumeReady(t *testing.T) {
+	wffc := storagev1.VolumeBindingWaitForFirstConsumer
+	immediate := storagev1.VolumeBindingImmediate
+	storageClasses := []runtime.Object{
+		&storagev1.StorageClass{Name: "wffc", VolumeBindingMode: &wffc},
+		&storagev1.StorageClass{Name: "immediate", VolumeBindingMode: &immediate},
+	}
+	withStorageClass := func(pvc *corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
+		pvc.Spec.StorageClassName = &name
+		return pvc
+	}
 	type args struct {
 		v *corev1.PersistentVolumeClaim
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name    string
+		args    args
+		objects []runtime.Object
+		want    bool
 	}{
 		{
 			name: "pvc is bound",
@@ -1109,11 +1121,35 @@ func Test_ReadyChecker_volumeReady(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "pending pvc with WaitForFirstConsumer storage class is ready",
+			args: args{
+				v: withStorageClass(newPersistentVolumeClaim("foo", corev1.ClaimPending), "wffc"),
+			},
+			objects: storageClasses,
+			want:    true,
+		},
+		{
+			name: "pending pvc with Immediate storage class is not ready",
+			args: args{
+				v: withStorageClass(newPersistentVolumeClaim("foo", corev1.ClaimPending), "immediate"),
+			},
+			objects: storageClasses,
+			want:    false,
+		},
+		{
+			name: "pending pvc whose storage class cannot be found is not ready",
+			args: args{
+				v: withStorageClass(newPersistentVolumeClaim("foo", corev1.ClaimPending), "missing"),
+			},
+			objects: storageClasses,
+			want:    false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset())
-			got := c.volumeReady(tt.args.v)
+			c := NewReadyChecker(fake.NewClientset(tt.objects...))
+			got := c.volumeReady(t.Context(), tt.args.v)
 			assert.Equalf(t, tt.want, got, "volumeReady() = %v, want %v", got, tt.want)
 		})
 	}

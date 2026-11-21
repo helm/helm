@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"helm.sh/helm/v4/internal/statusreaders"
 	deploymentutil "helm.sh/helm/v4/internal/third_party/k8s.io/kubernetes/deployment/util"
 )
 
@@ -120,7 +122,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		if err != nil {
 			return false, err
 		}
-		if !c.volumeReady(claim) {
+		if !c.volumeReady(ctx, claim) {
 			return false, nil
 		}
 	case *corev1.Service:
@@ -273,13 +275,39 @@ func (c *ReadyChecker) serviceReady(s *corev1.Service) bool {
 	return true
 }
 
-func (c *ReadyChecker) volumeReady(v *corev1.PersistentVolumeClaim) bool {
+func (c *ReadyChecker) volumeReady(ctx context.Context, v *corev1.PersistentVolumeClaim) bool {
 	if v.Status.Phase != corev1.ClaimBound {
+		if v.Status.Phase == corev1.ClaimPending && c.waitsForFirstConsumer(ctx, v) {
+			slog.Debug("PersistentVolumeClaim is waiting for its first consumer", "namespace", v.GetNamespace(), "name", v.GetName())
+			return true
+		}
 		slog.Debug("PersistentVolumeClaim is not bound", "namespace", v.GetNamespace(), "name", v.GetName())
 		return false
 	}
 	slog.Debug("PersistentVolumeClaim is bound", "namespace", v.GetNamespace(), "name", v.GetName(), "phase", v.Status.Phase)
 	return true
+}
+
+// waitsForFirstConsumer reports whether the claim's StorageClass binds volumes
+// only once a Pod uses the claim. If the StorageClass cannot be read, for example
+// with namespace-scoped RBAC, it returns false so the claim keeps waiting for Bound.
+func (c *ReadyChecker) waitsForFirstConsumer(ctx context.Context, v *corev1.PersistentVolumeClaim) bool {
+	waits, err := statusreaders.WaitsForFirstConsumer(v.Spec.StorageClassName,
+		func(name string) (*storagev1.StorageClass, error) {
+			return c.client.StorageV1().StorageClasses().Get(ctx, name, metav1.GetOptions{})
+		},
+		func() ([]storagev1.StorageClass, error) {
+			list, err := c.client.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
+			if err != nil {
+				return nil, err
+			}
+			return list.Items, nil
+		})
+	if err != nil {
+		slog.Debug("could not look up the StorageClass of PersistentVolumeClaim", slog.String("namespace", v.GetNamespace()), slog.String("name", v.GetName()), slog.Any("error", err))
+		return false
+	}
+	return waits
 }
 
 func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
