@@ -77,9 +77,17 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
+	fname, _, err := r.downloadIndexFile()
+	return fname, err
+}
+
+// downloadIndexFile does the work of DownloadIndexFile and also returns the
+// parsed index, so callers that need it don't read the file back and parse
+// it again.
+func (r *ChartRepository) downloadIndexFile() (string, *IndexFile, error) {
 	indexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	resp, err := r.Client.Get(indexURL,
@@ -90,17 +98,17 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
 	)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	index, err := io.ReadAll(resp)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	indexFile, err := loadIndex(index, r.Config.URL)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	// Create the chart list file in the cache directory
@@ -117,7 +125,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0o755)
-	return fname, fileutil.AtomicWriteFile(fname, bytes.NewReader(index), 0o644)
+	return fname, indexFile, fileutil.AtomicWriteFile(fname, bytes.NewReader(index), 0o644)
 }
 
 type findChartInRepoURLOptions struct {
@@ -199,7 +207,7 @@ func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, opt
 	if err != nil {
 		return "", err
 	}
-	idx, err := r.DownloadIndexFile()
+	_, repoIndex, err := r.downloadIndexFile()
 	if err != nil {
 		return "", fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", repoURL, err)
 	}
@@ -207,12 +215,6 @@ func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, opt
 		os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name)))
 		os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name)))
 	}()
-
-	// Read the index file for the repository to get chart information and return chart URL
-	repoIndex, err := LoadIndexFile(idx)
-	if err != nil {
-		return "", err
-	}
 
 	errMsg := fmt.Sprintf("chart %q", chartName)
 	if opts.ChartVersion != "" {
