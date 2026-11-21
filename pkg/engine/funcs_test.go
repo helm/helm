@@ -295,6 +295,11 @@ func TestDurationHelpers(t *testing.T) {
 		vars:   maxDurationSecondsFloat + 0.5,
 		expect: `0`,
 	}, {
+		name:   "durationSeconds float at upper boundary returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   maxDurationSecondsFloat,
+		expect: `0`,
+	}, {
 		name:   "durationSeconds float underflow returns 0",
 		tpl:    `{{ durationSeconds . }}`,
 		vars:   minDurationSecondsFloat - 0.5,
@@ -425,6 +430,10 @@ func TestDurationHelpers(t *testing.T) {
 			name: "mustToDuration float overflow",
 			tpl:  `{{ mustToDuration . }}`,
 			vars: maxDurationSecondsFloat + 0.5,
+		}, {
+			name: "mustToDuration float at upper boundary",
+			tpl:  `{{ mustToDuration . }}`,
+			vars: maxDurationSecondsFloat,
 		}, {
 			name: "mustToDuration float underflow",
 			tpl:  `{{ mustToDuration . }}`,
