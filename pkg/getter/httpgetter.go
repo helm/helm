@@ -17,6 +17,7 @@ package getter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 
 	"helm.sh/helm/v4/internal/tlsutil"
@@ -57,6 +59,9 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 
 	if opts.acceptHeader != "" {
 		req.Header.Set("Accept", opts.acceptHeader)
+	}
+	if opts.acceptCompression {
+		req.Header.Set("Accept-Encoding", "gzip")
 	}
 
 	req.Header.Set("User-Agent", version.GetUserAgent())
@@ -100,9 +105,31 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
+	reader := io.Reader(resp.Body)
+	if opts.acceptCompression && isGzipEncoded(resp.Header) {
+		gzipReader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read gzipped response from %s: %w", href, err)
+		}
+		defer gzipReader.Close()
+		reader = gzipReader
+	}
+
 	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, resp.Body)
+	_, err = io.Copy(buf, reader)
 	return buf, err
+}
+
+func isGzipEncoded(header http.Header) bool {
+	for _, value := range header.Values("Content-Encoding") {
+		for encoding := range strings.SplitSeq(value, ",") {
+			if strings.EqualFold(strings.TrimSpace(encoding), "gzip") {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // NewHTTPGetter constructs a valid http/https client as a Getter
