@@ -264,3 +264,27 @@ func TestMemoryDelete(t *testing.T) {
 		}
 	}
 }
+
+func TestMemoryReleaseNameContainingVersionSeparator(t *testing.T) {
+	// Release names may contain dots, so a name such as "app.v2" or
+	// "my.vault" contains the ".v" separator used in storage keys.
+	for _, name := range []string{"app.v2", "my.vault"} {
+		t.Run(name, func(t *testing.T) {
+			mem := NewMemory()
+			rls := releaseStub(name, 1, "default", common.StatusDeployed)
+			key := fmt.Sprintf("sh.helm.release.v1.%s.v%d", name, rls.Version)
+			require.NoError(t, mem.Create(key, rls))
+
+			got, err := mem.Get(key)
+			require.NoError(t, err)
+			assert.Equal(t, name, convertReleaserToV1(t, got).Name)
+
+			deleted, err := mem.Delete(key)
+			require.NoError(t, err)
+			assert.Equal(t, name, convertReleaserToV1(t, deleted).Name)
+
+			_, err = mem.Get(key)
+			assert.ErrorIs(t, err, ErrReleaseNotFound)
+		})
+	}
+}
