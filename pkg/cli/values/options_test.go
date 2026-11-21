@@ -234,16 +234,17 @@ func TestReadFile(t *testing.T) {
 // TestReadFileErrorMessages tests specific error scenarios and their messages
 func TestReadFileErrorMessages(t *testing.T) {
 	tests := []struct {
-		name      string
-		filePath  string
-		providers getter.Providers
-		wantErr   string
+		name        string
+		filePath    string
+		providers   getter.Providers
+		wantErr     string
+		wantFileErr bool
 	}{
 		{
-			name:      "URL parse error",
-			filePath:  "://invalid",
-			providers: getter.Providers{},
-			wantErr:   "missing protocol scheme",
+			name:        "URL parse error reads local file",
+			filePath:    "://invalid",
+			providers:   getter.Providers{},
+			wantFileErr: true,
 		},
 		{
 			name:      "getter error with message",
@@ -256,6 +257,14 @@ func TestReadFileErrorMessages(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := readFile(tt.filePath, tt.providers)
+			if tt.wantFileErr {
+				_, wantErr := os.ReadFile(tt.filePath)
+				require.Error(t, wantErr)
+				var pathErr *os.PathError
+				require.ErrorAs(t, err, &pathErr)
+				assert.Equal(t, wantErr, pathErr)
+				return
+			}
 			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}
@@ -267,6 +276,30 @@ func TestReadFileOriginal(t *testing.T) {
 	filePath := "%a.txt"
 	_, err := readFile(filePath, p)
 	assert.Error(t, err, "Expected error when has special strings")
+}
+
+func TestMergeValuesLocalFilenames(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	for _, filename := range []string{"values%prod.yaml", "values%20prod.yaml"} {
+		t.Run(filename, func(t *testing.T) {
+			require.NoError(t, os.WriteFile(filename, []byte("foo: bar\n"), 0o600))
+
+			t.Run("values file", func(t *testing.T) {
+				opts := Options{ValueFiles: []string{filename}}
+				got, err := opts.MergeValues(getter.Providers{})
+				require.NoError(t, err)
+				assert.Equal(t, map[string]any{"foo": "bar"}, got)
+			})
+
+			t.Run("set-file", func(t *testing.T) {
+				opts := Options{FileValues: []string{"content=" + filename}}
+				got, err := opts.MergeValues(getter.Providers{})
+				require.NoError(t, err)
+				assert.Equal(t, map[string]any{"content": "foo: bar\n"}, got)
+			})
+		})
+	}
 }
 
 func TestMergeValuesCLI(t *testing.T) {
