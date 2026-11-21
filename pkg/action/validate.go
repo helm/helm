@@ -120,6 +120,7 @@ type unverifiableResource struct {
 //
 // Resources that are not found on the server are excluded from all returned lists,
 // since they have already been deleted and require no further action.
+// Owned resources carry the object read from the server.
 func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, kube.ResourceList, []unverifiableResource, error) {
 	var owned kube.ResourceList
 	var unowned kube.ResourceList
@@ -160,6 +161,7 @@ func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, relea
 
 		// Resource is owned by this release, can delete
 		infoCopy := *info
+		infoCopy.Object = existing
 		owned.Append(&infoCopy)
 		return nil
 	})

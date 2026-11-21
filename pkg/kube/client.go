@@ -677,7 +677,7 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 				slog.Any("error", err),
 			)
 		}
-		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
+		if IsKeepPolicy(annotations[ResourcePolicyAnno]) {
 			c.Logger().Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}

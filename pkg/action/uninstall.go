@@ -99,10 +99,13 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 				builder.WriteString("\n---\n" + file.Content)
 			}
 
+			var liveKept kube.ResourceList
 			resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
 			if err == nil && len(resources) > 0 {
 				ownedResources, unownedResources, unverifiableResources, err := verifyOwnershipBeforeDelete(resources, r.Name, r.Namespace)
 				if err == nil {
+					liveKept, ownedResources = filterResourcesToKeep(ownedResources)
+
 					if len(unownedResources) > 0 {
 						u.cfg.Logger().Warn("dry-run: resources would be skipped because they are not owned by this release",
 							"release", r.Name,
@@ -143,11 +146,14 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 			}
 
 			// Include kept resources in dry-run info
-			if len(filesToKeep) > 0 {
+			if len(filesToKeep) > 0 || len(liveKept) > 0 {
 				var kept strings.Builder
 				kept.WriteString("These resources were kept due to the resource policy:\n")
 				for _, f := range filesToKeep {
 					fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
+				}
+				for _, info := range liveKept {
+					fmt.Fprintf(&kept, "[%s] %s\n", info.Mapping.GroupVersionKind.Kind, info.Name)
 				}
 				res := &releasei.UninstallReleaseResponse{Release: r, Info: kept.String()}
 				return res, nil
@@ -356,6 +362,21 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		ownedResources, unownedResources, unverifiableResources, err = verifyOwnershipBeforeDelete(resources, rel.Name, rel.Namespace)
 		if err != nil {
 			return nil, "", []error{fmt.Errorf("unable to verify resource ownership: %w", err)}
+		}
+
+		// Keep resources whose live object has the resource policy annotation
+		var liveKept kube.ResourceList
+		liveKept, ownedResources = filterResourcesToKeep(ownedResources)
+		if len(liveKept) > 0 && kept.Len() == 0 {
+			kept.WriteString("These resources were kept due to the resource policy:\n")
+		}
+		for _, info := range liveKept {
+			u.cfg.Logger().Debug("resource kept due to live resource policy",
+				"kind", info.Mapping.GroupVersionKind.Kind,
+				"name", info.Name,
+				"namespace", info.Namespace,
+				"release", rel.Name)
+			fmt.Fprintf(&kept, "[%s] %s\n", info.Mapping.GroupVersionKind.Kind, info.Name)
 		}
 
 		// Log warnings for unowned resources

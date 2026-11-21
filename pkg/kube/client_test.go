@@ -590,6 +590,76 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestUpdateLiveKeepPolicy(t *testing.T) {
+	testCases := []struct {
+		name           string
+		manifestPolicy string
+		policy         string
+		keep           bool
+	}{
+		{name: "keep", policy: "keep", keep: true},
+		{name: "uppercase", policy: "KEEP", keep: true},
+		{name: "mixed case and whitespace", policy: " \tKeep\n", keep: true},
+		{name: "no annotation"},
+		{name: "whitespace only", policy: " \t\n"},
+		{name: "other policy", policy: "delete"},
+		{name: "keep prefix is not keep", policy: "keep-other"},
+		{name: "live policy overrides old manifest", manifestPolicy: "keep", policy: "delete"},
+	}
+	for _, apply := range []struct {
+		name       string
+		serverSide bool
+	}{
+		{name: "client-side apply"},
+		{name: "server-side apply", serverSide: true},
+	} {
+		t.Run(apply.name, func(t *testing.T) {
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					c := newTestClient(t)
+					original := newPodList("removed")
+					if tc.manifestPolicy != "" {
+						original.Items[0].Annotations = map[string]string{ResourcePolicyAnno: tc.manifestPolicy}
+					}
+					live := original.Items[0].DeepCopy()
+					if tc.policy != "" {
+						live.Annotations = map[string]string{ResourcePolicyAnno: tc.policy}
+					}
+					client := NewRequestResponseLogClient(t, func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+						assert.Equal(t, "/namespaces/default/pods/removed", req.URL.Path)
+						assert.Contains(t, []string{http.MethodGet, http.MethodDelete}, req.Method)
+						return newResponse(http.StatusOK, live)
+					})
+					c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+						NegotiatedSerializer: unstructuredSerializer,
+						Client:               fake.CreateHTTPClient(client.Do),
+					}
+					resources, err := c.Build(objBody(&original), false)
+					require.NoError(t, err)
+
+					// The live annotation controls deletion when the new release
+					// no longer contains this resource.
+					result, err := c.Update(resources, ResourceList{}, ClientUpdateOptionServerSideApply(apply.serverSide, false))
+					require.NoError(t, err)
+					expectedMethods := []string{http.MethodGet}
+					if tc.keep {
+						assert.Empty(t, result.Deleted)
+					} else {
+						expectedMethods = append(expectedMethods, http.MethodDelete)
+						require.Len(t, result.Deleted, 1)
+						assert.Equal(t, "removed", result.Deleted[0].Name)
+					}
+					var methods []string
+					for _, action := range client.Actions {
+						methods = append(methods, action.Request.Method)
+					}
+					assert.Equal(t, expectedMethods, methods)
+				})
+			}
+		})
+	}
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string
