@@ -186,6 +186,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
+	f.StringToStringVar(&client.NamespaceLabels, "namespace-labels", nil, "labels to apply to the namespace when --create-namespace is set. Comma-separated key=value pairs. When not set the default label name=<namespace> is applied.")
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
 	f.MarkDeprecated("force", "use --force-replace instead")
