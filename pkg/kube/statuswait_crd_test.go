@@ -25,10 +25,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
-	"k8s.io/kubectl/pkg/scheme"
 )
 
 const rolloutManifest = `
@@ -90,8 +90,11 @@ func newRolloutStatusWaiter(t *testing.T, mapper meta.RESTMapper) (*statusWaiter
 	t.Helper()
 	rollout := getRuntimeObjFromManifests(t, []string{rolloutManifest})[0].(*unstructured.Unstructured)
 
+	// Use a scheme of its own: the fake client registers the list kinds it is
+	// given in the scheme, and the tests run in parallel, so registering them in
+	// the shared scheme.Scheme races with every other reader of it.
 	fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
-		scheme.Scheme,
+		runtime.NewScheme(),
 		map[schema.GroupVersionResource]string{rolloutGVR: "RolloutList"},
 		rollout,
 	)
