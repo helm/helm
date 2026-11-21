@@ -1,0 +1,4 @@
+apiVersion: v2
+name: issue-11321
+description: A chart with a CRD file holding several documents, used to test --show-only
+version: 0.1.0
