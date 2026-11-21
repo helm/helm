@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v2release "helm.sh/helm/v4/internal/release/v2"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -35,9 +36,10 @@ func TestNewDefaultAccessor(t *testing.T) {
 	req := require.New(t)
 
 	// Create release
-	info := &rspb.Info{Status: common.StatusDeployed, LastDeployed: time.Now().Add(1000)}
+	info := &rspb.Info{Status: common.StatusDeployed, LastDeployed: time.Now().Add(1000), Notes: "test notes"}
 	labels := make(map[string]string)
 	labels["foo"] = "bar"
+	ch := &chart.Chart{Metadata: &chart.Metadata{Name: "happy-cats", Version: "1.0.0"}}
 	rel := &rspb.Release{
 		Name:        "happy-cats",
 		Version:     2,
@@ -45,6 +47,16 @@ func TestNewDefaultAccessor(t *testing.T) {
 		Labels:      labels,
 		Namespace:   "default",
 		ApplyMethod: "csa",
+		Chart:       ch,
+		Manifest:    "test manifest content",
+		Hooks: []*rspb.Hook{
+			{
+				Name:     "test-hook",
+				Kind:     "Job",
+				Path:     "templates/hook.yaml",
+				Manifest: "hook manifest",
+			},
+		},
 	}
 
 	// newDefaultAccessor should not be called directly Instead, NewAccessor should be
@@ -65,6 +77,21 @@ func TestNewDefaultAccessor(t *testing.T) {
 	is.Equal(rel.Version, accessor.Version())
 	is.Equal(rel.ApplyMethod, accessor.ApplyMethod())
 	is.Equal(rel.Labels, accessor.Labels())
+	is.Equal(rel.Manifest, accessor.Manifest())
+	is.Equal(rel.Info.Notes, accessor.Notes())
+	is.Equal(rel.Info.Status.String(), accessor.Status())
+	is.Equal(rel.Info.LastDeployed, accessor.DeployedAt())
+	is.Equal(rel.Chart, accessor.Chart())
+
+	// Verify hooks are accessible
+	hooks := accessor.Hooks()
+	is.Len(hooks, 1)
+
+	// Test hook accessor
+	hookAccessor, err := newDefaultHookAccessor(hooks[0])
+	req.NoError(err)
+	is.Equal("templates/hook.yaml", hookAccessor.Path())
+	is.Equal("hook manifest", hookAccessor.Manifest())
 }
 
 func TestNewDefaultAccessorV2(t *testing.T) {
