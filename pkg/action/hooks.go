@@ -73,17 +73,27 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 	// hooke are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
+	// Keep cleanup deferred so callers can retrieve logs even when a later hook cannot be prepared.
+	cleanupOnError := func(successfulHooks []*release.Hook, hookErr error) (ExecuteShutdownFunc, error) {
+		return func() error {
+			if cleanupErr := cfg.deleteHooksByPolicy(successfulHooks, release.HookSucceeded, waitStrategy, waitOptions, timeout); cleanupErr != nil {
+				return fmt.Errorf("%w: error cleaning up previously successful hooks: %w", hookErr, cleanupErr)
+			}
+			return nil
+		}, hookErr
+	}
+
 	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
 		cfg.hookSetDeletePolicy(h)
 
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, waitStrategy, waitOptions, timeout); err != nil {
-			return shutdownNoOp, err
+			return cleanupOnError(executingHooks[:i], err)
 		}
 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
-			return shutdownNoOp, fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
+			return cleanupOnError(executingHooks[:i], fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err))
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -104,7 +114,7 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 			kube.ClientCreateOptionServerSideApply(serverSideApply, false)); err != nil {
 			h.LastRun.CompletedAt = time.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
-			return shutdownNoOp, fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
+			return cleanupOnError(executingHooks[:i], fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err))
 		}
 
 		var waiter kube.Waiter
@@ -114,7 +124,7 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 			waiter, err = cfg.KubeClient.GetWaiter(waitStrategy)
 		}
 		if err != nil {
-			return shutdownNoOp, fmt.Errorf("unable to get waiter: %w", err)
+			return cleanupOnError(executingHooks[:i], fmt.Errorf("unable to get waiter: %w", err))
 		}
 		// Watch hook resources until they have completed
 		err = waiter.WatchUntilReady(resources, timeout)
