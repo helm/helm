@@ -43,15 +43,16 @@ import (
 )
 
 type statusWaiter struct {
-	client               dynamic.Interface
-	restMapper           meta.RESTMapper
-	ctx                  context.Context
-	watchUntilReadyCtx   context.Context
-	waitCtx              context.Context
-	waitWithJobsCtx      context.Context
-	waitForDeleteCtx     context.Context
-	readers              []engine.StatusReader
-	statusComputeWorkers int
+	client                  dynamic.Interface
+	restMapper              meta.RESTMapper
+	ctx                     context.Context
+	watchUntilReadyCtx      context.Context
+	waitCtx                 context.Context
+	waitWithJobsCtx         context.Context
+	waitForDeleteCtx        context.Context
+	readers                 []engine.StatusReader
+	statusComputeWorkers    int
+	customReadinessEligible map[object.ObjMetadata]struct{}
 	logging.LogHolder
 }
 
@@ -73,6 +74,15 @@ func getStatusWatcher(dynamicClient dynamic.Interface, mapper meta.RESTMapper) *
 	sw := watcher.NewDefaultStatusWatcher(dynamicClient, mapper)
 	sw.ResyncPeriod = 3 * time.Minute
 	return sw
+}
+
+// wrapCustomReadiness layers custom readiness evaluation on top of the reader
+// chain a wait method would otherwise use.
+func (w *statusWaiter) wrapCustomReadiness(fallback engine.StatusReader) engine.StatusReader {
+	if len(w.customReadinessEligible) == 0 {
+		return fallback
+	}
+	return newCustomReadinessStatusReader(w.Logger(), fallback, w.customReadinessEligible)
 }
 
 func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
@@ -107,7 +117,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
-	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
+	sw.StatusReader = w.wrapCustomReadiness(statusreaders.NewStatusReader(w.restMapper, w.readers...))
 	return w.wait(ctx, resourceList, sw)
 }
 
@@ -123,8 +133,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
 	readers = append(readers, newCustomJobStatusReader)
-	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
-	sw.StatusReader = customSR
+	sw.StatusReader = w.wrapCustomReadiness(statusreaders.NewStatusReader(w.restMapper, readers...))
 	return w.wait(ctx, resourceList, sw)
 }
 

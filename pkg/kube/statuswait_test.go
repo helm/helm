@@ -38,11 +38,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/cli-runtime/pkg/resource"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/kubectl/pkg/scheme"
@@ -288,6 +290,377 @@ func getResourceListFromRuntimeObjs(t *testing.T, c *Client, objs []runtime.Obje
 		resourceList = append(resourceList, list...)
 	}
 	return resourceList
+}
+
+func TestStatusWaitWithCustomReadinessReader(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		annotations      map[string]string
+		phase            string
+		expectErrStrs    []string
+		notExpectErrStrs []string
+	}{
+		{
+			name: "custom readiness makes resource current",
+			annotations: map[string]string{
+				AnnotationReadinessSuccess: `["{.phase} == \"Ready\""]`,
+				AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+			},
+			phase: "Ready",
+		},
+		{
+			name: "custom readiness failure is reported",
+			annotations: map[string]string{
+				AnnotationReadinessSuccess: `["{.phase} == \"Ready\""]`,
+				AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+			},
+			phase:         "Failed",
+			expectErrStrs: []string{"resource ConfigMap/default/failed-config not ready. status: Failed"},
+		},
+		{
+			name:  "resources without annotations fall back to kstatus",
+			phase: "Waiting",
+		},
+		{
+			name: "ordering operator on non-numeric value does not abort the wait",
+			annotations: map[string]string{
+				AnnotationReadinessSuccess: `["{.phase} > \"Ready\""]`,
+				AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+			},
+			phase:            "Running",
+			expectErrStrs:    []string{"resource ConfigMap/default/bad-ordering not ready. status: InProgress", "skipped"},
+			notExpectErrStrs: []string{"failed to compute object status"},
+		},
+		{
+			name: "ordering on numeric string value compares numerically",
+			annotations: map[string]string{
+				AnnotationReadinessSuccess: `["{.phase} >= 5"]`,
+				AnnotationReadinessFailure: `["{.failed} >= 1"]`,
+			},
+			phase: "5",
+		},
+		{
+			name: "incomparable expression is skipped when another success condition is met",
+			annotations: map[string]string{
+				AnnotationReadinessSuccess: `["{.phase} > \"Ready\"", "{.phase} == \"Running\""]`,
+				AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+			},
+			phase: "Running",
+		},
+		{
+			name: "partial annotation falls back to default readiness",
+			annotations: map[string]string{
+				AnnotationReadinessSuccess: `["{.phase} == \"Ready\""]`,
+			},
+			phase: "Waiting",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			name := strings.Split(tt.name, " ")[0] + "-config"
+			if tt.name == "ordering operator on non-numeric value does not abort the wait" {
+				name = "bad-ordering"
+			}
+			if tt.name == "custom readiness failure is reported" {
+				name = "failed-config"
+			}
+			u := customReadinessTestObject(t, name, tt.annotations, tt.phase)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("ConfigMap"))
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+			c := newTestClient(t)
+			resources := getResourceListFromRuntimeObjs(t, c, []runtime.Object{u})
+			waiter := statusWaiter{
+				client:                  fakeClient,
+				restMapper:              fakeMapper,
+				customReadinessEligible: eligibleReadinessObjects(t, u),
+			}
+			waiter.SetLogger(slog.Default().Handler())
+
+			err := waiter.Wait(resources, time.Second)
+			if tt.expectErrStrs == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			for _, expected := range tt.expectErrStrs {
+				assert.Contains(t, err.Error(), expected)
+			}
+			for _, unexpected := range tt.notExpectErrStrs {
+				assert.NotContains(t, err.Error(), unexpected)
+			}
+		})
+	}
+}
+
+func TestCustomReadinessEligibleResources(t *testing.T) {
+	t.Parallel()
+
+	one := customReadinessTestObject(t, "one", nil, "Ready")
+	two := customReadinessTestObject(t, "two", nil, "Ready")
+	c := newTestClient(t)
+	resources := getResourceListFromRuntimeObjs(t, c, []runtime.Object{one, two})
+
+	got, err := CustomReadinessEligibleResources(resources)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []object.ObjMetadata{
+		{Namespace: "default", Name: "one", GroupKind: schema.GroupKind{Kind: "ConfigMap"}},
+		{Namespace: "default", Name: "two", GroupKind: schema.GroupKind{Kind: "ConfigMap"}},
+	}, got)
+
+	_, err = CustomReadinessEligibleResources(ResourceList{
+		&resource.Info{Object: &runtime.Unknown{}},
+	})
+	require.Error(t, err)
+}
+
+func TestStatusWaitCustomReadinessIneligibleKeepsDefaultReaders(t *testing.T) {
+	t.Parallel()
+
+	annotations := map[string]string{
+		AnnotationReadinessSuccess: `["{.phase} == \"Ready\""]`,
+		AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+	}
+	eligible := customReadinessTestObject(t, "eligible", annotations, "Waiting")
+	ineligible := customReadinessTestObject(t, "ineligible", annotations, "Waiting")
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("ConfigMap"))
+	for _, u := range []*unstructured.Unstructured{eligible, ineligible} {
+		gvr := getGVR(t, fakeMapper, u)
+		require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+	}
+
+	c := newTestClient(t)
+	resources := getResourceListFromRuntimeObjs(t, c, []runtime.Object{eligible, ineligible})
+	waiter := statusWaiter{
+		client:                  fakeClient,
+		restMapper:              fakeMapper,
+		customReadinessEligible: eligibleReadinessObjects(t, eligible),
+	}
+	waiter.SetLogger(slog.Default().Handler())
+
+	err := waiter.Wait(resources, time.Second)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resource ConfigMap/default/eligible not ready. status: InProgress")
+	assert.NotContains(t, err.Error(), "ConfigMap/default/ineligible")
+}
+
+func TestStatusWaitCustomReadinessOptionDoesNotLeakAcrossWaiters(t *testing.T) {
+	t.Parallel()
+
+	u := customReadinessTestObject(t, "option-scope", map[string]string{
+		AnnotationReadinessSuccess: `["{.phase} == \"Ready\""]`,
+		AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+	}, "Waiting")
+	c := newTestClient(t)
+	resources := getResourceListFromRuntimeObjs(t, c, []runtime.Object{u})
+	eligible, err := CustomReadinessEligibleResources(resources)
+	require.NoError(t, err)
+
+	configured, err := c.GetWaiterWithOptions(StatusWatcherStrategy, WithCustomReadiness(eligible))
+	require.NoError(t, err)
+	configuredWaiter := configured.(*statusWaiter)
+	plain, err := c.GetWaiterWithOptions(StatusWatcherStrategy)
+	require.NoError(t, err)
+	plainWaiter := plain.(*statusWaiter)
+
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("ConfigMap"))
+	configuredWaiter.restMapper = fakeMapper
+	plainWaiter.restMapper = fakeMapper
+	gvr := getGVR(t, fakeMapper, u)
+	_, err = configuredWaiter.client.Resource(gvr).Namespace(u.GetNamespace()).Create(
+		t.Context(), u, metav1.CreateOptions{},
+	)
+	require.NoError(t, err)
+
+	assert.Len(t, configuredWaiter.customReadinessEligible, 1)
+	assert.Empty(t, plainWaiter.customReadinessEligible)
+	err = configuredWaiter.Wait(resources, time.Second)
+	require.ErrorContains(t, err, "resource ConfigMap/default/option-scope not ready. status: InProgress")
+	require.NoError(t, plainWaiter.Wait(resources, time.Second))
+}
+
+func TestWithCustomReadiness(t *testing.T) {
+	t.Parallel()
+
+	eligible := []object.ObjMetadata{{
+		Namespace: "default",
+		Name:      "example",
+		GroupKind: schema.GroupKind{Kind: "ConfigMap"},
+	}}
+	opts := &waitOptions{}
+	WithCustomReadiness(eligible)(opts)
+	assert.Equal(t, eligible, opts.customReadinessEligible)
+}
+
+func TestStatusWaitWithJobsMixedCustomReadiness(t *testing.T) {
+	t.Parallel()
+
+	annotations := map[string]string{
+		AnnotationReadinessSuccess: `["{.phase} == \"Ready\""]`,
+		AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+	}
+	tests := []struct {
+		name             string
+		jobManifest      string
+		configPhase      string
+		expectErrStrs    []string
+		notExpectErrStrs []string
+	}{
+		{
+			name:          "plain job keeps completion gating",
+			jobManifest:   jobReadyManifest,
+			configPhase:   "Ready",
+			expectErrStrs: []string{"resource Job/default/ready-not-complete not ready. status: InProgress"},
+			notExpectErrStrs: []string{
+				"ConfigMap/default/gated-config",
+			},
+		},
+		{
+			name:          "annotated resource keeps expression gating",
+			jobManifest:   jobCompleteManifest,
+			configPhase:   "Pending",
+			expectErrStrs: []string{"resource ConfigMap/default/gated-config not ready. status: InProgress"},
+			notExpectErrStrs: []string{
+				"Job/qual/test",
+			},
+		},
+		{
+			name:        "batch completes when both gates are met",
+			jobManifest: jobCompleteManifest,
+			configPhase: "Ready",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			objs := getRuntimeObjFromManifests(t, []string{tt.jobManifest})
+			objs = append(objs, customReadinessTestObject(t, "gated-config", annotations, tt.configPhase))
+			waiter, resources := newCustomReadinessStatusWaiter(t, objs,
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+				v1.SchemeGroupVersion.WithKind("ConfigMap"),
+			)
+
+			err := waiter.WaitWithJobs(resources, time.Second)
+			if tt.expectErrStrs == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			for _, expected := range tt.expectErrStrs {
+				assert.Contains(t, err.Error(), expected)
+			}
+			for _, unexpected := range tt.notExpectErrStrs {
+				assert.NotContains(t, err.Error(), unexpected)
+			}
+		})
+	}
+}
+
+func TestWatchUntilReadyIgnoresCustomReadiness(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		manifest      string
+		annotatedHook bool
+		expectErrStrs []string
+	}{
+		{
+			name:          "incomplete hook job still uses hook job reader",
+			manifest:      jobReadyManifest,
+			expectErrStrs: []string{"resource Job/default/ready-not-complete not ready. status: InProgress"},
+		},
+		{
+			name:          "annotated non-job hook ignores readiness expressions",
+			annotatedHook: true,
+		},
+		{
+			name:     "complete hook job succeeds",
+			manifest: jobCompleteManifest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var objs []runtime.Object
+			if tt.annotatedHook {
+				objs = []runtime.Object{customReadinessTestObject(t, "hook-config", map[string]string{
+					AnnotationReadinessSuccess: `["{.phase} == \"Ready\""]`,
+					AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+				}, "Pending")}
+			} else {
+				objs = getRuntimeObjFromManifests(t, []string{tt.manifest})
+			}
+			waiter, resources := newCustomReadinessStatusWaiter(t, objs,
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+				v1.SchemeGroupVersion.WithKind("ConfigMap"),
+			)
+
+			err := waiter.WatchUntilReady(resources, time.Second)
+			if tt.expectErrStrs == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			for _, expected := range tt.expectErrStrs {
+				assert.Contains(t, err.Error(), expected)
+			}
+		})
+	}
+}
+
+func TestStatusWaitCustomReadinessFailedDoesNotShortCircuitPending(t *testing.T) {
+	t.Parallel()
+
+	annotations := map[string]string{
+		AnnotationReadinessSuccess: `["{.phase} == \"Ready\""]`,
+		AnnotationReadinessFailure: `["{.phase} == \"Failed\""]`,
+	}
+	failed := customReadinessTestObject(t, "failed-config", annotations, "Failed")
+	pending := customReadinessTestObject(t, "pending-config", annotations, "Pending")
+	waiter, resources := newCustomReadinessStatusWaiter(t, []runtime.Object{failed, pending},
+		v1.SchemeGroupVersion.WithKind("ConfigMap"),
+	)
+	timeout := 300 * time.Millisecond
+	started := time.Now()
+
+	err := waiter.Wait(resources, timeout)
+
+	require.Error(t, err)
+	assert.GreaterOrEqual(t, time.Since(started), timeout/2, "pending resource must hold the aggregate until timeout")
+	assert.Contains(t, err.Error(), "resource ConfigMap/default/failed-config not ready. status: Failed")
+	assert.Contains(t, err.Error(), "resource ConfigMap/default/pending-config not ready. status: InProgress")
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func newCustomReadinessStatusWaiter(t *testing.T, objs []runtime.Object, gvks ...schema.GroupVersionKind) (*statusWaiter, ResourceList) {
+	t.Helper()
+
+	mapper := testutil.NewFakeRESTMapper(gvks...)
+	client := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	eligible := make([]*unstructured.Unstructured, 0, len(objs))
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		require.NoError(t, client.Tracker().Create(getGVR(t, mapper, u), u, u.GetNamespace()))
+		eligible = append(eligible, u)
+	}
+	waiter := &statusWaiter{
+		client:                  client,
+		restMapper:              mapper,
+		customReadinessEligible: eligibleReadinessObjects(t, eligible...),
+	}
+	waiter.SetLogger(slog.Default().Handler())
+	return waiter, getResourceListFromRuntimeObjs(t, newTestClient(t), objs)
 }
 
 func TestStatusWaitForDelete(t *testing.T) {

@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/engine"
+	"github.com/fluxcd/cli-utils/pkg/object"
 )
 
 // WaitOption is a function that configures an option for waiting on resources.
@@ -94,12 +95,21 @@ func WithStatusComputeWorkers(n int) WaitOption {
 	}
 }
 
+// WithCustomReadiness enables custom readiness evaluation for eligible
+// resources while waiting.
+func WithCustomReadiness(eligible []object.ObjMetadata) WaitOption {
+	return func(wo *waitOptions) {
+		wo.customReadinessEligible = eligible
+	}
+}
+
 type waitOptions struct {
-	ctx                  context.Context
-	watchUntilReadyCtx   context.Context
-	waitCtx              context.Context
-	waitWithJobsCtx      context.Context
-	waitForDeleteCtx     context.Context
-	statusReaders        []engine.StatusReader
-	statusComputeWorkers int
+	ctx                     context.Context
+	watchUntilReadyCtx      context.Context
+	waitCtx                 context.Context
+	waitWithJobsCtx         context.Context
+	waitForDeleteCtx        context.Context
+	statusReaders           []engine.StatusReader
+	statusComputeWorkers    int
+	customReadinessEligible []object.ObjMetadata
 }
