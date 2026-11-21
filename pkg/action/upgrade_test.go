@@ -17,11 +17,16 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"net/http"
 	"reflect"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -30,7 +35,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/rest/fake"
+	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
 
+	chartcommon "helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -781,4 +789,167 @@ func TestUpgradeRelease_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+// noopWaiter is a kube.Waiter that returns immediately, so tests can drive the
+// real kube.Client code paths without a real cluster watch.
+type noopWaiter struct{}
+
+func (noopWaiter) Wait(kube.ResourceList, time.Duration) error            { return nil }
+func (noopWaiter) WaitWithJobs(kube.ResourceList, time.Duration) error    { return nil }
+func (noopWaiter) WaitForDelete(kube.ResourceList, time.Duration) error   { return nil }
+func (noopWaiter) WatchUntilReady(kube.ResourceList, time.Duration) error { return nil }
+
+// fakeTransportKubeClient wraps a real kube.Client whose Factory is backed by a
+// fake HTTP transport. It reports the cluster as reachable and returns a no-op
+// waiter so the full upgrade code path can run against recorded HTTP requests.
+type fakeTransportKubeClient struct {
+	*kube.Client
+}
+
+func (f *fakeTransportKubeClient) IsReachable() error { return nil }
+func (f *fakeTransportKubeClient) GetWaiter(kube.WaitStrategy) (kube.Waiter, error) {
+	return noopWaiter{}, nil
+}
+
+func (f *fakeTransportKubeClient) GetWaiterWithOptions(kube.WaitStrategy, ...kube.WaitOption) (kube.Waiter, error) {
+	return noopWaiter{}, nil
+}
+
+// TestUpgradeRelease_OwnershipCheckOnDelete reproduces
+// https://github.com/helm/helm/issues/32218: when upgrading a release to a
+// manifest that no longer contains a resource, the resource must not be
+// deleted if the live object is owned by a different release
+// (meta.helm.sh/release-name points elsewhere, e.g. after --take-ownership).
+func TestUpgradeRelease_OwnershipCheckOnDelete(t *testing.T) {
+	const (
+		releaseName  = "release-a"
+		otherRelease = "release-b"
+		namespace    = "default"
+	)
+
+	v1Manifest := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shared-config
+data:
+  key: value
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chart-a-own
+data:
+  key: value
+`
+	// v2 of the chart drops shared-config but keeps chart-a-own
+	v2ChartTemplate := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chart-a-own
+data:
+  key: value2
+`
+
+	liveConfigMapJSON := func(name, owner, dataValue string) string {
+		meta := fmt.Sprintf(`"name":%q,"namespace":%q`, name, namespace)
+		if owner != "" {
+			meta += fmt.Sprintf(`,"annotations":{"meta.helm.sh/release-name":%q,"meta.helm.sh/release-namespace":%q}`, owner, namespace)
+		}
+		return fmt.Sprintf(`{"apiVersion":"v1","kind":"ConfigMap","metadata":{%s},"data":{"key":%q}}`, meta, dataValue)
+	}
+
+	testCases := map[string]struct {
+		sharedConfigOwner string
+		expectDelete      bool
+	}{
+		"resource adopted by another release is preserved": {otherRelease, false},
+		"resource still owned by this release is deleted":  {releaseName, true},
+		"resource without ownership annotation is deleted": {"", true},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			is := assert.New(t)
+			req := require.New(t)
+
+			config := actionConfigFixture(t)
+			logBuffer := &bytes.Buffer{}
+			handler := slog.NewTextHandler(logBuffer, &slog.HandlerOptions{Level: slog.LevelDebug})
+			config.SetLogger(handler)
+
+			var mu sync.Mutex
+			var actions []string
+			httpClient := fake.CreateHTTPClient(func(httpReq *http.Request) (*http.Response, error) {
+				p, m := httpReq.URL.Path, httpReq.Method
+				mu.Lock()
+				actions = append(actions, m+" "+p)
+				mu.Unlock()
+				jsonResp := func(code int, body string) (*http.Response, error) {
+					header := http.Header{}
+					header.Set("Content-Type", "application/json")
+					return &http.Response{StatusCode: code, Header: header, Body: io.NopCloser(strings.NewReader(body))}, nil
+				}
+				sharedConfigLive := liveConfigMapJSON("shared-config", tc.sharedConfigOwner, "value")
+				switch {
+				case strings.HasSuffix(p, "/configmaps/chart-a-own") && m == http.MethodGet:
+					return jsonResp(http.StatusOK, liveConfigMapJSON("chart-a-own", releaseName, "value"))
+				case strings.HasSuffix(p, "/configmaps/chart-a-own") && m == http.MethodPatch:
+					return jsonResp(http.StatusOK, liveConfigMapJSON("chart-a-own", releaseName, "value2"))
+				case strings.HasSuffix(p, "/configmaps/shared-config") && m == http.MethodGet:
+					return jsonResp(http.StatusOK, sharedConfigLive)
+				case strings.HasSuffix(p, "/configmaps/shared-config") && m == http.MethodDelete:
+					return jsonResp(http.StatusOK, sharedConfigLive)
+				}
+				t.Logf("unexpected request: %s %s", m, p)
+				return jsonResp(http.StatusNotFound, `{"kind":"Status","apiVersion":"v1","status":"Failure","reason":"NotFound","code":404}`)
+			})
+
+			testFactory := cmdtesting.NewTestFactory().WithNamespace(namespace)
+			t.Cleanup(testFactory.Cleanup)
+			fakeREST := &fake.RESTClient{
+				NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
+				Client:               httpClient,
+			}
+			testFactory.Client = fakeREST
+			testFactory.UnstructuredClient = fakeREST
+			kubeClient := &kube.Client{Factory: testFactory}
+			kubeClient.SetLogger(handler)
+			config.KubeClient = &fakeTransportKubeClient{kubeClient}
+
+			upAction := NewUpgrade(config)
+			upAction.Namespace = namespace
+			upAction.DisableHooks = true
+
+			rel := releaseStub()
+			rel.Name = releaseName
+			rel.Namespace = namespace
+			rel.Manifest = v1Manifest
+			rel.Info.Status = common.StatusDeployed
+			req.NoError(config.Releases.Create(rel))
+
+			v2Chart := buildChartWithTemplates([]*chartcommon.File{
+				{Name: "templates/configmap.yaml", ModTime: time.Now(), Data: []byte(v2ChartTemplate)},
+			})
+
+			resi, err := upAction.Run(releaseName, v2Chart, map[string]any{})
+			req.NoError(err)
+			res, err := releaserToV1Release(resi)
+			req.NoError(err)
+			is.Equal(common.StatusDeployed, res.Info.Status)
+
+			mu.Lock()
+			defer mu.Unlock()
+			deleteRequested := false
+			for _, a := range actions {
+				if strings.HasPrefix(a, http.MethodDelete) && strings.Contains(a, "/configmaps/shared-config") {
+					deleteRequested = true
+				}
+			}
+			is.Equal(tc.expectDelete, deleteRequested, "unexpected actions: %v", actions)
+			if !tc.expectDelete {
+				is.Contains(logBuffer.String(), "skipping delete of resource not owned by this release")
+			}
+		})
+	}
 }

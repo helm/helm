@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -586,6 +587,132 @@ func TestUpdate(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.ExpectedActions, actions)
+		})
+	}
+}
+
+func TestUpdateOwnershipCheck(t *testing.T) {
+	podWithReleaseAnno := func(name, release string) v1.Pod {
+		p := newPod(name)
+		if release != "" {
+			p.Annotations = map[string]string{helmReleaseNameAnno: release}
+		}
+		return p
+	}
+
+	// kept-pod exists in both original and target; the other three are
+	// deletion candidates whose live ownership annotations differ.
+	listOriginal := v1.PodList{Items: []v1.Pod{
+		podWithReleaseAnno("kept-pod", "release-a"),
+		podWithReleaseAnno("owned-pod", "release-a"),
+		podWithReleaseAnno("foreign-pod", "release-b"),
+		newPod("noanno-pod"),
+	}}
+	listTarget := v1.PodList{Items: []v1.Pod{listOriginal.Items[0]}}
+
+	testCases := map[string]struct {
+		// ReleaseNameOption is the value passed to ClientUpdateOptionOwnership;
+		// empty means the option is not passed at all.
+		ReleaseNameOption string
+		ExpectedActions   []string
+		ExpectedDeleted   []string
+		ExpectSkipLog     bool
+	}{
+		"ownership option set skips resource owned by another release": {
+			ReleaseNameOption: "release-a",
+			ExpectedActions: []string{
+				"/namespaces/default/pods/kept-pod:GET",
+				"/namespaces/default/pods/kept-pod:PATCH",
+				"/namespaces/default/pods/owned-pod:GET",
+				"/namespaces/default/pods/owned-pod:DELETE",
+				"/namespaces/default/pods/foreign-pod:GET",
+				"/namespaces/default/pods/noanno-pod:GET",
+				"/namespaces/default/pods/noanno-pod:DELETE",
+			},
+			ExpectedDeleted: []string{"owned-pod", "noanno-pod"},
+			ExpectSkipLog:   true,
+		},
+		"no ownership option deletes all removed resources (backwards compatible)": {
+			ReleaseNameOption: "",
+			ExpectedActions: []string{
+				"/namespaces/default/pods/kept-pod:GET",
+				"/namespaces/default/pods/kept-pod:PATCH",
+				"/namespaces/default/pods/owned-pod:GET",
+				"/namespaces/default/pods/owned-pod:DELETE",
+				"/namespaces/default/pods/foreign-pod:GET",
+				"/namespaces/default/pods/foreign-pod:DELETE",
+				"/namespaces/default/pods/noanno-pod:GET",
+				"/namespaces/default/pods/noanno-pod:DELETE",
+			},
+			ExpectedDeleted: []string{"owned-pod", "foreign-pod", "noanno-pod"},
+		},
+	}
+
+	c := newTestClient(t)
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			logBuffer := &bytes.Buffer{}
+			c.SetLogger(slog.NewTextHandler(logBuffer, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+			pods := map[string]*v1.Pod{
+				"kept-pod":    &listOriginal.Items[0],
+				"owned-pod":   &listOriginal.Items[1],
+				"foreign-pod": &listOriginal.Items[2],
+				"noanno-pod":  &listOriginal.Items[3],
+			}
+			cb := func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				p, m := req.URL.Path, req.Method
+				for podName, pod := range pods {
+					if p == "/namespaces/default/pods/"+podName {
+						switch m {
+						case http.MethodGet, http.MethodPatch, http.MethodDelete:
+							return newResponse(http.StatusOK, pod)
+						}
+					}
+				}
+				t.FailNow()
+				return nil, nil
+			}
+
+			client := NewRequestResponseLogClient(t, cb)
+			c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			first, err := c.Build(objBody(&listOriginal), false)
+			require.NoError(t, err)
+			second, err := c.Build(objBody(&listTarget), false)
+			require.NoError(t, err)
+
+			options := []ClientUpdateOption{
+				ClientUpdateOptionForceReplace(false),
+				ClientUpdateOptionServerSideApply(true, false),
+			}
+			if tc.ReleaseNameOption != "" {
+				options = append(options, ClientUpdateOptionOwnership(tc.ReleaseNameOption))
+			}
+			result, err := c.Update(first, second, options...)
+			require.NoError(t, err)
+
+			assert.Len(t, result.Updated, 1, "expected 1 resource updated")
+			deletedNames := []string{}
+			for _, info := range result.Deleted {
+				deletedNames = append(deletedNames, info.Name)
+			}
+			assert.Equal(t, tc.ExpectedDeleted, deletedNames, "unexpected deleted resources")
+
+			actions := []string{}
+			for _, action := range client.Actions {
+				actions = append(actions, action.Request.URL.Path+":"+action.Request.Method)
+			}
+			assert.Equal(t, tc.ExpectedActions, actions)
+
+			if tc.ExpectSkipLog {
+				assert.Contains(t, logBuffer.String(), "skipping delete of resource not owned by this release")
+				assert.Contains(t, logBuffer.String(), "foreign-pod")
+			}
 		})
 	}
 }

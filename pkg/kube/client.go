@@ -66,6 +66,11 @@ var ErrNoObjectsVisited = errors.New("no objects visited")
 
 var metadataAccessor = meta.NewAccessor()
 
+// helmReleaseNameAnno is the annotation key recording which release owns a
+// resource. It mirrors the annotation written by the action package
+// (pkg/action cannot be imported here without an import cycle).
+const helmReleaseNameAnno = "meta.helm.sh/release-name"
+
 // ManagedFieldsManager is the name of the manager of Kubernetes managedFields
 // first introduced in Kubernetes 1.18
 var ManagedFieldsManager string
@@ -572,7 +577,12 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		transformRequests)
 }
 
-func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateApplyFunc, updateApplyFunc UpdateApplyFunc) (*Result, error) {
+// update creates, updates, and deletes resources to move the cluster from
+// originals to targets. When releaseName is non-empty, resources that are
+// about to be deleted are first checked against the live
+// meta.helm.sh/release-name annotation: resources owned by a different release
+// (e.g. adopted via --take-ownership) are skipped instead of deleted.
+func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateApplyFunc, updateApplyFunc UpdateApplyFunc, releaseName string) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
@@ -681,6 +691,18 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 			c.Logger().Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
+		if releaseName != "" && annotations != nil {
+			if owner, ok := annotations[helmReleaseNameAnno]; ok && owner != releaseName {
+				c.Logger().Warn("skipping delete of resource not owned by this release",
+					slog.String("namespace", info.Namespace),
+					slog.String("name", info.Name),
+					slog.String("kind", info.Mapping.GroupVersionKind.Kind),
+					slog.String("release", releaseName),
+					slog.String("ownedBy", owner),
+				)
+				continue
+			}
+		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
 			c.Logger().Debug(
 				"failed to delete resource",
@@ -713,6 +735,7 @@ type clientUpdateOptions struct {
 	dryRun                        bool
 	fieldValidationDirective      FieldValidationDirective
 	upgradeClientSideFieldManager bool
+	releaseName                   string
 }
 
 type ClientUpdateOption func(*clientUpdateOptions) error
@@ -791,6 +814,22 @@ func ClientUpdateOptionFieldValidationDirective(fieldValidationDirective FieldVa
 func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager bool) ClientUpdateOption {
 	return func(o *clientUpdateOptions) error {
 		o.upgradeClientSideFieldManager = upgradeClientSideFieldManager
+
+		return nil
+	}
+}
+
+// ClientUpdateOptionOwnership sets the name of the release performing the
+// update. When set, resources that are candidates for deletion (present in the
+// original manifest but not in the target) are checked against the live
+// meta.helm.sh/release-name annotation before being deleted: resources owned by
+// a different release (e.g. adopted via --take-ownership) are skipped with a
+// warning instead of being deleted. Resources owned by the given release, or
+// carrying no release-name annotation, are deleted as usual. When releaseName
+// is empty the ownership check is disabled and behavior is unchanged.
+func ClientUpdateOptionOwnership(releaseName string) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.releaseName = releaseName
 
 		return nil
 	}
@@ -902,7 +941,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		}
 	}
 
-	return c.update(originals, targets, createApplyFunc, makeUpdateApplyFunc())
+	return c.update(originals, targets, createApplyFunc, makeUpdateApplyFunc(), updateOptions.releaseName)
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
