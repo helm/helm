@@ -484,6 +484,17 @@ func testPush(suite *TestRegistry) {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
+
+	// Same chart and provenance as result, so the pinned digest matches.
+	newTagRef := fmt.Sprintf("%s/testrepo/%s:newtag-with-digest@%s", suite.DockerRegistryHost, meta.Name, result.Manifest.Digest)
+	pushResult, err := suite.RegistryClient.Push(chartData, newTagRef, PushOptStrictMode(false), PushOptProvData(provData), PushOptCreationTime(testingChartCreationTime))
+	suite.Require().NoError(err, "no error pushing tag@matching-digest")
+	suite.Equal(fmt.Sprintf("%s/testrepo/%s:newtag-with-digest", suite.DockerRegistryHost, meta.Name), pushResult.Ref)
+	suite.Equal(result.Manifest.Digest, pushResult.Manifest.Digest, "matching-digest push must reuse the pinned manifest")
+
+	pullRef := fmt.Sprintf("%s/testrepo/%s:newtag-with-digest", suite.DockerRegistryHost, meta.Name)
+	_, err = suite.RegistryClient.Pull(pullRef)
+	suite.Require().NoError(err, "tag must resolve after push with matching digest")
 }
 
 func testPull(suite *TestRegistry) {
