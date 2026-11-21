@@ -119,26 +119,31 @@ func New() *EnvSettings {
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
 	// bind to kubernetes config flags
-	config := &genericclioptions.ConfigFlags{
-		Namespace:        &env.namespace,
-		Context:          &env.KubeContext,
-		BearerToken:      &env.KubeToken,
-		APIServer:        &env.KubeAPIServer,
-		CAFile:           &env.KubeCaFile,
-		KubeConfig:       &env.KubeConfig,
-		Impersonate:      &env.KubeAsUser,
-		Insecure:         &env.KubeInsecureSkipTLSVerify,
-		TLSServerName:    &env.KubeTLSServerName,
-		ImpersonateGroup: &env.KubeAsGroups,
-		WrapConfigFn: func(config *rest.Config) *rest.Config {
-			config.Burst = env.BurstLimit
-			config.QPS = env.QPS
-			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
-				return &kubeenv.RetryingRoundTripper{Wrapped: rt}
-			})
-			config.UserAgent = version.GetUserAgent()
-			return config
-		},
+	// Use the persistent variant of ConfigFlags so that the discovery client and
+	// REST mapper are built once per settings instance. The zero-value struct
+	// rebuilds both on every ToDiscoveryClient/ToRESTMapper call, and the
+	// resource builder invokes ToRESTMapper for every manifest document, which
+	// re-runs API discovery per document whenever the on-disk discovery cache
+	// cannot answer (for example an API group that returns no resources).
+	config := genericclioptions.NewConfigFlags(true)
+	config.Namespace = &env.namespace
+	config.Context = &env.KubeContext
+	config.BearerToken = &env.KubeToken
+	config.APIServer = &env.KubeAPIServer
+	config.CAFile = &env.KubeCaFile
+	config.KubeConfig = &env.KubeConfig
+	config.Impersonate = &env.KubeAsUser
+	config.Insecure = &env.KubeInsecureSkipTLSVerify
+	config.TLSServerName = &env.KubeTLSServerName
+	config.ImpersonateGroup = &env.KubeAsGroups
+	config.WrapConfigFn = func(config *rest.Config) *rest.Config {
+		config.Burst = env.BurstLimit
+		config.QPS = env.QPS
+		config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+			return &kubeenv.RetryingRoundTripper{Wrapped: rt}
+		})
+		config.UserAgent = version.GetUserAgent()
+		return config
 	}
 	if env.BurstLimit != defaultBurstLimit {
 		config = config.WithDiscoveryBurst(env.BurstLimit)
