@@ -35,6 +35,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
 
@@ -69,6 +70,36 @@ func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	}, nil
 }
 
+// alwaysReadyGKs is the set of namespace-scoped GroupKinds whose status is
+// always Current according to the kstatus library (status.Compute returns
+// Current immediately for them, regardless of object content).
+// Watching a namespace-wide informer for these kinds is wasteful — especially
+// for Secrets, which in a shared namespace can include hundreds of large
+// Helm release records (helm.sh/release.v1).
+//
+// Only kinds explicitly mapped to alwaysReady in kstatus legacyTypes are
+// included here.  Kinds with type-specific handlers that may return InProgress
+// (Service, PVC, Deployment, …) are intentionally excluded.
+var alwaysReadyGKs = map[schema.GroupKind]struct{}{
+	{Group: "", Kind: "Secret"}:        {},
+	{Group: "", Kind: "ConfigMap"}:     {},
+	{Group: "batch", Kind: "CronJob"}: {},
+}
+
+// isAlwaysReady returns true if the given GroupKind will always be reported as
+// Current by the status reader, meaning no watcher informer is needed for it.
+// Custom readers take precedence: if any custom reader supports this GK, it is
+// NOT considered always-ready, so the watcher is still started for it.
+func isAlwaysReady(gk schema.GroupKind, customReaders []engine.StatusReader) bool {
+	for _, r := range customReaders {
+		if r.Supports(gk) {
+			return false
+		}
+	}
+	_, ok := alwaysReadyGKs[gk]
+	return ok
+}
+
 func getStatusWatcher(dynamicClient dynamic.Interface, mapper meta.RESTMapper) *watcher.DefaultStatusWatcher {
 	sw := watcher.NewDefaultStatusWatcher(dynamicClient, mapper)
 	sw.ResyncPeriod = 3 * time.Minute
@@ -95,7 +126,19 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 		StatusReaders: append(w.readers, jobSR, podSR, genericSR),
 	}
 	sw.StatusReader = sr
-	return w.wait(ctx, resourceList, sw)
+
+	// For hook waiting, only Job, Pod, and custom-reader resources need a real
+	// watcher: every other kind is handled by the alwaysReady genericSR and is
+	// immediately Current.  Skipping the watcher for those kinds avoids starting
+	// a namespace-wide informer that would download all objects of that kind
+	// (e.g. all Secrets, including every Helm release record in the namespace).
+	specificReaders := append(append([]engine.StatusReader(nil), w.readers...), jobSR, podSR)
+	watchList, skipList := splitBySpecificReaders(resourceList, specificReaders)
+
+	w.Logger().Debug("skipping always-ready resources for hook watch",
+		"skipped", len(skipList), "watched", len(watchList))
+
+	return w.wait(ctx, watchList, sw)
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
@@ -108,7 +151,15 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
 	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
-	return w.wait(ctx, resourceList, sw)
+
+	// Skip namespace-wide informers for kinds whose status.Compute always
+	// returns Current (Secret, ConfigMap, batch/CronJob, …).  Custom readers
+	// take precedence: if one supports the kind it is NOT skipped.
+	watchList, skipList := splitByWatchNeed(resourceList, w.readers)
+	w.Logger().Debug("skipping always-ready resources for wait",
+		"skipped", len(skipList), "watched", len(watchList))
+
+	return w.wait(ctx, watchList, sw)
 }
 
 func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
@@ -125,7 +176,14 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	readers = append(readers, newCustomJobStatusReader)
 	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
 	sw.StatusReader = customSR
-	return w.wait(ctx, resourceList, sw)
+
+	// Skip namespace-wide informers for kinds that are always Current.
+	// The job reader is included so Job is not skipped.
+	watchList, skipList := splitByWatchNeed(resourceList, readers)
+	w.Logger().Debug("skipping always-ready resources for waitWithJobs",
+		"skipped", len(skipList), "watched", len(watchList))
+
+	return w.wait(ctx, watchList, sw)
 }
 
 func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
@@ -177,6 +235,48 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+// splitBySpecificReaders splits a ResourceList by whether the resource's
+// GroupKind is handled by one of the given specific readers.
+// Resources NOT covered by any specific reader are put in skipList because they
+// will be served by the alwaysReady fallback reader and do not need a watcher.
+// This is used by WatchUntilReady, where the fallback is always alwaysReady.
+func splitBySpecificReaders(resourceList ResourceList, specificReaders []engine.StatusReader) (watchList, skipList ResourceList) {
+	for _, resource := range resourceList {
+		gk := resource.Mapping.GroupVersionKind.GroupKind()
+		supported := false
+		for _, r := range specificReaders {
+			if r.Supports(gk) {
+				supported = true
+				break
+			}
+		}
+		if supported {
+			watchList = append(watchList, resource)
+		} else {
+			skipList = append(skipList, resource)
+		}
+	}
+	return watchList, skipList
+}
+
+// splitByWatchNeed splits a ResourceList into two: resources that need a
+// real watcher informer (watchList) and resources whose kind is always Current
+// and therefore do not need a namespace-wide informer (skipList).
+// specificReaders are status readers that override the default always-ready
+// classification: any kind they support is kept in watchList.
+// This is used by Wait and WaitWithJobs, where the fallback uses status.Compute.
+func splitByWatchNeed(resourceList ResourceList, specificReaders []engine.StatusReader) (watchList, skipList ResourceList) {
+	for _, resource := range resourceList {
+		gk := resource.Mapping.GroupVersionKind.GroupKind()
+		if isAlwaysReady(gk, specificReaders) {
+			skipList = append(skipList, resource)
+		} else {
+			watchList = append(watchList, resource)
+		}
+	}
+	return watchList, skipList
 }
 
 func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
