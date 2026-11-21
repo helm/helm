@@ -470,6 +470,69 @@ func TestCoalesceTables(t *testing.T) {
 	assert.Equal(t, "black", dst2["hole"].(string), "Expected hole string, got %v", dst2["boat"])
 }
 
+func TestCoalesceTablesDoesNotMutateSrc(t *testing.T) {
+	newSrc := func() map[string]any {
+		return map[string]any{
+			"name": "Ishmael",
+			"address": map[string]any{
+				"street":  "123 Spouter Inn Ct.",
+				"country": "US",
+			},
+			"boat": "pequod",
+		}
+	}
+
+	for _, tc := range []struct {
+		name string
+		fn   func(dst, src map[string]any) map[string]any
+	}{
+		{"CoalesceTables", CoalesceTables},
+		{"MergeTables", MergeTables},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// dst nulls keys that src has, nulls a key src doesn't have, and
+			// nulls a nested key. This mirrors `helm upgrade --reuse-values
+			// --set name=null`, where src is the previous release's Config.
+			dst := map[string]any{
+				"name": nil,
+				"address": map[string]any{
+					"country": nil,
+				},
+				"hole": nil,
+			}
+			src := newSrc()
+
+			tc.fn(dst, src)
+
+			assert.Equal(t, newSrc(), src, "src must not be modified")
+		})
+	}
+
+	// The nil handling that previously relied on writing into src must keep
+	// working: when coalescing, a nil in dst removes a key that src defines,
+	// while a nil for a key src does not define is preserved.
+	dst := map[string]any{
+		"name": nil,
+		"address": map[string]any{
+			"country": nil,
+		},
+		"hole": nil,
+	}
+	CoalesceTables(dst, newSrc())
+
+	_, ok := dst["name"]
+	assert.False(t, ok, "name should have been removed")
+	addr, ok := dst["address"].(map[string]any)
+	require.True(t, ok, "address went away")
+	_, ok = addr["country"]
+	assert.False(t, ok, "address.country should have been removed")
+	assert.Equal(t, "123 Spouter Inn Ct.", addr["street"])
+	assert.Equal(t, "pequod", dst["boat"])
+	v, ok := dst["hole"]
+	assert.True(t, ok, "hole should be preserved")
+	assert.Nil(t, v)
+}
+
 func TestMergeTables(t *testing.T) {
 	dst := map[string]any{
 		"name": "Ishmael",

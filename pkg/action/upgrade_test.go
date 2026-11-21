@@ -332,6 +332,56 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		}
 		is.Equal(expectedValues, updatedRes.Config)
 	})
+
+	t.Run("reuse values with a null override should not modify the previous release's values", func(t *testing.T) {
+		is := assert.New(t)
+		req := require.New(t)
+		upAction := upgradeAction(t)
+
+		existingValues := map[string]any{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}
+		newValues := map[string]any{
+			"maxHeapSize": nil,
+			"cpu":         "12m",
+		}
+		expectedValues := map[string]any{
+			"name":     "value",
+			"cpu":      "12m",
+			"replicas": 2,
+		}
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = common.StatusDeployed
+		rel.Config = existingValues
+
+		req.NoError(upAction.cfg.Releases.Create(rel))
+
+		upAction.ReuseValues = true
+		resi, err := upAction.Run(rel.Name, buildChart(), newValues)
+		req.NoError(err)
+		res, err := releaserToV1Release(resi)
+		req.NoError(err)
+
+		is.Equal(expectedValues, res.Config)
+
+		// The previous revision must keep its original values so that a
+		// rollback to it restores them.
+		previousResi, err := upAction.cfg.Releases.Get(res.Name, 1)
+		req.NoError(err)
+		previousRes, err := releaserToV1Release(previousResi)
+		req.NoError(err)
+
+		is.Equal(common.StatusSuperseded, previousRes.Info.Status)
+		is.Equal(map[string]any{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}, previousRes.Config)
+	})
 }
 
 func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
@@ -385,6 +435,56 @@ func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 		is.Equal(common.StatusDeployed, updatedRes.Info.Status)
 		is.Equal(expectedValues, updatedRes.Config)
 		is.Equal(newChartValues, updatedRes.Chart.Values)
+	})
+
+	t.Run("reset then reuse values with a null override should not modify the previous release's values", func(t *testing.T) {
+		is := assert.New(t)
+		req := require.New(t)
+		upAction := upgradeAction(t)
+
+		existingValues := map[string]any{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}
+		newValues := map[string]any{
+			"maxHeapSize": nil,
+			"cpu":         "12m",
+		}
+		expectedValues := map[string]any{
+			"name":     "value",
+			"cpu":      "12m",
+			"replicas": 2,
+		}
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = common.StatusDeployed
+		rel.Config = existingValues
+
+		req.NoError(upAction.cfg.Releases.Create(rel))
+
+		upAction.ResetThenReuseValues = true
+		resi, err := upAction.Run(rel.Name, buildChart(), newValues)
+		req.NoError(err)
+		res, err := releaserToV1Release(resi)
+		req.NoError(err)
+
+		is.Equal(expectedValues, res.Config)
+
+		// The previous revision must keep its original values so that a
+		// rollback to it restores them.
+		previousResi, err := upAction.cfg.Releases.Get(res.Name, 1)
+		req.NoError(err)
+		previousRes, err := releaserToV1Release(previousResi)
+		req.NoError(err)
+
+		is.Equal(common.StatusSuperseded, previousRes.Info.Status)
+		is.Equal(map[string]any{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}, previousRes.Config)
 	})
 }
 
