@@ -90,6 +90,79 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 	assert.Equal(t, "ok", stat, "Unexpected status: %q", stat)
 }
 
+// TestDependencyStatus_PrefixedSiblingArchive makes sure that the archive of a
+// dependency whose name starts with another dependency's name is not taken
+// for an archive of that other dependency.
+func TestDependencyStatus_PrefixedSiblingArchive(t *testing.T) {
+	dep := &chart.Dependency{
+		Name:    "first-chart",
+		Version: "0.1.0",
+	}
+
+	tests := []struct {
+		name string
+		// archiveChart is the name of the chart saved in the charts/ directory.
+		archiveChart string
+		// archiveVersion is the version of that chart, if not the default one.
+		archiveVersion string
+		// archiveFile renames the saved archive when it is not empty.
+		archiveFile string
+		// unpacked adds first-chart to the parent chart's loaded dependencies.
+		unpacked bool
+		want     string
+	}{
+		{
+			name:         "only the sibling dependency's archive is present",
+			archiveChart: "first-chart-second-chart",
+			want:         "missing",
+		},
+		{
+			name:         "dependency is unpacked and the sibling dependency has an archive",
+			archiveChart: "first-chart-second-chart",
+			unpacked:     true,
+			want:         "unpacked",
+		},
+		{
+			name:         "archive named after the dependency holds another chart",
+			archiveChart: "second-chart",
+			archiveFile:  "first-chart-0.1.0.tgz",
+			want:         "misnamed",
+		},
+		{
+			name:           "archive of the dependency has a version with a v prefix",
+			archiveChart:   "first-chart",
+			archiveVersion: "v0.1.0",
+			want:           "ok",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			chartpath := filepath.Join(dir, "charts")
+			require.NoError(t, os.MkdirAll(chartpath, 0o700))
+
+			archiveChart := buildChart(withName(tt.archiveChart))
+			if tt.archiveVersion != "" {
+				archiveChart.Metadata.Version = tt.archiveVersion
+			}
+			archive, err := chartutil.Save(archiveChart, chartpath)
+			require.NoError(t, err)
+			if tt.archiveFile != "" {
+				require.NoError(t, os.Rename(archive, filepath.Join(chartpath, tt.archiveFile)))
+			}
+
+			parent := buildChart(withName("parent"))
+			if tt.unpacked {
+				parent.AddDependency(buildChart(withName("first-chart")))
+			}
+
+			stat := NewDependency().dependencyStatus(dir, dep, parent)
+			assert.Equal(t, tt.want, stat)
+		})
+	}
+}
+
 func TestStatArchiveForStatus(t *testing.T) {
 	// Make a temp dir
 	dir := t.TempDir()
