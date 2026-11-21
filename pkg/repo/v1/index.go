@@ -274,12 +274,24 @@ func (i IndexFile) WriteJSONFile(dest string, mode os.FileMode) error {
 func (i *IndexFile) Merge(f *IndexFile) {
 	for _, cvs := range f.Entries {
 		for _, cv := range cvs {
-			if !i.Has(cv.Name, cv.Version) {
+			if !i.hasExactVersion(cv.Name, cv.Version) {
 				e := i.Entries[cv.Name]
 				i.Entries[cv.Name] = append(e, cv)
 			}
 		}
 	}
+}
+
+// hasExactVersion reports whether the index has an entry whose version string
+// is exactly the given version. Unlike Has, it does not fall back to semver
+// constraint matching, so "1.0.0+build.2" does not match "1.0.0+build.1".
+func (i *IndexFile) hasExactVersion(name, version string) bool {
+	for _, cv := range i.Entries[name] {
+		if cv.Version == version {
+			return true
+		}
+	}
+	return false
 }
 
 // ChartVersion represents a chart entry in the IndexFile

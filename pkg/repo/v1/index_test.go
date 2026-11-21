@@ -218,6 +218,26 @@ func TestMerge(t *testing.T) {
 	assert.Equalf(t, "0.2.0", v.Version, "Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
 }
 
+func TestMergeKeepsVersionsMatchingOnlyByConstraint(t *testing.T) {
+	ind1 := NewIndexFile()
+	require.NoError(t, ind1.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.1.0+build.2"}, "dreadnought-0.1.0+build.2.tgz", "http://example.com", "aaaa"))
+	require.NoError(t, ind1.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.2.3"}, "dreadnought-0.2.3.tgz", "http://example.com", "bbbb"))
+
+	ind2 := NewIndexFile()
+	require.NoError(t, ind2.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.1.0+build.1"}, "dreadnought-0.1.0+build.1.tgz", "http://example.com", "cccc"))
+	require.NoError(t, ind2.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.2"}, "dreadnought-0.2.tgz", "http://example.com", "dddd"))
+	require.NoError(t, ind2.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.2.3"}, "dreadnought-0.2.3.tgz", "http://example.com", "eeee"))
+
+	ind1.Merge(ind2)
+
+	vs := ind1.Entries["dreadnought"]
+	require.Len(t, vs, 4)
+	assert.Equal(t, "0.1.0+build.1", vs[2].Version)
+	assert.Equal(t, "0.2", vs[3].Version)
+	// The existing record for an identical version is preserved.
+	assert.Equal(t, "bbbb", vs[1].Digest)
+}
+
 func TestDownloadIndexFile(t *testing.T) {
 	t.Run("should  download index file", func(t *testing.T) {
 		srv, err := startLocalServerForTests(nil)
