@@ -1,0 +1,9 @@
+apiVersion: v3
+name: v3-sequenced-groups
+description: A v3 chart combining subchart and resource-group sequencing
+type: application
+version: 0.1.0
+dependencies:
+  - name: worker
+    version: 0.1.0
+    repository: file://charts/worker

@@ -1,0 +1,4 @@
+Chart: v3-sequenced-isolated
+  Subchart batches: (none)
+  Resource-group batches: (none)
+  Unsequenced (deployed last): ConfigMap/cm-alpha, ConfigMap/cm-beta, ConfigMap/cm-plain

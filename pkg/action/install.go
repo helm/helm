@@ -99,6 +99,8 @@ type Install struct {
 	Devel            bool
 	DependencyUpdate bool
 	Timeout          time.Duration
+	// ReadinessTimeout is the per-batch timeout when ordered waiting is used.
+	ReadinessTimeout time.Duration
 	Namespace        string
 	ReleaseName      string
 	GenerateName     bool
