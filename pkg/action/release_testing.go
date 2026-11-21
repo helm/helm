@@ -81,39 +81,25 @@ func (r *ReleaseTesting) Run(name string) (ri.Releaser, ExecuteShutdownFunc, err
 		return reli, shutdownNoOp, err
 	}
 
-	skippedHooks := []*release.Hook{}
+	// Filter execution without removing hooks from the release persisted by execHooks.
 	executingHooks := []*release.Hook{}
-	if len(r.Filters[ExcludeNameFilter]) != 0 {
-		for _, h := range rel.Hooks {
-			if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
-				skippedHooks = append(skippedHooks, h)
-			} else {
-				executingHooks = append(executingHooks, h)
-			}
+	for _, h := range rel.Hooks {
+		if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
+			continue
 		}
-		rel.Hooks = executingHooks
-	}
-	if len(r.Filters[IncludeNameFilter]) != 0 {
-		executingHooks = nil
-		for _, h := range rel.Hooks {
-			if slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
-				executingHooks = append(executingHooks, h)
-			} else {
-				skippedHooks = append(skippedHooks, h)
-			}
+		if len(r.Filters[IncludeNameFilter]) > 0 && !slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
+			continue
 		}
-		rel.Hooks = executingHooks
+		executingHooks = append(executingHooks, h)
 	}
 
 	serverSideApply := rel.ApplyMethod == string(release.ApplyMethodServerSideApply)
-	shutdown, err := r.cfg.execHookWithDelayedShutdown(rel, release.HookTest, kube.StatusWatcherStrategy, r.WaitOptions, r.Timeout, serverSideApply)
+	shutdown, err := r.cfg.execHooksWithDelayedShutdown(rel, release.HookTest, executingHooks, kube.StatusWatcherStrategy, r.WaitOptions, r.Timeout, serverSideApply)
 	if err != nil {
-		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(reli)
 		return reli, shutdown, err
 	}
 
-	rel.Hooks = append(skippedHooks, rel.Hooks...)
 	return reli, shutdown, r.cfg.Releases.Update(reli)
 }
 
