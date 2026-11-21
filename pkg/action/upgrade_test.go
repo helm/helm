@@ -21,15 +21,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/rest/fake"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
@@ -78,6 +84,114 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	lastRelease, err := releaserToV1Release(lastReleasei)
 	req.NoError(err)
 	is.Equal(common.StatusDeployed, lastRelease.Info.Status)
+}
+
+type upgradeAdoptionClient struct {
+	kube.Interface
+	current, target kube.ResourceList
+}
+
+func (c *upgradeAdoptionClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
+	manifest, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	if string(manifest) == "current" {
+		return c.current, nil
+	}
+	return c.target, nil
+}
+
+func (c *upgradeAdoptionClient) Update(current, target kube.ResourceList, options ...kube.ClientUpdateOption) (*kube.Result, error) {
+	return new(kube.Client).Update(current, target, options...)
+}
+
+func TestUpgradeRelease_TakeOwnershipPatchesCustomResources(t *testing.T) {
+	u := upgradeAction(t)
+	u.TakeOwnership = true
+	u.DisableHooks = true
+	original := releaseStub()
+	original.Manifest = "current"
+	original.Namespace = u.Namespace
+	original.Info.Status = common.StatusDeployed
+	require.NoError(t, u.cfg.Releases.Create(original))
+	upgraded := releaseStub()
+	upgraded.Manifest = "target"
+	upgraded.Namespace = original.Namespace
+	upgraded.Version = original.Version + 1
+
+	gv := schema.GroupVersion{Group: "example.com", Version: "v1"}
+	mapping := &meta.RESTMapping{
+		Resource:         gv.WithResource("widgets"),
+		GroupVersionKind: gv.WithKind("Widget"),
+		Scope:            meta.RESTScopeNamespace,
+	}
+
+	type patchRequest struct {
+		contentType string
+		body        string
+	}
+	patches := map[string][]patchRequest{}
+	widget := func(name string) *resource.Info {
+		desired := &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": gv.String(),
+			"kind":       "Widget",
+			"metadata":   map[string]any{"name": name, "namespace": upgraded.Namespace},
+			"spec":       map[string]any{"value": "desired"},
+		}}
+		live := desired.DeepCopy()
+		live.SetAnnotations(map[string]string{helmReleaseNameAnnotation: "old-release", "example.com/controller": "kept"})
+		require.NoError(t, unstructured.SetNestedField(live.Object, "live", "spec", "value"))
+		liveJSON, err := live.MarshalJSON()
+		require.NoError(t, err)
+
+		return &resource.Info{
+			Name: name, Namespace: upgraded.Namespace, Mapping: mapping, Object: desired,
+			Client: &fake.RESTClient{
+				GroupVersion:         gv,
+				NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
+				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+					if req.Method == http.MethodPatch {
+						body, err := io.ReadAll(req.Body)
+						if err != nil {
+							return nil, err
+						}
+						patches[name] = append(patches[name], patchRequest{req.Header.Get("Content-Type"), string(body)})
+					}
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     http.Header{"Content-Type": {"application/json"}},
+						Body:       io.NopCloser(strings.NewReader(string(liveJSON))),
+					}, nil
+				}),
+			},
+		}
+	}
+
+	owned := widget("owned")
+	ownedTarget := widget("owned")
+	owned.Object.(*unstructured.Unstructured).SetLabels(map[string]string{appManagedByLabel: appManagedByHelm})
+	owned.Object.(*unstructured.Unstructured).SetAnnotations(map[string]string{
+		helmReleaseNameAnnotation: upgraded.Name, helmReleaseNamespaceAnnotation: upgraded.Namespace,
+	})
+	u.cfg.KubeClient = &upgradeAdoptionClient{
+		Interface: u.cfg.KubeClient,
+		current:   kube.ResourceList{owned},
+		target:    kube.ResourceList{widget("adopted"), ownedTarget},
+	}
+
+	_, err := u.performUpgrade(t.Context(), original, upgraded, false)
+	require.NoError(t, err)
+	require.Len(t, patches["adopted"], 1, "the adopted resource must receive a patch")
+	assert.Equal(t, string(types.MergePatchType), patches["adopted"][0].contentType)
+	assert.JSONEq(t, fmt.Sprintf(`{
+		"metadata": {
+			"annotations": {"meta.helm.sh/release-name": %q, "meta.helm.sh/release-namespace": %q},
+			"labels": {"app.kubernetes.io/managed-by": "Helm"}
+		},
+		"spec": {"value": "desired"}
+	}`, upgraded.Name, upgraded.Namespace), patches["adopted"][0].body)
+	assert.Empty(t, patches["owned"], "previously owned resources keep normal client-side merge semantics")
 }
 
 func TestUpgradeRelease_Wait(t *testing.T) {
