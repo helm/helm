@@ -17,9 +17,11 @@ limitations under the License.
 package util
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -316,4 +318,107 @@ func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
 
 	// We expect a non-nil error (invalid type), but crucially no panic.
 	require.Error(t, ValidateAgainstSchema(chrt, vals), "expected an error when subchart values have invalid type, got nil")
+}
+
+const refSchema = `{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"type": "object",
+	"properties": { "replicaCount": { "$ref": "schema/library.json#/definitions/replicas" } }
+}`
+
+const refLibrary = `{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"definitions": { "replicas": { "type": "integer", "minimum": 1 } }
+}`
+
+func chartWithRef(name string, files ...*common.File) *chart.Chart {
+	return &chart.Chart{
+		Metadata: &chart.Metadata{Name: name},
+		Schema:   []byte(refSchema),
+		Files:    files,
+	}
+}
+
+func TestValidateAgainstSchema_RelativeRefFromChartFiles(t *testing.T) {
+	chrt := chartWithRef("chrt", &common.File{Name: "schema/library.json", Data: []byte(refLibrary)})
+
+	require.NoError(t, ValidateAgainstSchema(chrt, map[string]any{"replicaCount": 2}))
+
+	err := ValidateAgainstSchema(chrt, map[string]any{"replicaCount": 0})
+	require.Error(t, err, "the referenced schema has to be applied, not skipped")
+	assert.Contains(t, err.Error(), "minimum")
+}
+
+func TestValidateAgainstSchema_RelativeRefInsideReferencedFile(t *testing.T) {
+	schema := `{"type": "object", "properties": {"a": {"$ref": "schema/outer.json"}}}`
+	outer := `{"$ref": "../shared/inner.json"}`
+	inner := `{"type": "string"}`
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "chrt"},
+		Schema:   []byte(schema),
+		Files: []*common.File{
+			{Name: "schema/outer.json", Data: []byte(outer)},
+			{Name: "shared/inner.json", Data: []byte(inner)},
+		},
+	}
+
+	require.NoError(t, ValidateAgainstSchema(chrt, map[string]any{"a": "text"}))
+	require.Error(t, ValidateAgainstSchema(chrt, map[string]any{"a": 5}))
+}
+
+func TestValidateAgainstSchema_SubchartResolvesFromItsOwnFiles(t *testing.T) {
+	sub := chartWithRef("sub", &common.File{Name: "schema/library.json", Data: []byte(refLibrary)})
+	parent := &chart.Chart{Metadata: &chart.Metadata{Name: "parent"}}
+	parent.AddDependency(sub)
+
+	require.NoError(t, ValidateAgainstSchema(parent, map[string]any{"sub": map[string]any{"replicaCount": 3}}))
+	require.Error(t, ValidateAgainstSchema(parent, map[string]any{"sub": map[string]any{"replicaCount": 0}}))
+}
+
+func TestValidateAgainstSchema_RelativeRefToMissingFileIsAnError(t *testing.T) {
+	chrt := chartWithRef("chrt")
+
+	err := ValidateAgainstSchema(chrt, map[string]any{"replicaCount": 2})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "schema/library.json")
+}
+
+func TestValidateAgainstSchema_RefCannotReachOutsideTheChart(t *testing.T) {
+	outside := t.TempDir()
+	require.NoError(t, os.WriteFile(outside+"/secret.json", []byte(`{"type": "integer"}`), 0o600))
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "chrt"},
+		Schema:   []byte(`{"type": "object", "properties": {"a": {"$ref": "../../../../../../../secret.json"}}}`),
+	}
+
+	require.Error(t, ValidateAgainstSchema(chrt, map[string]any{"a": 1}), "a relative path stays inside the chart")
+}
+
+func TestValidateAgainstSingleSchema_AbsoluteFileRefStillLoadsFromDisk(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(dir+"/lib.json", []byte(refLibrary), 0o600))
+	schema := `{"type": "object", "properties": {"replicaCount": {"$ref": "file://` + filepath.ToSlash(dir) + `/lib.json#/definitions/replicas"}}}`
+
+	files := chartSchemaFiles(nil)
+	require.NoError(t, ValidateAgainstSingleSchemaWithFiles(common.Values{"replicaCount": 2}, []byte(schema), files))
+	require.Error(t, ValidateAgainstSingleSchemaWithFiles(common.Values{"replicaCount": 0}, []byte(schema), files))
+	require.NoError(t, ValidateAgainstSingleSchema(common.Values{"replicaCount": 2}, []byte(schema)))
+}
+
+func TestDirSchemaFiles(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(dir+"/schema", 0o755))
+	require.NoError(t, os.WriteFile(dir+"/schema/library.json", []byte(refLibrary), 0o600))
+	read := DirSchemaFiles(dir)
+
+	data, err := read("schema/library.json")
+	require.NoError(t, err)
+	assert.JSONEq(t, refLibrary, string(data))
+
+	_, err = read("schema/none.json")
+	require.ErrorIs(t, err, fs.ErrNotExist)
+
+	require.NoError(t, ValidateAgainstSingleSchemaWithFiles(common.Values{"replicaCount": 4}, []byte(refSchema), read))
+	require.Error(t, ValidateAgainstSingleSchemaWithFiles(common.Values{"replicaCount": 0}, []byte(refSchema), read))
 }
