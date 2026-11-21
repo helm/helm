@@ -1,0 +1,15 @@
+Chart: linear
+  Subchart batches:
+    Batch 1: database
+    Batch 2: api
+    Batch 3: web
+  Unsequenced (deployed last): ConfigMap/linear
+  Chart: linear/charts/database
+    Subchart batches: (none)
+    Unsequenced (deployed last): ConfigMap/database
+  Chart: linear/charts/api
+    Subchart batches: (none)
+    Unsequenced (deployed last): ConfigMap/api
+  Chart: linear/charts/web
+    Subchart batches: (none)
+    Unsequenced (deployed last): ConfigMap/web

@@ -18,9 +18,11 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/action"
@@ -28,6 +30,93 @@ import (
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
+
+func TestWaitFlag(t *testing.T) {
+	orderedCommands := []struct {
+		name string
+		new  func() *cobra.Command
+	}{
+		{name: "install", new: func() *cobra.Command { return newInstallCmd(&action.Configuration{}, io.Discard) }},
+		{name: "upgrade", new: func() *cobra.Command { return newUpgradeCmd(&action.Configuration{}, io.Discard) }},
+		{name: "rollback", new: func() *cobra.Command { return newRollbackCmd(&action.Configuration{}, io.Discard) }},
+		{name: "uninstall", new: func() *cobra.Command { return newUninstallCmd(&action.Configuration{}, io.Discard) }},
+	}
+	for _, tt := range orderedCommands {
+		t.Run(tt.name+" accepts ordered", func(t *testing.T) {
+			cmd := tt.new()
+			require.NoError(t, cmd.Flags().Set("wait", "ordered"))
+			require.Equal(t, "ordered", cmd.Flags().Lookup("wait").Value.String())
+		})
+	}
+
+	t.Run("bare wait selects watcher", func(t *testing.T) {
+		cmd := newInstallCmd(&action.Configuration{}, io.Discard)
+		require.NoError(t, cmd.ParseFlags([]string{"--wait"}))
+		require.Equal(t, "watcher", cmd.Flags().Lookup("wait").Value.String())
+	})
+
+	for _, strategy := range []string{"watcher", "legacy", "hookOnly"} {
+		t.Run("accepts "+strategy, func(t *testing.T) {
+			cmd := newInstallCmd(&action.Configuration{}, io.Discard)
+			require.NoError(t, cmd.Flags().Set("wait", strategy))
+			require.Equal(t, strategy, cmd.Flags().Lookup("wait").Value.String())
+		})
+	}
+
+	t.Run("plain wait rejects ordered", func(t *testing.T) {
+		cmd := newTemplateCmd(&action.Configuration{}, io.Discard)
+		err := cmd.Flags().Set("wait", "ordered")
+		require.EqualError(t, err, `invalid argument "ordered" for "--wait" flag: invalid wait input "ordered". Valid inputs are watcher, hookOnly, and legacy`)
+	})
+
+	t.Run("omitted wait defaults to hookOnly", func(t *testing.T) {
+		cmd := newInstallCmd(&action.Configuration{}, io.Discard)
+		require.Equal(t, "hookOnly", cmd.Flags().Lookup("wait").Value.String())
+	})
+}
+
+func TestReadinessTimeout(t *testing.T) {
+	commands := []struct {
+		name string
+		new  func() *cobra.Command
+	}{
+		{name: "install", new: func() *cobra.Command { return newInstallCmd(&action.Configuration{}, io.Discard) }},
+		{name: "upgrade", new: func() *cobra.Command { return newUpgradeCmd(&action.Configuration{}, io.Discard) }},
+		{name: "rollback", new: func() *cobra.Command { return newRollbackCmd(&action.Configuration{}, io.Discard) }},
+	}
+	for _, tt := range commands {
+		t.Run(tt.name+" registers readiness-timeout unset by default", func(t *testing.T) {
+			cmd := tt.new()
+			flag := cmd.Flags().Lookup("readiness-timeout")
+			require.NotNil(t, flag)
+			require.Equal(t, "0s", flag.DefValue)
+			require.NoError(t, cmd.Flags().Set("readiness-timeout", "30s"))
+			require.Equal(t, "30s", flag.Value.String())
+		})
+	}
+
+	t.Run("other commands omit readiness-timeout", func(t *testing.T) {
+		require.Nil(t, newTemplateCmd(&action.Configuration{}, io.Discard).Flags().Lookup("readiness-timeout"))
+		require.Nil(t, newUninstallCmd(&action.Configuration{}, io.Discard).Flags().Lookup("readiness-timeout"))
+	})
+}
+
+func TestOrderedWaitRequiresChartV3(t *testing.T) {
+	t.Run("install rejects chart v1", func(t *testing.T) {
+		_, _, err := executeActionCommand("install ordered-install testdata/testcharts/empty --wait=ordered")
+		require.EqualError(t, err, `INSTALLATION FAILED: --wait=ordered requires chart apiVersion v3 (chart "empty" has apiVersion v1)`)
+	})
+
+	t.Run("upgrade rejects chart v1", func(t *testing.T) {
+		const releaseName = "ordered-upgrade"
+		relMock, ch, chartPath := prepareMockRelease(t, releaseName)
+		store := storageFixture()
+		require.NoError(t, store.Create(relMock(releaseName, 1, ch)))
+
+		_, _, err := executeActionCommandC(store, fmt.Sprintf("upgrade %s %q --wait=ordered", releaseName, chartPath))
+		require.EqualError(t, err, `--wait=ordered requires chart apiVersion v3 (chart "testUpgradeChart" has apiVersion v1)`)
+	})
+}
 
 func outputFlagCompletionTest(t *testing.T, cmdName string) {
 	t.Helper()

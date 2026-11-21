@@ -141,6 +141,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Timeout = client.Timeout
 					instClient.WaitStrategy = client.WaitStrategy
 					instClient.WaitOptions = client.WaitOptions
+					instClient.ReadinessTimeout = client.ReadinessTimeout
 					instClient.WaitForJobs = client.WaitForJobs
 					instClient.Devel = client.Devel
 					instClient.Namespace = client.Namespace
@@ -200,6 +201,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := validateOrderedWaitChart(client.WaitStrategy, ch); err != nil {
+				return err
+			}
 
 			ac, err := ci.NewAccessor(ch)
 			if err != nil {
@@ -234,6 +238,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					// Reload the chart with the updated Chart.lock file.
 					if ch, err = loader.Load(chartPath); err != nil {
 						return fmt.Errorf("failed reloading chart after repo update: %w", err)
+					}
+					if err := validateOrderedWaitChart(client.WaitStrategy, ch); err != nil {
+						return err
 					}
 				}
 			}
@@ -312,7 +319,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
-	AddWaitFlag(cmd, &client.WaitStrategy)
+	AddOrderedWaitFlag(cmd, &client.WaitStrategy)
+	addReadinessTimeoutFlag(f, &client.ReadinessTimeout)
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 
