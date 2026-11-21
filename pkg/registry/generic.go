@@ -56,6 +56,9 @@ type GenericPullOptions struct {
 	SkipMediaTypes []string
 	// Custom PreCopy function for filtering
 	PreCopy func(context.Context, ocispec.Descriptor) error
+	// MapRoot maps the descriptor the reference resolves to onto the root node
+	// to copy, e.g. to select one manifest of an image index
+	MapRoot func(ctx context.Context, src content.ReadOnlyStorage, root ocispec.Descriptor) (ocispec.Descriptor, error)
 }
 
 // GenericPullResult contains the result of a generic pull operation
@@ -113,6 +116,7 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 
 	var mu sync.Mutex
 	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
+		MapRoot: options.MapRoot,
 		PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
 			// Apply a custom PreCopy function if provided
 			if options.PreCopy != nil {
