@@ -17,8 +17,15 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"k8s.io/apimachinery/pkg/runtime"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release/common"
@@ -218,4 +225,37 @@ func TestStatusOutputCompletion(t *testing.T) {
 func TestStatusFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "status", false)
 	checkFileCompletion(t, "status myrelease", false)
+}
+
+func TestStatusPrinterResourcesAreSorted(t *testing.T) {
+	kinds := []string{"v1/Service", "v1/Pod(related)", "apps/v1/Deployment", "v1/ConfigMap", "v1/Secret", "batch/v1/Job", "v1/ServiceAccount", "networking.k8s.io/v1/Ingress"}
+
+	resources := make(map[string][]runtime.Object, len(kinds))
+	for _, kind := range kinds {
+		resources[kind] = nil
+	}
+
+	printer := statusPrinter{
+		release: &release.Release{
+			Name: "demo",
+			Info: &release.Info{
+				Status:    common.StatusDeployed,
+				Resources: resources,
+			},
+		},
+		noColor: true,
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, printer.WriteTable(&buf))
+
+	var got []string
+	for line := range strings.SplitSeq(buf.String(), "\n") {
+		if kind, ok := strings.CutPrefix(line, "==> "); ok {
+			got = append(got, kind)
+		}
+	}
+
+	assert.Len(t, got, len(kinds))
+	assert.IsIncreasing(t, got, "resource kinds should be listed in sorted order")
 }
