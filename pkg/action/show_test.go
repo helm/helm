@@ -161,3 +161,106 @@ func TestShowSetRegistryClient(t *testing.T) {
 	client.SetRegistryClient(registryClient)
 	assert.Equal(t, registryClient, client.registryClient)
 }
+
+func TestShowChartWithOCIAnnotations(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewShow(ShowChart, config)
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "alpine", Version: "0.1.0"},
+	}
+	client.ociAnnotations = map[string]string{
+		"org.opencontainers.image.title":   "alpine",
+		"org.opencontainers.image.created": "1977-09-02T22:04:05Z",
+	}
+
+	output, err := client.Run("")
+	require.NoError(t, err)
+
+	expect := `name: alpine
+version: 0.1.0
+ociAnnotations:
+  org.opencontainers.image.created: "1977-09-02T22:04:05Z"
+  org.opencontainers.image.title: alpine
+
+`
+	assert.Equal(t, expect, output, "Expected\n%q\nGot\n%q\n", expect, output)
+}
+
+func TestShowAllWithOCIAnnotations(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewShow(ShowAll, config)
+	modTime := time.Now()
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "alpine"},
+		Files: []*common.File{
+			{Name: "README.md", ModTime: modTime, Data: []byte("README\n")},
+		},
+		Raw: []*common.File{
+			{Name: "values.yaml", ModTime: modTime, Data: []byte("VALUES\n")},
+		},
+		Values: map[string]any{},
+	}
+	client.ociAnnotations = map[string]string{
+		"org.opencontainers.image.title": "alpine",
+	}
+
+	output, err := client.Run("")
+	require.NoError(t, err)
+
+	expect := `name: alpine
+ociAnnotations:
+  org.opencontainers.image.title: alpine
+
+---
+VALUES
+
+---
+README
+
+`
+	assert.Equal(t, expect, output, "Expected\n%q\nGot\n%q\n", expect, output)
+}
+
+func TestShowValuesIgnoresOCIAnnotations(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewShow(ShowValues, config)
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "alpine"},
+		Raw: []*common.File{
+			{Name: "values.yaml", ModTime: time.Now(), Data: []byte("VALUES\n")},
+		},
+		Values: map[string]any{},
+	}
+	client.ociAnnotations = map[string]string{
+		"org.opencontainers.image.title": "alpine",
+	}
+
+	output, err := client.Run("")
+	require.NoError(t, err)
+	assert.Equal(t, "VALUES\n\n", output)
+}
+
+func TestShowLoadOCIAnnotations(t *testing.T) {
+	config := actionConfigFixture(t)
+
+	t.Run("no-op when not requested", func(t *testing.T) {
+		client := NewShow(ShowChart, config)
+		require.NoError(t, client.LoadOCIAnnotations("oci://localhost:5000/repo/chart:1.0.0"))
+		assert.Nil(t, client.ociAnnotations)
+	})
+
+	t.Run("no-op for non-OCI references", func(t *testing.T) {
+		client := NewShow(ShowChart, config)
+		client.IncludeOCIAnnotations = true
+		require.NoError(t, client.LoadOCIAnnotations("testdata/charts/alpine"))
+		assert.Nil(t, client.ociAnnotations)
+	})
+
+	t.Run("error without registry client", func(t *testing.T) {
+		client := NewShow(ShowChart, config)
+		client.IncludeOCIAnnotations = true
+		client.SetRegistryClient(nil)
+		err := client.LoadOCIAnnotations("oci://localhost:5000/repo/chart:1.0.0")
+		require.ErrorContains(t, err, "missing registry client")
+	})
+}
