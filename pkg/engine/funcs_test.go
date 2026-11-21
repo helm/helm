@@ -125,6 +125,20 @@ keyInElement1 = "valueInElement1"`,
 		expect: `[json: cannot unmarshal object into Go value of type []interface {}]`,
 		vars:   `{"hello": "world"}`,
 	}, {
+		// Malformed JSON must not fail the template; the error is returned in the map.
+		tpl:    `{{ fromJson . }}`,
+		expect: `map[Error:unexpected end of JSON input]`,
+		vars:   `{"hello":`,
+	}, {
+		tpl:    `{{ fromJson . }}`,
+		expect: `map[Error:invalid character 'h' looking for beginning of object key string]`,
+		vars:   `{hello: world}`,
+	}, {
+		// Malformed JSON must not fail the template; the error is returned as the only item.
+		tpl:    `{{ fromJsonArray . }}`,
+		expect: `[unexpected end of JSON input]`,
+		vars:   `["one",`,
+	}, {
 		tpl:    `{{ merge .dict (fromYaml .yaml) }}`,
 		expect: `map[a:map[b:c]]`,
 		vars:   map[string]any{"dict": map[string]any{"a": map[string]any{"b": "c"}}, "yaml": `{"a":{"b":"d"}}`},
