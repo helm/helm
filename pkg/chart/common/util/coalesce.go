@@ -352,7 +352,7 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
 		case istable(dv) && val != nil:
-			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
+			printf("warning: destination for %s is a table (YAML mapping). Ignoring non-table value (%v)", fullkey, val)
 		}
 	}
 	return dst
