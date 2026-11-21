@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
@@ -90,6 +91,13 @@ func TestRollbackCmd(t *testing.T) {
 		rels:   rels,
 	}}
 	runTestCmd(t, tests)
+}
+
+func TestRollbackCmdRejectsExtraArguments(t *testing.T) {
+	cmd := newRollbackCmd(&action.Configuration{}, io.Discard)
+	require.NoError(t, cmd.Args(cmd, []string{"release"}))
+	require.NoError(t, cmd.Args(cmd, []string{"release", "1"}))
+	require.ErrorContains(t, cmd.Args(cmd, []string{"release", "1", "extra"}), "accepts at most 2 arguments")
 }
 
 func TestRollbackRevisionCompletion(t *testing.T) {
