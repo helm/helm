@@ -66,6 +66,7 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 			ExtraArgs: r.args,
 			Manifests: renderedManifests,
 		},
+		Env: plugin.FormatEnv(r.settings.EnvVars()),
 	}
 	output, err := r.plugin.Invoke(context.Background(), input)
 	if err != nil {
