@@ -755,3 +755,42 @@ func TestParseSetNestedLevels(t *testing.T) {
 		})
 	}
 }
+
+func TestParseSetEmptyKeyName(t *testing.T) {
+	tests := []struct {
+		str    string
+		expect map[string]any
+		errStr string
+	}{
+		{str: "=x", errStr: "value name must not be empty"},
+		{str: "[0]=x", errStr: "value name must not be empty"},
+		{str: ".b=1", errStr: "value name must not be empty"},
+		{str: ".b[0]=x", errStr: "value name must not be empty"},
+		{str: "..=x", errStr: "value name must not be empty"},
+		{str: "a.=x", errStr: "value name must not be empty"},
+		{str: "a=1,.b=2", errStr: "value name must not be empty"},
+		{str: "a[0]=x,[1]=y", errStr: "value name must not be empty"},
+		{str: "a.b=1", expect: map[string]any{"a": map[string]any{"b": int64(1)}}},
+		{str: "a[0]=x", expect: map[string]any{"a": []any{"x"}}},
+		{str: "a[0].b=1", expect: map[string]any{"a": []any{map[string]any{"b": int64(1)}}}},
+		{str: "a[0][1]=x", expect: map[string]any{"a": []any{[]any{nil, "x"}}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.str, func(t *testing.T) {
+			got, err := Parse(tt.str)
+			if tt.errStr != "" {
+				require.EqualError(t, err, tt.errStr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expect, got)
+		})
+	}
+}
+
+func TestParseJSONEmptyKeyName(t *testing.T) {
+	// --set-json shares the key parser, so a nameless assignment must fail there too.
+	dest := map[string]any{}
+	require.EqualError(t, ParseJSON("a=1,.b=2", dest), "value name must not be empty")
+}
