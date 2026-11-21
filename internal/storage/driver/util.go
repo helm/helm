@@ -102,7 +102,7 @@ func decodeRelease(data string) (*rspb.Release, error) {
 
 // Checks if label is system
 func isSystemLabel(key string) bool {
-	return slices.Contains(GetSystemLabels(), key)
+	return slices.Contains(systemLabels, key)
 }
 
 // Removes system labels from labels map
@@ -127,5 +127,5 @@ func ContainsSystemLabels(lbs map[string]string) bool {
 }
 
 func GetSystemLabels() []string {
-	return systemLabels
+	return slices.Clone(systemLabels)
 }
