@@ -458,3 +458,67 @@ func TestIsYamlFileExtension(t *testing.T) {
 		assert.Equal(t, test.expected, result, "isYamlFileExtension(%s) = %v; want %v", test.filename, result, test.expected)
 	}
 }
+
+// TestTemplatesReportDependencyValuesError checks that the template linter
+// reports values that cannot be merged into a subchart's values.
+//
+// Rendering a chart with such values fails with "type mismatch on <subchart>",
+// so linting it must not silently succeed.
+func TestTemplatesReportDependencyValuesError(t *testing.T) {
+	tests := []struct {
+		name    string
+		values  map[string]any
+		wantErr string
+	}{
+		{
+			name:    "subchart value is not a table",
+			values:  map[string]any{"sub": false},
+			wantErr: "type mismatch on sub",
+		},
+		{
+			name:   "subchart value is a table",
+			values: map[string]any{"sub": map[string]any{"enabled": false}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mychart := chart.Chart{
+				Metadata: &chart.Metadata{
+					APIVersion:   "v2",
+					Name:         "parent",
+					Version:      "0.1.0",
+					Icon:         "satisfy-the-linting-gods.gif",
+					Dependencies: []*chart.Dependency{{Name: "sub", Version: "0.1.0", Condition: "sub.enabled"}},
+				},
+				Templates: []*common.File{
+					{
+						Name:    "templates/configmap.yaml",
+						ModTime: time.Now(),
+						Data:    []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: foo\n"),
+					},
+				},
+			}
+			mychart.AddDependency(&chart.Chart{
+				Metadata: &chart.Metadata{APIVersion: "v2", Name: "sub", Version: "0.1.0"},
+			})
+			tmpdir := t.TempDir()
+			require.NoError(t, chartutil.SaveDir(&mychart, tmpdir))
+
+			linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+			Templates(
+				&linter,
+				namespace,
+				tt.values,
+				TemplateLinterSkipSchemaValidation(false))
+
+			if tt.wantErr == "" {
+				assert.Empty(t, linter.Messages)
+				return
+			}
+			require.Len(t, linter.Messages, 1)
+			assert.Equal(t, support.ErrorSev, linter.Messages[0].Severity)
+			assert.ErrorContains(t, linter.Messages[0].Err, tt.wantErr)
+		})
+	}
+}
