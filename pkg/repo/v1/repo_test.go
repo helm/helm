@@ -18,6 +18,7 @@ package repo
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -206,4 +207,121 @@ func TestRemoveRepositoryInvalidEntries(t *testing.T) {
 	removeRepository := "stable"
 	assert.Truef(t, sampleRepository.Remove(removeRepository), "expected repository %s not found", removeRepository)
 	assert.Falsef(t, sampleRepository.Has(removeRepository), "repository %s not deleted", removeRepository)
+}
+
+func TestRepoFileGetAndUpdateWithNilEntries(t *testing.T) {
+	sampleRepository := NewFile()
+	sampleRepository.Add(
+		&Entry{
+			Name: "stable",
+			URL:  "https://example.com/stable/charts",
+		},
+		nil,
+		&Entry{
+			Name: "test",
+			URL:  "https://example.com/test",
+		},
+	)
+
+	// Get and Update have to skip nil entries instead of dereferencing them, as
+	// Remove already does.
+	require.NotNil(t, sampleRepository.Get("stable"), "expected repository stable to be found")
+	require.NotNil(t, sampleRepository.Get("test"), "expected repository test to be found")
+	assert.Nil(t, sampleRepository.Get("nosuchrepo"), "found a nonexistent repository")
+	assert.True(t, sampleRepository.Has("stable"), "expected repository stable to be found")
+	assert.False(t, sampleRepository.Has("nosuchrepo"), "found a nonexistent repository")
+
+	sampleRepository.Update(&Entry{
+		Name: "stable",
+		URL:  "https://example.com/stable/charts-updated",
+	})
+	assert.Equal(t, "https://example.com/stable/charts-updated", sampleRepository.Get("stable").URL, "Update did not replace the existing entry")
+	assert.Len(t, sampleRepository.Repositories, 3, "Update on an existing name must not append")
+
+	sampleRepository.Update(&Entry{
+		Name: "newrepo",
+		URL:  "https://example.com/newrepo",
+	})
+	assert.True(t, sampleRepository.Has("newrepo"), "expected repository newrepo to be found")
+	assert.Len(t, sampleRepository.Repositories, 4, "Update of an unknown name must append")
+}
+
+func TestLoadFileSkipsNilEntries(t *testing.T) {
+	tests := []struct {
+		name        string
+		file        string
+		wantedNames []string
+	}{
+		{
+			name: "empty list item between valid entries",
+			file: `apiVersion: "v1"
+generated: "2024-01-01T00:00:00Z"
+repositories:
+  - name: stable
+    url: https://example.com/stable/charts
+  -
+  - name: test
+    url: https://example.com/test
+`,
+			wantedNames: []string{"stable", "test"},
+		},
+		{
+			name: "explicit null list item",
+			file: `apiVersion: "v1"
+generated: "2024-01-01T00:00:00Z"
+repositories:
+  - name: stable
+    url: https://example.com/stable/charts
+  - null
+`,
+			wantedNames: []string{"stable"},
+		},
+		{
+			name: "every list item empty",
+			file: `apiVersion: "v1"
+generated: "2024-01-01T00:00:00Z"
+repositories:
+  -
+  -
+`,
+			wantedNames: []string{},
+		},
+		{
+			name: "no list items",
+			file: `apiVersion: "v1"
+generated: "2024-01-01T00:00:00Z"
+repositories:
+`,
+			wantedNames: []string{},
+		},
+		{
+			name: "no empty list items",
+			file: `apiVersion: "v1"
+generated: "2024-01-01T00:00:00Z"
+repositories:
+  - name: stable
+    url: https://example.com/stable/charts
+  - name: incubator
+    url: https://example.com/incubator
+`,
+			wantedNames: []string{"stable", "incubator"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "repositories.yaml")
+			require.NoError(t, os.WriteFile(path, []byte(tt.file), 0o600))
+
+			file, err := LoadFile(path)
+			require.NoError(t, err)
+
+			names := make([]string, 0, len(file.Repositories))
+			for _, entry := range file.Repositories {
+				require.NotNil(t, entry, "nil entry survived LoadFile")
+				names = append(names, entry.Name)
+			}
+			assert.Equal(t, tt.wantedNames, names)
+		})
+	}
 }
