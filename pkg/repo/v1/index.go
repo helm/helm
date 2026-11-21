@@ -158,7 +158,8 @@ func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	}
 }
 
-// Has returns true if the index has an entry for a chart with the given name and exact version.
+// Has returns true if Get can resolve the given chart name and version.
+// The version may be a constraint or empty, following the same rules as Get.
 func (i IndexFile) Has(name, version string) bool {
 	_, err := i.Get(name, version)
 	return err == nil
@@ -309,7 +310,8 @@ type ChartVersion struct {
 	URLDeprecated string `json:"url,omitempty"`
 }
 
-// IndexDirectory reads a (flat) directory and generates an index.
+// IndexDirectory reads a directory and its immediate subdirectories and generates
+// an index.
 //
 // It indexes only charts that have been packaged (*.tgz).
 //
