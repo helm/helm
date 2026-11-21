@@ -284,8 +284,7 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				if err != nil {
 					slog.Warn(
 						"ImportValues missing table from chart",
-						slog.String("chart", "chart"),
-						slog.String("name", r.Name),
+						slog.String("chart", r.Name),
 						slog.Any("error", err),
 					)
 					continue
