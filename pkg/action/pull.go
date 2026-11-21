@@ -153,11 +153,17 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			ud = filepath.Join(p.DestDir, ud)
 		}
 		// Let udCheck to check conflict file/dir without replacing ud when untarDir is the current directory(.).
+		_, chartName := filepath.Split(chartRef)
+		if registry.IsOCI(chartRef) {
+			// An OCI reference can carry a tag and a digest (chart:1.0.0@sha256:...),
+			// which are not part of the directory the chart expands into.
+			chartName, _, _ = strings.Cut(chartName, "@")
+			chartName, _, _ = strings.Cut(chartName, ":")
+		}
 		udCheck := ud
 		if udCheck == "." {
-			_, udCheck = filepath.Split(chartRef)
+			udCheck = chartName
 		} else {
-			_, chartName := filepath.Split(chartRef)
 			udCheck = filepath.Join(udCheck, chartName)
 		}
 
