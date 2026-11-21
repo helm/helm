@@ -40,15 +40,16 @@ import (
 type Uninstall struct {
 	cfg *Configuration
 
-	DisableHooks        bool
-	DryRun              bool
-	IgnoreNotFound      bool
-	KeepHistory         bool
-	WaitStrategy        kube.WaitStrategy
-	WaitOptions         []kube.WaitOption
-	DeletionPropagation string
-	Timeout             time.Duration
-	Description         string
+	DisableHooks         bool
+	DryRun               bool
+	IgnoreNotFound       bool
+	IgnoreResourcePolicy bool
+	KeepHistory          bool
+	WaitStrategy         kube.WaitStrategy
+	WaitOptions          []kube.WaitOption
+	DeletionPropagation  string
+	Timeout              time.Duration
+	Description          string
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.
@@ -92,7 +93,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		manifests := releaseutil.SplitManifests(r.Manifest)
 		_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder)
 		if err == nil {
-			filesToKeep, filesToDelete := filterManifestsToKeep(files)
+			filesToKeep, filesToDelete := filterManifestsToKeep(files, u.IgnoreResourcePolicy)
 
 			var builder strings.Builder
 			for _, file := range filesToDelete {
@@ -330,7 +331,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %w", err)}
 	}
 
-	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	filesToKeep, filesToDelete := filterManifestsToKeep(files, u.IgnoreResourcePolicy)
 	var kept strings.Builder
 	if len(filesToKeep) > 0 {
 		kept.WriteString("These resources were kept due to the resource policy:\n")
