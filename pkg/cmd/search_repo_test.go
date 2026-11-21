@@ -17,7 +17,11 @@ limitations under the License.
 package cmd
 
 import (
+	"path/filepath"
 	"testing"
+
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSearchRepositoriesCmd(t *testing.T) {
@@ -105,4 +109,30 @@ func TestSearchRepoOutputCompletion(t *testing.T) {
 
 func TestSearchRepoFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "search repo", true) // File completion may be useful when inputting a keyword
+}
+
+func TestCompListChartsURLPrefix(t *testing.T) {
+	originalRepositoryConfig := settings.RepositoryConfig
+	originalRepositoryCache := settings.RepositoryCache
+	settings.RepositoryConfig = filepath.Join(t.TempDir(), "repositories.yaml")
+	settings.RepositoryCache = t.TempDir()
+	t.Cleanup(func() {
+		settings.RepositoryConfig = originalRepositoryConfig
+		settings.RepositoryCache = originalRepositoryCache
+	})
+
+	tests := []struct {
+		name       string
+		toComplete string
+	}{
+		{name: "OCI URL", toComplete: "oci://registry.example/chart"},
+		{name: "HTTPS URL", toComplete: "https://example.com/chart.tgz"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, directive := compListCharts(tt.toComplete, true)
+			assert.Equal(t, cobra.ShellCompDirectiveNoFileComp|cobra.ShellCompDirectiveNoSpace, directive)
+		})
+	}
 }
