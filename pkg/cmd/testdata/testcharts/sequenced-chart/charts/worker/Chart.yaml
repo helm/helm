@@ -1,0 +1,5 @@
+apiVersion: v2
+name: worker
+description: A subchart used to test ordered template output
+type: application
+version: 0.1.0

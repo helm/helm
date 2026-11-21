@@ -1,0 +1,45 @@
+## START resource-group: sequenced-isolated-chart alpha
+---
+# Source: sequenced-isolated-chart/templates/aa-alpha.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-alpha
+  annotations:
+    helm.sh/resource-group: alpha
+data:
+  key: alpha
+
+## END resource-group: sequenced-isolated-chart alpha
+## START resource-group: sequenced-isolated-chart beta
+---
+# Source: sequenced-isolated-chart/templates/bb-beta.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-beta
+  annotations:
+    helm.sh/resource-group: beta
+data:
+  key: beta
+
+## END resource-group: sequenced-isolated-chart beta
+---
+# Source: sequenced-isolated-chart/templates/dd-plain.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-plain
+data:
+  key: plain
+
+---
+# Source: sequenced-isolated-chart/templates/cc-gamma.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-gamma
+  annotations:
+    helm.sh/resource-group: gamma
+data:
+  key: gamma

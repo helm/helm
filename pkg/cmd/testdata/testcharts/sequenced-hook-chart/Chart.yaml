@@ -1,0 +1,5 @@
+apiVersion: v2
+name: sequenced-hook-chart
+description: Chart with a hook carrying sequencing annotations, used to verify --output-dir stripping
+type: application
+version: 0.1.0
