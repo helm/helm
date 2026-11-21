@@ -262,6 +262,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return fmt.Errorf("UPGRADE FAILED: %w", err)
 			}
 
+			if rel == nil {
+				// --ignore-not-found was set and the release does not exist; nothing to do.
+				fmt.Fprintf(out, "Release %q not found; nothing to upgrade.\n", args[0])
+				return nil
+			}
+
 			if outfmt == output.Table {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
@@ -279,6 +285,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
+	f.BoolVar(&client.IgnoreNotFound, "ignore-not-found", false, "treat \"release not found\" as a successful no-op instead of failing the upgrade")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
