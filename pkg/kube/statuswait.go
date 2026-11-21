@@ -83,7 +83,11 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
-	sw.StatusComputeWorkers = w.statusComputeWorkers
+	// Compute statuses synchronously so a hook's final update always reaches
+	// the observer before its delete event. With async workers the delete can
+	// drop a pending Failed or Current status. Hooks are usually a handful of
+	// resources, so the parallelism buys little here.
+	sw.StatusComputeWorkers = 0
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
 	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks.
@@ -95,7 +99,10 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 		StatusReaders: append(w.readers, jobSR, podSR, genericSR),
 	}
 	sw.StatusReader = sr
-	return w.wait(ctx, resourceList, sw)
+	// A hook can be deleted by another controller once it is done, e.g. a Job
+	// with .spec.ttlSecondsAfterFinished. Track the last status seen so such a
+	// hook still counts as ready.
+	return w.waitFor(ctx, resourceList, sw, lastStatus{})
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
@@ -154,7 +161,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.Logger()))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, nil, w.Logger()))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -180,6 +187,13 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 }
 
 func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
+	return w.waitFor(ctx, resourceList, sw, nil)
+}
+
+// waitFor waits until every resource reaches the current status. If seen is
+// not nil, a resource that was last seen Current and is then deleted also
+// counts as ready.
+func (w *statusWaiter) waitFor(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher, seen lastStatus) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resources := []object.ObjMetadata{}
@@ -198,7 +212,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, w.Logger()))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, seen, w.Logger()))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -209,6 +223,9 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	for _, id := range resources {
 		rs := statusCollector.ResourceStatuses[id]
 		if rs.Status == status.CurrentStatus {
+			continue
+		}
+		if rs.Status == status.NotFoundStatus && seen.readyBeforeDelete(id) {
 			continue
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
@@ -237,8 +254,30 @@ func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Con
 	return watchtools.ContextWithOptionalTimeout(ctx, timeout)
 }
 
-func statusObserver(cancel context.CancelFunc, desired status.Status, logger *slog.Logger) collector.ObserverFunc {
-	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
+// lastStatus records the last InProgress, Current or Failed status seen for
+// each resource while waiting. The delete event replaces it with NotFound in
+// the collector, so this is what tells a resource that finished before being
+// deleted apart from one that failed or never finished.
+type lastStatus map[object.ObjMetadata]status.Status
+
+func (l lastStatus) record(e event.Event) {
+	if l == nil || e.Type != event.ResourceUpdateEvent || e.Resource == nil {
+		return
+	}
+	if s := e.Resource.Status; s == status.InProgressStatus || s == status.CurrentStatus || s == status.FailedStatus {
+		l[e.Resource.Identifier] = s
+	}
+}
+
+// readyBeforeDelete reports whether a resource that is no longer found was
+// last seen Current.
+func (l lastStatus) readyBeforeDelete(id object.ObjMetadata) bool {
+	return l[id] == status.CurrentStatus
+}
+
+func statusObserver(cancel context.CancelFunc, desired status.Status, seen lastStatus, logger *slog.Logger) collector.ObserverFunc {
+	return func(statusCollector *collector.ResourceStatusCollector, e event.Event) {
+		seen.record(e)
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
 		for _, rs := range statusCollector.ResourceStatuses {
@@ -253,6 +292,12 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
 			// that has already failed, as intervention is required to resolve the failure.
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
+				continue
+			}
+			// A resource deleted after it was seen Current is done. One that
+			// failed, never finished, or was gone before the watch synced is
+			// not.
+			if rs.Status == status.NotFoundStatus && seen.readyBeforeDelete(rs.Identifier) {
 				continue
 			}
 			rss = append(rss, rs)
