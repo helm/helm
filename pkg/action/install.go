@@ -69,6 +69,8 @@ const notesFileSuffix = "NOTES.txt"
 
 const defaultDirectoryPermission = 0o755
 
+const minimumCRDTimeout = 60 * time.Second
+
 // Install performs an installation operation.
 type Install struct {
 	cfg *Configuration
@@ -239,8 +241,8 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		if err != nil {
 			return fmt.Errorf("unable to get waiter: %w", err)
 		}
-		// Give time for the CRD to be recognized.
-		if err := waiter.Wait(totalItems, 60*time.Second); err != nil {
+		// Give time for the CRD to be recognized, never less than the minimum.
+		if err := waiter.Wait(totalItems, max(i.Timeout, minimumCRDTimeout)); err != nil {
 			return err
 		}
 
