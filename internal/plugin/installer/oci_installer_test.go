@@ -659,3 +659,24 @@ func TestOCIInstaller_Install_ValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestOCIInstaller_Install_TarballInPluginsDirectory(t *testing.T) {
+	ensure.HelmHome(t)
+	pluginsDir := t.TempDir()
+	t.Setenv("HELM_PLUGINS", pluginsDir)
+
+	pluginName := "test-plugin-tarball"
+	server, registryHost := mockOCIRegistryWithArtifactType(t, pluginName)
+	defer server.Close()
+	source := fmt.Sprintf("oci://%s/%s:latest", registryHost, pluginName)
+
+	installer, err := NewOCIInstaller(source, getter.WithPlainHTTP(true))
+	require.NoError(t, err)
+	require.NoError(t, Install(installer))
+
+	// The tarball kept for provenance checks must sit in the HELM_PLUGINS directory
+	_, err = os.Stat(filepath.Join(pluginsDir, pluginName+"-1.0.0.tgz"))
+	require.NoError(t, err, "expected tarball in %s", pluginsDir)
+	_, err = os.Stat(helmpath.DataPath("plugins", pluginName+"-1.0.0.tgz"))
+	require.ErrorIs(t, err, os.ErrNotExist, "expected no tarball in the default plugins directory")
+}

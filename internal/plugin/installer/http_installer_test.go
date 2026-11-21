@@ -488,3 +488,34 @@ func TestExtractPluginInSubdirectory(t *testing.T) {
 	expectedRoot := filepath.Join(tempDir, "my-plugin")
 	assert.Equal(t, expectedRoot, pluginRoot, "Expected plugin root to be %s but got %s", expectedRoot, pluginRoot)
 }
+
+func TestHTTPInstallerTarballInPluginsDirectory(t *testing.T) {
+	ensure.HelmHome(t)
+	pluginsDir := t.TempDir()
+	t.Setenv("HELM_PLUGINS", pluginsDir)
+
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
+
+	i, err := NewForSource(source, "0.0.1")
+	require.NoError(t, err)
+	httpInstaller, ok := i.(*HTTPInstaller)
+	require.True(t, ok, "expected a HTTPInstaller")
+
+	mockTgz, err := base64.StdEncoding.DecodeString(fakePluginB64)
+	require.NoError(t, err, "Could not decode fake tgz plugin")
+	httpInstaller.getter = &TestHTTPGetter{
+		MockResponse: bytes.NewBuffer(mockTgz),
+	}
+
+	require.NoError(t, Install(i))
+
+	// The tarball kept for provenance checks must sit in the HELM_PLUGINS directory
+	tarballs, err := filepath.Glob(filepath.Join(pluginsDir, "*.tgz"))
+	require.NoError(t, err)
+	assert.Len(t, tarballs, 1, "expected one tarball in %s", pluginsDir)
+	defaultTarballs, err := filepath.Glob(helmpath.DataPath("plugins", "*.tgz"))
+	require.NoError(t, err)
+	assert.Empty(t, defaultTarballs, "expected no tarball in the default plugins directory")
+}
