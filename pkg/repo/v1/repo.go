@@ -18,6 +18,7 @@ package repo
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -185,26 +186,76 @@ func atomicWriteRepoFileNew(filename string, data []byte, perm os.FileMode) erro
 // follows, matching the limit Linux applies to path resolution.
 const maxRepoFileSymlinkHops = 40
 
+var (
+	errnoNotFound = errors.New("no such file or directory")
+	errnoNotDir   = errors.New("not a directory")
+)
+
+// repoFileAbsPath makes path absolute without cleaning it, so ".." components
+// still resolve after the links in front of them have been followed.
+//
+// On Windows a path can be rooted without a volume ("\config\x"), which
+// filepath.IsAbs reports as relative; it belongs to the current drive. A path
+// with a volume that is still relative ("C:x") is rejected: the kernel resolves
+// it against that drive's own current directory, which Go cannot read, so it
+// cannot be shown to name the same file LoadFile would read.
+func repoFileAbsPath(path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return path, nil
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	if volume := filepath.VolumeName(path); volume != "" {
+		return "", fmt.Errorf("repository destination %q is relative to drive %s; pass an absolute path", path, volume)
+	}
+	if repoFileRooted(path) {
+		return filepath.VolumeName(wd) + string(filepath.Separator) + strings.TrimLeft(path, `\/`), nil
+	}
+	return wd + string(filepath.Separator) + path, nil
+}
+
+// repoFileRooted reports whether path starts at the root of the current drive
+// without naming the drive. Only Windows can express that.
+func repoFileRooted(path string) bool {
+	if filepath.Separator != '\\' {
+		return false
+	}
+	return strings.HasPrefix(path, `\`) || strings.HasPrefix(path, "/")
+}
+
+// requireRepoFileDir reports the ENOTDIR the kernel would return when cur is
+// not a directory, which is the case for every path component that has to be
+// traversed rather than replaced.
+func requireRepoFileDir(cur, abs string) error {
+	fi, err := os.Lstat(cur)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return &os.PathError{Op: "resolve", Path: abs, Err: errnoNotDir}
+	}
+	return nil
+}
+
 // resolveRepoFileWritePath returns an absolute write path, following symlinks
 // the way the kernel does for LoadFile. When the path ends in a missing
 // target, every link in front of it is followed to that target so it can be
 // created while all links are kept. A final target that exists but is not a
-// regular file is an error.
+// regular file is an error, and so is a path the kernel could not read: a
+// non-final component that is not a directory, or a parent component below a
+// component that does not exist. Both would otherwise be cleaned into a
+// different path than the one LoadFile rejects.
 //
 // Components are resolved one at a time rather than cleaning the path first:
 // for "alias/../repositories.yaml" with alias -> actual/sub, the kernel reads
 // the parent of the link's target (actual/repositories.yaml), while a lexical
 // clean lands beside alias and would write a file LoadFile never reads.
 func resolveRepoFileWritePath(path string) (string, error) {
-	abs := path
-	if !filepath.IsAbs(abs) {
-		wd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-		// filepath.Abs would clean the path, collapsing ".." before the link in
-		// front of it is resolved.
-		abs = wd + string(filepath.Separator) + abs
+	abs, err := repoFileAbsPath(path)
+	if err != nil {
+		return "", err
 	}
 
 	volume, pending := splitRepoFilePath(abs)
@@ -217,8 +268,16 @@ func resolveRepoFileWritePath(path string) (string, error) {
 
 		switch comp {
 		case "", ".":
+			// A trailing separator or a "." component only names a directory,
+			// so the path the kernel accepts here must be one.
+			if err := requireRepoFileDir(cur, abs); err != nil {
+				return "", err
+			}
 			continue
 		case "..":
+			if err := requireRepoFileDir(cur, abs); err != nil {
+				return "", err
+			}
 			// cur holds no unresolved links, so its parent is the real one.
 			if parent := filepath.Dir(cur); parent != cur {
 				cur = parent
@@ -230,14 +289,26 @@ func resolveRepoFileWritePath(path string) (string, error) {
 		fi, err := os.Lstat(next)
 		if err != nil {
 			if os.IsNotExist(err) {
-				// Nothing under a missing directory can be a link, so the rest
-				// of the path is kept as it is.
+				// Nothing under a missing directory can be a link. Remaining
+				// parent or current-directory components would be resolved by
+				// the kernel against that missing directory, so they are
+				// rejected instead of being cleaned into another path.
+				for _, rest := range pending {
+					if rest == "" || rest == "." || rest == ".." {
+						return "", &os.PathError{Op: "resolve", Path: abs, Err: errnoNotFound}
+					}
+				}
 				return filepath.Join(append([]string{next}, pending...)...), nil
 			}
 			return "", err
 		}
 
 		if fi.Mode()&os.ModeSymlink == 0 {
+			// A non-final component that is not a directory makes the path
+			// unreadable for LoadFile, so it must not select a write target.
+			if len(pending) > 0 && !fi.IsDir() {
+				return "", &os.PathError{Op: "resolve", Path: abs, Err: errnoNotDir}
+			}
 			cur = next
 			continue
 		}

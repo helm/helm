@@ -184,6 +184,9 @@ func TestWriteFileKeepsPreviousContentsOnFailure(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("a read-only directory does not prevent replacing a file on Windows")
 	}
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions, so the directory cannot reject a new file")
+	}
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "repositories.yaml")
@@ -317,6 +320,50 @@ func TestWriteFileRejectsNonRegularDestination(t *testing.T) {
 	fi, err = os.Lstat(target)
 	require.NoError(t, err)
 	assert.True(t, fi.IsDir(), "directory must not be replaced")
+}
+
+func TestWriteFileRejectsPathThroughRegularFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "repositories.yaml")
+
+	old := NewFile()
+	old.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.NoError(t, old.WriteFile(path, 0o600))
+
+	fresh := NewFile()
+	fresh.Add(&Entry{Name: "incubator", URL: "https://example.com/incubator"})
+	sep := string(filepath.Separator)
+	for _, p := range []string{
+		path + sep,
+		path + sep + ".",
+		path + sep + ".." + sep + "repositories.yaml",
+	} {
+		require.Errorf(t, fresh.WriteFile(p, 0o600), "LoadFile rejects %q, so it must not name a write target", p)
+	}
+
+	repos, err := LoadFile(path)
+	require.NoError(t, err)
+	assert.False(t, repos.Has("incubator"), "unexpected write through a regular file: %v", repos.Repositories)
+}
+
+func TestWriteFileRejectsUnresolvedParentComponent(t *testing.T) {
+	dir := t.TempDir()
+	link := filepath.Join(dir, "repositories.yaml")
+	shared := filepath.Join(dir, "shared.yaml")
+	// The kernel cannot resolve ".." below a directory that does not exist, so
+	// the link stays dangling and nothing may be created beside it.
+	unresolved := "missing" + string(filepath.Separator) + ".." + string(filepath.Separator) + "shared.yaml"
+	require.NoError(t, os.Symlink(unresolved, link))
+
+	f := NewFile()
+	f.Add(&Entry{Name: "stable", URL: "https://example.com/stable/charts"})
+	require.Error(t, f.WriteFile(link, 0o600))
+
+	fi, err := os.Lstat(link)
+	require.NoError(t, err)
+	assert.NotEqual(t, os.FileMode(0), fi.Mode()&os.ModeSymlink, "destination symlink must be preserved")
+	_, err = os.Lstat(shared)
+	assert.True(t, os.IsNotExist(err), "a path LoadFile rejects must not create its cleaned form")
 }
 
 func TestWriteFileUpdatesSymlinkTarget(t *testing.T) {
