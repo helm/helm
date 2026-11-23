@@ -15,6 +15,7 @@ limitations under the License.
 package util
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -219,6 +220,8 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		case bool:
 			b := strconv.FormatBool(pv)
 			assert.Equalf(t, vv, b, "failed to match imported bool value %v with expected %v for key %q", b, vv, kk)
+		case json.Number:
+			assert.Equalf(t, vv, pv.String(), "failed to match imported number value %q with expected %q for key %q", pv, vv, kk)
 		default:
 			assert.Equalf(t, vv, pv, "failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
 		}
@@ -296,6 +299,8 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 		case float64:
 			s := strconv.FormatFloat(pv, 'f', -1, 64)
 			assert.Equalf(t, vv, s, "failed to match imported float value %v with expected %v", s, vv)
+		case json.Number:
+			assert.Equalf(t, vv, pv.String(), "failed to match imported number value %q with expected %q", pv, vv)
 		default:
 			assert.Equalf(t, vv, pv, "failed to match imported string value %q with expected %q", pv, vv)
 		}
