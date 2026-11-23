@@ -70,7 +70,7 @@ type ChartDownloader struct {
 	Verify VerificationStrategy
 	// Keyring is the keyring file used for verification.
 	Keyring string
-	// Getter collection for the operation
+	// Getters is the collection of getters used for the operation.
 	Getters getter.Providers
 	// Options provide parameters to be passed along to the Getter being initialized.
 	Options          []getter.Option

@@ -28,7 +28,7 @@ import (
 type ChartUploader struct {
 	// Out is the location to write warning and info messages.
 	Out io.Writer
-	// Pusher collection for the operation
+	// Pushers is the collection of pushers used for the operation.
 	Pushers pusher.Providers
 	// Options provide parameters to be passed along to the Pusher being initialized.
 	Options []pusher.Option
