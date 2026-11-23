@@ -30,10 +30,17 @@ name: e2e-registries
 #
 #   DOCKER  Docker Hub. Does not nest repository paths, and a scoped access
 #           token may only write to one repository: single-repo.
-#   GITLAB  GitLab. Nests paths under the project, and a deploy token covers
-#           every repository in it. Its token endpoint only implements the
-#           distribution GET flow, not OAuth2 POST, which makes it the registry
-#           that catches a regression in Helm's token flow fallback.
+#   GITLAB  GitLab. Nests paths under the project, and a deploy token with
+#           read_registry and write_registry covers every repository in it.
+#           Its token endpoint only implements the distribution GET flow, not
+#           OAuth2 POST, which makes it the registry that catches a regression
+#           in Helm's token flow fallback.
+#   QUAY    Quay.io. Does not nest repository paths, and a robot account,
+#           named <namespace>+<robot>, is granted write access per repository:
+#           single-repo.
+#   GHCR    GitHub Container Registry. Nests paths under the owner, and a
+#           classic personal access token with write:packages covers every
+#           package the owner has. Packages are created on first push.
 #
 # Adding a registry is a matrix entry plus its five settings.
 
@@ -66,6 +73,12 @@ jobs:
             single-repo: true
           - id: GITLAB
             name: GitLab
+            single-repo: false
+          - id: QUAY
+            name: Quay
+            single-repo: true
+          - id: GHCR
+            name: GHCR
             single-repo: false
     steps:
       # Configuration is read as environment variables rather than interpolated
@@ -121,7 +134,7 @@ jobs:
         run: cat ".github/env" >> "$GITHUB_ENV"
       - name: Setup Go
         if: steps.config.outputs.configured == 'true'
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # pin@7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # pin@7.1.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true

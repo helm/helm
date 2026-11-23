@@ -39,6 +39,11 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/template.txt",
 		},
 		{
+			name:   "accept --create-namespace without changing the rendered output",
+			cmd:    fmt.Sprintf("template '%s' --create-namespace", chartPath),
+			golden: "output/template.txt",
+		},
+		{
 			name:   "check set name",
 			cmd:    fmt.Sprintf("template '%s' --set service.name=apache", chartPath),
 			golden: "output/template-set.txt",
@@ -319,6 +324,12 @@ metadata:
 		require.NoError(t, err)
 		assert.Empty(t, entries)
 	})
+}
+
+func TestTemplateCreateNamespaceHelp(t *testing.T) {
+	_, out, err := executeActionCommand("template --help")
+	require.NoError(t, err)
+	require.Contains(t, out, "ignored by template (accepted for compatibility)")
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {
