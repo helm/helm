@@ -18,7 +18,9 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"k8s.io/cli-runtime/pkg/printers"
@@ -61,7 +63,12 @@ type Show struct {
 	Devel            bool
 	OutputFormat     ShowOutputFormat
 	JSONPathTemplate string
-	chart            *chart.Chart // for testing
+	// IncludeOCIAnnotations includes the annotations of the OCI manifest in the
+	// output of 'show chart' and 'show all' when the chart is pulled from an
+	// OCI registry. See LoadOCIAnnotations.
+	IncludeOCIAnnotations bool
+	chart                 *chart.Chart // for testing
+	ociAnnotations        map[string]string
 }
 
 // NewShow creates a new Show object with the given configuration.
@@ -77,6 +84,36 @@ func NewShow(output ShowOutputFormat, cfg *Configuration) *Show {
 // SetRegistryClient sets the registry client to use when pulling a chart from a registry.
 func (s *Show) SetRegistryClient(client *registry.Client) {
 	s.registryClient = client
+}
+
+// LoadOCIAnnotations fetches the annotations of the OCI manifest for the chart
+// referenced by ref so that Run can include them in its output. It is a no-op
+// unless IncludeOCIAnnotations is set and ref is an OCI reference. The
+// reference is resolved with the same version rules used to locate the chart,
+// and only the manifest is fetched; the chart layers are not downloaded again.
+func (s *Show) LoadOCIAnnotations(ref string) error {
+	if !s.IncludeOCIAnnotations || !registry.IsOCI(ref) {
+		return nil
+	}
+	if s.registryClient == nil {
+		return errors.New("unable to fetch OCI annotations, missing registry client")
+	}
+
+	u, err := url.Parse(strings.TrimSpace(ref))
+	if err != nil {
+		return fmt.Errorf("invalid chart URL format: %s", ref)
+	}
+	_, u, err = s.registryClient.ValidateReference(ref, strings.TrimSpace(s.Version), u)
+	if err != nil {
+		return err
+	}
+
+	annotations, err := s.registryClient.ManifestAnnotations(strings.TrimPrefix(u.String(), fmt.Sprintf("%s://", registry.OCIScheme)))
+	if err != nil {
+		return fmt.Errorf("unable to fetch OCI annotations for %s: %w", ref, err)
+	}
+	s.ociAnnotations = annotations
+	return nil
 }
 
 // Run executes 'helm show' against the given release.
@@ -95,7 +132,15 @@ func (s *Show) Run(chartpath string) (string, error) {
 
 	var out strings.Builder
 	if s.OutputFormat == ShowChart || s.OutputFormat == ShowAll {
-		fmt.Fprintf(&out, "%s\n", cf)
+		out.Write(cf)
+		if len(s.ociAnnotations) > 0 {
+			oa, err := yaml.Marshal(map[string]map[string]string{"ociAnnotations": s.ociAnnotations})
+			if err != nil {
+				return "", err
+			}
+			out.Write(oa)
+		}
+		out.WriteString("\n")
 	}
 
 	if (s.OutputFormat == ShowValues || s.OutputFormat == ShowAll) && s.chart.Values != nil {
