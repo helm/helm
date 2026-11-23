@@ -1,0 +1,5 @@
+==> Linting testdata/testcharts/chart-with-images-annotation-missing-fields
+[INFO] Chart.yaml: icon is recommended
+[ERROR] Chart.yaml: validation: image "podinfo" must have an image reference
+
+Error: 1 chart(s) linted, 1 chart(s) failed

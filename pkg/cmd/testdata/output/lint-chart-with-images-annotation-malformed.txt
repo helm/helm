@@ -1,0 +1,5 @@
+==> Linting testdata/testcharts/chart-with-images-annotation-malformed
+[INFO] Chart.yaml: icon is recommended
+[ERROR] Chart.yaml: validation: annotation "helm.sh/images" is not a valid list of images: error converting YAML to JSON: yaml: line 1: did not find expected ',' or ']'
+
+Error: 1 chart(s) linted, 1 chart(s) failed
