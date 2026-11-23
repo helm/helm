@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -127,6 +128,30 @@ func TestAddDefaults(t *testing.T) {
 	r.AddDefaults()
 
 	assert.Len(t, r.patterns, 1)
+}
+
+func TestIgnoreRootedRuleConcurrent(t *testing.T) {
+	r, err := parseString("/a.txt\n/cargo/a.txt\n")
+	require.NoError(t, err)
+
+	fiRoot, err := os.Stat(filepath.Join(testdata, "a.txt"))
+	require.NoError(t, err)
+	fiNested, err := os.Stat(filepath.Join(testdata, "cargo", "a.txt"))
+	require.NoError(t, err)
+	fiOther, err := os.Stat(filepath.Join(testdata, "helm.txt"))
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	for range 32 {
+		wg.Go(func() {
+			for range 100 {
+				assert.True(t, r.Ignore("a.txt", fiRoot))
+				assert.True(t, r.Ignore("cargo/a.txt", fiNested))
+				assert.False(t, r.Ignore("helm.txt", fiOther))
+			}
+		})
+	}
+	wg.Wait()
 }
 
 func parseString(str string) (*Rules, error) {
