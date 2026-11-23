@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 var chartPath = "testdata/testcharts/subchart"
@@ -31,6 +33,11 @@ func TestTemplateCmd(t *testing.T) {
 		{
 			name:   "check name",
 			cmd:    fmt.Sprintf("template '%s'", chartPath),
+			golden: "output/template.txt",
+		},
+		{
+			name:   "accept --create-namespace without changing the rendered output",
+			cmd:    fmt.Sprintf("template '%s' --create-namespace", chartPath),
 			golden: "output/template.txt",
 		},
 		{
@@ -174,6 +181,12 @@ func TestTemplateCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestTemplateCreateNamespaceHelp(t *testing.T) {
+	_, out, err := executeActionCommand("template --help")
+	require.NoError(t, err)
+	require.Contains(t, out, "ignored by template (accepted for compatibility)")
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {
