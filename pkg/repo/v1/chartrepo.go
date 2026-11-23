@@ -242,6 +242,8 @@ func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, opt
 
 // ResolveReferenceURL resolves refURL relative to baseURL.
 // If refURL is absolute, it simply returns refURL.
+// When refURL is relative, baseURL's query parameters are inherited only if
+// refURL does not specify its own query string.
 func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 	parsedRefURL, err := url.Parse(refURL)
 	if err != nil {
@@ -262,7 +264,9 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 	parsedBaseURL.Path = strings.TrimSuffix(parsedBaseURL.Path, "/") + "/"
 
 	resolvedURL := parsedBaseURL.ResolveReference(parsedRefURL)
-	resolvedURL.RawQuery = parsedBaseURL.RawQuery
+	if resolvedURL.RawQuery == "" {
+		resolvedURL.RawQuery = parsedBaseURL.RawQuery
+	}
 	return resolvedURL.String(), nil
 }
 
