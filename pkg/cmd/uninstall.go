@@ -33,6 +33,9 @@ This command takes a release name and uninstalls the release.
 It removes all of the resources associated with the last release of the chart
 as well as the release history, freeing it up for future use.
 
+Resources annotated with 'helm.sh/resource-policy: keep' in the chart are
+retained when uninstalling.
+
 Use the '--dry-run' flag to see which releases will be uninstalled without actually
 uninstalling them.
 
@@ -79,7 +82,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during uninstallation")
 	f.BoolVar(&client.IgnoreNotFound, "ignore-not-found", false, `Treat "release not found" as a successful uninstall`)
 	f.BoolVar(&client.KeepHistory, "keep-history", false, "remove all associated resources and mark the release as deleted, but retain the release history")
-	f.StringVar(&client.DeletionPropagation, "cascade", "background", "Must be \"background\", \"orphan\", or \"foreground\". Selects the deletion cascading strategy for the dependents. Defaults to background. Use \"foreground\" with --wait to ensure resources with finalizers are fully deleted before returning.")
+	f.StringVar(&client.DeletionPropagation, "cascade", "background", "Must be \"background\", \"orphan\", or \"foreground\". Sets the Kubernetes deletion propagation policy for dependents of the deleted resources (e.g. \"orphan\" keeps a Deployment's ReplicaSets). Release resources are deleted regardless; annotate them with \"helm.sh/resource-policy: keep\" in the chart to retain them. Defaults to background. Use \"foreground\" with --wait to ensure resources with finalizers are fully deleted before returning.")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	AddWaitFlag(cmd, &client.WaitStrategy)

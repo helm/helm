@@ -19,6 +19,8 @@ package cmd
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -90,4 +92,12 @@ func TestUninstallCompletion(t *testing.T) {
 func TestUninstallFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "uninstall", false)
 	checkFileCompletion(t, "uninstall myrelease", false)
+}
+
+func TestUninstallCascadeHelp(t *testing.T) {
+	_, out, err := executeActionCommand("uninstall --help")
+	require.NoError(t, err)
+	require.Contains(t, out, "Sets the Kubernetes deletion propagation policy for dependents of the deleted resources")
+	require.Contains(t, out, "Release resources are deleted regardless")
+	require.Contains(t, out, "helm.sh/resource-policy: keep")
 }
