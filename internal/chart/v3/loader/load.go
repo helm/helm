@@ -123,7 +123,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			}
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
-			cname := strings.SplitN(fname, "/", 2)[0]
+			cname, _, _ := strings.Cut(fname, "/")
 			if slices.Index(subChartsKeys, cname) == -1 {
 				subChartsKeys = append(subChartsKeys, cname)
 			}

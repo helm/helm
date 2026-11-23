@@ -281,7 +281,7 @@ type SQLReleaseCustomLabelWrapper struct {
 }
 
 // NewSQL initializes a new sql driver.
-func NewSQL(connectionString string, namespace string) (*SQL, error) {
+func NewSQL(connectionString, namespace string) (*SQL, error) {
 	db, err := sqlx.Connect(postgreSQLDialect, connectionString)
 	if err != nil {
 		return nil, err
@@ -576,6 +576,20 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 }
 
 // Update updates a release.
+//
+// Custom labels on an existing revision are meant to be preserved. A release's
+// labels are set by Create, and a revision keeps the labels it was created with
+// once it is superseded, rather than picking up the labels of the upgrade that
+// superseded it. TestUpgradeRelease_Labels in pkg/action is what asserts this.
+//
+// The drivers arrive at that from opposite directions. Here labels live in a
+// separate table written only by Create, so an update leaves them untouched. The
+// configmaps, memory and secrets drivers instead store labels on the record
+// itself and replace the record wholesale on update, so they have to re-apply
+// the labels every time or the update would discard all of them. A side effect
+// is that those drivers persist a label change where this driver silently would
+// not. No caller changes labels between Create and Update, so the two agree in
+// practice.
 func (s *SQL) Update(key string, rel release.Releaser) error {
 	rls, err := releaserToV1Release(rel)
 	if err != nil {
@@ -690,7 +704,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 }
 
 // Get release custom labels from database
-func (s *SQL) getReleaseCustomLabels(key string, _ string) (map[string]string, error) {
+func (s *SQL) getReleaseCustomLabels(key, _ string) (map[string]string, error) {
 	query, args, err := s.statementBuilder.
 		Select(sqlCustomLabelsTableKeyColumn, sqlCustomLabelsTableValueColumn).
 		From(sqlCustomLabelsTableName).

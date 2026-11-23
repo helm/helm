@@ -46,7 +46,7 @@ func TestDefaultCapabilities(t *testing.T) {
 	assert.Equalf(t, "20", kv.Minor, "Expected default KubeVersion.Minor to be 20, got %q", kv.Minor)
 
 	hv := caps.HelmVersion
-	assert.Equalf(t, "v4.2", hv.Version, "Expected default HelmVersion to be v4.2, got %q", hv.Version)
+	assert.Equalf(t, "v4.3", hv.Version, "Expected default HelmVersion to be v4.3, got %q", hv.Version)
 }
 
 func TestParseKubeVersion(t *testing.T) {
