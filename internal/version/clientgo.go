@@ -20,10 +20,16 @@ import (
 	"errors"
 	"runtime/debug"
 	"slices"
-
-	_ "k8s.io/client-go/kubernetes" // Force k8s.io/client-go to be included in the build
 )
 
+// K8sIOClientGoModVersion reports the version of k8s.io/client-go this binary
+// was built against, read from the module build info.
+//
+// client-go is included in the build graph by whatever links a Kubernetes
+// client (for the helm CLI, that is cmd/helm). When a consumer links Helm's
+// chart libraries WITHOUT a client-go dependency, build info will not list it
+// and this returns an error; callers must tolerate that (see version.Get and
+// chart/common capabilities).
 func K8sIOClientGoModVersion() (string, error) {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
