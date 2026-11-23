@@ -604,3 +604,57 @@ func verifyBomStripped(t *testing.T, files []*common.File) {
 		assert.Falsef(t, bytes.HasPrefix(file.Data, utf8bom), "Byte Order Mark still present in processed file %s", file.Name)
 	}
 }
+
+func TestLoadFilesSubchartOrder(t *testing.T) {
+	packed, err := os.ReadFile("testdata/frobnitz-1.2.3.tgz")
+	require.NoError(t, err)
+	metadata := func(name, version string) []byte {
+		return []byte(fmt.Sprintf("apiVersion: v3\nname: %s\nversion: %s\n", name, version))
+	}
+	tests := []struct {
+		name  string
+		files []*archive.BufferedFile
+		want  []string
+	}{
+		{
+			name: "unpacked subcharts",
+			files: []*archive.BufferedFile{
+				{Name: "charts/zebra/Chart.yaml", Data: metadata("zebra", "1.0.0")},
+				{Name: "charts/alpha/Chart.yaml", Data: metadata("alpha", "1.0.0")},
+			},
+			want: []string{"alpha:1.0.0", "zebra:1.0.0"},
+		},
+		{
+			name: "mixed packed and unpacked subcharts",
+			files: []*archive.BufferedFile{
+				{Name: "charts/zebra/Chart.yaml", Data: metadata("zebra", "1.0.0")},
+				{Name: "charts/frobnitz-1.2.3.tgz", Data: packed},
+				{Name: "charts/alpha/Chart.yaml", Data: metadata("alpha", "1.0.0")},
+			},
+			want: []string{"alpha:1.0.0", "frobnitz:1.2.3", "zebra:1.0.0"},
+		},
+		{
+			name: "packed and unpacked copies of the same subchart",
+			files: []*archive.BufferedFile{
+				{Name: "charts/frobnitz-1.2.3.tgz", Data: packed},
+				{Name: "charts/frobnitz/Chart.yaml", Data: metadata("frobnitz", "9.0.0")},
+			},
+			want: []string{"frobnitz:9.0.0", "frobnitz:1.2.3"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := append([]*archive.BufferedFile{{Name: "Chart.yaml", Data: metadata("parent", "1.0.0")}}, tt.files...)
+			// Repeated loads must not let map iteration change dependency precedence.
+			for range 100 {
+				c, err := LoadFiles(files)
+				require.NoError(t, err)
+				var got []string
+				for _, dep := range c.Dependencies() {
+					got = append(got, dep.Name()+":"+dep.Metadata.Version)
+				}
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
