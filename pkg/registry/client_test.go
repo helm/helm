@@ -785,6 +785,87 @@ func TestNewClient_DisableCache(t *testing.T) {
 			}))
 			require.NoError(t, err)
 			require.Equal(t, tt.wantCache, authClient.Cache != nil)
+
+			// A client is built per operation, so the cache must be shared for
+			// tokens to be reused across operations.
+			other, err := c.builder.Build(properties.NewRegistryFromReference(properties.Reference{
+				Registry:   "cache.example.test",
+				Repository: "charts/other",
+			}))
+			require.NoError(t, err)
+			require.Equal(t, authClient.Cache, other.Cache)
+		})
+	}
+}
+
+// Verifies that LoginOptBasicAuth applies only to the login, so a reused
+// client does not send that credential to another registry.
+func TestLogin_BasicAuthDoesNotLeak(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+	host := strings.TrimPrefix(srv.URL, "http://")
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(filepath.Join(t.TempDir(), "config.json")),
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")))
+	require.Empty(t, c.username)
+	require.Empty(t, c.password)
+
+	props := properties.NewRegistryFromReference(properties.Reference{
+		Registry:   "other.example.test",
+		Repository: "charts/mychart",
+	})
+	c.applyOverrides(props)
+	require.Equal(t, credentials.EmptyCredential, props.Credential)
+}
+
+// Verifies that a login target carrying a tag or digest is rejected rather
+// than stored under the target with the tag removed.
+func TestLogin_RejectsTagAndDigest(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+	host := strings.TrimPrefix(srv.URL, "http://")
+
+	for _, target := range []string{
+		host + "/team:latest",
+		host + "/team@sha256:" + strings.Repeat("a", 64),
+	} {
+		t.Run(target, func(t *testing.T) {
+			t.Parallel()
+			credFile := filepath.Join(t.TempDir(), "config.json")
+			require.NoError(t, os.WriteFile(credFile, []byte(`{"auths":{"_sentinel_":{}}}`), 0o600))
+			c, err := NewClient(
+				ClientOptWriter(io.Discard),
+				ClientOptCredentialsFile(credFile),
+			)
+			require.NoError(t, err)
+
+			err = c.Login(target, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
+			require.ErrorContains(t, err, "must not include a tag or digest")
+
+			data, err := os.ReadFile(credFile)
+			require.NoError(t, err)
+			require.NotContains(t, string(data), host)
 		})
 	}
 }

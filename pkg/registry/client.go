@@ -221,11 +221,14 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	builder.UserAgent = version.GetUserAgent()
 	builder.Logger = logger
 	builder.PolicyEvaluator = client.containers.policyEvaluator
-	if !client.enableCache {
-		// A nil factory makes the builder allocate a cache, so return a nil
-		// cache instead, which auth.Client treats as no caching.
-		builder.CacheFactory = func(string) auth.Cache { return nil }
+	// The builder's default factory allocates a new cache for every client
+	// it builds, and a client is built per operation, so share one cache to
+	// reuse tokens across operations. A nil cache disables caching.
+	var cache auth.Cache
+	if client.enableCache {
+		cache = auth.NewCache()
 	}
+	builder.CacheFactory = func(string) auth.Cache { return cache }
 	client.builder = builder
 
 	// Build the legacy auth.Client used when a custom HTTP client or authorizer
@@ -374,9 +377,10 @@ func (c *Client) newRegistry(ref string) (*remote.Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The builder keeps only the registry name; restore the namespace so
-	// remote.Login stores a namespaced credential.
-	reg.Reference.Repository = props.Reference.Repository
+	// The builder keeps only the registry name; restore the full reference so
+	// remote.Login stores a namespaced credential and rejects a target that
+	// carries a tag or digest.
+	reg.Reference = props.Reference
 	return reg, nil
 }
 
@@ -585,15 +589,17 @@ type (
 	LoginOption func(*loginOperation)
 
 	loginOperation struct {
-		host   string
-		client *Client
-		err    error
+		host     string
+		client   *Client
+		username string
+		password string
+		err      error
 	}
 )
 
 // Login authenticates the client with a remote OCI registry using the provided host and options.
 func (c *Client) Login(host string, options ...LoginOption) error {
-	op := &loginOperation{host: host, client: c}
+	op := &loginOperation{host: host, client: c, username: c.username, password: c.password}
 	for _, option := range options {
 		option(op)
 	}
@@ -613,7 +619,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	// remote.Login stores the credential under "host/namespace" when a
 	// namespace is set, after validating the path and rejecting registries
 	// such as Docker Hub that cannot use path-scoped credentials.
-	cred := credentials.Credential{Username: c.username, Password: c.password}
+	cred := credentials.Credential{Username: op.username, Password: op.password}
 	if err := remote.Login(context.Background(), c.credentialsStore, reg, cred); err != nil {
 		return fmt.Errorf("authenticating to %q: %w", target, err)
 	}
@@ -631,10 +637,14 @@ func (o *loginOperation) fail(err error) {
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
+//
+// The credential applies to this login only. Once stored, later operations
+// read it from the credentials store, which scopes it to the registry and
+// namespace it was stored under.
 func LoginOptBasicAuth(username, password string) LoginOption {
 	return func(o *loginOperation) {
-		o.client.username = username
-		o.client.password = password
+		o.username = username
+		o.password = password
 	}
 }
 

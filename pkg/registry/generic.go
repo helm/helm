@@ -26,7 +26,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
-	"github.com/oras-project/oras-go/v3/content/memory"
+	"oras.land/oras-go/v2/content/memory"
 )
 
 // GenericClient provides low-level OCI operations without artifact-specific assumptions
@@ -49,6 +49,9 @@ type GenericPullOptions struct {
 type GenericPullResult struct {
 	Manifest    ocispec.Descriptor
 	Descriptors []ocispec.Descriptor
+	// MemoryStore is the oras-go v2 memory store, kept so this field and
+	// GetDescriptorData keep their existing types. It satisfies the oras-go
+	// v3 interfaces, so it is used with v3 directly.
 	MemoryStore *memory.Store
 	Ref         string
 }
