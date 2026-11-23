@@ -16,6 +16,11 @@ limitations under the License.
 package plugin
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,4 +82,43 @@ runtimeConfig:
 	require.NoError(t, err)
 	// The signature should contain the tarball hash
 	assert.Contains(t, sig, "sha256:"+expectedHash, "signature does not contain expected tarball hash: sha256:%s", expectedHash)
+}
+
+func TestCreatePluginTarballUsesSlashSeparatedNames(t *testing.T) {
+	tempDir := t.TempDir()
+	pluginDir := filepath.Join(tempDir, "test-plugin")
+	require.NoError(t, os.MkdirAll(filepath.Join(pluginDir, "bin"), 0o755))
+
+	pluginYAML := `apiVersion: v1
+name: test-plugin
+type: cli/v1
+runtime: subprocess
+version: 1.0.0
+runtimeConfig:
+  platformCommand:
+    - command: echo`
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "bin", "helper"), []byte("echo\n"), 0o755))
+
+	var buf bytes.Buffer
+	require.NoError(t, CreatePluginTarball(pluginDir, "test-plugin", &buf))
+
+	gzr, err := gzip.NewReader(&buf)
+	require.NoError(t, err)
+	t.Cleanup(func() { gzr.Close() })
+
+	tr := tar.NewReader(gzr)
+	var names []string
+	for {
+		header, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		require.NoError(t, err)
+		assert.Equalf(t, filepath.ToSlash(header.Name), header.Name, "tar member %q must use slash separators", header.Name)
+		names = append(names, header.Name)
+	}
+
+	assert.Contains(t, names, "test-plugin/plugin.yaml")
+	assert.Contains(t, names, "test-plugin/bin/helper")
 }
