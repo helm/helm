@@ -18,6 +18,7 @@ package repo
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -238,3 +239,88 @@ func TestResolveReferenceURL(t *testing.T) {
 		assert.Equalf(t, chartURL, tt.chartURL, "expected ResolveReferenceURL(%q, %q) to equal %q, got %q", tt.baseURL, tt.refURL, tt.chartURL, chartURL)
 	}
 }
+
+func TestDownloadIndexFile_RedirectURL(t *testing.T) {
+	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Empty(t, r.Header.Get("Authorization"))
+
+		yamlData := `
+apiVersion: v1
+entries:
+  newchart:
+    - name: newchart
+      version: 1.0.0
+      urls:
+        - charts/newchart-1.0.0.tgz
+`
+		w.Write([]byte(yamlData))
+	}))
+	defer targetServer.Close()
+
+	sourceServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		yamlData := fmt.Sprintf(`
+apiVersion: v1
+redirectURL: %s
+entries: {}
+`, targetServer.URL)
+		w.Write([]byte(yamlData))
+	}))
+	defer sourceServer.Close()
+
+	repo, err := NewChartRepository(&Entry{
+		Name:     "migrated-repo",
+		URL:      sourceServer.URL,
+		Username: "secret-user",
+		Password: "secret-password",
+	}, getter.All(&cli.EnvSettings{}))
+	require.NoError(t, err)
+	repo.CachePath = t.TempDir()
+
+	idxPath, err := repo.DownloadIndexFile()
+	require.NoError(t, err)
+
+	idx, err := LoadIndexFile(idxPath)
+	require.NoError(t, err)
+
+	require.Contains(t, idx.Entries, "newchart")
+	require.Len(t, idx.Entries["newchart"], 1)
+	assert.Equal(t, "1.0.0", idx.Entries["newchart"][0].Version)
+	expectedURL := targetServer.URL + "/charts/newchart-1.0.0.tgz"
+	assert.Equal(t, expectedURL, idx.Entries["newchart"][0].URLs[0])
+}
+
+func TestDownloadIndexFile_RedirectLoop(t *testing.T) {
+	var srv1, srv2 *httptest.Server
+	srv1 = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		yamlData := fmt.Sprintf(`
+apiVersion: v1
+redirectURL: %s
+entries: {}
+`, srv2.URL)
+		w.Write([]byte(yamlData))
+	}))
+	defer srv1.Close()
+
+	srv2 = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		yamlData := fmt.Sprintf(`
+apiVersion: v1
+redirectURL: %s
+entries: {}
+`, srv1.URL)
+		w.Write([]byte(yamlData))
+	}))
+	defer srv2.Close()
+
+	repo, err := NewChartRepository(&Entry{
+		Name: "looping-repo",
+		URL:  srv1.URL,
+	}, getter.All(&cli.EnvSettings{}))
+	require.NoError(t, err)
+	repo.CachePath = t.TempDir()
+
+	_, err = repo.DownloadIndexFile()
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrRepositoryMoved)
+	assert.Contains(t, err.Error(), "exceeded maximum redirect hops")
+}
+
