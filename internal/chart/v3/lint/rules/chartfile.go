@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
@@ -54,6 +55,7 @@ func Chartfile(linter *support.Linter) {
 	chartFileForTypeCheck, _ := loadChartFileForTypeCheck(chartPath)
 
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
+	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartNameFormat(chartFile))
 
 	// Chart metadata
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
@@ -108,6 +110,22 @@ func validateChartYamlFormat(chartFileError error) error {
 func validateChartYamlStrictFormat(chartFileError error) error {
 	if chartFileError != nil {
 		return fmt.Errorf("failed to strictly parse chart metadata file\n\t%w", chartFileError)
+	}
+	return nil
+}
+
+// chartNameFormat is the convention from the chart best practices: lower case
+// letters and numbers, with words separated by dashes.
+var chartNameFormat = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// validateChartNameFormat warns about names that do not follow the naming
+// convention. Empty and path-like names are already errors in validateChartName.
+func validateChartNameFormat(cf *chart.Metadata) error {
+	if cf.Name == "" || filepath.Base(cf.Name) != cf.Name {
+		return nil
+	}
+	if !chartNameFormat.MatchString(cf.Name) {
+		return fmt.Errorf("chart name %q should use only lower case letters and numbers, with words separated by dashes (%s)", cf.Name, chartNameFormat)
 	}
 	return nil
 }
