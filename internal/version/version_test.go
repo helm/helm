@@ -17,20 +17,23 @@ limitations under the License.
 package version
 
 import (
-	"strings"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	k8sbaseversion "k8s.io/component-base/version"
 )
 
-func TestK8sClientGoModVersion(t *testing.T) {
-	// Whether module info is embedded in a test binary depends on the Go
-	// release: builds before Go 1.27 omit it, so the lookup fails. Accept
-	// either outcome, but require that a successful lookup returns a version.
-	v, err := K8sIOClientGoModVersion()
-	if err != nil {
-		require.ErrorContains(t, err, "k8s.io/client-go not found in build info")
-		return
-	}
-	require.True(t, strings.HasPrefix(v, "v"), "expected a semver-like version, got %q", v)
+func TestKubeBinaryVersion(t *testing.T) {
+	assert.NotEmpty(t, k8sbaseversion.DefaultKubeBinaryVersion)
+	v, err := semver.NewVersion(k8sbaseversion.DefaultKubeBinaryVersion)
+	require.NoError(t, err)
+
+	assert.Equal(t, uint64(1), v.Major())
+	assert.Equal(t, "v"+k8sbaseversion.DefaultKubeBinaryVersion, kubeBinaryVersion())
+}
+
+func TestGetKubeClientVersionInTests(t *testing.T) {
+	assert.Equal(t, kubeClientGoVersionTesting, Get().KubeClientVersion)
 }
