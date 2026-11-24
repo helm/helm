@@ -163,7 +163,8 @@ func (m *Manager) Update() error {
 	// If no dependencies are found, we consider this a successful
 	// completion.
 	req := c.Metadata.Dependencies
-	if req == nil {
+	if len(req) == 0 {
+		fmt.Fprintln(m.Out, "No dependencies found")
 		return nil
 	}
 
