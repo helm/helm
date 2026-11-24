@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -139,4 +140,32 @@ func TestStatArchiveForStatus(t *testing.T) {
 		Version: "0.1.0",
 	}
 	is.Equal("ok", statArchiveForStatus(where, dep))
+}
+
+// TestPrintMissingBrokenSymlink ensures that a dangling symlink in a chart's
+// charts/ directory is reported as a warning and skipped, rather than causing
+// a nil-pointer dereference. os.Stat follows symlinks and returns a nil
+// FileInfo for a broken link, so the subsequent fi.IsDir() call used to panic.
+func TestPrintMissingBrokenSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks is not reliably permitted on Windows")
+	}
+
+	chartpath := t.TempDir()
+	chartsDir := filepath.Join(chartpath, "charts")
+	if err := os.MkdirAll(chartsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A symlink whose target does not exist. filepath.Glob returns it, but
+	// os.Stat (which follows the link) fails.
+	if err := os.Symlink(filepath.Join(chartpath, "does-not-exist"), filepath.Join(chartsDir, "broken")); err != nil {
+		t.Fatal(err)
+	}
+
+	buf := bytes.Buffer{}
+	d := NewDependency()
+	assert.NotPanics(t, func() {
+		d.printMissing(chartpath, &buf, []*chart.Dependency{})
+	})
+	assert.Contains(t, buf.String(), "Warning")
 }

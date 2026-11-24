@@ -216,6 +216,7 @@ func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart
 		fi, err := os.Stat(f)
 		if err != nil {
 			fmt.Fprintf(out, "Warning: %s\n", err)
+			continue
 		}
 		// Skip anything that is not a directory and not a tgz file.
 		if !fi.IsDir() && filepath.Ext(f) != ".tgz" {
