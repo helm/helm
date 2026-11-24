@@ -53,6 +53,12 @@ func ClientConfig(opts Options) (cfg *tls.Config, err error) {
 		}
 	}
 
-	cfg = &tls.Config{InsecureSkipVerify: opts.InsecureSkipVerify, Certificates: []tls.Certificate{*cert}, RootCAs: pool}
+	cfg = &tls.Config{
+		InsecureSkipVerify: opts.InsecureSkipVerify,
+		RootCAs:            pool,
+	}
+	if cert != nil {
+		cfg.Certificates = []tls.Certificate{*cert}
+	}
 	return cfg, nil
 }
