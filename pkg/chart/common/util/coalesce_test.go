@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"maps"
 	"testing"
 	"text/template"
@@ -617,8 +618,8 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 
 	t.Logf("vals: %v", vals)
 	assert.Contains(t, warnings, "warning: skipped value for level1.level2.level3.boat: Not a table.")
-	assert.Contains(t, warnings, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
-	assert.Contains(t, warnings, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
+	assert.Contains(t, warnings, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (bool)")
+	assert.Contains(t, warnings, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (destination bool, source map[string]interface {})")
 }
 
 func TestConcatPrefix(t *testing.T) {
@@ -824,4 +825,182 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 
 	_, ok = keyMapping["password"]
 	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
+}
+
+func captureLogOutput(t *testing.T, fn func()) string {
+	t.Helper()
+	var buf bytes.Buffer
+	origOut := log.Writer()
+	log.SetOutput(&buf)
+	t.Cleanup(func() {
+		log.SetOutput(origOut)
+	})
+	fn()
+	return buf.String()
+}
+
+func TestCoalesceTablesWarningsOmitValues(t *testing.T) {
+	const (
+		srcSecret    = "credential-canary-src"
+		dstSecret    = "credential-canary-dst"
+		scalarSecret = "credential-canary-scalar"
+	)
+
+	tests := []struct {
+		name           string
+		dst            map[string]any
+		src            map[string]any
+		merge          bool
+		expectContains []string
+		forbidContains []string
+	}{
+		{
+			name: "non-table bool dst overwritten by table with secret",
+			dst:  map[string]any{"auth": false},
+			src:  map[string]any{"auth": map[string]any{"password": srcSecret}},
+			expectContains: []string{
+				"auth",
+				"destination bool",
+				"source map[string]interface {}",
+			},
+			forbidContains: []string{srcSecret, "password"},
+		},
+		{
+			name: "non-table string dst with secret overwritten by table with secret",
+			dst:  map[string]any{"auth": dstSecret},
+			src:  map[string]any{"auth": map[string]any{"token": srcSecret}},
+			expectContains: []string{
+				"auth",
+				"destination string",
+				"source map[string]interface {}",
+			},
+			forbidContains: []string{dstSecret, srcSecret, "token"},
+		},
+		{
+			name: "table dst with secret ignoring scalar secret src in CoalesceTables",
+			dst:  map[string]any{"auth": map[string]any{"password": dstSecret}},
+			src:  map[string]any{"auth": scalarSecret},
+			expectContains: []string{
+				"auth",
+				"(string)",
+			},
+			forbidContains: []string{dstSecret, scalarSecret},
+		},
+		{
+			name:  "table dst with secret ignoring slice secret src in MergeTables",
+			dst:   map[string]any{"auth": map[string]any{"password": dstSecret}},
+			src:   map[string]any{"auth": []string{scalarSecret}},
+			merge: true,
+			expectContains: []string{
+				"auth",
+				"([]string)",
+			},
+			forbidContains: []string{dstSecret, scalarSecret},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := captureLogOutput(t, func() {
+				if tt.merge {
+					MergeTables(tt.dst, tt.src)
+				} else {
+					CoalesceTables(tt.dst, tt.src)
+				}
+			})
+
+			for _, want := range tt.expectContains {
+				assert.Contains(t, out, want)
+			}
+			for _, secret := range tt.forbidContains {
+				assert.NotContains(t, out, secret)
+			}
+		})
+	}
+}
+
+func TestCoalesceValuesDiagnosticsOmitValues(t *testing.T) {
+	const (
+		subchartSecret = "credential-canary-subchart"
+		defaultSecret  = "credential-canary-default"
+	)
+
+	t.Run("subchart type mismatch error omits value contents", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			val      any
+			merge    bool
+			wantType string
+			canary   string
+		}{
+			{
+				name:     "string value in CoalesceValues",
+				val:      subchartSecret,
+				wantType: "string",
+				canary:   subchartSecret,
+			},
+			{
+				name:     "slice value in CoalesceValues",
+				val:      []string{subchartSecret},
+				wantType: "[]string",
+				canary:   subchartSecret,
+			},
+			{
+				name:     "nil value in MergeValues",
+				val:      nil,
+				merge:    true,
+				wantType: "<nil>",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				parent := withDeps(&chart.Chart{
+					Metadata: &chart.Metadata{Name: "parent"},
+				}, &chart.Chart{
+					Metadata: &chart.Metadata{Name: "backend"},
+				})
+
+				vals := map[string]any{
+					"backend": tt.val,
+				}
+
+				var err error
+				if tt.merge {
+					_, err = MergeValues(parent, vals)
+				} else {
+					_, err = CoalesceValues(parent, vals)
+				}
+
+				require.Error(t, err)
+				require.ErrorContains(t, err, "backend")
+				require.ErrorContains(t, err, tt.wantType)
+				errMsg := err.Error()
+				assert.NotContains(t, errMsg, "%!t")
+				if tt.canary != "" {
+					assert.NotContains(t, errMsg, tt.canary)
+				}
+			})
+		}
+	})
+
+	t.Run("skipped non-table chart default omits value contents", func(t *testing.T) {
+		c := &chart.Chart{
+			Metadata: &chart.Metadata{Name: "app"},
+			Values: map[string]any{
+				"credentials": defaultSecret,
+			},
+		}
+		vals := map[string]any{
+			"credentials": map[string]any{"nested": true},
+		}
+
+		out := captureLogOutput(t, func() {
+			_, err := CoalesceValues(c, vals)
+			require.NoError(t, err)
+		})
+
+		assert.Contains(t, out, "app.credentials")
+		assert.NotContains(t, out, defaultSecret)
+	})
 }
