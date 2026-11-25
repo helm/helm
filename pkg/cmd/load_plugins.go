@@ -120,7 +120,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 					Stdout: out,
 					Stderr: os.Stderr,
 				}
-				_, err = plug.Invoke(context.Background(), input)
+				output, err := plug.Invoke(context.Background(), input)
 				execErr := &plugin.InvokeExecError{}
 				if errors.As(err, &execErr) {
 					return CommandError{
@@ -128,7 +128,18 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 						ExitCode: execErr.ExitCode,
 					}
 				}
-				return err
+				if err != nil {
+					return err
+				}
+				// A Wasm CLI plugin returns what it printed in its output message
+				// instead of writing to Helm's stdout; a subprocess plugin returns
+				// an empty buffer, so nothing is written for it here.
+				if cliOutput, ok := output.Message.(schema.OutputMessageCLIV1); ok && cliOutput.Data != nil && cliOutput.Data.Len() > 0 {
+					if _, writeErr := io.Copy(out, cliOutput.Data); writeErr != nil {
+						return fmt.Errorf("failed to write plugin output: %w", writeErr)
+					}
+				}
+				return nil
 			},
 			// This passes all the flags to the subcommand.
 			DisableFlagParsing: true,

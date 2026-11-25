@@ -85,6 +85,32 @@ func TestRuntimeExtismV1InvokePlugin(t *testing.T) {
 	assert.Equal(t, "Hello, Phippy! (6)", msg.Greeting)
 }
 
+// TestRuntimeExtismV1InvokeCLIPlugin guards against the
+// OutputMessageCLIV1.Data buffer being silently dropped when the extism/v1
+// runtime JSON-decodes the plugin's output message: a Wasm cli/v1 plugin's
+// output must reach Helm instead of an empty buffer.
+func TestRuntimeExtismV1InvokeCLIPlugin(t *testing.T) {
+	r := RuntimeExtismV1{}
+
+	pr := buildLoadExtismPlugin(t, "testdata/src/extismv1-cli-test")
+	require.Equal(t, "cli/v1", pr.Metadata.Type)
+
+	p, err := r.CreatePlugin(pr.Dir, &pr.Metadata)
+	require.NoError(t, err, "expected no error creating plugin")
+	assert.NotNil(t, p, "expected plugin to be created")
+
+	output, err := p.Invoke(t.Context(), &Input{
+		Message: schema.InputMessageCLIV1{
+			ExtraArgs: []string{"a", "b"},
+		},
+	})
+	require.NoError(t, err)
+
+	msg := output.Message.(schema.OutputMessageCLIV1)
+	require.NotNil(t, msg.Data)
+	assert.Equal(t, "cli plugin output: a b\n", msg.Data.String())
+}
+
 func TestBuildManifest(t *testing.T) {
 	rc := &RuntimeConfigExtismV1{
 		Memory: RuntimeConfigExtismV1Memory{
