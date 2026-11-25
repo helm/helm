@@ -257,9 +257,13 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 		return "", fmt.Errorf("failed to parse %s as URL: %w", baseURL, err)
 	}
 
-	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
-	parsedBaseURL.RawPath = strings.TrimSuffix(parsedBaseURL.RawPath, "/") + "/"
-	parsedBaseURL.Path = strings.TrimSuffix(parsedBaseURL.Path, "/") + "/"
+	// ResolveReference needs a trailing path separator, not an escaped slash.
+	if !strings.HasSuffix(parsedBaseURL.EscapedPath(), "/") {
+		parsedBaseURL.Path += "/"
+		if parsedBaseURL.RawPath != "" {
+			parsedBaseURL.RawPath += "/"
+		}
+	}
 
 	resolvedURL := parsedBaseURL.ResolveReference(parsedRefURL)
 	resolvedURL.RawQuery = parsedBaseURL.RawQuery
