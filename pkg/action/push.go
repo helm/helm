@@ -38,6 +38,7 @@ type Push struct {
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
 	out                   io.Writer
+	result                *registry.PushResult
 }
 
 // PushOpt is a type of function that sets options for a push action.
@@ -89,9 +90,18 @@ func NewPushWithOpts(opts ...PushOpt) *Push {
 	return p
 }
 
+// Result returns the result of the last successful Run. It is nil before Run
+// has been called, after a failed push, and for a remote that reports no
+// result.
+func (p *Push) Result() *registry.PushResult {
+	return p.result
+}
+
 // Run executes 'helm push' against the given chart archive.
 func (p *Push) Run(chartRef, remote string) (string, error) {
 	var out strings.Builder
+
+	p.result = nil
 
 	c := uploader.ChartUploader{
 		Out:     &out,
@@ -100,6 +110,9 @@ func (p *Push) Run(chartRef, remote string) (string, error) {
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
 			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSVerify),
 			pusher.WithPlainHTTP(p.plainHTTP),
+			pusher.WithPushResultHandler(func(result *registry.PushResult) {
+				p.result = result
+			}),
 		},
 	}
 

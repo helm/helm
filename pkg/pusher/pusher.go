@@ -34,6 +34,7 @@ type options struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
+	pushResultHandler     func(*registry.PushResult)
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -66,6 +67,14 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 func WithPlainHTTP(plainHTTP bool) Option {
 	return func(opts *options) {
 		opts.plainHTTP = plainHTTP
+	}
+}
+
+// WithPushResultHandler sets a function that is called with the result of a
+// successful push. A Pusher that does not produce a result does not call it.
+func WithPushResultHandler(handler func(*registry.PushResult)) Option {
+	return func(opts *options) {
+		opts.pushResultHandler = handler
 	}
 }
 
