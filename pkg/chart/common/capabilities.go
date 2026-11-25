@@ -28,6 +28,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sversion "k8s.io/apimachinery/pkg/util/version"
+	k8sbaseversion "k8s.io/component-base/version"
 
 	helmversion "helm.sh/helm/v4/internal/version"
 )
@@ -151,20 +152,18 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
-	vstr, err := helmversion.K8sIOClientGoModVersion()
+	return capabilitiesFromKubeBinaryVersion(k8sbaseversion.DefaultKubeBinaryVersion)
+}
+
+// capabilitiesFromKubeBinaryVersion builds capabilities whose Kubernetes
+// major/minor are derived from the given Kubernetes binary version (e.g. "1.36").
+func capabilitiesFromKubeBinaryVersion(binaryVersion string) (*Capabilities, error) {
+	v, err := semver.NewVersion(binaryVersion)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
+		return nil, fmt.Errorf("unable to parse k8s.io/component-base Kubernetes client version %q: %w", binaryVersion, err)
 	}
 
-	v, err := semver.NewVersion(vstr)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse k8s.io/client-go version %q: %w", vstr, err)
-	}
-
-	kubeVersionMajor := v.Major() + 1
-	kubeVersionMinor := v.Minor()
-
-	return newCapabilities(kubeVersionMajor, kubeVersionMinor)
+	return newCapabilities(v.Major(), v.Minor())
 }
 
 func newCapabilities(kubeVersionMajor, kubeVersionMinor uint64) (*Capabilities, error) {
