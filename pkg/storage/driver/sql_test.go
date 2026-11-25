@@ -287,15 +287,19 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 }
 
 func TestSqlUpdate(t *testing.T) {
-	vers := 1
-	name := "smug-pigeon"
-	namespace := "default"
-	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, common.StatusDeployed)
-
-	sqlDriver, mock := newTestFixtureSQL(t)
-	body, _ := encodeRelease(rel)
-
+	execErr := errors.New("database unavailable")
+	rowsErr := errors.New("rows affected unavailable")
+	tests := []struct {
+		name    string
+		result  driver.Result
+		execErr error
+		wantErr error
+	}{
+		{"updated", sqlmock.NewResult(0, 1), nil, nil},
+		{"missing", sqlmock.NewResult(0, 0), nil, ErrReleaseNotFound},
+		{"execution error", nil, execErr, execErr},
+		{"rows affected error", sqlmock.NewErrorResult(rowsErr), nil, rowsErr},
+	}
 	query := fmt.Sprintf(
 		"UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4, %s = $5, %s = $6 WHERE %s = $7 AND %s = $8",
 		sqlReleaseTableName,
@@ -309,13 +313,35 @@ func TestSqlUpdate(t *testing.T) {
 		sqlReleaseTableNamespaceColumn,
 	)
 
-	mock.
-		ExpectExec(regexp.QuoteMeta(query)).
-		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			name := "smug-pigeon"
+			namespace := "default"
+			key := testKey(name, 1)
+			rel := releaseStub(name, 1, namespace, common.StatusDeployed)
+			sqlDriver, mock := newTestFixtureSQL(t)
+			body, err := encodeRelease(rel)
+			require.NoError(t, err)
 
-	require.NoErrorf(t, sqlDriver.Update(key, rel), "failed to update release with key %s", key)
-	assert.NoErrorf(t, mock.ExpectationsWereMet(), "sql expectations weren't met")
+			expectation := mock.ExpectExec(regexp.QuoteMeta(query)).WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace)
+			if tt.execErr != nil {
+				expectation.WillReturnError(tt.execErr)
+			} else {
+				expectation.WillReturnResult(tt.result)
+			}
+
+			err = sqlDriver.Update(key, rel)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				if !errors.Is(tt.wantErr, ErrReleaseNotFound) {
+					require.NotErrorIs(t, err, ErrReleaseNotFound)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
 }
 
 func TestSqlQuery(t *testing.T) {
