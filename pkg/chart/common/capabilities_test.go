@@ -42,18 +42,14 @@ func TestDefaultVersionSet(t *testing.T) {
 func TestDefaultCapabilities(t *testing.T) {
 	caps := DefaultCapabilities
 	kv := caps.KubeVersion
-	assert.Equalf(t, "v1.20.0", kv.String(), "Expected default KubeVersion.String() to be v1.20.0, got %q", kv.String())
-	assert.Equalf(t, "v1.20.0", kv.Version, "Expected default KubeVersion.Version to be v1.20.0, got %q", kv.Version)
-	assert.Equalf(t, "v1.20.0", kv.GitVersion(), "Expected default KubeVersion.GitVersion() to be v1.20.0, got %q", kv.Version)
-	assert.Equalf(t, "1", kv.Major, "Expected default KubeVersion.Major to be 1, got %q", kv.Major)
-	assert.Equalf(t, "20", kv.Minor, "Expected default KubeVersion.Minor to be 20, got %q", kv.Minor)
+	assert.Equal(t, "v"+k8sbaseversion.DefaultKubeBinaryVersion+".0", kv.String())
 
 	hv := caps.HelmVersion
 	assert.Equalf(t, "v4.3", hv.Version, "Expected default HelmVersion to be v4.3, got %q", hv.Version)
 }
 
 // TestDefaultCapabilitiesFromKubeBinaryVersion exercises the production
-// version-derived calculation, which makeDefaultCapabilities skips under test.
+// version-derived calculation.
 func TestDefaultCapabilitiesFromKubeBinaryVersion(t *testing.T) {
 	expected := k8sversion.MustParseGeneric(k8sbaseversion.DefaultKubeBinaryVersion)
 	wantMajor := strconv.FormatUint(uint64(expected.Major()), 10)

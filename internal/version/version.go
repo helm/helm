@@ -17,10 +17,8 @@ limitations under the License.
 package version
 
 import (
-	"flag"
 	"runtime"
 	"strings"
-	"testing"
 
 	k8sbaseversion "k8s.io/component-base/version"
 )
@@ -40,10 +38,6 @@ var (
 	gitCommit = ""
 	// gitTreeState is the state of the git tree
 	gitTreeState = ""
-)
-
-const (
-	kubeClientGoVersionTesting = "v1.20"
 )
 
 // BuildInfo describes the compile time information.
@@ -73,15 +67,14 @@ func GetUserAgent() string {
 	return "Helm/" + strings.TrimPrefix(GetVersion(), "v")
 }
 
-// kubeClientVersion returns the Kubernetes version Helm was built against.
-func kubeClientVersion() string {
-	// Test builds return a stable default value for consistent test output
-	if testing.Testing() {
-		return kubeClientGoVersionTesting
-	}
-
-	return kubeBinaryVersion()
-}
+var (
+	// KubeClientVersion returns the Kubernetes version Helm was built against.
+	// Tests may override it for stable output.
+	KubeClientVersion = kubeBinaryVersion
+	// GoVersion returns the Go version Helm was built with.
+	// Tests may override it for stable output.
+	GoVersion = runtime.Version
+)
 
 // kubeBinaryVersion returns the k8s.io/component-base default binary version, prefixed with "v".
 func kubeBinaryVersion() string {
@@ -90,17 +83,11 @@ func kubeBinaryVersion() string {
 
 // Get returns build info
 func Get() BuildInfo {
-	v := BuildInfo{
+	return BuildInfo{
 		Version:           GetVersion(),
 		GitCommit:         gitCommit,
 		GitTreeState:      gitTreeState,
-		GoVersion:         runtime.Version(),
-		KubeClientVersion: kubeClientVersion(),
+		GoVersion:         GoVersion(),
+		KubeClientVersion: KubeClientVersion(),
 	}
-
-	// HACK(bacongobbler): strip out GoVersion during a test run for consistent test output
-	if flag.Lookup("test.v") != nil {
-		v.GoVersion = ""
-	}
-	return v
 }
