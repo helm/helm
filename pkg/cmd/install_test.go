@@ -17,14 +17,19 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
@@ -322,4 +327,57 @@ func TestInstallFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "install --generate-name", true)
 	checkFileCompletion(t, "install myname", true)
 	checkFileCompletion(t, "install myname mychart", false)
+}
+
+func TestPrintWaitMessage(t *testing.T) {
+	const message = "Waiting for resources to become ready (timeout: 42s)\n"
+	tests := []struct {
+		name              string
+		format            output.Format
+		strategy          kube.WaitStrategy
+		rollbackOnFailure bool
+		dryRun            action.DryRunStrategy
+		want              string
+	}{
+		{name: "explicit watcher wait", format: output.Table, strategy: kube.StatusWatcherStrategy, dryRun: action.DryRunNone, want: message},
+		{name: "implicit watcher wait", format: output.Table, strategy: kube.HookOnlyStrategy, rollbackOnFailure: true, dryRun: action.DryRunNone, want: message},
+		{name: "hook-only wait", format: output.Table, strategy: kube.HookOnlyStrategy, dryRun: action.DryRunNone},
+		{name: "structured output", format: output.JSON, strategy: kube.StatusWatcherStrategy, dryRun: action.DryRunNone},
+		{name: "client dry run", format: output.Table, strategy: kube.StatusWatcherStrategy, dryRun: action.DryRunClient},
+		{name: "server dry run", format: output.Table, strategy: kube.StatusWatcherStrategy, dryRun: action.DryRunServer},
+		{name: "implicit wait client dry run", format: output.Table, strategy: kube.HookOnlyStrategy, rollbackOnFailure: true, dryRun: action.DryRunClient},
+		{name: "implicit wait server dry run", format: output.Table, strategy: kube.HookOnlyStrategy, rollbackOnFailure: true, dryRun: action.DryRunServer},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out bytes.Buffer
+			printWaitMessage(&out, tt.format, tt.strategy, tt.rollbackOnFailure, tt.dryRun, 42*time.Second)
+			require.Equal(t, tt.want, out.String())
+		})
+	}
+}
+
+func TestInstallImplicitWaitProgress(t *testing.T) {
+	for _, flag := range []string{"--rollback-on-failure", "--atomic"} {
+		t.Run(flag, func(t *testing.T) {
+			defer resetEnv()()
+
+			_, out, err := executeActionCommand("install implicit-wait testdata/testcharts/empty " + flag)
+			require.NoError(t, err)
+			require.Contains(t, out, "Waiting for resources to become ready (timeout: 5m0s)\n")
+		})
+	}
+}
+
+func TestInstallDryRunSuppressesWaitProgress(t *testing.T) {
+	for _, dryRun := range []string{"client", "server"} {
+		t.Run(dryRun, func(t *testing.T) {
+			defer resetEnv()()
+
+			_, out, err := executeActionCommand("install dry-run-wait testdata/testcharts/empty --rollback-on-failure --dry-run=" + dryRun)
+			require.NoError(t, err)
+			require.NotContains(t, out, "Waiting for resources to become ready")
+		})
+	}
 }
