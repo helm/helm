@@ -34,6 +34,8 @@ func TestKubeBinaryVersion(t *testing.T) {
 	assert.Equal(t, "v"+k8sbaseversion.DefaultKubeBinaryVersion, kubeBinaryVersion())
 }
 
-func TestGetKubeClientVersionInTests(t *testing.T) {
-	assert.Equal(t, kubeClientGoVersionTesting, Get().KubeClientVersion)
+func TestGet(t *testing.T) {
+	v := Get()
+	assert.Equal(t, kubeBinaryVersion(), v.KubeClientVersion)
+	assert.NotEmpty(t, v.GoVersion)
 }
