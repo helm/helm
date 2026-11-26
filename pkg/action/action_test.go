@@ -511,6 +511,70 @@ data:
 `,
 		},
 		{
+			name: "kind List with anchor shared across items",
+			files: map[string]string{
+				"templates/list.yaml": `
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: cm-a
+  data: &shared
+    key: value
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: cm-b
+  data: *shared`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-a
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/list.yaml'
+data:
+  key: value
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-b
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/list.yaml'
+data:
+  key: value
+`,
+		},
+		{
+			name: "anchor and alias within a single manifest",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm
+data:
+  defaults: &d
+    a: "1"
+  prod: *d`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  defaults:
+    a: "1"
+  prod:
+    a: "1"
+`,
+		},
+		{
 			name: "partials and empty files are removed",
 			files: map[string]string{
 				"templates/cm.yaml": `
