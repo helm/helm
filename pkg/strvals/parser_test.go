@@ -642,6 +642,18 @@ func TestParseJSON(t *testing.T) {
 	}
 }
 
+func TestParseJSONMissingSeparator(t *testing.T) {
+	for _, input := range []string{
+		`first=1second=2`,
+		`first[0]=1second=2`,
+	} {
+		t.Run(input, func(t *testing.T) {
+			err := ParseJSON(input, map[string]any{})
+			require.ErrorContains(t, err, "expected a comma after JSON value")
+		})
+	}
+}
+
 func TestParseFile(t *testing.T) {
 	input := "name1=path1"
 	expect := map[string]any{
