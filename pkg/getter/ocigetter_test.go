@@ -16,8 +16,11 @@ limitations under the License.
 package getter
 
 import (
+	"crypto/x509"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -81,7 +84,7 @@ func TestOCIGetter(t *testing.T) {
 func TestOCIHTTPTransportReuse(t *testing.T) {
 	g := OCIGetter{}
 
-	_, err := g.newRegistryClient()
+	_, err := g.newRegistryClient(g.opts)
 
 	require.NoError(t, err)
 
@@ -89,7 +92,7 @@ func TestOCIHTTPTransportReuse(t *testing.T) {
 
 	transport1 := g.transport
 
-	_, err = g.newRegistryClient()
+	_, err = g.newRegistryClient(g.opts)
 
 	require.NoError(t, err)
 
@@ -98,4 +101,73 @@ func TestOCIHTTPTransportReuse(t *testing.T) {
 	transport2 := g.transport
 
 	require.Equal(t, transport2, transport1, "Expected default transport to be reused")
+}
+
+func TestOCIGetterPerCallOptionsDoNotMutateState(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	baseURL := "oci://" + srv.Listener.Addr().String()
+	ref := baseURL + "/ns/chart:0.1.0"
+
+	g, err := NewOCIGetter(WithURL(baseURL))
+	require.NoError(t, err)
+
+	og, ok := g.(*OCIGetter)
+	require.True(t, ok)
+
+	// Initialize the shared default transport; connecting to the self-signed
+	// test server without InsecureSkipVerify must fail TLS verification.
+	_, err = og.Get(ref)
+	var unknownAuthErr x509.UnknownAuthorityError
+	require.ErrorAs(t, err, &unknownAuthErr)
+	defaultTransport := og.transport
+	require.NotNil(t, defaultTransport)
+
+	// A single call with per-call overrides must not mutate receiver options
+	// or the shared default transport's TLS configuration.
+	_, err = og.Get(
+		baseURL+"/ns/chart",
+		WithInsecureSkipVerifyTLS(true),
+		WithTagName("1.2.3"),
+		WithTimeout(9*time.Second),
+	)
+	require.Error(t, err)
+
+	assert.False(t, og.opts.insecureSkipVerifyTLS)
+	assert.Empty(t, og.opts.version)
+	assert.Zero(t, og.opts.timeout)
+	assert.False(t, defaultTransport.TLSClientConfig.InsecureSkipVerify)
+
+	// Subsequent calls without WithInsecureSkipVerifyTLS(true) must still
+	// verify TLS certificates rather than inheriting the earlier override.
+	_, err = og.Get(ref)
+	require.ErrorAs(t, err, &unknownAuthErr)
+}
+
+func TestOCIGetterConcurrentGet(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	baseURL := "oci://" + srv.Listener.Addr().String()
+	ref := baseURL + "/ns/chart"
+
+	g, err := NewOCIGetter(WithURL(baseURL))
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Go(func() {
+			if i%2 == 0 {
+				_, _ = g.Get(ref+":0.1.0", WithInsecureSkipVerifyTLS(true), WithTimeout(2*time.Second))
+				return
+			}
+			_, _ = g.Get(ref, WithTagName("0.1.0"))
+		})
+	}
+	wg.Wait()
 }
