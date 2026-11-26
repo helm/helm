@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -373,6 +374,218 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
 	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
 	assert.NoError(t, statusWaiter.WaitForDelete(resourceList, timeout))
+}
+
+// missedDeleteWaiter returns a statusWaiter whose watch delivers no events, so
+// any deletion is missed, and a channel closed once the watch has started.
+func missedDeleteWaiter(t *testing.T, pollInterval time.Duration) (*statusWaiter, *dynamicfake.FakeDynamicClient, meta.RESTMapper, <-chan struct{}) {
+	t.Helper()
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	// The watch starts after the initial list, so signal when it has started
+	// before deleting anything.
+	watchStarted := make(chan struct{})
+	var once sync.Once
+	fakeClient.PrependWatchReactor("pods", func(_ clienttesting.Action) (bool, watch.Interface, error) {
+		once.Do(func() { close(watchStarted) })
+		return true, watch.NewFake(), nil
+	})
+	sw := &statusWaiter{
+		restMapper:         fakeMapper,
+		client:             fakeClient,
+		deletePollInterval: pollInterval,
+	}
+	sw.SetLogger(slog.Default().Handler())
+	return sw, fakeClient, fakeMapper, watchStarted
+}
+
+func TestWaitForDeleteWithMissedWatchEvent(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		pollInterval time.Duration
+		timeout      time.Duration
+		maxElapsed   time.Duration
+	}{
+		{
+			// A live GET while waiting sees the deletion and ends the wait
+			// early, instead of holding it until the timeout.
+			name:         "polling confirms the deletion before the timeout",
+			pollInterval: 50 * time.Millisecond,
+			timeout:      10 * time.Second,
+			maxElapsed:   5 * time.Second,
+		},
+		{
+			// With no poll before the timeout, the check after it still
+			// confirms the deletion.
+			name:         "the check after the timeout confirms the deletion",
+			pollInterval: time.Hour,
+			timeout:      500 * time.Millisecond,
+			maxElapsed:   5 * time.Second,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			sw, fakeClient, fakeMapper, watchStarted := missedDeleteWaiter(t, tt.pollInterval)
+			objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+			gvrs := make([]schema.GroupVersionResource, 0, len(objs))
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+				gvrs = append(gvrs, gvr)
+			}
+			// The watcher misses this deletion because its events are suppressed.
+			deleteErrs := make(chan error, 1)
+			go func() {
+				<-watchStarted
+				var errs []error
+				for i, obj := range objs {
+					u := obj.(*unstructured.Unstructured)
+					errs = append(errs, fakeClient.Tracker().Delete(gvrs[i], u.GetNamespace(), u.GetName()))
+				}
+				deleteErrs <- errors.Join(errs...)
+			}()
+			start := time.Now()
+			err := sw.WaitForDelete(getResourceListFromRuntimeObjs(t, c, objs), tt.timeout)
+			require.NoError(t, <-deleteErrs)
+			assert.NoError(t, err)
+			assert.Less(t, time.Since(start), tt.maxElapsed)
+		})
+	}
+}
+
+func TestWaitForDeleteWithMissedWatchEventAndUnknownResource(t *testing.T) {
+	t.Parallel()
+	// One resource was never there (the watcher reports it Unknown) and one is
+	// deleted without the watcher seeing it. Both are gone, so the wait succeeds,
+	// whether a poll or the check after the timeout confirms it.
+	for _, pollInterval := range []time.Duration{50 * time.Millisecond, time.Hour} {
+		t.Run(pollInterval.String(), func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			sw, fakeClient, fakeMapper, watchStarted := missedDeleteWaiter(t, pollInterval)
+			objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest, podNoStatusManifest})
+			deleted := objs[0].(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, deleted)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, deleted, deleted.GetNamespace()))
+			deleteErr := make(chan error, 1)
+			go func() {
+				<-watchStarted
+				deleteErr <- fakeClient.Tracker().Delete(gvr, deleted.GetNamespace(), deleted.GetName())
+			}()
+			err := sw.WaitForDelete(getResourceListFromRuntimeObjs(t, c, objs), 500*time.Millisecond)
+			require.NoError(t, <-deleteErr)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestWaitForDeleteWithMissedWatchEventGetError(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	fakeClient.PrependWatchReactor("pods", func(_ clienttesting.Action) (bool, watch.Interface, error) {
+		return true, watch.NewFake(), nil
+	})
+	// The live GET cannot verify the deletion, so the resource must not be
+	// reported as simply still existing, nor as deleted.
+	fakeClient.PrependReactor("get", "pods", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewForbidden(schema.GroupResource{Resource: "pods"}, "current-pod", errors.New("get not allowed"))
+	})
+	sw := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	sw.SetLogger(slog.Default().Handler())
+	objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+		require.NoError(t, err)
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+	err := sw.WaitForDelete(resourceList, 500*time.Millisecond)
+	require.Error(t, err)
+	assert.True(t, apierrors.IsForbidden(err), "expected the GET error to be wrapped, got: %v", err)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Contains(t, err.Error(), "resource Pod/ns/current-pod may still exist. status: Current")
+	assert.Contains(t, err.Error(), "unable to verify deletion")
+}
+
+func TestIsResourceGone(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		getErr    error
+		exists    bool
+		expected  bool
+		expectErr func(error) bool
+	}{
+		{
+			name:     "not found",
+			expected: true,
+		},
+		{
+			name:   "still exists",
+			exists: true,
+		},
+		{
+			name:      "forbidden",
+			getErr:    apierrors.NewForbidden(schema.GroupResource{Resource: "pods"}, "current-pod", errors.New("get not allowed")),
+			expectErr: apierrors.IsForbidden,
+		},
+		{
+			name:      "timeout",
+			getErr:    context.DeadlineExceeded,
+			expectErr: func(err error) bool { return errors.Is(err, context.DeadlineExceeded) },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+			)
+			if tt.getErr != nil {
+				fakeClient.PrependReactor("get", "pods", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+					return true, nil, tt.getErr
+				})
+			}
+			sw := statusWaiter{
+				restMapper: fakeMapper,
+				client:     fakeClient,
+			}
+			sw.SetLogger(slog.Default().Handler())
+			if tt.exists {
+				u := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+				err := fakeClient.Tracker().Create(getGVR(t, fakeMapper, u), u, u.GetNamespace())
+				require.NoError(t, err)
+			}
+			id := object.ObjMetadata{
+				GroupKind: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				Namespace: "ns",
+				Name:      "current-pod",
+			}
+			gone, err := sw.isResourceGone(t.Context(), id)
+			if tt.expectErr != nil {
+				require.Error(t, err)
+				assert.True(t, tt.expectErr(err), "unexpected error: %v", err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.expected, gone)
+		})
+	}
 }
 
 func TestStatusWait(t *testing.T) {
