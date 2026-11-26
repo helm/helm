@@ -55,10 +55,11 @@ type Capabilities struct {
 	HelmVersion helmversion.BuildInfo
 }
 
+// Copy returns an independent copy of the capabilities.
 func (capabilities *Capabilities) Copy() *Capabilities {
 	return &Capabilities{
 		KubeVersion: capabilities.KubeVersion,
-		APIVersions: capabilities.APIVersions,
+		APIVersions: slices.Clone(capabilities.APIVersions),
 		HelmVersion: capabilities.HelmVersion,
 	}
 }
