@@ -92,7 +92,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&o.regexp, "regexp", "r", false, "use regular expressions for searching repositories you have added")
 	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line, for repositories you have added")
-	f.BoolVar(&o.devel, "devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
+	f.BoolVar(&o.devel, "devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>=0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	f.BoolVar(&o.failOnNoResult, "fail-on-no-result", false, "search fails if no results are found")
@@ -138,11 +138,11 @@ func (o *searchRepoOptions) setupSearchedVersion() {
 	}
 
 	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
-		slog.Debug("setting version to >0.0.0-0")
-		o.version = ">0.0.0-0"
+		slog.Debug("setting version to >=0.0.0-0")
+		o.version = ">=0.0.0-0"
 	} else { // search only for stable releases, prerelease versions will be skipped
-		slog.Debug("setting version to >0.0.0")
-		o.version = ">0.0.0"
+		slog.Debug("setting version to >=0.0.0")
+		o.version = ">=0.0.0"
 	}
 }
 
