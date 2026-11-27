@@ -67,6 +67,8 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartIconURL(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartType(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartDependencies(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartKubeVersion(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartDependencyVersions(chartFile))
 	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartVersionStrictSemVerV2(chartFile))
 }
 
@@ -217,6 +219,28 @@ func validateChartDependencies(cf *chart.Metadata) error {
 func validateChartType(cf *chart.Metadata) error {
 	if cf.Type != "" && cf.APIVersion != chart.APIVersionV2 {
 		return fmt.Errorf("chart type is not valid in apiVersion '%s'. It is valid in apiVersion '%s'", cf.APIVersion, chart.APIVersionV2)
+	}
+	return nil
+}
+
+func validateChartKubeVersion(cf *chart.Metadata) error {
+	if cf.KubeVersion == "" {
+		return nil
+	}
+	if _, err := semver.NewConstraint(cf.KubeVersion); err != nil {
+		return fmt.Errorf("kubeVersion %q is not a valid version constraint", cf.KubeVersion)
+	}
+	return nil
+}
+
+func validateChartDependencyVersions(cf *chart.Metadata) error {
+	for _, dep := range cf.Dependencies {
+		if dep == nil || dep.Version == "" {
+			continue
+		}
+		if _, err := semver.NewConstraint(dep.Version); err != nil {
+			return fmt.Errorf("dependency %q has version %q, which is not a valid version constraint", dep.Name, dep.Version)
+		}
 	}
 	return nil
 }

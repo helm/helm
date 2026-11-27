@@ -20,6 +20,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -218,4 +219,63 @@ func TestChartfile(t *testing.T) {
 		require.ErrorContains(t, msgs[2].Err, "appVersion should be of type string", "Unexpected message 2: %s", msgs[2].Err)
 		assert.ErrorContains(t, msgs[3].Err, "version '7.2445e+06' is not a valid SemVerV2", "Unexpected message 3: %s", msgs[3].Err)
 	})
+}
+
+func TestValidateChartKubeVersion(t *testing.T) {
+	for _, valid := range []string{"", "*", ">=1.20.0-0", ">= 1.21 < 1.30", "^1.2.3 || ~2.0", "1.x"} {
+		assert.NoError(t, validateChartKubeVersion(&chart.Metadata{KubeVersion: valid}), "kubeVersion %q should be accepted", valid)
+	}
+
+	for _, invalid := range []string{">=1.20 <<", "latest", "1.2.3.4.5", ">=", "v1.x.y.z"} {
+		assert.ErrorContains(t, validateChartKubeVersion(&chart.Metadata{KubeVersion: invalid}), "is not a valid version constraint", "kubeVersion %q should be rejected", invalid)
+	}
+}
+
+func TestValidateChartDependencyVersions(t *testing.T) {
+	ok := &chart.Metadata{Dependencies: []*chart.Dependency{
+		{Name: "pinned", Version: "1.2.3"},
+		{Name: "ranged", Version: "^1.2.0 || >=3.0.0-0"},
+		{Name: "wildcard", Version: "5.x.x"},
+		{Name: "unversioned"},
+		nil,
+	}}
+	assert.NoError(t, validateChartDependencyVersions(ok))
+
+	bad := &chart.Metadata{Dependencies: []*chart.Dependency{
+		{Name: "pinned", Version: "1.2.3"},
+		{Name: "broken", Version: "not a version"},
+	}}
+	err := validateChartDependencyVersions(bad)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `dependency "broken" has version "not a version"`)
+}
+
+func TestChartfileVersionConstraints(t *testing.T) {
+	dir := t.TempDir()
+	chartYAML := `apiVersion: %APIVERSION%
+name: constraints
+version: 0.1.0
+icon: https://example.com/icon.png
+kubeVersion: ">=1.20 <<"
+dependencies:
+  - name: web
+    version: "5.x.x"
+    repository: https://charts.example.com
+  - name: db
+    version: "oops"
+    repository: https://charts.example.com
+`
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Chart.yaml"), []byte(strings.ReplaceAll(chartYAML, "%APIVERSION%", chart.APIVersionV2)), 0o644))
+
+	linter := support.Linter{ChartDir: dir}
+	Chartfile(&linter)
+
+	var msgs []string
+	for _, m := range linter.Messages {
+		assert.Equal(t, support.ErrorSev, m.Severity)
+		msgs = append(msgs, m.Err.Error())
+	}
+	require.Len(t, msgs, 2, "unexpected messages: %v", msgs)
+	assert.Contains(t, msgs[0], `kubeVersion ">=1.20 <<" is not a valid version constraint`)
+	assert.Contains(t, msgs[1], `dependency "db" has version "oops"`)
 }
