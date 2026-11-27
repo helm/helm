@@ -44,6 +44,15 @@ import (
 
 var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
 
+func init() {
+	// Pin the default Kubernetes version for stable test output across k8s.io/component-base bumps
+	kv, err := common.ParseKubeVersion("v1.20.0")
+	if err != nil {
+		panic(err)
+	}
+	common.DefaultCapabilities.KubeVersion = *kv
+}
+
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 	return actionConfigFixtureWithDummyResources(t, nil)

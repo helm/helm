@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test"
+	"helm.sh/helm/v4/internal/version"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/cli"
@@ -45,6 +46,15 @@ func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
 
 func init() {
 	action.Timestamper = testTimestamper
+
+	// Pin versions so golden files don't change on Go or k8s.io/component-base bumps
+	version.KubeClientVersion = func() string { return "v1.20" }
+	version.GoVersion = func() string { return "go1.27.0" }
+	kv, err := common.ParseKubeVersion("v1.20.0")
+	if err != nil {
+		panic(err)
+	}
+	common.DefaultCapabilities.KubeVersion = *kv
 }
 
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
