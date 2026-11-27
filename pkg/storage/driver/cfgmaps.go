@@ -224,6 +224,9 @@ func (cfgmaps *ConfigMaps) Update(key string, rel release.Releaser) error {
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return ErrReleaseNotFound
+		}
 		cfgmaps.Logger().Debug("failed to update release", slog.Any("error", err))
 		return err
 	}

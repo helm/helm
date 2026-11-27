@@ -212,6 +212,9 @@ func (secrets *Secrets) Update(key string, rel release.Releaser) error {
 	// push the secret object out into the kubiverse
 	_, err = secrets.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return ErrReleaseNotFound
+		}
 		return fmt.Errorf("update: failed to update: %w", err)
 	}
 	return nil

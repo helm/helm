@@ -623,9 +623,13 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 		return err
 	}
 
-	if _, err := s.db.Exec(query, args...); err != nil {
+	res, err := s.db.Exec(query, args...)
+	if err != nil {
 		s.Logger().Debug("failed to update release in SQL database", slog.String("key", key), slog.Any("error", err))
 		return err
+	}
+	if rows, err := res.RowsAffected(); err == nil && rows == 0 {
+		return ErrReleaseNotFound
 	}
 
 	return nil
