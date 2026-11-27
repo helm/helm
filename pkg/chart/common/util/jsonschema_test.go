@@ -140,7 +140,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		"subchart": map[string]any{},
 	}
 
-	expectedErrString := `subchart:
+	expectedErrString := `chrt/charts/subchart:
 - at '': missing property 'age'
 `
 	assert.EqualError(t, ValidateAgainstSchema(chrt, vals), expectedErrString)
@@ -193,7 +193,7 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 		},
 	}
 
-	expectedErrString := `subchart:
+	expectedErrString := `chrt/charts/subchart:
 - at '/data': no items match contains schema
   - at '/data/0': got number, want string
 `
@@ -316,4 +316,40 @@ func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
 
 	// We expect a non-nil error (invalid type), but crucially no panic.
 	require.Error(t, ValidateAgainstSchema(chrt, vals), "expected an error when subchart values have invalid type, got nil")
+}
+
+func TestValidateAgainstSchema_NestedSubchartErrorNamesFullPath(t *testing.T) {
+	leaf := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "leaf"},
+		Schema:   []byte(subchartSchema),
+	}
+	mid := &chart.Chart{Metadata: &chart.Metadata{Name: "mid"}}
+	mid.AddDependency(leaf)
+	top := &chart.Chart{Metadata: &chart.Metadata{Name: "top"}}
+	top.AddDependency(mid)
+
+	vals := map[string]any{"mid": map[string]any{"leaf": map[string]any{}}}
+
+	expectedErrString := `top/charts/mid/charts/leaf:
+- at '': missing property 'age'
+`
+	assert.EqualError(t, ValidateAgainstSchema(top, vals), expectedErrString)
+}
+
+func TestValidateAgainstSchema_InvalidNestedSubchartValuesTypeNamesFullPath(t *testing.T) {
+	leaf := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "leaf"},
+		Schema:   []byte(subchartSchema),
+	}
+	mid := &chart.Chart{Metadata: &chart.Metadata{Name: "mid"}}
+	mid.AddDependency(leaf)
+	top := &chart.Chart{Metadata: &chart.Metadata{Name: "top"}}
+	top.AddDependency(mid)
+
+	vals := map[string]any{"mid": map[string]any{"leaf": "oops"}}
+
+	expectedErrString := `top/charts/mid/charts/leaf:
+invalid type for values: expected object (map), got string
+`
+	assert.EqualError(t, ValidateAgainstSchema(top, vals), expectedErrString)
 }

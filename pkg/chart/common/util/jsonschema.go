@@ -81,14 +81,14 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 	}
 	var sb strings.Builder
 	if chrt.Schema() != nil {
-		slog.Debug("chart name", "chart-name", chrt.Name())
+		slog.Debug("chart name", "chart-name", chrt.ChartFullPath())
 		err := ValidateAgainstSingleSchema(values, chrt.Schema())
 		if err != nil {
-			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
+			fmt.Fprintf(&sb, "%s:\n", chrt.ChartFullPath())
 			sb.WriteString(err.Error())
 		}
 	}
-	slog.Debug("number of dependencies in the chart", "chart", chrt.Name(), "dependencies", len(chrt.Dependencies()))
+	slog.Debug("number of dependencies in the chart", "chart", chrt.ChartFullPath(), "dependencies", len(chrt.Dependencies()))
 	// For each dependency, recursively call this function with the coalesced values
 	for _, subchart := range chrt.Dependencies() {
 		sub, err := chart.NewAccessor(subchart)
@@ -105,7 +105,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 		subchartValues, ok := raw.(map[string]any)
 		if !ok {
 			fmt.Fprintf(&sb, "%s:\ninvalid type for values: expected object (map), got %T\n",
-				sub.Name(), raw)
+				sub.ChartFullPath(), raw)
 			continue
 		}
 
