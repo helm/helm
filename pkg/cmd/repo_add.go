@@ -48,6 +48,7 @@ type repoAddOptions struct {
 	url                  string
 	username             string
 	password             string
+	passwordCommand      string
 	passwordFromStdinOpt bool
 	passCredentialsAll   bool
 	forceUpdate          bool
@@ -89,6 +90,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.username, "username", "", "chart repository username")
 	f.StringVar(&o.password, "password", "", "chart repository password")
+	f.StringVar(&o.passwordCommand, "password-command", "", "command to invoke to retrieve chart repository password")
 	f.BoolVarP(&o.passwordFromStdinOpt, "password-stdin", "", false, "read chart repository password from stdin")
 	f.BoolVar(&o.forceUpdate, "force-update", false, "replace (overwrite) the repo if it already exists")
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
@@ -147,7 +149,11 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
-	if o.username != "" && o.password == "" {
+	if o.passwordCommand != "" && (o.password != "" || o.passwordFromStdinOpt) {
+		return errors.New("cannot use both --password-command and --password/--password-stdin")
+	}
+
+	if o.username != "" && o.password == "" && o.passwordCommand == "" {
 		if o.passwordFromStdinOpt {
 			passwordFromStdin, err := io.ReadAll(os.Stdin)
 			if err != nil {
@@ -173,6 +179,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		URL:                   o.url,
 		Username:              o.username,
 		Password:              o.password,
+		PasswordCommand:       o.passwordCommand,
 		PassCredentialsAll:    o.passCredentialsAll,
 		CertFile:              o.certFile,
 		KeyFile:               o.keyFile,
