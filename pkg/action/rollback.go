@@ -42,12 +42,14 @@ const MaxDescriptionLength = 256
 type Rollback struct {
 	cfg *Configuration
 
-	Version      int
-	Timeout      time.Duration
-	WaitStrategy kube.WaitStrategy
-	WaitOptions  []kube.WaitOption
-	WaitForJobs  bool
-	DisableHooks bool
+	Version int
+	Timeout time.Duration
+	// ReadinessTimeout is the per-batch timeout when ordered waiting is used.
+	ReadinessTimeout time.Duration
+	WaitStrategy     kube.WaitStrategy
+	WaitOptions      []kube.WaitOption
+	WaitForJobs      bool
+	DisableHooks     bool
 	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
 	DryRunStrategy DryRunStrategy
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the rollback anyway.

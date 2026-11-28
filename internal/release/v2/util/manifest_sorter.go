@@ -30,13 +30,6 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 )
 
-// Manifest represents a manifest file, which has a name and some content.
-type Manifest struct {
-	Name    string
-	Content string
-	Head    *SimpleHead
-}
-
 // manifestFile represents a file that contains a manifest.
 type manifestFile struct {
 	entries map[string]string

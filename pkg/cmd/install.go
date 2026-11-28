@@ -174,6 +174,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	addInstallFlags(cmd, f, client, valueOpts)
+	addReadinessTimeoutFlag(f, &client.ReadinessTimeout)
 	// hide-secret is not available in all places the install flags are used so
 	// it is added separately
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
@@ -233,7 +234,11 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-	AddWaitFlag(cmd, &client.WaitStrategy)
+	if cmd.Name() == "template" {
+		AddWaitFlag(cmd, &client.WaitStrategy)
+	} else {
+		AddOrderedWaitFlag(cmd, &client.WaitStrategy)
+	}
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 
@@ -283,6 +288,9 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	if err != nil {
 		return nil, err
 	}
+	if err := validateOrderedWaitChart(client.WaitStrategy, chartRequested); err != nil {
+		return nil, err
+	}
 
 	ac, err := chart.NewAccessor(chartRequested)
 	if err != nil {
@@ -328,6 +336,9 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 			// Reload the chart with the updated Chart.lock file.
 			if chartRequested, err = loader.Load(cp); err != nil {
 				return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
+			}
+			if err := validateOrderedWaitChart(client.WaitStrategy, chartRequested); err != nil {
+				return nil, err
 			}
 		}
 	}
