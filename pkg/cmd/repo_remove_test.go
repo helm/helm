@@ -19,6 +19,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -190,4 +191,47 @@ func TestRepoRemoveCompletion(t *testing.T) {
 func TestRepoRemoveFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo remove", false)
 	checkFileCompletion(t, "repo remove repo1", false)
+}
+
+func TestRepoRemoveMalformedRepositoriesFile(t *testing.T) {
+	repoFile := filepath.Join(t.TempDir(), "repositories.yaml")
+	content := []byte("apiVersion: v1\nrepositories:\n  - name: foo\n    url: [unterminated\n")
+	require.NoError(t, os.WriteFile(repoFile, content, 0o600))
+
+	rmOpts := repoRemoveOptions{
+		names:     []string{"foo"},
+		repoFile:  repoFile,
+		repoCache: t.TempDir(),
+	}
+
+	err := rmOpts.run(io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), repoFile)
+	assert.NotContains(t, err.Error(), "no repositories configured")
+
+	// The unreadable file must be left untouched.
+	got, readErr := os.ReadFile(repoFile)
+	require.NoError(t, readErr)
+	assert.Equal(t, content, got)
+}
+
+func TestRepoRemovePartiallyParsedRepositoriesFile(t *testing.T) {
+	repoFile := filepath.Join(t.TempDir(), "repositories.yaml")
+	content := []byte("apiVersion: v1\nrepositories:\n  - name: foo\n    url: https://example.com/foo\n  - name: bar\n    url: https://example.com/bar\n    insecure_skip_tls_verify: \"yes\"\n")
+	require.NoError(t, os.WriteFile(repoFile, content, 0o600))
+
+	rmOpts := repoRemoveOptions{
+		names:     []string{"foo"},
+		repoFile:  repoFile,
+		repoCache: t.TempDir(),
+	}
+
+	// "insecure_skip_tls_verify" must be a boolean, so loading the file fails
+	// even though the entries before the bad value were read.
+	require.Error(t, rmOpts.run(io.Discard))
+
+	// The file must not be rewritten from the partial result.
+	got, err := os.ReadFile(repoFile)
+	require.NoError(t, err)
+	assert.Equal(t, content, got)
 }

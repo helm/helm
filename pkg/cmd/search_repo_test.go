@@ -17,7 +17,13 @@ limitations under the License.
 package cmd
 
 import (
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSearchRepositoriesCmd(t *testing.T) {
@@ -105,4 +111,19 @@ func TestSearchRepoOutputCompletion(t *testing.T) {
 
 func TestSearchRepoFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "search repo", true) // File completion may be useful when inputting a keyword
+}
+
+func TestSearchRepoMalformedRepositoriesFile(t *testing.T) {
+	repoFile := filepath.Join(t.TempDir(), "repositories.yaml")
+	require.NoError(t, os.WriteFile(repoFile, []byte("apiVersion: v1\nrepositories:\n  - name: foo\n    url: [unterminated\n"), 0o600))
+
+	o := &searchRepoOptions{
+		repoFile:     repoFile,
+		repoCacheDir: t.TempDir(),
+	}
+
+	err := o.run(io.Discard, []string{"alpine"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), repoFile)
+	assert.NotContains(t, err.Error(), "no repositories configured")
 }

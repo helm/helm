@@ -60,7 +60,12 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 
 func (o *repoRemoveOptions) run(out io.Writer) error {
 	r, err := repo.LoadFile(o.repoFile)
-	if isNotExist(err) || len(r.Repositories) == 0 {
+	switch {
+	case isNotExist(err):
+		return errors.New("no repositories configured")
+	case err != nil:
+		return fmt.Errorf("failed loading file: %s: %w", o.repoFile, err)
+	case len(r.Repositories) == 0:
 		return errors.New("no repositories configured")
 	}
 
