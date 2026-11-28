@@ -18,6 +18,12 @@ package cmd
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cmd/search"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 func TestSearchRepositoriesCmd(t *testing.T) {
@@ -105,4 +111,33 @@ func TestSearchRepoOutputCompletion(t *testing.T) {
 
 func TestSearchRepoFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "search repo", true) // File completion may be useful when inputting a keyword
+}
+
+func TestSearchRepoZeroVersion(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		devel    bool
+		versions bool
+		want     []string
+	}{
+		{name: "stable", want: []string{"0.0.0"}},
+		{name: "stable with all versions", versions: true, want: []string{"0.0.0"}},
+		{name: "development with all versions", devel: true, versions: true, want: []string{"0.0.0", "0.0.0-0"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			options := searchRepoOptions{devel: tt.devel, versions: tt.versions}
+			options.setupSearchedVersion()
+			results := []*search.Result{
+				{Name: "example/test", Chart: &repo.ChartVersion{Metadata: &chart.Metadata{Version: "0.0.0"}}},
+				{Name: "example/test", Chart: &repo.ChartVersion{Metadata: &chart.Metadata{Version: "0.0.0-0"}}},
+			}
+			found, err := options.applyConstraint(results)
+			require.NoError(t, err)
+			got := make([]string, 0, len(found))
+			for _, result := range found {
+				got = append(got, result.Chart.Version)
+			}
+			require.Equal(t, tt.want, got)
+		})
+	}
 }
