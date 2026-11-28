@@ -69,6 +69,18 @@ func TestValidateChartName(t *testing.T) {
 	assert.Error(t, validateChartName(badChartName), "expected validateChartName to return a linter error for an invalid name, got no error")
 }
 
+func TestValidateChartNameFormat(t *testing.T) {
+	for _, name := range []string{"mychart", "my-chart", "chart2", "my-chart-2", "2-chart"} {
+		assert.NoError(t, validateChartNameFormat(&chart.Metadata{Name: name}), name)
+	}
+	for _, name := range []string{"MyChart", "my_chart", "my.chart", "my chart", "-chart", "chart-", "my--chart"} {
+		assert.ErrorContains(t, validateChartNameFormat(&chart.Metadata{Name: name}), "lower case letters and numbers", name)
+	}
+	// Empty and path-like names are reported as errors by validateChartName instead.
+	assert.NoError(t, validateChartNameFormat(&chart.Metadata{Name: ""}))
+	assert.NoError(t, validateChartNameFormat(badChartName))
+}
+
 func TestValidateChartVersion(t *testing.T) {
 	failTest := []struct {
 		Version  string
