@@ -38,11 +38,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/cli-runtime/pkg/resource"
+	discoveryfake "k8s.io/client-go/discovery/fake"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/kubectl/pkg/scheme"
@@ -131,6 +134,51 @@ metadata:
   namespace: ns
 status:
   phase: Succeeded
+`
+
+var customResourceNoStatusManifest = `
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: hello-knative
+  namespace: ns
+  generation: 1
+`
+
+var customResourceReadyManifest = `
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: hello-knative
+  namespace: ns
+  generation: 1
+status:
+  observedGeneration: 1
+  conditions:
+  - type: Ready
+    status: "True"
+`
+
+var customResourceMalformedStatusManifest = `
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: hello-knative
+  namespace: ns
+  generation: 1
+status: not-an-object
+`
+
+var statuslessCustomResourceManifest = `
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: app-metrics
+  namespace: ns
+  generation: 1
+spec:
+  endpoints:
+  - port: metrics
 `
 
 var pausedDeploymentManifest = `
@@ -443,6 +491,288 @@ func TestStatusWait(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStatusWaitCustomResource(t *testing.T) {
+	t.Parallel()
+	customResourceGVK := schema.GroupVersionKind{Group: "serving.knative.dev", Version: "v1", Kind: "Service"}
+	customResourceGVR := schema.GroupVersionResource{Group: "serving.knative.dev", Version: "v1", Resource: "services"}
+	serviceMonitorGVK := schema.GroupVersionKind{Group: "monitoring.coreos.com", Version: "v1", Kind: "ServiceMonitor"}
+	serviceMonitorGVR := schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "servicemonitors"}
+	customListKinds := map[schema.GroupVersionResource]string{
+		customResourceGVR: "ServiceList",
+		serviceMonitorGVR: "ServiceMonitorList",
+	}
+
+	newCustomDiscovery := func() *discoveryfake.FakeDiscovery {
+		return &discoveryfake.FakeDiscovery{
+			Fake: &clienttesting.Fake{
+				Resources: []*metav1.APIResourceList{
+					{
+						GroupVersion: "serving.knative.dev/v1",
+						APIResources: []metav1.APIResource{
+							{Name: "services", Kind: "Service", Namespaced: true},
+							{Name: "services/status", Kind: "Service", Namespaced: true},
+						},
+					},
+					{
+						GroupVersion: "monitoring.coreos.com/v1",
+						APIResources: []metav1.APIResource{
+							{Name: "servicemonitors", Kind: "ServiceMonitor", Namespaced: true},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	resourceListFor := func(objs []runtime.Object) ResourceList {
+		rl := ResourceList{}
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			rl = append(rl, &resource.Info{
+				Object:    u,
+				Name:      u.GetName(),
+				Namespace: u.GetNamespace(),
+			})
+		}
+		return rl
+	}
+
+	t.Run("fresh custom resource with status subresource is not reported ready before its controller reconciles it", func(t *testing.T) {
+		t.Parallel()
+		// NewSimpleDynamicClientWithCustomListKinds registers the custom list
+		// kind into the given scheme, so each subtest gets its own scheme instead
+		// of racing on the shared scheme.Scheme.
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceNoStatusManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+
+		err := statusWaiter.Wait(resourceListFor(objs), time.Second*2)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "resource Service/ns/hello-knative not ready. status: InProgress")
+		require.ErrorContains(t, err, "Custom resource has not yet reported status")
+		require.ErrorContains(t, err, "context deadline exceeded")
+	})
+
+	t.Run("custom resource is reported ready once its controller has reconciled it", func(t *testing.T) {
+		t.Parallel()
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceNoStatusManifest})
+		u := objs[0].(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+		// Simulate the controller populating .status after a delay. Only the
+		// tracker update runs in the goroutine; its error is reported over a
+		// channel so testify is never touched outside the test goroutine.
+		ready := getRuntimeObjFromManifests(t, []string{customResourceReadyManifest})[0].(*unstructured.Unstructured)
+		const reconcileDelay = 500 * time.Millisecond
+		updateErrCh := make(chan error, 1)
+		go func() {
+			time.Sleep(reconcileDelay)
+			updateErrCh <- fakeClient.Tracker().Update(gvr, ready, ready.GetNamespace())
+		}()
+
+		start := time.Now()
+		err := statusWaiter.Wait(resourceListFor(objs), time.Second*10)
+		elapsed := time.Since(start)
+		require.NoError(t, err)
+		require.NoError(t, <-updateErrCh)
+		// Success must not arrive before the controller reported status,
+		// otherwise the premature-success bug from #32066 would regress.
+		assert.GreaterOrEqual(t, elapsed, reconcileDelay)
+	})
+
+	t.Run("custom resource already reporting status is ready without waiting", func(t *testing.T) {
+		t.Parallel()
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceReadyManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+
+		assert.NoError(t, statusWaiter.Wait(resourceListFor(objs), time.Second*5))
+	})
+
+	t.Run("status-less custom resource without a status subresource is ready immediately", func(t *testing.T) {
+		t.Parallel()
+		// Config CRDs (e.g. ServiceMonitor, PrometheusRule, IngressRoute) do not
+		// declare a /status subresource and never populate .status. Waiting on
+		// them must not hang until timeout.
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(serviceMonitorGVK)
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{statuslessCustomResourceManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+
+		require.NoError(t, statusWaiter.Wait(resourceListFor(objs), time.Second*2))
+	})
+
+	t.Run("caller-provided custom readers take precedence over the default CR reader", func(t *testing.T) {
+		t.Parallel()
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+			readers: []engine.StatusReader{
+				&testStatusReader{
+					supportedGK: customResourceGVK.GroupKind(),
+					status:      status.CurrentStatus,
+				},
+			},
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceNoStatusManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+
+		require.NoError(t, statusWaiter.Wait(resourceListFor(objs), time.Second*2))
+	})
+
+	t.Run("malformed custom resource status is never reported ready", func(t *testing.T) {
+		t.Parallel()
+		// A status the reader cannot parse surfaces as an error-bearing Unknown,
+		// not Current. The wait must fail or time out rather than succeed.
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceMalformedStatusManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+
+		err := statusWaiter.Wait(resourceListFor(objs), time.Second*2)
+		require.Error(t, err)
+		// The unparsable status resolves to Unknown (never Current), so the
+		// wait times out instead of reporting the resource ready.
+		require.ErrorContains(t, err, "resource Service/ns/hello-knative not ready. status: Unknown")
+	})
+
+	t.Run("WaitWithJobs applies the same custom resource handling", func(t *testing.T) {
+		t.Parallel()
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceNoStatusManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+
+		err := statusWaiter.WaitWithJobs(resourceListFor(objs), time.Second*2)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "resource Service/ns/hello-knative not ready. status: InProgress")
+	})
+
+	t.Run("hook waits do not apply the empty-status override", func(t *testing.T) {
+		t.Parallel()
+		// WatchUntilReady serves Helm hooks and treats resources without
+		// dedicated readers as always ready, including custom resources. That
+		// path must not pick up the install/upgrade empty-status heuristic.
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceNoStatusManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+
+		require.NoError(t, statusWaiter.WatchUntilReady(resourceListFor(objs), time.Second*2))
+	})
+
+	t.Run("a ready built-in resource does not satisfy the wait while a fresh custom resource is pending", func(t *testing.T) {
+		t.Parallel()
+		// Mirrors the issue's real shape: one ready Pod plus a freshly created
+		// CR. The aggregate must stay InProgress until the CR reports status,
+		// rather than completing because the Pod is ready.
+		podGVR := v1.SchemeGroupVersion.WithResource("pods")
+		listKinds := map[schema.GroupVersionResource]string{
+			customResourceGVR: "ServiceList",
+			podGVR:            "PodList",
+		}
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), listKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK, v1.SchemeGroupVersion.WithKind("Pod"))
+		statusWaiter := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			discoveryClient: newCustomDiscovery(),
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest, customResourceNoStatusManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+
+		err := statusWaiter.Wait(resourceListFor(objs), time.Second*2)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "resource Service/ns/hello-knative not ready. status: InProgress")
+		assert.NotContains(t, err.Error(), "Pod/ns/current-pod not ready")
+	})
 }
 
 func TestWaitForJobComplete(t *testing.T) {
