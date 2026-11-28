@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -195,8 +196,8 @@ func (t *templateLinter) Lint() {
 					t.linter.RunLinterRule(support.WarningSev, fileName, validateMetadataName(yamlStruct))
 					t.linter.RunLinterRule(support.WarningSev, fileName, validateNoDeprecations(yamlStruct, t.kubeVersion))
 
-					t.linter.RunLinterRule(support.ErrorSev, fileName, validateMatchSelector(yamlStruct, renderedContent))
-					t.linter.RunLinterRule(support.ErrorSev, fileName, validateListAnnotations(yamlStruct, renderedContent))
+					t.linter.RunLinterRule(support.ErrorSev, fileName, validateMatchSelector(yamlStruct, string(yamlStruct.Spec)))
+					t.linter.RunLinterRule(support.ErrorSev, fileName, validateListAnnotations(yamlStruct))
 				}
 			}
 		}
@@ -343,21 +344,19 @@ func validateMatchSelector(yamlStruct *k8sYamlStruct, manifest string) error {
 	return nil
 }
 
-func validateListAnnotations(yamlStruct *k8sYamlStruct, manifest string) error {
+func validateListAnnotations(yamlStruct *k8sYamlStruct) error {
 	if yamlStruct.Kind == "List" {
-		m := struct {
-			Items []struct {
-				Metadata struct {
-					Annotations map[string]string
-				}
+		var items []struct {
+			Metadata struct {
+				Annotations map[string]string
 			}
-		}{}
+		}
 
-		if err := yaml.Unmarshal([]byte(manifest), &m); err != nil {
+		if err := yaml.Unmarshal(yamlStruct.Items, &items); err != nil {
 			return validateYamlContent(err)
 		}
 
-		for _, i := range m.Items {
+		for _, i := range items {
 			if _, ok := i.Metadata.Annotations["helm.sh/resource-policy"]; ok {
 				return errors.New("annotation 'helm.sh/resource-policy' within List objects are ignored")
 			}
@@ -376,6 +375,10 @@ type k8sYamlStruct struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string
 	Metadata   k8sYamlMetadata
+	// Spec and Items are kept as raw JSON, so that the rules which look into them
+	// only see the current document of a multi-document template.
+	Spec  json.RawMessage
+	Items json.RawMessage
 }
 
 type k8sYamlMetadata struct {

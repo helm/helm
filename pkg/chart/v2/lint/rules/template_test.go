@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -409,14 +410,124 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 	require.Empty(t, linter.Messages, "Expected 0 lint errors")
 }
 
-func TestValidateListAnnotations(t *testing.T) {
-	md := &k8sYamlStruct{
-		APIVersion: "v1",
-		Kind:       "List",
-		Metadata: k8sYamlMetadata{
-			Name: "list",
+// TestMultiDocumentRulesCheckEachDocument verifies that rules which inspect the
+// raw manifest only look at the document being validated, not at the other
+// documents rendered into the same file.
+func TestMultiDocumentRulesCheckEachDocument(t *testing.T) {
+	deployment := func(name, selector string) string {
+		return fmt.Sprintf(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: %s
+spec:%s
+  template:
+    metadata:
+      labels:
+        app: %s
+    spec:
+      containers:
+        - name: c
+          image: nginx
+`, name, selector, name)
+	}
+	withSelector := func(name string) string {
+		return deployment(name, "\n  selector:\n    matchLabels:\n      app: "+name)
+	}
+	keepList := `apiVersion: v1
+kind: List
+metadata:
+  name: list
+items:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: kept
+      annotations:
+        helm.sh/resource-policy: keep
+`
+	configMap := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+
+	tests := []struct {
+		name    string
+		content string
+		wantErr string
+	}{
+		{
+			name:    "deployment without selector after one with selector",
+			content: withSelector("a") + "---\n" + deployment("b", ""),
+			wantErr: `a Deployment must contain matchLabels or matchExpressions, and "b" does not`,
+		},
+		{
+			name:    "deployment without selector before one with selector",
+			content: deployment("b", "") + "---\n" + withSelector("a"),
+			wantErr: `a Deployment must contain matchLabels or matchExpressions, and "b" does not`,
+		},
+		{
+			name:    "deployments with selectors",
+			content: withSelector("a") + "---\n" + withSelector("b"),
+		},
+		{
+			name: "json stream with a deployment without selector",
+			content: `{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": {"name": "a"}, "spec": {"selector": {"matchLabels": {"app": "a"}}}}
+{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": {"name": "b"}, "spec": {}}`,
+			wantErr: `a Deployment must contain matchLabels or matchExpressions, and "b" does not`,
+		},
+		{
+			name:    "numeric name next to another document",
+			content: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: 123\n---\n" + configMap,
+		},
+		{
+			name:    "list with keep annotation after another document",
+			content: configMap + "---\n" + keepList,
+			wantErr: "annotation 'helm.sh/resource-policy' within List objects are ignored",
+		},
+		{
+			name:    "json document",
+			content: `{"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "cm"}, "data": {"url": "http:\/\/example.com"}}`,
 		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mychart := chart.Chart{
+				Metadata: &chart.Metadata{
+					APIVersion: "v2",
+					Name:       "multidoc",
+					Version:    "0.1.0",
+					Icon:       "satisfy-the-linting-gods.gif",
+				},
+				Templates: []*common.File{
+					{
+						Name:    "templates/multidoc.yaml",
+						ModTime: time.Now(),
+						Data:    []byte(tt.content),
+					},
+				},
+			}
+			tmpdir := t.TempDir()
+			require.NoError(t, chartutil.SaveDir(&mychart, tmpdir))
+
+			linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+			Templates(&linter, namespace, values, TemplateLinterSkipSchemaValidation(false))
+
+			if tt.wantErr == "" {
+				assert.Empty(t, linter.Messages)
+				return
+			}
+			require.Len(t, linter.Messages, 1, "messages: %v", linter.Messages)
+			assert.Equal(t, support.ErrorSev, linter.Messages[0].Severity)
+			assert.EqualError(t, linter.Messages[0].Err, tt.wantErr)
+		})
+	}
+}
+
+func listFromManifest(t *testing.T, manifest string) *k8sYamlStruct {
+	t.Helper()
+	var md *k8sYamlStruct
+	require.NoError(t, yaml.Unmarshal([]byte(manifest), &md))
+	return md
+}
+
+func TestValidateListAnnotations(t *testing.T) {
 	manifest := `
 apiVersion: v1
 kind: List
@@ -427,7 +538,7 @@ items:
       annotations:
         helm.sh/resource-policy: keep
 `
-	require.Error(t, validateListAnnotations(md, manifest), "expected list with nested keep annotations to fail")
+	require.Error(t, validateListAnnotations(listFromManifest(t, manifest)), "expected list with nested keep annotations to fail")
 
 	manifest = `
 apiVersion: v1
@@ -439,7 +550,7 @@ items:
   - apiVersion: v1
     kind: ConfigMap
 `
-	require.NoErrorf(t, validateListAnnotations(md, manifest), "List objects keep annotations should pass. got")
+	require.NoErrorf(t, validateListAnnotations(listFromManifest(t, manifest)), "List objects keep annotations should pass. got")
 }
 
 func TestIsYamlFileExtension(t *testing.T) {
