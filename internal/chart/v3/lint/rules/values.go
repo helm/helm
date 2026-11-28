@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"go.yaml.in/yaml/v3"
 
 	"helm.sh/helm/v4/internal/chart/v3/lint/support"
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -43,12 +46,37 @@ func ValuesWithOverrides(linter *support.Linter, valueOverrides map[string]any, 
 	}
 
 	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(vf, valueOverrides, skipSchemaValidation))
+	linter.RunLinterRule(support.WarningSev, file, validateValuesFileDuplicateKeys(vf))
 }
 
 func validateValuesFileExistence(valuesPath string) error {
 	_, err := os.Stat(valuesPath)
 	if err != nil {
 		return errors.New("file does not exist")
+	}
+	return nil
+}
+
+// validateValuesFileDuplicateKeys reports mapping keys that are defined more than
+// once in the same YAML mapping.
+//
+// Helm loads values.yaml permissively: when a key is repeated the last definition
+// silently wins. That is almost always a mistake, so it is flagged here. Syntax
+// errors are reported by validateValuesFile, so they are ignored here.
+func validateValuesFileDuplicateKeys(valuesPath string) error {
+	data, err := os.ReadFile(valuesPath)
+	if err != nil {
+		return nil
+	}
+
+	// The yaml.v3 decoder rejects duplicate mapping keys and reports the line
+	// numbers of both definitions.
+	var values any
+	if err := yaml.Unmarshal(data, &values); err != nil {
+		var typeErr *yaml.TypeError
+		if errors.As(err, &typeErr) {
+			return fmt.Errorf("values contain duplicate keys, the last definition is used: %s", strings.Join(typeErr.Errors, "; "))
+		}
 	}
 	return nil
 }
