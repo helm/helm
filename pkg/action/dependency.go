@@ -118,9 +118,15 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 		// matches.
 
 	case len(archives) == 1:
+		// The pattern also matches the archive of another dependency whose
+		// name starts with "<dep.Name>-" (for example "redis-cluster-1.0.0.tgz"
+		// when looking for "redis"). That archive says nothing about this
+		// dependency, so only use it when the rest of its name is a version.
 		archive := archives[0]
-		if r := statArchiveForStatus(archive, dep); r != "" {
-			return r
+		if isVersionedArchive(archive, dep.Name) {
+			if r := statArchiveForStatus(archive, dep); r != "" {
+				return r
+			}
 		}
 	}
 	// End unnecessary code.
@@ -153,6 +159,18 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 	}
 
 	return "unpacked"
+}
+
+// isVersionedArchive returns true if the archive is named "<name>-<version>.tgz".
+//
+// The version is parsed loosely, so that a "v" prefix (as in
+// "cert-manager-v1.14.0.tgz") is still accepted.
+//
+// TODO Helm v5: remove this.
+func isVersionedArchive(archive, name string) bool {
+	version := strings.TrimPrefix(strings.TrimSuffix(filepath.Base(archive), ".tgz"), name+"-")
+	_, err := semver.NewVersion(version)
+	return err == nil
 }
 
 // stat an archive and return a message if the stat is successful
