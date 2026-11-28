@@ -32,6 +32,7 @@ import (
 	"sync"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
+	"github.com/fluxcd/cli-utils/pkg/object"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -168,16 +169,21 @@ func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
 	if waitContext == nil {
 		waitContext = c.WaitContext
 	}
+	customReadinessEligible := make(map[object.ObjMetadata]struct{}, len(o.customReadinessEligible))
+	for _, identifier := range o.customReadinessEligible {
+		customReadinessEligible[identifier] = struct{}{}
+	}
 	sw := &statusWaiter{
-		restMapper:           restMapper,
-		client:               dynamicClient,
-		ctx:                  waitContext,
-		watchUntilReadyCtx:   o.watchUntilReadyCtx,
-		waitCtx:              o.waitCtx,
-		waitWithJobsCtx:      o.waitWithJobsCtx,
-		waitForDeleteCtx:     o.waitForDeleteCtx,
-		readers:              o.statusReaders,
-		statusComputeWorkers: o.statusComputeWorkers,
+		restMapper:              restMapper,
+		client:                  dynamicClient,
+		ctx:                     waitContext,
+		watchUntilReadyCtx:      o.watchUntilReadyCtx,
+		waitCtx:                 o.waitCtx,
+		waitWithJobsCtx:         o.waitWithJobsCtx,
+		waitForDeleteCtx:        o.waitForDeleteCtx,
+		readers:                 o.statusReaders,
+		statusComputeWorkers:    o.statusComputeWorkers,
+		customReadinessEligible: customReadinessEligible,
 	}
 	sw.SetLogger(c.Logger().Handler())
 	return sw, nil
