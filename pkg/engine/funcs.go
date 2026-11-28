@@ -353,7 +353,8 @@ func durationFromSecondsFloat(seconds float64) (time.Duration, error) {
 		return 0, fmt.Errorf("duration seconds overflow: %v", seconds)
 	}
 	nanos := seconds * float64(time.Second)
-	if nanos > float64(math.MaxInt64) || nanos < float64(math.MinInt64) {
+	// float64(math.MaxInt64) rounds up to 2^63, which wraps when converted.
+	if nanos >= float64(math.MaxInt64) || nanos < float64(math.MinInt64) {
 		return 0, fmt.Errorf("duration nanoseconds overflow: %v", nanos)
 	}
 	return time.Duration(nanos), nil
