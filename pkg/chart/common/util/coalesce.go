@@ -116,7 +116,7 @@ func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]any, prefi
 			// If dest doesn't already have the key, create it.
 			dest[sub.Name()] = make(map[string]any)
 		} else if !istable(c) {
-			return dest, fmt.Errorf("type mismatch on %s: %t", sub.Name(), c)
+			return dest, fmt.Errorf("type mismatch on %s: %T", sub.Name(), c)
 		}
 		if dv, ok := dest[sub.Name()]; ok {
 			dvmap := dv.(map[string]any)
@@ -349,10 +349,10 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]any), val.(map[string]any), fullkey, merge)
 			} else {
-				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
+				printf("warning: cannot overwrite table with non table for %s (destination %T, source %T)", fullkey, dv, val)
 			}
 		case istable(dv) && val != nil:
-			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
+			printf("warning: destination for %s is a table. Ignoring non-table value (%T)", fullkey, val)
 		}
 	}
 	return dst
