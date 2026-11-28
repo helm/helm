@@ -107,6 +107,10 @@ type Upgrade struct {
 	RollbackOnFailure bool
 	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
 	CleanupOnFail bool
+	// IgnoreNotFound will, if set to `true`, treat an upgrade of a release that
+	// does not exist as a successful no-op instead of returning an error. This
+	// mirrors the behavior of Uninstall.IgnoreNotFound.
+	IgnoreNotFound bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
 	SubNotes bool
 	// HideNotes determines whether notes are output during upgrade
@@ -195,6 +199,10 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 	u.cfg.Logger().Debug("preparing upgrade", "name", name)
 	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(ctx, name, chrt, vals)
 	if err != nil {
+		if errors.Is(err, errNoReleaseToUpgrade) {
+			u.cfg.Logger().Debug("release not found; ignoring due to IgnoreNotFound", "name", name)
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -217,6 +225,11 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 	return res, nil
 }
 
+// errNoReleaseToUpgrade is an internal sentinel used to short-circuit an upgrade
+// when IgnoreNotFound is set and the release does not exist. It is handled inside
+// RunWithContext and is never returned to callers.
+var errNoReleaseToUpgrade = errors.New("release not found; ignored")
+
 // prepareUpgrade builds an upgraded release for an upgrade operation.
 func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv2.Chart, vals map[string]any) (*release.Release, *release.Release, bool, error) {
 	if chart == nil {
@@ -233,6 +246,9 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 	if err != nil {
 		// to keep existing behavior of returning the "%q has no deployed releases" error when an existing release does not exist
 		if errors.Is(err, driver.ErrReleaseNotFound) {
+			if u.IgnoreNotFound {
+				return nil, nil, false, errNoReleaseToUpgrade
+			}
 			return nil, nil, false, driver.NewErrNoDeployedReleases(name)
 		}
 		return nil, nil, false, err
