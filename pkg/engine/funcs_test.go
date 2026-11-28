@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestFuncs(t *testing.T) {
@@ -518,4 +519,67 @@ func TestMerge(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expected, dict["dst"])
+}
+
+func TestHtpasswd(t *testing.T) {
+	render := func(source, password string) (string, error) {
+		tpl := template.Must(template.New("htpasswd").Funcs(funcMap()).Parse(source))
+		var b strings.Builder
+		err := tpl.Execute(&b, password)
+		return b.String(), err
+	}
+
+	for _, tc := range []struct{ name, template string }{
+		{"default bcrypt", `{{ htpasswd "myUser" . }}`},
+		{"explicit bcrypt", `{{ htpasswd "myUser" . "BCRYPT" }}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			password := strings.Repeat("x", 72)
+			entry, err := render(tc.template, password)
+			require.NoError(t, err)
+			user, hash, ok := strings.Cut(entry, ":")
+			require.True(t, ok)
+			assert.Equal(t, "myUser", user)
+			require.NoError(t, bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)))
+			cost, err := bcrypt.Cost([]byte(hash))
+			require.NoError(t, err)
+			assert.Equal(t, bcrypt.DefaultCost, cost)
+		})
+	}
+
+	const shaEntry = "testuser:{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g="
+	tests := []struct {
+		name     string
+		template string
+		password string
+		want     string
+		wantErr  string
+	}{
+		{name: "sha", template: `{{ htpasswd "testuser" . "sha" }}`, password: "password", want: shaEntry},
+		{name: "uppercase SHA", template: `{{ htpasswd "testuser" . "SHA" }}`, password: "password", want: shaEntry},
+		{name: "legacy username error", template: `{{ htpasswd "my:User" . }}`, want: "invalid username: my:User"},
+		{
+			name: "legacy bcrypt error", template: `{{ htpasswd "myUser" . }}`,
+			password: strings.Repeat("x", 73), want: "myUser:failed to encrypt string with bcrypt: " + bcrypt.ErrPasswordTooLong.Error(),
+		},
+		{
+			name: "explicit bcrypt error", template: `{{ htpasswd "myUser" . "bcrypt" }}`,
+			password: strings.Repeat("x", 73), wantErr: bcrypt.ErrPasswordTooLong.Error(),
+		},
+		{name: "unsupported algorithm", template: `{{ htpasswd "myUser" . "md5" }}`, wantErr: `unsupported algorithm "md5"`},
+		{name: "too many arguments", template: `{{ htpasswd "myUser" . "sha" "extra" }}`, wantErr: "wrong number of args: want 2 or 3 got 4"},
+		{name: "explicit username with colon", template: `{{ htpasswd "my:User" . "sha" }}`, wantErr: `invalid username "my:User"`},
+		{name: "explicit username with newline", template: `{{ htpasswd "my\nUser" . "sha" }}`, wantErr: `invalid username "my\nUser"`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := render(tc.template, tc.password)
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }
