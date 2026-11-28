@@ -232,6 +232,10 @@ func TestResolveReferenceURL(t *testing.T) {
 		{"http://localhost:8123/charts%2fwith%2fescaped%2fslash", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz"},
 		{"http://localhost:8123/charts?with=queryparameter", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz?with=queryparameter"},
 		{"http://localhost:8123/charts?with=queryparameter", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz?with=queryparameter"},
+		{"http://localhost:8123/charts", "nginx-0.2.0.tgz?sig=abc&exp=123", "http://localhost:8123/charts/nginx-0.2.0.tgz?sig=abc&exp=123"},
+		{"http://localhost:8123/charts/", "/nginx-0.2.0.tgz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=deadbeef", "http://localhost:8123/nginx-0.2.0.tgz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=deadbeef"},
+		{"http://localhost:8123/charts?repo_token=base", "nginx-0.2.0.tgz?sig=chart&exp=123", "http://localhost:8123/charts/nginx-0.2.0.tgz?sig=chart&exp=123"},
+		{"http://localhost:8123/charts?repo_token=base", "/nginx-0.2.0.tgz?sig=chart", "http://localhost:8123/nginx-0.2.0.tgz?sig=chart"},
 	} {
 		chartURL, err := ResolveReferenceURL(tt.baseURL, tt.refURL)
 		require.NoErrorf(t, err, "unexpected error in ResolveReferenceURL(%q, %q)", tt.baseURL, tt.refURL)
