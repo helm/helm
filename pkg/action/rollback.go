@@ -212,6 +212,16 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 	return currentRelease, targetRelease, serverSideApply, nil
 }
 
+// failRollback records the new revision as failed, so that it does not stay
+// in the pending-rollback state and block later operations on the release.
+func (r *Rollback) failRollback(targetRelease *release.Release, err error) (*release.Release, error) {
+	msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
+	r.cfg.Logger().Warn(msg)
+	targetRelease.SetStatus(common.StatusFailed, msg)
+	r.cfg.recordRelease(targetRelease)
+	return targetRelease, err
+}
+
 func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release, serverSideApply bool) (*release.Release, error) {
 	if isDryRun(r.DryRunStrategy) {
 		r.cfg.Logger().Debug("dry run", "name", targetRelease.Name)
@@ -220,18 +230,18 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
 	if err != nil {
-		return targetRelease, fmt.Errorf("unable to build kubernetes objects from current release manifest: %w", err)
+		return r.failRollback(targetRelease, fmt.Errorf("unable to build kubernetes objects from current release manifest: %w", err))
 	}
 	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), false)
 	if err != nil {
-		return targetRelease, fmt.Errorf("unable to build kubernetes objects from new release manifest: %w", err)
+		return r.failRollback(targetRelease, fmt.Errorf("unable to build kubernetes objects from new release manifest: %w", err))
 	}
 
 	// pre-rollback hooks
 
 	if !r.DisableHooks {
 		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
-			return targetRelease, err
+			return r.failRollback(targetRelease, fmt.Errorf("pre-rollback hooks failed: %w", err))
 		}
 	} else {
 		r.cfg.Logger().Debug("rollback hooks disabled", "name", targetRelease.Name)
@@ -240,7 +250,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	// It is safe to use "forceOwnership" here because these are resources currently rendered by the chart.
 	err = target.Visit(setMetadataVisitor(targetRelease.Name, targetRelease.Namespace, true))
 	if err != nil {
-		return targetRelease, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
+		return r.failRollback(targetRelease, fmt.Errorf("unable to set metadata visitor from target release: %w", err))
 	}
 	results, err := r.cfg.KubeClient.Update(
 		current,
@@ -277,7 +287,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		waiter, err = r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("unable to get waiter: %w", err)
+		return r.failRollback(targetRelease, fmt.Errorf("unable to get waiter: %w", err))
 	}
 	if r.WaitForJobs {
 		if err := waiter.WaitWithJobs(target, r.Timeout); err != nil {
@@ -298,7 +308,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	// post-rollback hooks
 	if !r.DisableHooks {
 		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
-			return targetRelease, err
+			return r.failRollback(targetRelease, fmt.Errorf("post-rollback hooks failed: %w", err))
 		}
 	}
 
