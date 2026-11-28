@@ -116,7 +116,7 @@ func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]any, prefi
 			// If dest doesn't already have the key, create it.
 			dest[sub.Name()] = make(map[string]any)
 		} else if !istable(c) {
-			return dest, fmt.Errorf("type mismatch on %s: %t", sub.Name(), c)
+			return dest, fmt.Errorf("type mismatch on %s: %v", sub.Name(), c)
 		}
 		if dv, ok := dest[sub.Name()]; ok {
 			dvmap := dv.(map[string]any)
