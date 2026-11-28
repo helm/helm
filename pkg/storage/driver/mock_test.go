@@ -19,6 +19,9 @@ package driver
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
+	"strconv"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
@@ -95,6 +98,9 @@ type MockConfigMapsInterface struct {
 	corev1.ConfigMapInterface
 
 	objects map[string]*v1.ConfigMap
+
+	// listCalls records the options of every List call.
+	listCalls []metav1.ListOptions
 }
 
 // Init initializes the MockConfigMapsInterface with the set of releases.
@@ -120,8 +126,12 @@ func (mock *MockConfigMapsInterface) Get(_ context.Context, name string, _ metav
 	return object, nil
 }
 
-// List returns all ConfigMaps.
+// List returns the ConfigMaps matching the label selector. It honors
+// opts.Limit and opts.Continue the same way the API server does, so callers
+// that paginate get the results in chunks.
 func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.ConfigMapList, error) {
+	mock.listCalls = append(mock.listCalls, opts)
+
 	var list v1.ConfigMapList
 
 	labelSelector, err := kblabels.Parse(opts.LabelSelector)
@@ -129,11 +139,19 @@ func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOpt
 		return nil, err
 	}
 
-	for _, cfgmap := range mock.objects {
+	for _, name := range slices.Sorted(maps.Keys(mock.objects)) {
+		cfgmap := mock.objects[name]
 		if labelSelector.Matches(kblabels.Set(cfgmap.Labels)) {
 			list.Items = append(list.Items, *cfgmap)
 		}
 	}
+
+	items, next, err := paginate(list.Items, opts)
+	if err != nil {
+		return nil, err
+	}
+	list.Items = items
+	list.Continue = next
 	return &list, nil
 }
 
@@ -181,6 +199,9 @@ type MockSecretsInterface struct {
 	corev1.SecretInterface
 
 	objects map[string]*v1.Secret
+
+	// listCalls records the options of every List call.
+	listCalls []metav1.ListOptions
 }
 
 // Init initializes the MockSecretsInterface with the set of releases.
@@ -206,8 +227,12 @@ func (mock *MockSecretsInterface) Get(_ context.Context, name string, _ metav1.G
 	return object, nil
 }
 
-// List returns all Secrets.
+// List returns the Secrets matching the label selector. It honors
+// opts.Limit and opts.Continue the same way the API server does, so callers
+// that paginate get the results in chunks.
 func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
+	mock.listCalls = append(mock.listCalls, opts)
+
 	var list v1.SecretList
 
 	labelSelector, err := kblabels.Parse(opts.LabelSelector)
@@ -215,11 +240,19 @@ func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOption
 		return nil, err
 	}
 
-	for _, secret := range mock.objects {
+	for _, name := range slices.Sorted(maps.Keys(mock.objects)) {
+		secret := mock.objects[name]
 		if labelSelector.Matches(kblabels.Set(secret.Labels)) {
 			list.Items = append(list.Items, *secret)
 		}
 	}
+
+	items, next, err := paginate(list.Items, opts)
+	if err != nil {
+		return nil, err
+	}
+	list.Items = items
+	list.Continue = next
 	return &list, nil
 }
 
@@ -250,6 +283,24 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 	}
 	delete(mock.objects, name)
 	return nil
+}
+
+// paginate returns the page of items selected by opts.Limit and
+// opts.Continue, plus the continue token for the next page, if any.
+func paginate[T any](items []T, opts metav1.ListOptions) ([]T, string, error) {
+	start := 0
+	if opts.Continue != "" {
+		var err error
+		start, err = strconv.Atoi(opts.Continue)
+		if err != nil || start < 0 || start > len(items) {
+			return nil, "", fmt.Errorf("invalid continue token %q", opts.Continue)
+		}
+	}
+	if opts.Limit <= 0 || start+int(opts.Limit) >= len(items) {
+		return items[start:], "", nil
+	}
+	end := start + int(opts.Limit)
+	return items[start:end], strconv.Itoa(end), nil
 }
 
 // newTestFixtureSQL mocks the SQL database (for testing purposes)

@@ -132,6 +132,75 @@ func TestSecretQuery(t *testing.T) {
 	assert.ErrorIs(t, err, ErrReleaseNotFound)
 }
 
+func TestSecretListAndQueryPaginate(t *testing.T) {
+	setListPageSize(t, 2)
+
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{
+		releaseStub("key-1", 1, "default", common.StatusUninstalled),
+		releaseStub("key-2", 1, "default", common.StatusUninstalled),
+		releaseStub("key-3", 1, "default", common.StatusDeployed),
+		releaseStub("key-4", 1, "default", common.StatusDeployed),
+		releaseStub("key-5", 1, "default", common.StatusSuperseded),
+		releaseStub("key-6", 1, "default", common.StatusSuperseded),
+		releaseStub("key-7", 1, "default", common.StatusDeployed),
+	}...)
+	mock := secrets.impl.(*MockSecretsInterface)
+
+	tests := []struct {
+		name      string
+		run       func() ([]release.Releaser, error)
+		wantLen   int
+		wantPages int
+	}{
+		{
+			name: "list all",
+			run: func() ([]release.Releaser, error) {
+				return secrets.List(func(release.Releaser) bool { return true })
+			},
+			wantLen:   7,
+			wantPages: 4,
+		},
+		{
+			name: "list with filter",
+			run: func() ([]release.Releaser, error) {
+				return secrets.List(func(rel release.Releaser) bool {
+					return convertReleaserToV1(t, rel).Info.Status == common.StatusDeployed
+				})
+			},
+			wantLen:   3,
+			wantPages: 4,
+		},
+		{
+			name: "query",
+			run: func() ([]release.Releaser, error) {
+				return secrets.Query(map[string]string{"status": "deployed"})
+			},
+			wantLen:   3,
+			wantPages: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mock.listCalls = nil
+
+			rls, err := tt.run()
+			require.NoError(t, err)
+			assert.Len(t, rls, tt.wantLen)
+
+			require.Len(t, mock.listCalls, tt.wantPages)
+			for i, opts := range mock.listCalls {
+				assert.Equal(t, int64(2), opts.Limit, "page %d should be limited", i)
+				if i == 0 {
+					assert.Empty(t, opts.Continue, "first page should not send a continue token")
+				} else {
+					assert.NotEmpty(t, opts.Continue, "page %d should send a continue token", i)
+				}
+			}
+		})
+	}
+}
+
 func TestSecretCreate(t *testing.T) {
 	secrets := newTestFixtureSecrets(t)
 
