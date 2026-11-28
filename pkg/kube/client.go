@@ -53,6 +53,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -164,12 +165,17 @@ func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
 	if err != nil {
 		return nil, err
 	}
+	discoveryClient, err := discovery.NewDiscoveryClientForConfigAndClient(cfg, httpClient)
+	if err != nil {
+		return nil, err
+	}
 	waitContext := o.ctx
 	if waitContext == nil {
 		waitContext = c.WaitContext
 	}
 	sw := &statusWaiter{
 		restMapper:           restMapper,
+		discoveryClient:      discoveryClient,
 		client:               dynamicClient,
 		ctx:                  waitContext,
 		watchUntilReadyCtx:   o.watchUntilReadyCtx,

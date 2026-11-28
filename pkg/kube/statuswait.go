@@ -35,6 +35,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
 
@@ -45,6 +46,7 @@ import (
 type statusWaiter struct {
 	client               dynamic.Interface
 	restMapper           meta.RESTMapper
+	discoveryClient      discovery.ServerResourcesInterface
 	ctx                  context.Context
 	watchUntilReadyCtx   context.Context
 	waitCtx              context.Context
@@ -107,7 +109,13 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
-	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
+	// The custom resource reader only matches non-built-in kinds whose API
+	// discovery advertises a /status subresource, so built-in kinds and
+	// status-less config CRDs keep the default kstatus behavior. It is appended
+	// after any caller-provided readers to preserve their precedence.
+	readers := append([]engine.StatusReader(nil), w.readers...)
+	readers = append(readers, helmStatusReaders.NewCustomResourceStatusReader(w.restMapper, w.discoveryClient))
+	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, readers...)
 	return w.wait(ctx, resourceList, sw)
 }
 
@@ -122,7 +130,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	sw.StatusComputeWorkers = w.statusComputeWorkers
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
-	readers = append(readers, newCustomJobStatusReader)
+	readers = append(readers, newCustomJobStatusReader, helmStatusReaders.NewCustomResourceStatusReader(w.restMapper, w.discoveryClient))
 	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
 	sw.StatusReader = customSR
 	return w.wait(ctx, resourceList, sw)
