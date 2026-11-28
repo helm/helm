@@ -24,6 +24,16 @@ func TestGetSystemLabel(t *testing.T) {
 	assert.Equalf(t, systemLabels, output, "Expected {%v}, got {%v}", systemLabels, output)
 }
 
+func TestGetSystemLabelsDoesNotExposeDefaults(t *testing.T) {
+	before := append([]string(nil), systemLabels...)
+	t.Cleanup(func() { copy(systemLabels, before) })
+	labels := GetSystemLabels()
+	labels[0] = "custom"
+	assert.Equal(t, before, GetSystemLabels())
+	assert.True(t, isSystemLabel("name"))
+	assert.False(t, isSystemLabel("custom"))
+}
+
 func TestIsSystemLabel(t *testing.T) {
 	tests := map[string]bool{
 		"name":  true,
