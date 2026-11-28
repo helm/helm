@@ -1,0 +1,18 @@
+Chart: diamond
+  Subchart batches:
+    Batch 1: db
+    Batch 2: api, cache
+    Batch 3: frontend
+  Unsequenced (deployed last): ConfigMap/diamond
+  Chart: diamond/charts/db
+    Subchart batches: (none)
+    Unsequenced (deployed last): ConfigMap/database
+  Chart: diamond/charts/api
+    Subchart batches: (none)
+    Unsequenced (deployed last): ConfigMap/api
+  Chart: diamond/charts/cache
+    Subchart batches: (none)
+    Unsequenced (deployed last): ConfigMap/cache
+  Chart: diamond/charts/frontend
+    Subchart batches: (none)
+    Unsequenced (deployed last): ConfigMap/frontend

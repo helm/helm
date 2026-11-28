@@ -146,6 +146,9 @@ func processDependencyEnabled(c *chart.Chart, v map[string]any, path string) err
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
+	if err := resolveDependsOnReferences(c); err != nil {
+		return err
+	}
 
 	var chartDependencies []*chart.Chart
 	// If any dependency is not a part of Chart.yaml
