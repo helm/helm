@@ -493,3 +493,31 @@ data:
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+// TestDeleteHookByPolicy_HookOnlyStrategyStillWaitsForDeletion guards against
+// https://github.com/helm/helm/issues/32849: HookOnlyStrategy's waiter does not
+// wait for deletion, so deleteHookByPolicy() must request a
+// StatusWatcherStrategy waiter before a hook is recreated.
+func TestDeleteHookByPolicy_HookOnlyStrategyStillWaitsForDeletion(t *testing.T) {
+	tests := []struct {
+		strategy kube.WaitStrategy
+		expected kube.WaitStrategy
+	}{
+		{kube.HookOnlyStrategy, kube.StatusWatcherStrategy},
+		{kube.StatusWatcherStrategy, kube.StatusWatcherStrategy},
+		{kube.LegacyStrategy, kube.LegacyStrategy},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.strategy), func(t *testing.T) {
+			failer := &kubefake.FailingKubeClient{Out: io.Discard, BuildDummy: true}
+			configuration := &Configuration{KubeClient: failer}
+			h := &release.Hook{
+				Kind:           "ConfigMap",
+				DeletePolicies: []release.HookDeletePolicy{release.HookBeforeHookCreation},
+			}
+
+			require.NoError(t, configuration.deleteHookByPolicy(h, release.HookBeforeHookCreation, tt.strategy, nil, 600))
+			assert.Equal(t, []kube.WaitStrategy{tt.expected}, failer.RecordedWaitStrategies)
+		})
+	}
+}
