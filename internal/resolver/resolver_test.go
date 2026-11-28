@@ -16,7 +16,11 @@ limitations under the License.
 package resolver
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"runtime"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -284,6 +288,124 @@ func TestGetLocalPath(t *testing.T) {
 					assert.Equal(t, tt.expect, p, tt.name)
 				}
 			}
+		})
+	}
+}
+
+// fakeOCIRegistry is a minimal OCI registry serving the tag list endpoint and
+// HEAD requests for manifests, which is all that OCI dependency resolution needs.
+type fakeOCIRegistry struct {
+	tags []string
+	// headStatus, when set, is returned for every manifest HEAD request
+	// instead of answering from tags.
+	headStatus int
+}
+
+func (f *fakeOCIRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/tags/list"):
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"name":"testrepo/mychart","tags":["` + strings.Join(f.tags, `","`) + `"]}`))
+	case r.Method == http.MethodHead && strings.Contains(r.URL.Path, "/manifests/"):
+		if f.headStatus != 0 {
+			w.WriteHeader(f.headStatus)
+			return
+		}
+		tag := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+		if !slices.Contains(f.tags, tag) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+		w.Header().Set("Docker-Content-Digest", "sha256:"+strings.Repeat("a", 64))
+		w.Header().Set("Content-Length", "2")
+		w.WriteHeader(http.StatusOK)
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func TestResolveOCIVersions(t *testing.T) {
+	tests := []struct {
+		name       string
+		tags       []string
+		version    string
+		want       string
+		err        bool
+		headStatus int
+	}{
+		{
+			name:    "strict version is locked as is",
+			tags:    []string{"1.2.0", "1.2.5"},
+			version: "1.2.5",
+			want:    "1.2.5",
+		},
+		{
+			name:       "partial version fails when the literal tag check is forbidden",
+			tags:       []string{"1.2", "1.2.0", "1.2.5"},
+			version:    "1.2",
+			err:        true,
+			headStatus: http.StatusForbidden,
+		},
+		{
+			name:    "partial version resolves to the highest matching tag",
+			tags:    []string{"1.1.0", "1.2.0", "1.2.5", "1.3.0"},
+			version: "1.2",
+			want:    "1.2.5",
+		},
+		{
+			name:    "partial version prefers an existing literal tag",
+			tags:    []string{"1.2", "1.2.0", "1.2.5"},
+			version: "1.2",
+			want:    "1.2",
+		},
+		{
+			name:    "major version resolves to the highest matching tag",
+			tags:    []string{"1.2.0", "1.2.5", "2.0.0"},
+			version: "1",
+			want:    "1.2.5",
+		},
+		{
+			name:    "major version prefers an existing literal tag",
+			tags:    []string{"1", "1.2.0", "2.0.0"},
+			version: "1",
+			want:    "1",
+		},
+		{
+			name:    "range resolves to the highest matching tag",
+			tags:    []string{"1.2.0", "1.2.5", "1.3.0"},
+			version: "~1.2",
+			want:    "1.2.5",
+		},
+		{
+			name:    "invalid version fails",
+			tags:    []string{"1.2.0"},
+			version: ">a1",
+			err:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(&fakeOCIRegistry{tags: tt.tags, headStatus: tt.headStatus})
+			defer srv.Close()
+			host := strings.TrimPrefix(srv.URL, "http://")
+
+			registryClient, err := registry.NewClient(registry.ClientOptPlainHTTP())
+			require.NoError(t, err)
+			r := New("testdata/chartpath", "testdata/repository", registryClient)
+
+			req := []*chart.Dependency{
+				{Name: "mychart", Repository: "oci://" + host + "/testrepo", Version: tt.version},
+			}
+			l, err := r.Resolve(req, map[string]string{"mychart": "testrepo"})
+			if tt.err {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, l.Dependencies, 1)
+			assert.Equal(t, tt.want, l.Dependencies[0].Version)
 		})
 	}
 }
