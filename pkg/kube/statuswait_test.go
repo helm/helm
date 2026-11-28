@@ -36,6 +36,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -1774,6 +1775,96 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestStatusWaitPVCWaitForFirstConsumer(t *testing.T) {
+	t.Parallel()
+	storageClassManifests := []string{`
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: wffc
+provisioner: example.com/test
+volumeBindingMode: WaitForFirstConsumer
+`, `
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: immediate
+provisioner: example.com/test
+volumeBindingMode: Immediate
+`}
+	pendingPVCManifest := func(storageClassName string) string {
+		return fmt.Sprintf(`
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data
+  namespace: ns
+spec:
+  storageClassName: %s
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+status:
+  phase: Pending
+`, storageClassName)
+	}
+	tests := []struct {
+		name          string
+		pvcManifest   string
+		waitForJobs   bool
+		expectErrStrs []string
+	}{
+		{name: "pending PVC with WaitForFirstConsumer class is ready", pvcManifest: pendingPVCManifest("wffc")},
+		{name: "pending PVC with WaitForFirstConsumer class is ready when waiting for jobs", pvcManifest: pendingPVCManifest("wffc"), waitForJobs: true},
+		{
+			name:          "pending PVC with Immediate class is not ready",
+			pvcManifest:   pendingPVCManifest("immediate"),
+			expectErrStrs: []string{"resource PersistentVolumeClaim/ns/data not ready. status: InProgress", "context deadline exceeded"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("PersistentVolumeClaim"),
+				storagev1.SchemeGroupVersion.WithKind("StorageClass"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+			}
+			statusWaiter.SetLogger(slog.Default().Handler())
+			for _, obj := range getRuntimeObjFromManifests(t, storageClassManifests) {
+				u := obj.(*unstructured.Unstructured)
+				require.NoError(t, fakeClient.Tracker().Create(getGVR(t, fakeMapper, u), u, u.GetNamespace()))
+			}
+			objs := getRuntimeObjFromManifests(t, []string{tt.pvcManifest})
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				require.NoError(t, fakeClient.Tracker().Create(getGVR(t, fakeMapper, u), u, u.GetNamespace()))
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			var err error
+			if tt.waitForJobs {
+				err = statusWaiter.WaitWithJobs(resourceList, time.Second*3)
+			} else {
+				err = statusWaiter.Wait(resourceList, time.Second*3)
+			}
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					require.ErrorContains(t, err, expectedErrStr)
+				}
+				return
+			}
+			assert.NoError(t, err)
 		})
 	}
 }
