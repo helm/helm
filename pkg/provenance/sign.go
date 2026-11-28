@@ -264,9 +264,22 @@ func (s *Signatory) Verify(archiveData, provData []byte, filename string) (*Veri
 	}
 
 	sum = "sha256:" + sum
-	if sha, ok := sums.Files[filename]; !ok {
-		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", filename)
-	} else if sha != sum {
+
+	sha, ok := sums.Files[filename]
+	if !ok {
+		// The name a chart is downloaded under is not necessarily the name it was
+		// packaged and signed as, for example when an OCI repository is named
+		// differently from the charts it holds. The signature covers the whole
+		// message block, so a block describing exactly one archive identifies that
+		// archive unambiguously and its name is the one to check against.
+		if len(sums.Files) != 1 {
+			return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", filename)
+		}
+		for signedName, signedSum := range sums.Files {
+			filename, sha = signedName, signedSum
+		}
+	}
+	if sha != sum {
 		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", filename, sha, sum)
 	}
 	ver.FileHash = sum
