@@ -414,6 +414,161 @@ data:
 	}
 }
 
+type hookPreparationFailingKubeClient struct {
+	HookFailingKubeClient
+	failAt          string
+	preparationErr  error
+	cleanupErr      error
+	currentName     string
+	lastCreatedName string
+	createdNames    []string
+}
+
+func (c *hookPreparationFailingKubeClient) Build(reader io.Reader, validate bool) (kube.ResourceList, error) {
+	resources, err := c.HookFailingKubeClient.Build(reader, validate)
+	if err != nil {
+		return nil, err
+	}
+	c.currentName = resources[0].Name
+	if validate && c.currentName == "failing-hook" && c.failAt == "build" {
+		return nil, c.preparationErr
+	}
+	return resources, nil
+}
+
+func (c *hookPreparationFailingKubeClient) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+	if resources[0].Name == "failing-hook" && c.failAt == "create" {
+		return nil, c.preparationErr
+	}
+	c.lastCreatedName = resources[0].Name
+	c.createdNames = append(c.createdNames, c.lastCreatedName)
+	return c.HookFailingKubeClient.Create(resources, options...)
+}
+
+func (c *hookPreparationFailingKubeClient) Delete(resources kube.ResourceList, propagation metav1.DeletionPropagation) (*kube.Result, []error) {
+	result, errs := c.HookFailingKubeClient.Delete(resources, propagation)
+	if resources[0].Name == "failing-hook" && c.failAt == "before-hook-creation" {
+		return nil, []error{c.preparationErr}
+	}
+	if resources[0].Name == "temporary-binding" && c.cleanupErr != nil {
+		return nil, []error{c.cleanupErr}
+	}
+	return result, errs
+}
+
+func (c *hookPreparationFailingKubeClient) GetWaiterWithOptions(strategy kube.WaitStrategy, options ...kube.WaitOption) (kube.Waiter, error) {
+	if c.currentName == "failing-hook" && c.lastCreatedName == "failing-hook" && c.failAt == "get-waiter" {
+		return nil, c.preparationErr
+	}
+	return c.HookFailingKubeClient.GetWaiterWithOptions(strategy, options...)
+}
+
+func TestHooksCleanUpOnPreparationFailure(t *testing.T) {
+	tests := []struct {
+		name         string
+		failAt       string
+		firstHook    bool
+		cleanupFails bool
+	}{
+		{name: "before-hook-creation", failAt: "before-hook-creation"},
+		{name: "build", failAt: "build"},
+		{name: "create", failAt: "create"},
+		{name: "get-waiter", failAt: "get-waiter"},
+		{name: "first hook fails", failAt: "create", firstHook: true},
+		{name: "cleanup also fails", failAt: "create", cleanupFails: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, delayed := range []bool{false, true} {
+				t.Run(fmt.Sprintf("delayed=%t", delayed), func(t *testing.T) {
+					preparationErr := errors.New("hook preparation failed")
+					cleanupErr := errors.New("hook cleanup failed")
+					client := &hookPreparationFailingKubeClient{
+						Out:            io.Discard,
+						failAt:         tt.failAt,
+						preparationErr: preparationErr,
+					}
+					if tt.cleanupFails {
+						client.cleanupErr = cleanupErr
+					}
+					cfg := &Configuration{
+						Releases:     storage.Init(driver.NewMemory()),
+						KubeClient:   client,
+						Capabilities: common.DefaultCapabilities,
+					}
+					hook := func(name, kind string, weight int, event release.HookEvent, policies ...release.HookDeletePolicy) *release.Hook {
+						return &release.Hook{
+							Name:           name,
+							Kind:           kind,
+							Path:           "templates/" + name + ".yaml",
+							Manifest:       fmt.Sprintf("kind: %s\nmetadata:\n  name: %s\n  namespace: test\n", kind, name),
+							Weight:         weight,
+							Events:         []release.HookEvent{event},
+							DeletePolicies: policies,
+						}
+					}
+					later := hook("later-hook", "ConfigMap", 10, release.HookPreInstall, release.HookSucceeded)
+					// A successful run from an earlier operation must not make an unexecuted hook eligible for cleanup.
+					later.LastRun.Phase = release.HookPhaseSucceeded
+					rel := &release.Release{
+						Name:      "test-release",
+						Namespace: "test",
+						Hooks: []*release.Hook{
+							later,
+							hook("failing-hook", "Job", 0, release.HookPreInstall, release.HookBeforeHookCreation, release.HookFailed),
+							hook("another-event", "ConfigMap", -20, release.HookPostInstall, release.HookSucceeded),
+						},
+					}
+					var expectedCreated []string
+					expectedDeleted := []string{"failing-hook"}
+					if !tt.firstHook {
+						// Deliberately supply hooks out of weight order, including a successful hook that must be kept.
+						rel.Hooks = append(rel.Hooks,
+							hook("temporary-binding", "RoleBinding", -4, release.HookPreInstall, release.HookSucceeded),
+							hook("retained-account", "ServiceAccount", -10, release.HookPreInstall, release.HookFailed),
+							hook("temporary-role", "Role", -5, release.HookPreInstall, release.HookSucceeded),
+						)
+						expectedCreated = []string{"retained-account", "temporary-role", "temporary-binding"}
+						expectedDeleted = append(expectedDeleted, "temporary-role", "temporary-binding")
+					}
+					if tt.failAt == "get-waiter" {
+						expectedCreated = append(expectedCreated, "failing-hook")
+					}
+
+					if delayed {
+						shutdown, err := cfg.execHookWithDelayedShutdown(rel, release.HookPreInstall, kube.StatusWatcherStrategy, nil, time.Minute, false)
+						require.ErrorIs(t, err, preparationErr)
+						require.NotNil(t, shutdown)
+						// Only before-hook-creation has run; successful resources must remain until logs can be retrieved.
+						require.Equal(t, []resource.Info{{Name: "failing-hook", Namespace: "test"}}, client.deleteRecord)
+						cleanupResult := shutdown()
+						if tt.cleanupFails {
+							require.ErrorIs(t, cleanupResult, preparationErr)
+							require.ErrorIs(t, cleanupResult, cleanupErr)
+						} else {
+							require.NoError(t, cleanupResult)
+						}
+					} else {
+						err := cfg.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, nil, time.Minute, false)
+						require.ErrorIs(t, err, preparationErr)
+						if tt.cleanupFails {
+							require.ErrorIs(t, err, cleanupErr)
+						}
+					}
+
+					var deletedNames []string
+					for _, deleted := range client.deleteRecord {
+						deletedNames = append(deletedNames, deleted.Name)
+					}
+					assert.Equal(t, expectedDeleted, deletedNames)
+					assert.Equal(t, expectedCreated, client.createdNames)
+				})
+			}
+		})
+	}
+}
+
 func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
 	tests := map[string]struct {
 		policies []release.HookDeletePolicy
