@@ -109,3 +109,32 @@ func TestLocalInstallerTarball(t *testing.T) {
 	_, err = os.Stat(i.Path())
 	require.NoErrorf(t, err, "plugin not found at %s", i.Path())
 }
+
+func TestLocalInstallerTarballInPluginsDirectory(t *testing.T) {
+	ensure.HelmHome(t)
+	pluginsDir := t.TempDir()
+	t.Setenv("HELM_PLUGINS", pluginsDir)
+
+	// Create a test tarball
+	tarballPath := filepath.Join(t.TempDir(), "test-plugin-1.0.0.tar.gz")
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	body := "name: test-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo"
+	require.NoError(t, tw.WriteHeader(&tar.Header{Name: "test-plugin/plugin.yaml", Mode: 0o644, Size: int64(len(body))}))
+	_, err := tw.Write([]byte(body))
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gw.Close())
+	require.NoError(t, os.WriteFile(tarballPath, buf.Bytes(), 0o644))
+
+	i, err := NewForSource(tarballPath, "")
+	require.NoError(t, err)
+	require.NoError(t, Install(i))
+
+	// The tarball kept for provenance checks must sit in the HELM_PLUGINS directory
+	_, err = os.Stat(filepath.Join(pluginsDir, "test-plugin-1.0.0.tgz"))
+	require.NoError(t, err, "expected tarball in %s", pluginsDir)
+	_, err = os.Stat(helmpath.DataPath("plugins", "test-plugin-1.0.0.tgz"))
+	require.ErrorIs(t, err, os.ErrNotExist, "expected no tarball in the default plugins directory")
+}
