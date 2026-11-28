@@ -34,9 +34,14 @@ func URLJoin(baseURL string, paths ...string) (string, error) {
 		return "", err
 	}
 	// We want path instead of filepath because path always uses /.
-	all := []string{u.Path}
-	all = append(all, paths...)
-	u.Path = path.Join(all...)
+	all := []string{u.EscapedPath()}
+	for _, p := range paths {
+		component := &url.URL{Path: p}
+		all = append(all, component.EscapedPath())
+	}
+	u.RawPath = path.Join(all...)
+	// EscapedPath returns valid escapes, so unescaping the joined path cannot fail.
+	u.Path, _ = url.PathUnescape(u.RawPath)
 	return u.String(), nil
 }
 

@@ -32,6 +32,13 @@ func TestURLJoin(t *testing.T) {
 		{name: "Long URL, one path", url: "http://example.com/but/first", paths: []string{"slurm"}, expect: "http://example.com/but/first/slurm"},
 		{name: "URL, two paths", url: "http://example.com", paths: []string{"hello", "world"}, expect: "http://example.com/hello/world"},
 		{name: "URL, no paths", url: "http://example.com", paths: []string{}, expect: "http://example.com"},
+		{name: "escaped slash in base", url: "https://example.com/team%2Frepo", paths: []string{"chart.tgz"}, expect: "https://example.com/team%2Frepo/chart.tgz"},
+		{name: "lowercase escaped slash", url: "https://example.com/team%2frepo", paths: []string{"chart.tgz"}, expect: "https://example.com/team%2frepo/chart.tgz"},
+		{name: "escaped base without paths", url: "https://example.com/team%2Frepo", expect: "https://example.com/team%2Frepo"},
+		{name: "literal filename characters", url: "https://example.com/team%2Frepo", paths: []string{"chart #1%.tgz"}, expect: "https://example.com/team%2Frepo/chart%20%231%25.tgz"},
+		{name: "literal percent escape in filename", url: "https://example.com/team%2Frepo", paths: []string{"chart%2Fname.tgz"}, expect: "https://example.com/team%2Frepo/chart%252Fname.tgz"},
+		{name: "query and fragment", url: "https://example.com/team%2Frepo?key=value#anchor", paths: []string{"chart.tgz"}, expect: "https://example.com/team%2Frepo/chart.tgz?key=value#anchor"},
+		{name: "clean escaped path", url: "https://example.com/team%2Frepo/old", paths: []string{"../chart.tgz"}, expect: "https://example.com/team%2Frepo/chart.tgz"},
 		{name: "basepath, two paths", url: "../example.com", paths: []string{"hello", "world"}, expect: "../example.com/hello/world"},
 	}
 

@@ -415,6 +415,20 @@ func TestIndexDirectory(t *testing.T) {
 	}
 }
 
+func TestIndexDirectoryEscapedURL(t *testing.T) {
+	index, err := IndexDirectory("testdata/repository", "https://example.com/team%2Frepo")
+	require.NoError(t, err)
+
+	for _, tt := range []struct{ name, url string }{
+		{"frobnitz", "https://example.com/team%2Frepo/frobnitz-1.2.3.tgz"},
+		{"zarthal", "https://example.com/team%2Frepo/universe/zarthal-1.0.0.tgz"},
+	} {
+		require.Contains(t, index.Entries, tt.name)
+		require.NotEmpty(t, index.Entries[tt.name])
+		assert.Equal(t, []string{tt.url}, index.Entries[tt.name][0].URLs)
+	}
+}
+
 func TestIndexAdd(t *testing.T) {
 	i := NewIndexFile()
 

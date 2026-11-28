@@ -230,6 +230,10 @@ func TestResolveReferenceURL(t *testing.T) {
 		{"http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz", "https://charts.helm.sh/stable/nginx-0.2.0.tgz"},
 		{"http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz", "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz"},
 		{"http://localhost:8123/charts%2fwith%2fescaped%2fslash", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/team%2F", "nginx-0.2.0.tgz", "http://localhost:8123/team%2F/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/team%2f", "index.yaml", "http://localhost:8123/team%2f/index.yaml"},
+		{"http://localhost:8123/team%2F/", "nginx-0.2.0.tgz", "http://localhost:8123/team%2F/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/team%2F?token=test", "index.yaml", "http://localhost:8123/team%2F/index.yaml?token=test"},
 		{"http://localhost:8123/charts?with=queryparameter", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz?with=queryparameter"},
 		{"http://localhost:8123/charts?with=queryparameter", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz?with=queryparameter"},
 	} {
@@ -237,4 +241,19 @@ func TestResolveReferenceURL(t *testing.T) {
 		require.NoErrorf(t, err, "unexpected error in ResolveReferenceURL(%q, %q)", tt.baseURL, tt.refURL)
 		assert.Equalf(t, chartURL, tt.chartURL, "expected ResolveReferenceURL(%q, %q) to equal %q, got %q", tt.baseURL, tt.refURL, tt.chartURL, chartURL)
 	}
+}
+
+func TestDownloadIndexEscapedTrailingSlash(t *testing.T) {
+	requests := make(chan string, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- r.URL.EscapedPath()
+		_, _ = w.Write([]byte("apiVersion: v1\nentries: {}\n"))
+	}))
+	defer srv.Close()
+	repository, err := NewChartRepository(&Entry{Name: "escaped", URL: srv.URL + "/team%2F"}, getter.All(&cli.EnvSettings{}))
+	require.NoError(t, err)
+	repository.CachePath = t.TempDir()
+	_, err = repository.DownloadIndexFile()
+	require.NoError(t, err)
+	assert.Equal(t, "/team%2F/index.yaml", <-requests)
 }
