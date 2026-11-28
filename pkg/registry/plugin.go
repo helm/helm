@@ -17,12 +17,14 @@ limitations under the License.
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 )
 
 // Plugin-specific constants
@@ -57,26 +59,41 @@ func (c *Client) PullPlugin(ref, pluginName string, options ...PluginPullOption)
 		option(operation)
 	}
 
-	// Use generic client for the pull operation with artifact type filtering
-	genericClient := c.Generic()
-	genericResult, err := genericClient.PullGeneric(ref, GenericPullOptions{
-		// Allow manifests and all layer types - we'll validate artifact type after download
-		AllowedMediaTypes: []string{
-			ocispec.MediaTypeImageManifest,
-			"application/vnd.oci.image.layer.v1.tar",
-			"application/vnd.oci.image.layer.v1.tar+gzip",
-		},
-	})
+	var root ocispec.Descriptor
+	genericResult, err := c.Generic().PullGeneric(ref, pluginPullOptions(&root))
 	if err != nil {
 		return nil, err
 	}
 
 	// Process the result with plugin-specific logic
-	return c.processPluginPull(genericResult, operation.pluginName)
+	return c.processPluginPull(genericResult, root, operation.pluginName)
 }
 
-// processPluginPull handles plugin-specific processing of a generic pull result using artifact type
-func (c *Client) processPluginPull(genericResult *GenericPullResult, pluginName string) (*PluginPullResult, error) {
+// pluginPullOptions returns the generic pull options for a plugin. When the
+// reference resolves to an image index, the plugin manifest is selected before
+// the copy, so only that manifest and its layers are pulled. root receives the
+// descriptor the reference resolved to.
+func pluginPullOptions(root *ocispec.Descriptor) GenericPullOptions {
+	return GenericPullOptions{
+		// Allow the manifest and all layer types - we'll validate artifact type after download
+		AllowedMediaTypes: []string{
+			ocispec.MediaTypeImageManifest,
+			"application/vnd.oci.image.layer.v1.tar",
+			"application/vnd.oci.image.layer.v1.tar+gzip",
+		},
+		MapRoot: func(ctx context.Context, src content.ReadOnlyStorage, desc ocispec.Descriptor) (ocispec.Descriptor, error) {
+			*root = desc
+			if desc.MediaType != ocispec.MediaTypeImageIndex {
+				return desc, nil
+			}
+			return pluginManifestFromIndex(ctx, src, desc)
+		},
+	}
+}
+
+// processPluginPull handles plugin-specific processing of a generic pull result using artifact type.
+// root is the descriptor the reference resolved to, which is reported as the pulled manifest.
+func (c *Client) processPluginPull(genericResult *GenericPullResult, root ocispec.Descriptor, pluginName string) (*PluginPullResult, error) {
 	// First validate that this is actually a plugin artifact
 	manifestData, err := c.Generic().GetDescriptorData(genericResult.MemoryStore, genericResult.Manifest)
 	if err != nil {
@@ -128,7 +145,7 @@ func (c *Client) processPluginPull(genericResult *GenericPullResult, pluginName 
 
 	// Build plugin-specific result
 	result := &PluginPullResult{
-		Manifest:   genericResult.Manifest,
+		Manifest:   root,
 		Ref:        genericResult.Ref,
 		PluginName: pluginName,
 	}
@@ -210,4 +227,37 @@ func PullPluginOptWithProv(withProv bool) PluginPullOption {
 	return func(operation *pluginPullOperation) {
 		operation.withProv = withProv
 	}
+}
+
+// pluginManifestFromIndex returns the descriptor of the first manifest of an
+// image index whose artifact type, or config media type for legacy manifests,
+// is the plugin type
+func pluginManifestFromIndex(ctx context.Context, fetcher content.Fetcher, indexDesc ocispec.Descriptor) (ocispec.Descriptor, error) {
+	indexData, err := content.FetchAll(ctx, fetcher, indexDesc)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("unable to retrieve image index: %w", err)
+	}
+	var index ocispec.Index
+	if err := json.Unmarshal(indexData, &index); err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("unable to parse image index: %w", err)
+	}
+
+	for _, desc := range index.Manifests {
+		if desc.MediaType != ocispec.MediaTypeImageManifest {
+			continue
+		}
+		data, err := content.FetchAll(ctx, fetcher, desc)
+		if err != nil {
+			return ocispec.Descriptor{}, fmt.Errorf("unable to retrieve manifest %s from image index: %w", desc.Digest, err)
+		}
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			return ocispec.Descriptor{}, fmt.Errorf("unable to parse manifest %s from image index: %w", desc.Digest, err)
+		}
+		if manifest.ArtifactType == PluginArtifactType || (manifest.ArtifactType == "" && manifest.Config.MediaType == PluginArtifactType) {
+			return desc, nil
+		}
+	}
+
+	return ocispec.Descriptor{}, fmt.Errorf("image index does not contain a manifest with artifact type %s", PluginArtifactType)
 }
