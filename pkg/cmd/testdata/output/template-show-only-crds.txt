@@ -1,0 +1,14 @@
+---
+# Source: issue-11321/crds/crds.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: firsts.example.com
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: seconds.example.com
+
+
