@@ -361,3 +361,38 @@ func TestMergeValuesCLI(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeValuesJSONErrorReason(t *testing.T) {
+	// Both --set-json forms must report why the value was rejected, not only
+	// the value the user typed.
+	tests := []struct {
+		name    string
+		value   string
+		wantErr string
+	}{
+		{
+			name:  "object form",
+			value: `{invalid`,
+			wantErr: `failed parsing --set-json data JSON: {invalid: ` +
+				`invalid character 'i' looking for beginning of object key string`,
+		},
+		{
+			name:    "key=value form with a truncated list",
+			value:   `a=[1,2`,
+			wantErr: `failed parsing --set-json data a=[1,2: unexpected EOF`,
+		},
+		{
+			name:    "key=value form without a value",
+			value:   `a`,
+			wantErr: `failed parsing --set-json data a: key "a" has no value`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := Options{JSONValues: []string{tt.value}}
+			_, err := opts.MergeValues(getter.Providers{})
+			require.EqualError(t, err, tt.wantErr)
+		})
+	}
+}
