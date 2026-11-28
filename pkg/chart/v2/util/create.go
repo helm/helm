@@ -828,5 +828,10 @@ func validateChartName(name string) error {
 	if !chartName.MatchString(name) {
 		return fmt.Errorf("chart name must match the regular expression %q", chartName.String())
 	}
+	// "." and "..", which the pattern above allows, would scaffold the chart
+	// into the current or the parent directory instead of a new one.
+	if name == "." || name == ".." {
+		return fmt.Errorf("chart name %q is not allowed", name)
+	}
 	return nil
 }

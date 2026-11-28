@@ -264,7 +264,7 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 func validateName(name string) error {
 	nname := filepath.Base(name)
 
-	if nname != name {
+	if nname != name || name == "." || name == ".." {
 		return common.ErrInvalidChartName{Name: name}
 	}
 
