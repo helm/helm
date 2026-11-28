@@ -15,14 +15,45 @@ package schema
 
 import (
 	"bytes"
+	"encoding/json"
 )
 
+// InputMessageCLIV1 is the message a CLI plugin receives as input.
 type InputMessageCLIV1 struct {
 	ExtraArgs []string `json:"extraArgs"`
 }
 
+// OutputMessageCLIV1 is the message a CLI plugin returns as output.
 type OutputMessageCLIV1 struct {
 	Data *bytes.Buffer `json:"data"`
+}
+
+// MarshalJSON encodes Data as a JSON string. bytes.Buffer has no exported
+// fields, so the default encoding would produce `"data":{}` and silently drop
+// whatever the plugin wrote, which runtimes that go through encoding/json
+// (e.g. extism/v1) rely on to return the plugin output.
+func (m OutputMessageCLIV1) MarshalJSON() ([]byte, error) {
+	var data string
+	if m.Data != nil {
+		data = m.Data.String()
+	}
+	return json.Marshal(struct {
+		Data string `json:"data"`
+	}{Data: data})
+}
+
+// UnmarshalJSON decodes the data string written by MarshalJSON back into a
+// *bytes.Buffer, so a Wasm CLI plugin's output reaches Helm instead of an empty
+// buffer.
+func (m *OutputMessageCLIV1) UnmarshalJSON(data []byte) error {
+	var decoded struct {
+		Data string `json:"data"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	m.Data = bytes.NewBufferString(decoded.Data)
+	return nil
 }
 
 // ConfigCLIV1 represents the configuration for CLI plugins
