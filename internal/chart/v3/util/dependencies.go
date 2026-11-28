@@ -292,9 +292,9 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				}
 				// create value map from child to be merged into parent
 				if merge {
-					b = util.MergeTables(b, pathToMap(parent, vv.AsMap()))
+					b = util.MergeTables(b, pathToMap(parent, deepCopyMap(vv.AsMap())))
 				} else {
-					b = util.CoalesceTables(b, pathToMap(parent, vv.AsMap()))
+					b = util.CoalesceTables(b, pathToMap(parent, deepCopyMap(vv.AsMap())))
 				}
 			case string:
 				child := "exports." + iv
@@ -308,9 +308,9 @@ func processImportValues(c *chart.Chart, merge bool) error {
 					continue
 				}
 				if merge {
-					b = util.MergeTables(b, vm.AsMap())
+					b = util.MergeTables(b, deepCopyMap(vm.AsMap()))
 				} else {
-					b = util.CoalesceTables(b, vm.AsMap())
+					b = util.CoalesceTables(b, deepCopyMap(vm.AsMap()))
 				}
 			}
 		}
