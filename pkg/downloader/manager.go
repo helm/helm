@@ -251,6 +251,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		return err
 	}
 
+	// Share the parsed indexes with the chart downloaders below, so that
+	// large index files are not parsed again for every dependency.
+	indexes := make(map[string]*repo.IndexFile, len(repos))
+	for name, cr := range repos {
+		indexes[filepath.Join(m.RepositoryCache, helmpath.CacheIndexFile(name))] = cr.IndexFile
+	}
+
 	destPath := filepath.Join(m.ChartPath, "charts")
 	tmpPath := filepath.Join(m.ChartPath, fmt.Sprintf("tmpcharts-%d", os.Getpid()))
 
@@ -346,6 +353,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithInsecureSkipVerifyTLS(insecureSkipTLSVerify),
 				getter.WithTLSClientConfig(certFile, keyFile, caFile),
 			},
+			indexes: indexes,
 		}
 
 		version := ""

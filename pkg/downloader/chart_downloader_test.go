@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/registry"
@@ -326,6 +327,48 @@ func TestScanReposForURL(t *testing.T) {
 	u = "https://no.such.repo/foo/bar-1.23.4.tgz"
 	_, err = c.scanReposForURL(u, rf)
 	require.ErrorIs(t, err, ErrNoOwnerRepo)
+}
+
+func TestLoadedIndexesAreReused(t *testing.T) {
+	// The cached index on disk lists alpine 1.2.3 and 0.2.0. The preloaded
+	// index lists a different version, so the results show which one was used.
+	preloaded := &repo.IndexFile{
+		Entries: map[string]repo.ChartVersions{
+			"alpine": {{
+				Metadata: &chart.Metadata{Name: "alpine", Version: "9.9.9"},
+				URLs:     []string{"http://example.com/preloaded/alpine-9.9.9.tgz"},
+			}},
+		},
+	}
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+		indexes: map[string]*repo.IndexFile{
+			filepath.Join(repoCache, "testing-index.yaml"): preloaded,
+		},
+	}
+
+	_, u, err := c.ResolveChartVersion("testing/alpine", "")
+	require.NoError(t, err)
+	assert.Equal(t, "http://example.com/preloaded/alpine-9.9.9.tgz", u.String())
+
+	rf, err := repo.LoadFile(repoConfig)
+	require.NoError(t, err)
+
+	entry, err := c.scanReposForURL("http://example.com/preloaded/alpine-9.9.9.tgz", rf)
+	require.NoError(t, err)
+	assert.Equal(t, "testing", entry.Name)
+
+	// Repositories without a preloaded index are still read from disk.
+	_, u, err = c.ResolveChartVersion("testing-relative/foo", "")
+	require.NoError(t, err)
+	assert.Equal(t, "http://example.com/helm/charts/foo-1.2.3.tgz", u.String())
 }
 
 func TestDownloadToCache(t *testing.T) {
