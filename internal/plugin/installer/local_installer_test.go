@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -108,4 +109,43 @@ func TestLocalInstallerTarball(t *testing.T) {
 	// Verify plugin was installed
 	_, err = os.Stat(i.Path())
 	require.NoErrorf(t, err, "plugin not found at %s", i.Path())
+}
+
+// Once GetVerificationData has read the archive and its provenance file, the
+// installer must install those bytes rather than re-reading the source, as the
+// HTTP and OCI installers already do. Otherwise the plugin installed need not
+// be the one that was verified.
+func TestLocalInstallerTarballInstallsCachedBytes(t *testing.T) {
+	ensure.HelmHome(t)
+
+	pluginDir := createTestPluginDir(t)
+	tarballPath := createTarballFromPluginDir(t, pluginDir)
+	provPath := tarballPath + ".prov"
+	require.NoError(t, os.WriteFile(provPath, []byte("first provenance"), 0o644))
+
+	i, err := NewLocalInstaller(tarballPath)
+	require.NoError(t, err)
+	_, _, _, err = i.GetVerificationData()
+	require.NoError(t, err)
+
+	// Replace the archive and provenance file after they have been read.
+	pluginYAML := filepath.Join(pluginDir, "plugin.yaml")
+	orig, err := os.ReadFile(pluginYAML)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(pluginYAML, []byte(strings.Replace(string(orig), "version: 1.0.0", "version: 2.0.0", 1)), 0o644))
+	require.Equal(t, tarballPath, createTarballFromPluginDir(t, pluginDir))
+	require.NoError(t, os.WriteFile(provPath, []byte("second provenance"), 0o644))
+
+	require.NoError(t, i.Install())
+
+	installed, err := os.ReadFile(filepath.Join(i.Path(), "plugin.yaml"))
+	require.NoError(t, err)
+	require.Contains(t, string(installed), "version: 1.0.0")
+
+	require.FileExists(t, helmpath.DataPath("plugins", "test-plugin-1.0.0.tgz"))
+	require.NoFileExists(t, helmpath.DataPath("plugins", "test-plugin-2.0.0.tgz"))
+
+	prov, err := os.ReadFile(helmpath.DataPath("plugins", "test-plugin-1.0.0.tgz.prov"))
+	require.NoError(t, err)
+	require.Equal(t, "first provenance", string(prov))
 }

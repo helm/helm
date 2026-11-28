@@ -103,15 +103,19 @@ func (i *LocalInstaller) installFromDirectory() error {
 
 // installFromArchive extracts and installs a plugin from a tarball
 func (i *LocalInstaller) installFromArchive() error {
-	// Read the archive file
-	data, err := os.ReadFile(i.Source)
-	if err != nil {
-		return fmt.Errorf("failed to read archive: %w", err)
+	// Read the archive file, unless GetVerificationData already did. Reusing
+	// the cached bytes means the plugin installed is the one that was verified.
+	if i.pluginData == nil {
+		data, err := os.ReadFile(i.Source)
+		if err != nil {
+			return fmt.Errorf("failed to read archive: %w", err)
+		}
+		i.pluginData = data
 	}
 
 	// Copy the original tarball to plugins directory for verification
 	// Extract metadata to get the actual plugin name and version
-	metadata, err := plugin.ExtractTgzPluginMetadata(bytes.NewReader(data))
+	metadata, err := plugin.ExtractTgzPluginMetadata(bytes.NewReader(i.pluginData))
 	if err != nil {
 		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
 	}
@@ -120,15 +124,19 @@ func (i *LocalInstaller) installFromArchive() error {
 	if err := os.MkdirAll(filepath.Dir(tarballPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}
-	if err := os.WriteFile(tarballPath, data, 0o644); err != nil {
+	if err := os.WriteFile(tarballPath, i.pluginData, 0o644); err != nil {
 		return fmt.Errorf("failed to save tarball: %w", err)
 	}
 
 	// Check for and copy .prov file if it exists
-	provSource := i.Source + ".prov"
-	if provData, err := os.ReadFile(provSource); err == nil {
+	if i.provData == nil {
+		if provData, err := os.ReadFile(i.Source + ".prov"); err == nil {
+			i.provData = provData
+		}
+	}
+	if i.provData != nil {
 		provPath := tarballPath + ".prov"
-		if err := os.WriteFile(provPath, provData, 0o644); err != nil {
+		if err := os.WriteFile(provPath, i.provData, 0o644); err != nil {
 			slog.Debug("failed to save provenance file", "error", err)
 		}
 	}
@@ -141,7 +149,7 @@ func (i *LocalInstaller) installFromArchive() error {
 	defer os.RemoveAll(tempDir)
 
 	// Extract the archive
-	buffer := bytes.NewBuffer(data)
+	buffer := bytes.NewBuffer(i.pluginData)
 	if err := i.extractor.Extract(buffer, tempDir); err != nil {
 		return fmt.Errorf("failed to extract archive: %w", err)
 	}
