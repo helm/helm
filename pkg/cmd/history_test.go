@@ -19,13 +19,17 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -450,4 +454,64 @@ func TestReleaseInfoEmptyStringRoundTrip(t *testing.T) {
 	assert.InDelta(t, float64(1), result["revision"], 0.0)
 	assert.Equal(t, "deployed", result["status"])
 	assert.Equal(t, "mychart-1.0.0", result["chart"])
+}
+
+func TestCompListRevisionsMissingChartMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		rel      *release.Release
+		expected string
+	}{
+		{
+			name: "nil chart",
+			rel: &release.Release{
+				Name:    "missing-chart",
+				Version: 1,
+				Info:    &release.Info{Status: common.StatusSuperseded},
+				Chart:   nil,
+			},
+			expected: "1\tApp: MISSING, Chart: MISSING",
+		},
+		{
+			name: "nil chart metadata",
+			rel: &release.Release{
+				Name:    "missing-chart",
+				Version: 2,
+				Info:    &release.Info{Status: common.StatusSuperseded},
+				Chart:   &chart.Chart{Metadata: nil},
+			},
+			expected: "2\tApp: MISSING, Chart: MISSING",
+		},
+		{
+			name: "valid chart metadata",
+			rel: &release.Release{
+				Name:    "missing-chart",
+				Version: 3,
+				Info:    &release.Info{Status: common.StatusDeployed},
+				Chart: &chart.Chart{
+					Metadata: &chart.Metadata{
+						Name:       "foo",
+						Version:    "0.1.0",
+						AppVersion: "1.0",
+					},
+				},
+			},
+			expected: "3\tApp: 1.0, Chart: foo-0.1.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := storageFixture()
+			require.NoError(t, store.Create(tt.rel))
+
+			cfg := &action.Configuration{
+				Releases:   store,
+				KubeClient: &kubefake.PrintingKubeClient{Out: io.Discard},
+			}
+			revisions, directive := compListRevisions("", cfg, tt.rel.Name)
+			assert.Equal(t, cobra.ShellCompDirectiveNoFileComp, directive)
+			assert.Equal(t, []string{tt.expected}, revisions)
+		})
+	}
 }
