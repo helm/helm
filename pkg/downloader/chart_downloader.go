@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"helm.sh/helm/v4/internal/fileutil"
@@ -185,7 +186,10 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			}
 		}
 		if !found {
-			body, err = g.Get(u.String()+".prov", c.Options...)
+			// Provenance files are text and benefit from compression. Clone the
+			// options so the chart download above stays uncompressed.
+			provOptions := append(slices.Clone(c.Options), getter.WithAcceptCompression(true))
+			body, err = g.Get(u.String()+".prov", provOptions...)
 			if err != nil {
 				if c.Verify == VerifyAlways {
 					return destfile, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")
@@ -290,7 +294,10 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 				return pth, ver, err
 			}
 
-			body, err := g.Get(u.String()+".prov", c.Options...)
+			// Provenance files are text and benefit from compression. Clone the
+			// options so the chart download above stays uncompressed.
+			provOptions := append(slices.Clone(c.Options), getter.WithAcceptCompression(true))
+			body, err := g.Get(u.String()+".prov", provOptions...)
 			if err != nil {
 				if c.Verify == VerifyAlways {
 					return pth, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")

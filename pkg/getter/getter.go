@@ -40,6 +40,7 @@ type getterOptions struct {
 	insecureSkipVerifyTLS bool
 	plainHTTP             bool
 	acceptHeader          string
+	acceptCompression     bool
 	username              string
 	password              string
 	passCredentialsAll    bool
@@ -67,6 +68,15 @@ func WithURL(url string) Option {
 func WithAcceptHeader(header string) Option {
 	return func(opts *getterOptions) {
 		opts.acceptHeader = header
+	}
+}
+
+// WithAcceptCompression informs the getter to advertise support for gzip-compressed
+// responses via the Accept-Encoding request header and transparently decompress
+// responses served with a matching Content-Encoding header.
+func WithAcceptCompression(acceptCompression bool) Option {
+	return func(opts *getterOptions) {
+		opts.acceptCompression = acceptCompression
 	}
 }
 
