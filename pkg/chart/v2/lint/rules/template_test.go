@@ -409,37 +409,54 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 	require.Empty(t, linter.Messages, "Expected 0 lint errors")
 }
 
-func TestValidateListAnnotations(t *testing.T) {
-	md := &k8sYamlStruct{
-		APIVersion: "v1",
-		Kind:       "List",
-		Metadata: k8sYamlMetadata{
-			Name: "list",
-		},
-	}
-	manifest := `
-apiVersion: v1
+func TestTemplatesListResourcePolicy(t *testing.T) {
+	const manifest = `apiVersion: v1
 kind: List
+metadata:
+  name: {{ .Release.Name }}
+  {{- if .Values.keepList }}
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
 items:
   - apiVersion: v1
     kind: ConfigMap
     metadata:
+      name: {{ .Release.Name }}-config
+      {{- if .Values.keepItem }}
       annotations:
         helm.sh/resource-policy: keep
+      {{- end }}
 `
-	require.Error(t, validateListAnnotations(md, manifest), "expected list with nested keep annotations to fail")
+	tests := []struct {
+		name     string
+		keepList bool
+		keepItem bool
+	}{
+		{name: "item", keepItem: true},
+		{name: "list", keepList: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mychart := chart.Chart{
+				Metadata: &chart.Metadata{
+					APIVersion: chart.APIVersionV2,
+					Name:       "list-resource-policy",
+					Version:    "0.1.0",
+				},
+				Templates: []*common.File{
+					{Name: "templates/list.yaml", Data: []byte(manifest)},
+				},
+			}
+			tmpdir := t.TempDir()
+			require.NoError(t, chartutil.SaveDir(&mychart, tmpdir))
 
-	manifest = `
-apiVersion: v1
-kind: List
-metadata:
-  annotations:
-    helm.sh/resource-policy: keep
-items:
-  - apiVersion: v1
-    kind: ConfigMap
-`
-	require.NoErrorf(t, validateListAnnotations(md, manifest), "List objects keep annotations should pass. got")
+			linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+			values := map[string]any{"keepList": tt.keepList, "keepItem": tt.keepItem}
+			Templates(&linter, namespace, values)
+			require.Empty(t, linter.Messages, "expected List resource-policy annotations to pass lint")
+		})
+	}
 }
 
 func TestIsYamlFileExtension(t *testing.T) {

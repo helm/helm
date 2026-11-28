@@ -288,6 +288,29 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		assert.Equal(t, "owned", ownedList[0].Name)
 		assert.Equal(t, "unowned", unownedList[0].Name)
 	})
+
+	// Test owned resources carry the object read from the cluster
+	t.Run("owned resource carries live object", func(t *testing.T) {
+		liveAnnotations := map[string]string{
+			helmReleaseNameAnnotation:      releaseName,
+			helmReleaseNamespaceAnnotation: releaseNamespace,
+			kube.ResourcePolicyAnno:        kube.KeepPolicy,
+		}
+		owned := newDeploymentWithOwner("owned", "ns-a", labels, liveAnnotations)
+		// Only the server copy has the annotation, not the object built from the manifest.
+		owned.Object = newDeploymentResource("owned", "ns-a", "").Object
+
+		ownedList, _, _, err := verifyOwnershipBeforeDelete(kube.ResourceList{owned}, releaseName, releaseNamespace)
+		require.NoError(t, err)
+		require.Len(t, ownedList, 1)
+		got, err := accessor.Annotations(ownedList[0].Object)
+		require.NoError(t, err)
+		assert.Equal(t, kube.KeepPolicy, got[kube.ResourcePolicyAnno])
+
+		got, err = accessor.Annotations(owned.Object)
+		require.NoError(t, err)
+		assert.Empty(t, got, "input resource must not be modified")
+	})
 }
 
 func TestSetMetadataVisitor(t *testing.T) {
