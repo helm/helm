@@ -266,12 +266,16 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 			// If the key is not in v, copy it from nv.
 			// When coalescing, skip chart default nils and clean nils from
 			// nested maps so they don't shadow globals or produce %!s(<nil>).
+			// However, preserve nils in child chart and global scopes as
+			// those are intentional overrides from the parent chart.
 			if !merge {
 				if val == nil {
 					continue
 				}
 				if sub, ok := val.(map[string]any); ok {
-					cleanNilValues(sub)
+					if !childChartMergeTrue(c, key, false) && key != common.GlobalKey {
+						cleanNilValues(sub)
+					}
 				}
 			}
 			v[key] = val
