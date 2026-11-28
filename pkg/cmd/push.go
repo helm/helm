@@ -23,8 +23,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/pusher"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 const pushDesc = `
@@ -44,8 +46,30 @@ type registryPushOptions struct {
 	username              string
 }
 
+// pushWriter renders the outcome of a push. The table form keeps the plain
+// text the command has always written, while the structured forms expose the
+// digests a caller needs to sign or reference the uploaded chart.
+type pushWriter struct {
+	text   string
+	result *registry.PushResult
+}
+
+func (w *pushWriter) WriteTable(out io.Writer) error {
+	_, err := fmt.Fprint(out, w.text)
+	return err
+}
+
+func (w *pushWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, w.result)
+}
+
+func (w *pushWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, w.result)
+}
+
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	o := &registryPushOptions{}
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "push [chart] [remote]",
@@ -70,8 +94,15 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return noMoreArgsComp()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			// The registry client reports its progress as plain text. Send it
+			// to the void for a structured format, so that the document on
+			// stdout stays parsable.
+			registryOut := out
+			if outfmt != output.Table {
+				registryOut = io.Discard
+			}
 			registryClient, err := newRegistryClient(
-				out, o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
+				registryOut, o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
 			)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -85,12 +116,11 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				action.WithPlainHTTP(o.plainHTTP),
 				action.WithPushOptWriter(out))
 			client.Settings = settings
-			output, err := client.Run(chartRef, remote)
+			text, err := client.Run(chartRef, remote)
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
-			return nil
+			return outfmt.Write(out, &pushWriter{text: text, result: client.Result()})
 		},
 	}
 
@@ -102,6 +132,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }
