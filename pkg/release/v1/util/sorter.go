@@ -32,9 +32,19 @@ func Reverse(list []*rspb.Release, sortFn func([]*rspb.Release)) {
 
 // SortByName returns the list of releases sorted
 // in lexicographical order.
+//
+// Releases that share a name are ordered by revision, and then by namespace,
+// so the order of the revisions of one release does not depend on the order
+// they came in.
 func SortByName(list []*rspb.Release) {
 	sort.Slice(list, func(i, j int) bool {
-		return list[i].Name < list[j].Name
+		if list[i].Name != list[j].Name {
+			return list[i].Name < list[j].Name
+		}
+		if list[i].Version != list[j].Version {
+			return list[i].Version < list[j].Version
+		}
+		return list[i].Namespace < list[j].Namespace
 	})
 }
 
@@ -48,14 +58,31 @@ func SortByDate(list []*rspb.Release) {
 			return ti < tj
 		}
 		// Use name as tie-breaker for stable sorting
-		return list[i].Name < list[j].Name
+		if list[i].Name != list[j].Name {
+			return list[i].Name < list[j].Name
+		}
+		// and revision and namespace, as several releases can share a name and
+		// a timestamp, even across namespaces
+		if list[i].Version != list[j].Version {
+			return list[i].Version < list[j].Version
+		}
+		return list[i].Namespace < list[j].Namespace
 	})
 }
 
 // SortByRevision returns the list of releases sorted by a
 // release's revision number (release.Version).
+//
+// Releases that share a revision are ordered by name, and then by namespace,
+// so the order does not depend on the order they came in.
 func SortByRevision(list []*rspb.Release) {
 	sort.Slice(list, func(i, j int) bool {
-		return list[i].Version < list[j].Version
+		if list[i].Version != list[j].Version {
+			return list[i].Version < list[j].Version
+		}
+		if list[i].Name != list[j].Name {
+			return list[i].Name < list[j].Name
+		}
+		return list[i].Namespace < list[j].Namespace
 	})
 }
