@@ -48,6 +48,16 @@ func TestDefaultCapabilities(t *testing.T) {
 	assert.Equalf(t, "v4.3", hv.Version, "Expected default HelmVersion to be v4.3, got %q", hv.Version)
 }
 
+func TestCapabilitiesCopy(t *testing.T) {
+	caps := &Capabilities{APIVersions: VersionSet{"v1", "apps/v1"}}
+	copied := caps.Copy()
+	assert.Equal(t, caps, copied)
+
+	copied.APIVersions[0] = "batch/v1"
+	assert.Equal(t, VersionSet{"v1", "apps/v1"}, caps.APIVersions)
+	assert.Equal(t, VersionSet{"batch/v1", "apps/v1"}, copied.APIVersions)
+}
+
 // TestDefaultCapabilitiesFromKubeBinaryVersion exercises the production
 // version-derived calculation.
 func TestDefaultCapabilitiesFromKubeBinaryVersion(t *testing.T) {
