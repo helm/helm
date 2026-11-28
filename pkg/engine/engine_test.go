@@ -519,8 +519,15 @@ func TestAllTemplates(t *testing.T) {
 	}
 	dep1.AddDependency(dep2)
 
-	tpls := allTemplates(ch1, common.Values{})
+	tpls, err := allTemplates(ch1, common.Values{})
+	require.NoError(t, err)
 	assert.Len(t, tpls, 5, "Expected 5 charts, got %d", len(tpls))
+}
+
+func TestRenderUnsupportedChartType(t *testing.T) {
+	// An unsupported chart type must return an error rather than panic.
+	_, err := new(Engine).RenderWithContext(t.Context(), "not a chart", common.Values{})
+	require.ErrorContains(t, err, "unsupported chart type")
 }
 
 func TestChartValuesContainsIsRoot(t *testing.T) {
