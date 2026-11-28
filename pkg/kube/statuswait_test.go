@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1774,6 +1775,162 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+// jobStep changes a Job on the fake cluster: it either sets a terminal
+// condition (Complete or Failed) or deletes the Job.
+type jobStep struct {
+	job       string
+	condition string
+	delete    bool
+}
+
+func newHookJob(name string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "batch/v1",
+		"kind":       "Job",
+		"metadata": map[string]any{
+			"name":       name,
+			"namespace":  "qual",
+			"generation": int64(1),
+		},
+	}}
+}
+
+// TestWaitResourceDeleted covers resources that disappear while Helm waits. In
+// hook waits a resource last seen Current is done when it is deleted, e.g. a Job
+// removed by the TTL controller. One that failed or never finished is not, even
+// with async status workers. Outside hook waits a deleted resource is an error.
+func TestWaitResourceDeleted(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		hook          bool
+		workers       int
+		jobs          []string
+		steps         []jobStep
+		expectErrStrs []string
+	}{
+		{
+			name: "hook completed then deleted while another hook runs",
+			hook: true,
+			jobs: []string{"a", "b"},
+			steps: []jobStep{
+				{job: "a", condition: "Complete"},
+				{job: "a", delete: true},
+				{job: "b", condition: "Complete"},
+			},
+		},
+		{
+			name: "hook failed then deleted",
+			hook: true,
+			jobs: []string{"a"},
+			steps: []jobStep{
+				{job: "a", condition: "Failed"},
+				{job: "a", delete: true},
+			},
+			expectErrStrs: []string{"resource Job/qual/a not ready"},
+		},
+		{
+			name:    "hook failed then deleted with async status workers",
+			hook:    true,
+			workers: 8,
+			jobs:    []string{"a"},
+			steps: []jobStep{
+				{job: "a", condition: "Failed"},
+				{job: "a", delete: true},
+			},
+			expectErrStrs: []string{"resource Job/qual/a not ready"},
+		},
+		{
+			name:  "hook deleted before it finished",
+			hook:  true,
+			jobs:  []string{"a"},
+			steps: []jobStep{{job: "a", delete: true}},
+			expectErrStrs: []string{
+				"resource Job/qual/a not ready. status: NotFound",
+				"context deadline exceeded",
+			},
+		},
+		{
+			name: "non-hook wait: completed then deleted is still an error",
+			jobs: []string{"a", "b"},
+			steps: []jobStep{
+				{job: "a", condition: "Complete"},
+				{job: "a", delete: true},
+				{job: "b", condition: "Complete"},
+			},
+			expectErrStrs: []string{"resource Job/qual/a not ready. status: NotFound"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			timeout := 3 * time.Second
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(batchv1.SchemeGroupVersion.WithKind("Job"))
+			statusWaiter := statusWaiter{
+				restMapper:           fakeMapper,
+				client:               fakeClient,
+				statusComputeWorkers: tt.workers,
+			}
+			statusWaiter.SetLogger(slog.Default().Handler())
+
+			gvr := getGVR(t, fakeMapper, newHookJob("x"))
+			var objs []runtime.Object
+			for _, name := range tt.jobs {
+				u := newHookJob(name)
+				require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+				objs = append(objs, u)
+			}
+
+			// Apply the steps only once the watcher has listed the Jobs and
+			// started watching, so no step lands before the initial sync.
+			watching := make(chan struct{})
+			var once sync.Once
+			fakeClient.PrependWatchReactor("jobs", func(action clienttesting.Action) (bool, watch.Interface, error) {
+				w, err := fakeClient.Tracker().Watch(gvr, action.GetNamespace())
+				once.Do(func() { close(watching) })
+				return true, w, err
+			})
+			go func() {
+				select {
+				case <-watching:
+				case <-time.After(timeout):
+					return
+				}
+				for _, step := range tt.steps {
+					if step.delete {
+						assert.NoError(t, fakeClient.Tracker().Delete(gvr, "qual", step.job))
+						continue
+					}
+					u := newHookJob(step.job)
+					u.Object["status"] = map[string]any{
+						"conditions": []any{map[string]any{"type": step.condition, "status": "True"}},
+					}
+					assert.NoError(t, fakeClient.Tracker().Update(gvr, u, "qual"))
+				}
+			}()
+
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			var err error
+			if tt.hook {
+				err = statusWaiter.WatchUntilReady(resourceList, timeout)
+			} else {
+				err = statusWaiter.WaitWithJobs(resourceList, timeout)
+			}
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					require.ErrorContains(t, err, expectedErrStr)
+				}
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }
