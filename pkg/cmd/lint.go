@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
+	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/getter"
@@ -43,10 +44,40 @@ it will emit [ERROR] messages. If it encounters issues that break with conventio
 or recommendation, it will emit [WARNING] messages.
 `
 
+// lintChartResult is a single chart's entry in the JSON/YAML structured output.
+type lintChartResult struct {
+	Chart    string             `json:"chart"`
+	Messages []lintMessageEntry `json:"messages"`
+}
+
+// lintMessageEntry is one lint finding within a lintChartResult.
+type lintMessageEntry struct {
+	Severity string `json:"severity"`
+	Path     string `json:"path,omitempty"`
+	Message  string `json:"message"`
+}
+
+// lintResultsWriter implements output.Writer for JSON and YAML formats.
+// Table output is handled directly in the RunE body to preserve existing behaviour byte-for-byte.
+type lintResultsWriter struct {
+	results []lintChartResult
+}
+
+func (w *lintResultsWriter) WriteTable(_ io.Writer) error { return nil }
+
+func (w *lintResultsWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, w.results)
+}
+
+func (w *lintResultsWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, w.results)
+}
+
 func newLintCmd(out io.Writer) *cobra.Command {
 	client := action.NewLint()
 	valueOpts := &values.Options{}
 	var kubeVersion string
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "lint PATH",
@@ -85,6 +116,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
+			chartResults := make([]lintChartResult, 0, len(paths))
 			var message strings.Builder
 			failed := 0
 			errorsOrWarnings := 0
@@ -92,13 +124,23 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			for _, path := range paths {
 				result := client.Run([]string{path}, vals)
 
-				// If there is no errors/warnings and quiet flag is set
-				// go to the next chart
 				hasWarningsOrErrors := action.HasWarningsOrErrors(result)
 				if hasWarningsOrErrors {
 					errorsOrWarnings++
 				}
+				if len(result.Errors) != 0 {
+					failed++
+				}
+
+				// If there is no errors/warnings and quiet flag is set
+				// go to the next chart
 				if client.Quiet && !hasWarningsOrErrors {
+					continue
+				}
+
+				// Table-only display; JSON/YAML output is written after the loop.
+				if outfmt != output.Table {
+					chartResults = append(chartResults, lintChartResultFromResult(path, result, client.Quiet))
 					continue
 				}
 
@@ -120,14 +162,21 @@ func newLintCmd(out io.Writer) *cobra.Command {
 					}
 				}
 
-				if len(result.Errors) != 0 {
-					failed++
-				}
-
 				// Adding extra new line here to break up the
 				// results, stops this from being a big wall of
 				// text and makes it easier to follow.
 				fmt.Fprint(&message, "\n")
+			}
+
+			if outfmt != output.Table {
+				if err := outfmt.Write(out, &lintResultsWriter{results: chartResults}); err != nil {
+					return err
+				}
+				summary := fmt.Sprintf("%d chart(s) linted, %d chart(s) failed", len(paths), failed)
+				if failed > 0 {
+					return errors.New(summary)
+				}
+				return nil
 			}
 
 			fmt.Fprint(out, message.String())
@@ -150,6 +199,49 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.SkipSchemaValidation, "skip-schema-validation", false, "if set, disables JSON schema validation")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for capabilities and deprecation checks")
 	addValueOptionsFlags(f, valueOpts)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
+}
+
+// lintChartResultFromResult converts one chart's LintResult into the structured output type.
+// When lintChart itself fails (no Messages), result.Errors holds the chart-load error and
+// those are surfaced as ERROR entries. Otherwise the Messages slice is the source of truth
+// and result.Errors (which is a filtered subset of Messages) is not used a second time.
+// When quiet is set, INFO messages are dropped to match the table output.
+func lintChartResultFromResult(path string, result *action.LintResult, quiet bool) lintChartResult {
+	entries := make([]lintMessageEntry, 0, len(result.Messages))
+	if len(result.Messages) == 0 {
+		for _, err := range result.Errors {
+			entries = append(entries, lintMessageEntry{
+				Severity: "ERROR",
+				Message:  err.Error(),
+			})
+		}
+	} else {
+		for _, msg := range result.Messages {
+			if quiet && msg.Severity <= support.InfoSev {
+				continue
+			}
+			entries = append(entries, lintMessageEntry{
+				Severity: lintSeverityString(msg.Severity),
+				Path:     msg.Path,
+				Message:  msg.Err.Error(),
+			})
+		}
+	}
+	return lintChartResult{Chart: path, Messages: entries}
+}
+
+func lintSeverityString(s int) string {
+	switch s {
+	case support.InfoSev:
+		return "INFO"
+	case support.WarningSev:
+		return "WARNING"
+	case support.ErrorSev:
+		return "ERROR"
+	default:
+		return "UNKNOWN"
+	}
 }

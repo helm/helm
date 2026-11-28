@@ -103,3 +103,37 @@ func TestLintFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "lint", true)
 	checkFileCompletion(t, "lint mypath", true) // Multiple paths can be given
 }
+
+func TestLintCmdOutputFlag(t *testing.T) {
+	cleanChart := "testdata/testcharts/alpine"
+	badChart := "testdata/testcharts/chart-with-bad-subcharts"
+	tests := []cmdTestCase{{
+		name:   "clean chart json output",
+		cmd:    "lint --output json " + cleanChart,
+		golden: "output/lint-output-json-clean.txt",
+	}, {
+		name:      "with-subcharts json output",
+		cmd:       "lint --output json --with-subcharts " + badChart,
+		golden:    "output/lint-output-json-with-subcharts.txt",
+		wantError: true,
+	}, {
+		name:      "unloadable chart json output",
+		cmd:       "lint --output json testdata/testcharts/does-not-exist",
+		golden:    "output/lint-output-json-unloadable.txt",
+		wantError: true,
+	}, {
+		name:   "clean chart yaml output",
+		cmd:    "lint --output yaml " + cleanChart,
+		golden: "output/lint-output-yaml-clean.txt",
+	}, {
+		name:   "quiet json output omits clean charts",
+		cmd:    "lint --quiet -o json " + cleanChart,
+		golden: "output/lint-output-json-quiet-clean.txt",
+	}, {
+		name:      "quiet json output drops info messages",
+		cmd:       "lint --quiet -o json " + cleanChart + " " + badChart,
+		golden:    "output/lint-output-json-quiet-errors.txt",
+		wantError: true,
+	}}
+	runTestCmd(t, tests)
+}

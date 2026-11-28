@@ -1,0 +1,5 @@
+- chart: testdata/testcharts/alpine
+  messages:
+  - message: icon is recommended
+    path: Chart.yaml
+    severity: INFO
