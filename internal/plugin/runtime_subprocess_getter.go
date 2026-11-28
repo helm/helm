@@ -81,7 +81,13 @@ func (r *SubprocessPluginRuntime) runGetter(ctx context.Context, input *Input) (
 
 	buf := bytes.Buffer{} // subprocess getters are expected to write content to stdout
 
-	pluginCommand := filepath.Join(r.pluginDir, command)
+	// Relative commands are resolved against the plugin directory. Commands
+	// that are already absolute (e.g. "${HELM_PLUGIN_DIR}/bin/getter" after
+	// env expansion) are used as-is.
+	pluginCommand := command
+	if !filepath.IsAbs(pluginCommand) {
+		pluginCommand = filepath.Join(r.pluginDir, pluginCommand)
+	}
 	cmd := exec.CommandContext(
 		ctx,
 		pluginCommand,
