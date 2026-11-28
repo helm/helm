@@ -475,7 +475,6 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 	if namespace == "" {
 		namespace = defaultNamespace
 	}
-	s.namespace = namespace
 
 	body, err := encodeRelease(rls)
 	if err != nil {
@@ -525,7 +524,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 			Select(sqlReleaseTableKeyColumn).
 			From(sqlReleaseTableName).
 			Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
-			Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace}).
+			Where(sq.Eq{sqlReleaseTableNamespaceColumn: namespace}).
 			ToSql()
 		if buildErr != nil {
 			s.Logger().Debug("failed to build select query", "error", buildErr)
@@ -599,7 +598,6 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 	if namespace == "" {
 		namespace = defaultNamespace
 	}
-	s.namespace = namespace
 
 	body, err := encodeRelease(rls)
 	if err != nil {
@@ -704,13 +702,13 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 }
 
 // Get release custom labels from database
-func (s *SQL) getReleaseCustomLabels(key, _ string) (map[string]string, error) {
+func (s *SQL) getReleaseCustomLabels(key, namespace string) (map[string]string, error) {
 	query, args, err := s.statementBuilder.
 		Select(sqlCustomLabelsTableKeyColumn, sqlCustomLabelsTableValueColumn).
 		From(sqlCustomLabelsTableName).
 		Where(sq.Eq{
 			sqlCustomLabelsTableReleaseKeyColumn:       key,
-			sqlCustomLabelsTableReleaseNamespaceColumn: s.namespace,
+			sqlCustomLabelsTableReleaseNamespaceColumn: namespace,
 		}).
 		ToSql()
 	if err != nil {
