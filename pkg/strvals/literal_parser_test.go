@@ -428,6 +428,11 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 			err:    true,
 			errStr: fmt.Sprintf("value name nested level is greater than maximum supported nested level of %d", MaxNestedNameLevel),
 		},
+		{
+			str:    "ingress.hosts[0.host=example.com",
+			err:    true,
+			errStr: "error parsing index: missing closing ']'",
+		},
 	}
 
 	for _, tt := range tests {
