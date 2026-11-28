@@ -616,9 +616,9 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Logf("vals: %v", vals)
-	assert.Contains(t, warnings, "warning: skipped value for level1.level2.level3.boat: Not a table.")
-	assert.Contains(t, warnings, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
-	assert.Contains(t, warnings, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
+	assert.Contains(t, warnings, "warning: level1.level2.level3.boat is a map, so the non-map chart default it overrides is ignored")
+	assert.Contains(t, warnings, "warning: level1.level2.level3.spear.tip is a map, so the non-map value it overrides (true) is ignored")
+	assert.Contains(t, warnings, "warning: level1.level2.level3.spear.sail is not a map, so the map it overrides (map[cotton:true]) is ignored")
 }
 
 func TestConcatPrefix(t *testing.T) {
