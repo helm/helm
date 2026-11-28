@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -265,10 +266,11 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 	client.ReleaseName = name
 
-	cp, err := client.LocateChart(chartRef, settings)
+	lc, err := client.LocateChartWithVerification(chartRef, settings)
 	if err != nil {
 		return nil, err
 	}
+	cp := lc.Path
 
 	slog.Debug("Chart path", "path", cp)
 
@@ -279,7 +281,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	// Check chart dependencies to make sure all are present in /charts
-	chartRequested, err := loader.Load(cp)
+	chartRequested, err := loadLocatedChart(lc)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +327,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 			if err := man.Update(); err != nil {
 				return nil, err
 			}
-			// Reload the chart with the updated Chart.lock file.
+			// Reload the chart with the updated Chart.lock file. This must
+			// re-read the path: lc.Data is only set for a verified archive,
+			// and an archive cannot reach here because only unpacked charts
+			// can be updated.
 			if chartRequested, err = loader.Load(cp); err != nil {
 				return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
 			}
@@ -380,4 +385,14 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 		return compListCharts(toComplete, true)
 	}
 	return nil, cobra.ShellCompDirectiveNoFileComp
+}
+
+// loadLocatedChart loads the chart that LocateChartWithVerification resolved.
+// When the chart was verified from a local archive, it loads the bytes that
+// were verified instead of reading the file again.
+func loadLocatedChart(lc *action.LocatedChart) (chart.Charter, error) {
+	if lc.Data != nil {
+		return loader.LoadArchive(bytes.NewReader(lc.Data))
+	}
+	return loader.Load(lc.Path)
 }
