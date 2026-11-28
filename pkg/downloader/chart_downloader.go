@@ -85,6 +85,20 @@ type ChartDownloader struct {
 
 	// Cache specifies the cache implementation to use.
 	Cache Cache
+
+	// indexes holds repository index files that have already been loaded,
+	// keyed by the path of the cached index file. The dependency manager sets
+	// it so that the indexes it has parsed are not read again for every chart.
+	indexes map[string]*repo.IndexFile
+}
+
+// loadIndexFile returns the index file at path, reusing an already loaded
+// index when one is available.
+func (c *ChartDownloader) loadIndexFile(path string) (*repo.IndexFile, error) {
+	if i, ok := c.indexes[path]; ok {
+		return i, nil
+	}
+	return repo.LoadIndexFile(path)
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -456,7 +470,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 
 	// Next, we need to load the index, and actually look up the chart.
 	idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
-	i, err := repo.LoadIndexFile(idxFile)
+	i, err := c.loadIndexFile(idxFile)
 	if err != nil {
 		return "", u, fmt.Errorf("no cached repo found. (try 'helm repo update'): %w", err)
 	}
@@ -565,7 +579,7 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 		}
 
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
-		i, err := repo.LoadIndexFile(idxFile)
+		i, err := c.loadIndexFile(idxFile)
 		if err != nil {
 			return nil, fmt.Errorf("no cached repo found. (try 'helm repo update'): %w", err)
 		}
