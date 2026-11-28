@@ -227,13 +227,14 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 				if err := dec.Decode(&jsonval); err != nil {
 					return err
 				}
-				set(data, string(k), jsonval)
 				if _, err = io.CopyN(io.Discard, t.sc, dec.InputOffset()); err != nil {
 					return err
 				}
-				// skip possible blanks and comma
-				_, err = t.emptyVal()
-				return err
+				if err := t.consumeJSONSeparator(); err != nil {
+					return err
+				}
+				set(data, string(k), jsonval)
+				return nil
 			}
 			// End of key. Consume =, Get value.
 			// FIXME: Get value list first
@@ -359,15 +360,13 @@ func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 			if err := dec.Decode(&jsonval); err != nil {
 				return list, err
 			}
-			if list, err = setIndex(list, i, jsonval); err != nil {
-				return list, err
-			}
 			if _, err = io.CopyN(io.Discard, t.sc, dec.InputOffset()); err != nil {
 				return list, err
 			}
-			// skip possible blanks and comma
-			_, err = t.emptyVal()
-			return list, err
+			if err := t.consumeJSONSeparator(); err != nil {
+				return list, err
+			}
+			return setIndex(list, i, jsonval)
 		}
 		vl, e := t.valList()
 		switch {
@@ -430,6 +429,18 @@ func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 	default:
 		return nil, fmt.Errorf("parse error: unexpected token %v", last)
 	}
+}
+
+// consumeJSONSeparator accepts a comma or the end of input after a JSON value.
+func (t *parser) consumeJSONSeparator() error {
+	end, err := t.emptyVal()
+	if err != nil {
+		return err
+	}
+	if !end {
+		return errors.New("expected a comma after JSON value")
+	}
+	return nil
 }
 
 // check for an empty value
