@@ -16,7 +16,10 @@ limitations under the License.
 package resolver
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -166,6 +169,43 @@ func TestResolve(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestResolveOCIUnderscoreTag reproduces the dependency resolution failure
+// from #32582: a chart stored in an OCI registry under the underscore form
+// of a build-metadata tag (1.1.17_meta, per #10166) must resolve against a
+// version constraint during helm dep update.
+func TestResolveOCIUnderscoreTag(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/testrepo/my-subchart/tags/list", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"name":"testrepo/my-subchart","tags":["1.1.17_meta","0.9.0"]}`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	registryClient, err := registry.NewClient(registry.ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	// The reported failure is in what Tags hands to the resolver and to
+	// pull references: without the fix it returns 1.1.17+meta, a tag that
+	// does not exist in the registry, while the resolution below happens
+	// to succeed on the normalized form either way. Assert the tags are
+	// the stored strings so this test fails without the fix.
+	tags, err := registryClient.Tags(strings.TrimPrefix(server.URL, "http://") + "/testrepo/my-subchart")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"1.1.17_meta", "0.9.0"}, tags)
+
+	r := New("", "", registryClient)
+
+	repoURL := "oci://" + strings.TrimPrefix(server.URL, "http://") + "/testrepo"
+	req := []*chart.Dependency{
+		{Name: "my-subchart", Repository: repoURL, Version: "1.x.x"},
+	}
+	l, err := r.Resolve(req, map[string]string{"my-subchart": "testrepo"})
+	require.NoError(t, err)
+	require.Len(t, l.Dependencies, 1)
+	assert.Equal(t, "1.1.17+meta", l.Dependencies[0].Version)
 }
 
 func TestHashReq(t *testing.T) {

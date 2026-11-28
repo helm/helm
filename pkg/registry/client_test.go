@@ -153,3 +153,75 @@ func TestWarnIfHostHasPath(t *testing.T) {
 		})
 	}
 }
+
+func TestSortTagsByVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{
+			name: "underscore convention preserved",
+			in:   []string{"1.1.17_meta", "1.2.0", "1.1.16", "2.0.0", "1.1.17"},
+			want: []string{"2.0.0", "1.2.0", "1.1.17_meta", "1.1.17", "1.1.16"},
+		},
+		{
+			name: "equal precedence is deterministic regardless of input order",
+			in:   []string{"1.1.17", "1.1.17_meta"},
+			want: []string{"1.1.17_meta", "1.1.17"},
+		},
+		{
+			name: "plain semver tags",
+			in:   []string{"1.0.0", "2.1.0", "1.5.0", "3.0.0"},
+			want: []string{"3.0.0", "2.1.0", "1.5.0", "1.0.0"},
+		},
+		{
+			name: "pre-release ordering",
+			in:   []string{"1.0.0", "1.0.0-beta", "1.0.0-alpha", "1.0.1"},
+			want: []string{"1.0.1", "1.0.0", "1.0.0-beta", "1.0.0-alpha"},
+		},
+		{
+			name: "underscore build metadata is not a pre-release",
+			in:   []string{"1.2.0_rc1", "1.1.0", "1.2.0"},
+			want: []string{"1.2.0_rc1", "1.2.0", "1.1.0"},
+		},
+		{
+			name: "non-semver tags are skipped",
+			in:   []string{"1.0.0", "not-a-version", "v1.2.0", "2.0.0", "1.5"},
+			want: []string{"2.0.0", "1.0.0"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, sortTagsByVersion(tt.in))
+		})
+	}
+}
+
+// TestClientTagsPreservesOriginalTags serves a two-page tags/list response
+// and verifies that Client.Tags accumulates tags from every page and returns
+// the original tag strings as stored in the registry, not their normalized
+// semver forms.
+func TestClientTagsPreservesOriginalTags(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/testrepo/chart/tags/list", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("last") == "" {
+			w.Header().Set("Link", `</v2/testrepo/chart/tags/list?n=2&last=0.9.0>; rel="next"`)
+			_, _ = w.Write([]byte(`{"name":"testrepo/chart","tags":["1.1.17_meta","0.9.0"]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"name":"testrepo/chart","tags":["2.0.0","1.1.17"]}`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(ClientOptPlainHTTP())
+	require.NoError(t, err)
+
+	host := strings.TrimPrefix(server.URL, "http://")
+	tags, err := client.Tags(host + "/testrepo/chart")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"2.0.0", "1.1.17_meta", "1.1.17", "0.9.0"}, tags)
+}

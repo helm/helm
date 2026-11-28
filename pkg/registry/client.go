@@ -794,33 +794,57 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	repository.PlainHTTP = c.plainHTTP
 	repository.Client = c.authorizer
 
-	var tagVersions []*semver.Version
+	var allTags []string
 	err = repository.Tags(ctx, "", func(tags []string) error {
-		for _, tag := range tags {
-			// Change underscore (_) back to plus (+) for Helm
-			// See https://github.com/helm/helm/issues/10166
-			tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
-			if err == nil {
-				tagVersions = append(tagVersions, tagVersion)
-			}
-		}
-
+		allTags = append(allTags, tags...)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Sort the collection
-	sort.Sort(sort.Reverse(semver.Collection(tagVersions)))
+	return sortTagsByVersion(allTags), nil
+}
 
-	tags := make([]string, len(tagVersions))
-
-	for iTv, tv := range tagVersions {
-		tags[iTv] = tv.String()
+// sortTagsByVersion sorts tags by semantic version precedence (highest
+// first) and returns them as the original tag strings. The original strings
+// are preserved because they are fed back into pull references: a tag stored
+// as 1.1.17_meta (the underscore convention from #10166) does not exist in
+// the registry under its normalized form 1.1.17+meta. Tags that are not
+// valid semantic versions are skipped. Tags whose versions have equal
+// precedence (for example, ones that differ only in build metadata) are
+// ordered by their tag string so the result is deterministic.
+func sortTagsByVersion(tags []string) []string {
+	type parsedTag struct {
+		tag     string
+		version *semver.Version
 	}
 
-	return tags, nil
+	parsed := make([]parsedTag, 0, len(tags))
+	for _, tag := range tags {
+		// Change underscore (_) back to plus (+) for Helm
+		// See https://github.com/helm/helm/issues/10166
+		version, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
+		if err != nil {
+			slog.Debug("Skipping tag that is not a valid semantic version", "tag", tag, "error", err)
+			continue
+		}
+		parsed = append(parsed, parsedTag{tag: tag, version: version})
+	}
+
+	sort.Slice(parsed, func(i, j int) bool {
+		if parsed[i].version.Equal(parsed[j].version) {
+			return parsed[i].tag > parsed[j].tag
+		}
+		return parsed[i].version.GreaterThan(parsed[j].version)
+	})
+
+	sorted := make([]string, len(parsed))
+	for i, p := range parsed {
+		sorted[i] = p.tag
+	}
+
+	return sorted
 }
 
 // Resolve a reference to a descriptor.
